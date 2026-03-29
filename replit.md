@@ -2,7 +2,7 @@
 
 ## Overview
 
-Full-stack workforce management platform built with a pnpm workspace monorepo using TypeScript. Covers organizations, deals/pipeline, policies, CRM, workforce management, agent registration, rate tables, implementation tracking, commissions, and onboarding.
+Full-stack workforce management platform built with a pnpm workspace monorepo using TypeScript. Covers organizations, deals/pipeline, policies, CRM, workforce management, agent registration, rate tables, implementation tracking, commissions, and onboarding. Features 8 role-based party environment dashboards with a dark glassmorphism design system.
 
 ## Stack
 
@@ -13,7 +13,7 @@ Full-stack workforce management platform built with a pnpm workspace monorepo us
 - **Frontend**: React 18 + Vite + Tailwind CSS
 - **Backend**: Express 5 with helmet, morgan, cors, socket.io
 - **Database**: PostgreSQL (28 tables) + Drizzle ORM
-- **State Management**: Zustand
+- **State Management**: Zustand (auth store persisted to localStorage)
 - **Data Fetching**: @tanstack/react-query
 - **Forms**: react-hook-form + zod
 - **Icons**: lucide-react
@@ -81,13 +81,55 @@ Drizzle ORM schema files in `lib/db/src/schema/` (one per domain).
 - `/api/implementation` — trackers with phases/tasks
 - `/api/workforce` — summaries, vertical rollups
 
+## Authentication & Role System (Phase 3)
+
+Auth is managed via Zustand store (`auth-store.ts`) persisted to localStorage.
+- **Login page** at `/login` — role selector with 8 party types
+- **ProtectedRoute** component guards dashboard routes
+- **Role switcher** in sidebar allows switching between all 8 roles
+
+### Party Types & Dashboard Routes
+
+| Role | Route | Description |
+|------|-------|-------------|
+| Admin | `/dashboard/admin` | Full platform access — orgs, deals, pipeline, agents, UW queue |
+| Underwriter | `/dashboard/underwriter` | Deal review, bound policies, rate tables |
+| CSA | `/dashboard/csa` | Client servicing, active policies, renewals, tasks |
+| Agent | `/dashboard/agent` | Deal submissions, commissions, clients |
+| Employer | `/dashboard/employer` | Policy view, claims, payroll/billing, PEO onboarding |
+| Carrier | `/dashboard/carrier` | Bound business, claims, performance summary |
+| PEO Partner | `/dashboard/peo` | PEO clients, workforce data, billing |
+| Vendor | `/dashboard/vendor` | Assigned tasks, documents, completion tracking |
+
+### Design System
+
+- **Background**: `#060608` (near-black)
+- **Card/Panel**: `rgba(255,255,255,0.04)` with `1px border rgba(255,255,255,0.08)`
+- **Accent**: `#E91E8C` (magenta/pink) for CTAs, active states, badges
+- **Secondary accent**: `rgba(233,30,140,0.15)` for hover states
+- **Font**: Inter (400, 500, 600, 700)
+- **Sidebar**: 240px fixed
+- **Top nav**: 56px fixed
+- **Card border-radius**: 12px
+- **Glassmorphism**: `backdrop-filter: blur(12px)`
+
+### Key Frontend Components
+
+- `DashboardLayout.tsx` — Dark-themed layout with role-specific sidebar + top nav
+- `AppLayout.tsx` — Original light-themed layout (legacy pages at `/organizations`, `/deals`, etc.)
+- `GlassCard.tsx` — Reusable glassmorphism card component
+- `StatCard.tsx` — Metric stat card with icon + optional trend
+- `ProtectedRoute.tsx` — Auth + role guard wrapper
+
 ## Frontend Pages
 
+### Dashboard Pages (Dark Theme)
+8 role-based dashboards under `/dashboard/{role}`, each with role-specific stat cards, data panels, and quick actions.
+
+### Legacy Pages (Light Theme)
 Sidebar layout (`AppLayout.tsx`) with 12 navigation items:
-- Dashboard (live counts from all entities)
-- Organizations, Deals/Pipeline, Policies, Contacts, Employees
-- Tasks, Commissions, Agent Registration, Rate Tables
-- Implementation, Workforce
+- Dashboard, Organizations, Deals/Pipeline, Policies, Contacts, Employees
+- Tasks, Commissions, Agent Registration, Rate Tables, Implementation, Workforce
 
 All pages use React Query for data fetching. Create forms on Organizations, Deals, Contacts, and Employees pages.
 

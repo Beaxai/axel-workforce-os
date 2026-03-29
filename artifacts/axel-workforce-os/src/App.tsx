@@ -1,8 +1,12 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import AppLayout from "@/components/AppLayout";
+import DashboardLayout from "@/components/DashboardLayout";
+import ProtectedRoute from "@/components/ProtectedRoute";
+import LoginPage from "@/pages/LoginPage";
+import UnauthorizedPage from "@/pages/UnauthorizedPage";
 import Dashboard from "@/pages/Dashboard";
 import OrganizationsPage from "@/pages/OrganizationsPage";
 import DealsPage from "@/pages/DealsPage";
@@ -15,9 +19,27 @@ import AgentRegistrationsPage from "@/pages/AgentRegistrationsPage";
 import RateTablesPage from "@/pages/RateTablesPage";
 import ImplementationPage from "@/pages/ImplementationPage";
 import WorkforcePage from "@/pages/WorkforcePage";
+import AdminDashboard from "@/pages/dashboard/AdminDashboard";
+import UnderwriterDashboard from "@/pages/dashboard/UnderwriterDashboard";
+import CsaDashboard from "@/pages/dashboard/CsaDashboard";
+import AgentDashboard from "@/pages/dashboard/AgentDashboard";
+import EmployerDashboard from "@/pages/dashboard/EmployerDashboard";
+import CarrierDashboard from "@/pages/dashboard/CarrierDashboard";
+import PeoDashboard from "@/pages/dashboard/PeoDashboard";
+import VendorDashboard from "@/pages/dashboard/VendorDashboard";
 import NotFound from "@/pages/not-found";
+import { useAuthStore } from "@/lib/auth-store";
 
 const queryClient = new QueryClient();
+
+function RootRedirect() {
+  const { isAuthenticated, user } = useAuthStore();
+  if (isAuthenticated && user) {
+    const rolePath = `/dashboard/${user.role.toLowerCase()}`;
+    return <Navigate to={rolePath} replace />;
+  }
+  return <Navigate to="/login" replace />;
+}
 
 function App() {
   return (
@@ -25,8 +47,100 @@ function App() {
       <TooltipProvider>
         <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, "")}>
           <Routes>
+            <Route path="/" element={<RootRedirect />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/unauthorized" element={<UnauthorizedPage />} />
+
+            <Route
+              element={
+                <ProtectedRoute allowedRoles={["ADMIN"]}>
+                  <DashboardLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route path="/dashboard/admin" element={<AdminDashboard />} />
+              <Route path="/dashboard/admin/*" element={<AdminDashboard />} />
+            </Route>
+
+            <Route
+              element={
+                <ProtectedRoute allowedRoles={["UNDERWRITER"]}>
+                  <DashboardLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route path="/dashboard/underwriter" element={<UnderwriterDashboard />} />
+              <Route path="/dashboard/underwriter/*" element={<UnderwriterDashboard />} />
+            </Route>
+
+            <Route
+              element={
+                <ProtectedRoute allowedRoles={["CSA"]}>
+                  <DashboardLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route path="/dashboard/csa" element={<CsaDashboard />} />
+              <Route path="/dashboard/csa/*" element={<CsaDashboard />} />
+            </Route>
+
+            <Route
+              element={
+                <ProtectedRoute allowedRoles={["AGENT"]}>
+                  <DashboardLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route path="/dashboard/agent" element={<AgentDashboard />} />
+              <Route path="/dashboard/agent/*" element={<AgentDashboard />} />
+            </Route>
+
+            <Route
+              element={
+                <ProtectedRoute allowedRoles={["EMPLOYER"]}>
+                  <DashboardLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route path="/dashboard/employer" element={<EmployerDashboard />} />
+              <Route path="/dashboard/employer/*" element={<EmployerDashboard />} />
+            </Route>
+
+            <Route
+              element={
+                <ProtectedRoute allowedRoles={["CARRIER"]}>
+                  <DashboardLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route path="/dashboard/carrier" element={<CarrierDashboard />} />
+              <Route path="/dashboard/carrier/*" element={<CarrierDashboard />} />
+            </Route>
+
+            <Route
+              element={
+                <ProtectedRoute allowedRoles={["PEO"]}>
+                  <DashboardLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route path="/dashboard/peo" element={<PeoDashboard />} />
+              <Route path="/dashboard/peo/*" element={<PeoDashboard />} />
+            </Route>
+
+            <Route
+              element={
+                <ProtectedRoute allowedRoles={["VENDOR"]}>
+                  <DashboardLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route path="/dashboard/vendor" element={<VendorDashboard />} />
+              <Route path="/dashboard/vendor/*" element={<VendorDashboard />} />
+            </Route>
+
             <Route element={<AppLayout />}>
-              <Route path="/" element={<Dashboard />} />
+              <Route path="/legacy" element={<Dashboard />} />
               <Route path="/organizations" element={<OrganizationsPage />} />
               <Route path="/deals" element={<DealsPage />} />
               <Route path="/policies" element={<PoliciesPage />} />
@@ -39,6 +153,7 @@ function App() {
               <Route path="/implementation" element={<ImplementationPage />} />
               <Route path="/workforce" element={<WorkforcePage />} />
             </Route>
+
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
