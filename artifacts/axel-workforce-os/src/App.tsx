@@ -41,6 +41,10 @@ import PEODetail from "@/pages/network/PEODetail";
 import AgentRegister from "@/pages/register/AgentRegister";
 import AgentAgreement from "@/pages/register/AgentAgreement";
 import AgentOnboarding from "@/pages/register/AgentOnboarding";
+import Resources from "@/pages/Resources";
+import MyProgram from "@/pages/MyProgram";
+import ClientOnboarding from "@/pages/ClientOnboarding";
+import Welcome from "@/pages/Welcome";
 import NotFound from "@/pages/not-found";
 import { useAuthStore } from "@/lib/auth-store";
 
@@ -121,7 +125,11 @@ function App() {
             >
               <Route path="/dashboard/employer" element={<EmployerDashboard />} />
               <Route path="/dashboard/employer/*" element={<EmployerDashboard />} />
+              <Route path="/my-program" element={<MyProgram />} />
+              <Route path="/my-program/onboarding" element={<ClientOnboarding />} />
             </Route>
+
+            <Route path="/welcome" element={<Welcome />} />
 
             <Route
               element={
@@ -210,6 +218,16 @@ function App() {
               <Route path="/network/agents/:id" element={<AgentDetail />} />
               <Route path="/network/carriers/:id" element={<CarrierDetail />} />
               <Route path="/network/peo/:id" element={<PEODetail />} />
+            </Route>
+
+            <Route
+              element={
+                <ProtectedRoute allowedRoles={["ADMIN", "CSA", "AGENT"]}>
+                  <AppShell />
+                </ProtectedRoute>
+              }
+            >
+              <Route path="/resources" element={<Resources />} />
             </Route>
 
             <Route element={<AppLayout />}>

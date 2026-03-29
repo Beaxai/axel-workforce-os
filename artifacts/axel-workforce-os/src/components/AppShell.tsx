@@ -11,10 +11,12 @@ import {
   User,
   Settings,
   Lock,
+  Search,
 } from "lucide-react";
 import { useAuthStore, ROLE_LABELS, ROLE_PATHS, type PartyRole } from "@/lib/auth-store";
 import { useThemeStore } from "@/lib/theme-store";
 import { ROLE_NAV, type NavItem } from "@/lib/role-config";
+import GlobalSearch from "@/components/GlobalSearch";
 
 const ALL_ROLES: PartyRole[] = [
   "ADMIN", "UNDERWRITER", "CSA", "AGENT",
@@ -29,6 +31,7 @@ export default function AppShell() {
   const [collapsed, setCollapsed] = useState(false);
   const [roleSwitcherOpen, setRoleSwitcherOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   const isDark = theme === "dark";
 
@@ -339,6 +342,26 @@ export default function AppShell() {
 
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
             <button
+              onClick={() => setSearchOpen(true)}
+              style={{
+                padding: "8px",
+                borderRadius: "8px",
+                border: "none",
+                background: "transparent",
+                color: textMuted,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = hoverBg)}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+              title="Search"
+            >
+              <Search style={{ width: "18px", height: "18px" }} />
+            </button>
+
+            <button
               onClick={toggleTheme}
               style={{
                 padding: "8px",
@@ -507,6 +530,8 @@ export default function AppShell() {
           <Outlet />
         </main>
       </div>
+
+      {searchOpen && <GlobalSearch onClose={() => setSearchOpen(false)} />}
     </div>
   );
 }

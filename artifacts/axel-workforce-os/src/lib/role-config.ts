@@ -9,6 +9,7 @@ import {
   BookOpen,
   Shield,
   Lock,
+  ClipboardList,
   type LucideIcon,
 } from "lucide-react";
 import type { PartyRole } from "./auth-store";
@@ -28,7 +29,7 @@ const adminNav: NavItem[] = [
   { label: "Implementations", path: "/implementations", icon: Rocket },
   { label: "Billing", path: "/billing", icon: Receipt },
   { label: "Network", path: "/network", icon: Network },
-  { label: "Resources", path: "/dashboard/admin/resources", icon: BookOpen },
+  { label: "Resources", path: "/resources", icon: BookOpen },
 ];
 
 const csaNav: NavItem[] = [
@@ -38,12 +39,14 @@ const csaNav: NavItem[] = [
   { label: "Accounts", path: "/accounts", icon: Users },
   { label: "Implementations", path: "/implementations", icon: Rocket },
   { label: "Network", path: "/network", icon: Network },
+  { label: "Resources", path: "/resources", icon: BookOpen },
 ];
 
 const agentNav: NavItem[] = [
   { label: "Home", path: "/dashboard/agent", icon: LayoutDashboard },
   { label: "Pipeline", path: "/pipeline", icon: Handshake },
   { label: "Accounts", path: "/dashboard/agent/accounts", icon: Users },
+  { label: "Resources", path: "/resources", icon: BookOpen },
 ];
 
 const underwriterNav: NavItem[] = [
@@ -53,7 +56,9 @@ const underwriterNav: NavItem[] = [
 ];
 
 const employerNav: NavItem[] = [
-  { label: "My Program", path: "/dashboard/employer", icon: Shield, locked: true },
+  { label: "Home", path: "/dashboard/employer", icon: LayoutDashboard },
+  { label: "My Program", path: "/my-program", icon: Shield },
+  { label: "Onboarding", path: "/my-program/onboarding", icon: ClipboardList },
 ];
 
 const carrierNav: NavItem[] = [

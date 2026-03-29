@@ -57,6 +57,7 @@ artifacts-monorepo/
 - **Email**: deal_email_addresses, deal_inbound_emails, task_send_log
 - **Implementation**: implementation_trackers, implementation_phases, implementation_tasks
 - **Partners/Network**: partners
+- **Resources**: resources (title, category, description, file_url, resource_type)
 - **Agent Registration**: agent_registrations (with partner_id, user_id FKs), agent_compliance
 - **Rate Tables**: rate_tables, pepm_rates
 - **Workforce**: employees, workforce_summaries, vertical_workforce_rollups
@@ -83,6 +84,8 @@ Drizzle ORM schema files in `lib/db/src/schema/` (one per domain).
 - `/api/workforce` — summaries, vertical rollups
 - `/api/accounts` — CRUD + /deals, /policies, /activity sub-resources
 - `/api/partners` — CRUD with ?type= filter (Agent, Carrier, PEO, Vendor)
+- `/api/resources` — CRUD (GET with ?q= search, POST, DELETE /:id)
+- `/api/search` — Global search across deals, accounts, partners, resources (?q= param)
 
 ## Authentication & Role System
 
@@ -95,11 +98,11 @@ Auth is managed via Zustand store (`auth-store.ts`) persisted to localStorage (`
 
 | Role | Route | Nav Items (P4) |
 |------|-------|----------------|
-| Admin | `/dashboard/admin` | Home, Marketplace, Pipeline, Accounts (/accounts), Implementations (/implementations), Billing (/billing), Network, Resources |
+| Admin | `/dashboard/admin` | Home, Marketplace, Pipeline, Accounts (/accounts), Implementations (/implementations), Billing (/billing), Network, Resources (/resources) |
 | Underwriter | `/dashboard/underwriter` | Home, Pipeline, Accounts |
-| CSA | `/dashboard/csa` | Home, Marketplace, Pipeline, Accounts (/accounts), Implementations (/implementations), Network (/network) |
-| Agent | `/dashboard/agent` | Home, Pipeline, Accounts |
-| Employer | `/dashboard/employer` | My Program (locked until Active Client) |
+| CSA | `/dashboard/csa` | Home, Marketplace, Pipeline, Accounts (/accounts), Implementations (/implementations), Network (/network), Resources (/resources) |
+| Agent | `/dashboard/agent` | Home, Pipeline, Accounts, Resources (/resources) |
+| Employer | `/dashboard/employer` | Home, My Program (/my-program), Onboarding (/my-program/onboarding) |
 | Carrier | `/dashboard/carrier` | Home, Accounts |
 | PEO Partner | `/dashboard/peo` | Home, Network |
 | Vendor | `/dashboard/vendor` | Home, Accounts |
@@ -194,6 +197,27 @@ All importable from `@/components/ui/axel-index`:
 - **`/register/agent/onboarding/:id`** — Onboarding call scheduling placeholder (Calendly integration — coming soon).
 - **Admin dashboard** shows "Agent Applications" panel with pending registrations. Admin can Approve (→ Agreement Pending), Mark Call Complete (→ Credentials Pending), Issue Credentials (creates partner record, sets status to Active).
 - Registration statuses: PENDING_REVIEW → AGREEMENT_PENDING → ONBOARDING_CALL_PENDING → CREDENTIALS_PENDING → ACTIVE (or REJECTED).
+
+### Resources (Phase 10)
+- **`/resources`** — Resource library with search, category filters (All/Guides/Templates/Forms/Training/Marketing), 3-column card grid. Accessible to Admin, CSA, Agent.
+- Each card shows title, category badge, description, file type icon, View/Download button.
+- Admin sees "Add Resource" button (modal with title, category, type, description, file URL).
+- Admin can delete resources (Trash2 icon on hover).
+- 8 seeded resources across categories.
+
+### Global Search (Phase 10)
+- Search icon in AppShell header (visible on all authenticated screens).
+- Clicking opens full-width glassmorphism overlay.
+- Searches across deals, accounts, partners, resources via `/api/search`.
+- Results grouped by type with section headers. 300ms debounce.
+- ESC key or click outside closes overlay.
+
+### Client Progressive Unlock (Phase 10)
+- **`/my-program`** — Client program view with WC/PEO tabs. Shows policy summary, coverage details, team contact info.
+- **`/my-program/onboarding`** — Read-only onboarding progress with client-friendly phase labels and encouragement messaging.
+- **`/welcome`** — Prospect holding screen (no auth required). Full-screen "Your program is being prepared" message.
+- `client_stage` column on accounts table: Prospect, Active Prospect, New Client, Active Client.
+- Employer role nav shows Home, My Program, Onboarding.
 
 ### Marketplace (Phase 5)
 - **`/marketplace`** — Vertical card grid with 8 industry verticals (Cannabis, Construction, Staffing, Healthcare, Hospitality, Transportation, Manufacturing, Retail). Each card has WC Quote and PEO Quote buttons. Accessible to Admin and CSA only.

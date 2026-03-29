@@ -1,0 +1,168 @@
+Phase 10: Resources, Global Search & Client Progressive Unlock
+Context: Phases 1–9 are complete. The app has all core internal modules built: Marketplace, Pipeline, Deal Card Modal, Accounts, Implementations, Billing, and Network. Phase 10 completes the internal platform with the Resources module and global search, then builds the entire client-facing experience with progressive nav unlock.
+
+PART A — RESOURCES MODULE
+Route: /resources
+Accessible to: Admin, CSA, Agent roles.
+Page layout:
+
+SectionHeader: "Resources", subtitle "Docs, guides, and templates"
+Search bar — filters resources in real time by title or tag
+Category filter row (toggle Badge buttons): All | Guides | Templates | Forms | Training | Marketing
+Resource cards in a 3-column grid (GlassCards)
+
+Each resource card displays:
+
+Title (bold, white)
+Category badge (Badge component)
+Short description (muted text)
+File type icon (Lucide — use FileText for docs, Table for spreadsheets, Video for video, Link for external links)
+GhostButton "View" or "Download" depending on resource type
+Admin-only: Lucide Trash2 delete icon on hover
+
+Seed 8 placeholder resources across categories — titles and descriptions can be generic (e.g. "WC Submission Checklist", "Agent Onboarding Guide", "PEO Proposal Template"). File links can be # placeholders for now.
+Admin resource management:
+
+Admin sees a PinkButton "Add Resource" — opens a modal with: Title, Category (dropdown), Description, File Upload or External URL, GhostButton "Save"
+Saves to Supabase resources table
+
+Supabase — resources table:
+id            uuid, primary key
+title         text
+category      text
+description   text
+file_url      text
+resource_type text  ('doc', 'spreadsheet', 'video', 'link')
+created_by    uuid, references auth.users
+created_at    timestamptz, default now()
+
+PART B — GLOBAL SEARCH
+Global search is accessible from every screen via a search icon (Lucide Search) in the AppShell header bar, right side, next to the avatar.
+Behavior:
+
+Clicking the search icon opens a full-width search overlay (glassmorphism, appears over current screen)
+User types a query — results appear in real time (debounced, 300ms)
+Search spans: Deals (by business name), Accounts (by business name), Partners/Agents (by name), Resources (by title)
+Results grouped by type with section headers: "Deals", "Accounts", "Partners", "Resources"
+Each result shows: name/title, type badge, relevant secondary info (e.g. stage for deals, status for accounts)
+Clicking a Deal result → calls openDealCard(dealId) (wired in P7)
+Clicking an Account result → navigates to /accounts/[id]
+Clicking a Partner result → navigates to appropriate detail page
+Clicking a Resource result → opens/downloads the resource
+ESC key closes the overlay
+Empty state: "No results for '[query]'" with a muted message
+
+Implementation:
+
+Query Supabase directly from the frontend using ilike pattern matching on relevant text columns
+No external search service needed at this stage
+Wire the search icon into AppShell header now — it should be visible on all authenticated screens
+
+
+PART C — CLIENT PROGRESSIVE UNLOCK
+This is the client-facing experience. Clients log in and see a completely different nav and UI from internal staff — they only see what they've been unlocked to see based on their account stage.
+Client roles affected: Employer (Client) role only.
+Progressive unlock stages:
+Client StageNav AvailableProspectNo nav — show a "Your program is being prepared" holding screenActive ProspectMarketplace tab only (read-only view of available programs — no quoting)New Client (Onboarding)My Program tab + Onboarding tabActive ClientMy Program tab only (Onboarding tab disappears permanently)
+Implementation:
+
+Add a client_stage column to the accounts table: text, values 'Prospect', 'Active Prospect', 'New Client', 'Active Client'
+When a client logs in, read their client_stage from their linked account record and render the appropriate nav
+Stage is set by internal Admin/CSA — add a "Client Stage" dropdown to the Account Detail page (already built in P8) that updates this field
+
+
+MY PROGRAM MODULE
+Route: /my-program
+Accessible to: Active Client and New Client stages only.
+This is the client's view of their insurance and workforce program. Layout:
+
+SectionHeader: "My Program"
+Program type tabs based on what the client has: WC Only | PEO | ASO | ASO+Captive (show only relevant tabs based on their deal's quote type)
+
+WC Only tab:
+
+Policy summary card (GlassCard): carrier, policy number (placeholder), effective date, expiration date, WC premium, status badge
+Coverage details: class codes, states covered, EMod
+GhostButton "Download Policy Documents" (placeholder)
+Contact card: assigned CSA name, email, phone
+
+PEO tab (if applicable):
+
+PEO program name (e.g. "Kind PEO Program")
+WC component summary (same as above)
+Workforce Solutions fee summary: monthly fee, PEPM rate, headcount
+PEO partner contact info
+GhostButton "Download Program Documents" (placeholder)
+
+All tabs:
+
+Activity feed (read-only for client — they can see updates but not post notes)
+No internal deal data visible — only client-appropriate information
+
+
+ONBOARDING TAB
+Route: /my-program/onboarding
+Visible to: New Client stage only. Disappears permanently once client stage is set to Active Client — do not retain any history of the onboarding tab after that transition.
+
+Shows the relevant implementation tracker(s) for this client in a read-only view
+Same phase progress bar UI as the Implementations module (P8) but simplified and client-friendly
+Phase labels use plain language (e.g. "We're setting up your account" instead of internal phase names)
+No "Advance Phase" button — clients cannot advance phases
+Encouraging progress messaging at each phase
+
+Client-friendly phase labels:
+WC Bind Journey:
+
+Phase 1: "We're issuing your binder"
+Phase 2: "Your policy documents are on the way"
+Phase 3: "Waiting for your signature"
+Phase 4: "Your policy is active!"
+
+PEO Onboarding:
+
+Phase 1: "Welcome! Your kickoff is scheduled"
+Phase 2: "We're collecting your workforce data"
+Phase 3: "Setting up your systems"
+Phase 4: "Running your first payroll parallel"
+Phase 5: "You're live!"
+
+
+CLIENT HOLDING SCREEN (Prospect stage)
+Route: /welcome — shown immediately after login for Prospect-stage clients.
+
+Full-screen glassmorphism layout, no nav
+Axel Workforce OS logo/wordmark centered
+Message: "Your program is being prepared. Your dedicated team will be in touch shortly."
+Assigned CSA name and contact info if available
+No further navigation available
+
+
+DESIGN RULES (REMINDER)
+
+Background: #060608
+Accent: #E91E8C only — no other accent colors
+NO gradients — solid colors only
+Glassmorphism panels: rgba(255,255,255,0.05) background, blur(12px), 1px solid rgba(255,255,255,0.08) border
+Client-facing screens use the same dark glassmorphism aesthetic — clean, professional, minimal
+Lucide React for all icons
+
+
+TECH STACK REMINDER
+
+React + Node.js + Supabase + Railway
+No external UI libraries — custom CSS or CSS modules only
+
+
+DELIVERABLES
+
+/pages/Resources.jsx — resource library with search, filters, and admin upload
+Global search overlay wired into AppShell header — visible on all authenticated screens
+/pages/MyProgram.jsx — client program view with WC and PEO tabs
+/pages/Onboarding.jsx — client onboarding tracker (read-only)
+/pages/Welcome.jsx — Prospect holding screen
+Client progressive unlock logic reading client_stage from accounts table
+client_stage dropdown added to Account Detail page (P8)
+resources table created in Supabase
+Onboarding tab permanently removed from nav on transition to Active Client
+
+When complete, confirm: Resources module loads with seeded content and admin can add resources, global search returns results across all four entity types, client login routes correctly based on stage, My Program displays policy summary, and Onboarding tab shows correct phase progress.

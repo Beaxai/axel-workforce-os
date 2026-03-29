@@ -36,5 +36,9 @@ router.use("/workforce", workforceRouter);
 router.use("/accounts", accountsRouter);
 import partnersRouter from "./partners";
 router.use("/partners", partnersRouter);
+import resourcesRouter from "./resources";
+router.use("/resources", resourcesRouter);
+import searchRouter from "./search";
+router.use("/search", searchRouter);
 
 export default router;
