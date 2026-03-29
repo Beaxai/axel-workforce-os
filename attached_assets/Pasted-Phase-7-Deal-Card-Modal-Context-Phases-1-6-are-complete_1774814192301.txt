@@ -1,0 +1,152 @@
+Phase 7: Deal Card Modal
+Context: Phases 1–6 are complete. The Pipeline module has a working 10-stage Kanban board with deal cards. Clicking a deal card currently opens a placeholder modal. Phase 7 replaces that placeholder with the full Deal Card Modal — the command center for every deal.
+
+OBJECTIVE
+Build the full Deal Card Modal — a glassmorphism overlay that opens when any deal card is clicked, from any screen. It is the primary workspace for managing a deal's activity, tasks, documents, and team.
+
+TRIGGER
+
+Clicking a deal card in the Pipeline opens the modal
+Modal must also be openable from global search results (global search built in P10 — wire the open function to a globally accessible openDealCard(dealId) function now so P10 can call it)
+
+
+MODAL STRUCTURE
+Full-screen glassmorphism overlay (not a small centered box — this should feel like a drawer/panel that dominates the screen). Use the Modal component from /components/ui/ as the base but extend it for this layout.
+Header bar (top of modal):
+
+Business name (large, bold, white)
+Vertical + quote type badge
+Current stage indicator (e.g. "Stage 4 — Proposal Sent") with a PinkButton "Advance Stage" that moves the deal to the next stage and updates Supabase
+Assigned team member avatars with hover tooltips showing name + role
+Close button (X, top right)
+
+Two-column body layout:
+Left column (wider, ~65% width) — Activity & Tasks
+Right column (narrower, ~35% width) — Deal Details & Info
+
+LEFT COLUMN — ACTIVITY FEED
+
+Chronological activity log pulled from Supabase activity_log table for this deal
+Each entry shows: timestamp, actor name, action description
+Auto-log entries for: stage changes, tasks completed, documents uploaded, @mentions
+New activity entries appear at the top (newest first)
+Text input at the bottom: "Add a note..." with a PinkButton "Post"
+Support @mentions: typing @ shows a dropdown of team members — on selection, triggers a notification (log the notification to console for now; email/SMS wires in later)
+Listener email display: show the deal's unique email address ([businessname][id]@card.axelworkforce.com) as a copyable field with a copy-to-clipboard icon (Lucide Copy icon). Inbound emails to this address will auto-populate the activity feed (backend wiring for this is a separate task — just display the address for now)
+
+Activity log Supabase table (activity_log):
+id            uuid, primary key
+deal_id       uuid, references deals(id)
+actor_id      uuid, references auth.users
+action        text
+metadata      jsonb  (optional extra context)
+created_at    timestamptz, default now()
+
+LEFT COLUMN — TASK LIST
+Below the activity feed:
+
+Section header: "Tasks"
+List of tasks for this deal, each showing:
+
+Checkbox (complete/incomplete)
+Task name
+Assignee avatar + name
+Due date
+Completing a task auto-logs to the activity feed
+
+
+PinkButton "Add Task" — opens an inline form:
+
+Task name (text)
+Assign to (team member dropdown)
+Due date (date picker)
+GhostButton "Save Task"
+
+
+Templated task library: GhostButton "Use Template" — opens a secondary modal with preset task bundles:
+
+"WC New Business" — 5 standard tasks
+"PEO Onboarding" — 7 standard tasks
+"Renewal" — 4 standard tasks
+Selecting a template adds all its tasks to the deal at once
+Hardcode the task names for now — these can be made editable in a later phase
+
+
+
+Tasks Supabase table:
+id            uuid, primary key
+deal_id       uuid, references deals(id)
+task_name     text
+assigned_to   uuid, references auth.users
+due_date      date
+completed     boolean, default false
+completed_at  timestamptz
+created_at    timestamptz, default now()
+
+RIGHT COLUMN — DEAL DETAILS
+GlassCard containing:
+
+Business Name
+Vertical
+Quote Type (WC / PEO)
+State
+Annual Payroll (formatted as currency)
+Headcount
+WC Premium (formatted as currency, or "Not yet rated" if null)
+WFS PEPM (PEO deals only, or "Not yet rated" if null)
+GhostButton "Edit Details" — makes fields inline-editable, saves to Supabase on confirm
+
+
+RIGHT COLUMN — DOCUMENT VAULT
+Below deal details:
+
+Section header: "Documents"
+List of uploaded documents (filename, upload date, uploader name)
+PinkButton "Upload Document" — file picker, uploads to Supabase Storage under /deals/[deal_id]/
+Documents uploaded via the listener email will also appear here (display only for now — listener email ingestion wires in separately)
+Each document row has a download icon (Lucide Download) and a delete icon (Lucide Trash2)
+
+
+DEAL LISTENER EMAIL
+Each deal gets a unique inbound email address. On deal creation (wired in P6's New Deal form — update that form now):
+
+Generate the address as: [businessname][dealid_first8chars]@card.axelworkforce.com
+Strip spaces and lowercase the business name portion
+Save to Supabase deal_email_addresses table
+
+deal_email_addresses table:
+id            uuid, primary key
+deal_id       uuid, references deals(id)
+email_address text, unique
+created_at    timestamptz, default now()
+Display this address in the activity feed section as described above. Actual inbound email capture via Claude API summarization is a separate integration phase.
+
+DESIGN RULES (REMINDER)
+
+Background: #060608
+Accent: #E91E8C only — no other accent colors
+NO gradients — solid colors only
+Glassmorphism panels: rgba(255,255,255,0.05) background, blur(12px), 1px solid rgba(255,255,255,0.08) border
+All inputs: dark glass surface, white text, #E91E8C focus border
+Lucide React for all icons
+
+
+TECH STACK REMINDER
+
+React + Node.js + Supabase + Railway
+Supabase Storage for document uploads
+No external UI libraries — custom CSS or CSS modules only
+
+
+DELIVERABLES
+
+/components/DealCardModal.jsx — full modal component
+openDealCard(dealId) exposed globally for P10 to call
+Activity feed reading from and writing to activity_log table
+Task list with template library working
+Document vault with Supabase Storage upload/download
+Listener email generated on deal creation and displayed in modal
+Stage advance button updating Supabase and auto-logging to activity feed
+deal_email_addresses table created and populated on new deal creation
+
+When complete, confirm: modal opens from pipeline card click, activity feed loads and accepts new notes, tasks can be added manually and via template, documents can be uploaded and downloaded, and the listener email address displays correctly.

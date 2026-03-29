@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, dealsTable, insertDealSchema, quotesTable, contactsTable, notesTable, tasksTable, activityLogTable } from "@workspace/db";
+import { db, dealsTable, insertDealSchema, quotesTable, contactsTable, notesTable, tasksTable, activityLogTable, insertActivityLogSchema, dealEmailAddressesTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 
 const router: IRouter = Router();
@@ -59,6 +59,33 @@ router.get("/:id/tasks", async (req, res) => {
 router.get("/:id/activity", async (req, res) => {
   const rows = await db.select().from(activityLogTable).where(eq(activityLogTable.dealId, req.params.id)).orderBy(desc(activityLogTable.createdAt));
   res.json(rows);
+});
+
+router.post("/:id/activity", async (req, res) => {
+  const parsed = insertActivityLogSchema.safeParse({ ...req.body, dealId: req.params.id });
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues });
+  const [row] = await db.insert(activityLogTable).values(parsed.data).returning();
+  res.status(201).json(row);
+});
+
+router.get("/:id/email", async (req, res) => {
+  const [row] = await db.select().from(dealEmailAddressesTable).where(eq(dealEmailAddressesTable.dealId, req.params.id));
+  res.json(row || null);
+});
+
+router.post("/:id/email", async (req, res) => {
+  const dealId = req.params.id;
+  const { emailAddress, companySlug } = req.body;
+  if (!emailAddress || !companySlug) return res.status(400).json({ error: "emailAddress and companySlug required" });
+  const [existing] = await db.select().from(dealEmailAddressesTable).where(eq(dealEmailAddressesTable.dealId, dealId));
+  if (existing) return res.json(existing);
+  const [row] = await db.insert(dealEmailAddressesTable).values({
+    dealId,
+    emailAddress,
+    companySlug,
+    fileId: dealId.slice(0, 8),
+  }).returning();
+  res.status(201).json(row);
 });
 
 export default router;

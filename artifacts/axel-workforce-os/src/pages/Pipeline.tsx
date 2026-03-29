@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/axel-index";
 import { useThemeStore } from "@/lib/theme-store";
 import { api } from "@/lib/api";
+import DealCardModal from "@/components/DealCardModal";
 import {
   Cannabis,
   HardHat,
@@ -170,7 +171,18 @@ export default function Pipeline() {
       if (form.assignedTo) {
         payload.ownerId = form.assignedTo;
       }
-      await api.post<Deal>("/deals", payload);
+      const newDeal = await api.post<Deal>("/deals", payload);
+      const slug = form.businessName.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 30);
+      api.post(`/deals/${newDeal.id}/email`, {
+        emailAddress: `${slug}@listener.axel.io`,
+        companySlug: slug,
+      }).catch(() => {});
+      api.post(`/deals/${newDeal.id}/activity`, {
+        entityType: "deal",
+        entityId: newDeal.id,
+        eventType: "DEAL_CREATED",
+        description: `Deal created for ${form.businessName}`,
+      }).catch(() => {});
       await fetchDeals();
       setShowNewDeal(false);
       setForm({
@@ -663,43 +675,12 @@ export default function Pipeline() {
         </div>
       </Modal>
 
-      <Modal isOpen={!!selectedDeal} onClose={() => setSelectedDeal(null)} title={selectedDeal?.businessName || "Deal"}>
-        <div style={{ minWidth: "400px" }}>
-          <p style={{ color: textMuted, fontSize: "13px", margin: "0 0 12px" }}>
-            Deal details modal — full implementation coming in Phase 7.
-          </p>
-          {selectedDeal && (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-              <div>
-                <span style={{ fontSize: "12px", color: textMuted }}>Vertical</span>
-                <p style={{ color: textPrimary, margin: "2px 0 0", fontSize: "14px" }}>{selectedDeal.vertical || "—"}</p>
-              </div>
-              <div>
-                <span style={{ fontSize: "12px", color: textMuted }}>Quote Type</span>
-                <p style={{ color: textPrimary, margin: "2px 0 0", fontSize: "14px" }}>{selectedDeal.productType || "—"}</p>
-              </div>
-              <div>
-                <span style={{ fontSize: "12px", color: textMuted }}>State</span>
-                <p style={{ color: textPrimary, margin: "2px 0 0", fontSize: "14px" }}>{selectedDeal.state || "—"}</p>
-              </div>
-              <div>
-                <span style={{ fontSize: "12px", color: textMuted }}>Stage</span>
-                <p style={{ color: textPrimary, margin: "2px 0 0", fontSize: "14px" }}>
-                  {STAGES.find((s) => s.key === selectedDeal.stage)?.label || selectedDeal.stage}
-                </p>
-              </div>
-              <div>
-                <span style={{ fontSize: "12px", color: textMuted }}>WC Premium</span>
-                <p style={{ color: textPrimary, margin: "2px 0 0", fontSize: "14px" }}>{formatCurrency(selectedDeal.wcPremium)}</p>
-              </div>
-              <div>
-                <span style={{ fontSize: "12px", color: textMuted }}>Reference</span>
-                <p style={{ color: textPrimary, margin: "2px 0 0", fontSize: "14px" }}>{selectedDeal.referenceCode}</p>
-              </div>
-            </div>
-          )}
-        </div>
-      </Modal>
+      <DealCardModal
+        dealId={selectedDeal?.id || ""}
+        isOpen={!!selectedDeal}
+        onClose={() => setSelectedDeal(null)}
+        onDealUpdated={fetchDeals}
+      />
     </div>
   );
 }

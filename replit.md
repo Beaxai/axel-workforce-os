@@ -152,7 +152,19 @@ All importable from `@/components/ui/axel-index`:
 - "New Deal" button opens modal form (Business Name, Vertical, Quote Type, State, Payroll, Employees, Assigned To).
 - HTML5 drag-and-drop between columns updates deal stage via API.
 - Stage 9 (Bound) drop logs implementation trigger to console.
-- Click card opens placeholder deal detail modal (full implementation in P7).
+- Click card opens DealCardModal (Phase 7).
+
+### Deal Card Modal (Phase 7)
+- **`DealCardModal.tsx`** — Full-screen overlay modal opened by clicking any deal card on the Pipeline Kanban board.
+- **Layout**: Two-column — left (65%) has activity feed + tasks, right (35%) has deal details + documents.
+- **Header**: Business name, vertical badge (WC/PEO), stage indicator, "Advance Stage" button, team avatars, close button.
+- **Activity Feed**: Shows timestamped activity entries (stage changes, notes, task events). Note input with @ mention support and "Post" button.
+- **Tasks**: Task list with checkboxes (toggle complete/open), "Add Task" inline form, "Use Template" with 3 preset templates (WC New Business, PEO Onboarding, Renewal).
+- **Deal Details**: Editable fields (Business Name, State, Annual Payroll, Headcount) via "Edit Details" toggle. Read-only view shows all deal fields.
+- **Listener Email**: Auto-generated on deal creation (`slug@listener.axel.io`), displayed with copy button.
+- **Documents**: Placeholder section for future file storage integration.
+- **API Routes**: `POST /deals/:id/activity`, `GET/POST /deals/:id/email`, plus existing `GET /deals/:id/tasks`, `GET /deals/:id/activity`.
+- **Stage Advance**: Updates deal stage via PATCH and logs activity entry. Kanban board refreshes on close.
 
 ### Marketplace (Phase 5)
 - **`/marketplace`** — Vertical card grid with 8 industry verticals (Cannabis, Construction, Staffing, Healthcare, Hospitality, Transportation, Manufacturing, Retail). Each card has WC Quote and PEO Quote buttons. Accessible to Admin and CSA only.
