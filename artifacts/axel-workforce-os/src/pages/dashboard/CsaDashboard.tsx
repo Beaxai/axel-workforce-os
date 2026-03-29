@@ -1,10 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import GlassCard from "@/components/GlassCard";
-import StatCard from "@/components/StatCard";
-import { Users, Shield, RefreshCw, ClipboardList, FileText } from "lucide-react";
+import { GlassCard, StatTile, SectionHeader, AxelBadge } from "@/components/ui/axel-index";
+import { Users, ClipboardList, Shield } from "lucide-react";
+import { useThemeStore } from "@/lib/theme-store";
 
 export default function CsaDashboard() {
+  const { theme } = useThemeStore();
+  const isDark = theme === "dark";
   const { data: contacts = [] } = useQuery({ queryKey: ["contacts"], queryFn: () => api.get<any[]>("/contacts") });
   const { data: policies = [] } = useQuery({ queryKey: ["policies"], queryFn: () => api.get<any[]>("/policies") });
   const { data: tasks = [] } = useQuery({ queryKey: ["tasks"], queryFn: () => api.get<any[]>("/tasks") });
@@ -12,52 +14,39 @@ export default function CsaDashboard() {
   const activePolicies = policies.filter((p: any) => p.status === "ACTIVE");
   const openTasks = tasks.filter((t: any) => t.status !== "COMPLETE");
 
+  const textPrimary = isDark ? "#fff" : "#111";
+  const textMuted = isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.45)";
+  const borderSubtle = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)";
+  const subtleBg = isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)";
+
   return (
-    <div className="max-w-7xl">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-white">CSA Dashboard</h1>
-        <p className="text-sm mt-1" style={{ color: "rgba(255,255,255,0.5)" }}>
-          Client servicing and account management
-        </p>
+    <div style={{ maxWidth: "1200px" }}>
+      <SectionHeader title="CSA Dashboard" subtitle="Client servicing and account management" />
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px", marginBottom: "32px" }}>
+        <StatTile label="My Clients" value={contacts.length} />
+        <StatTile label="Active Policies" value={activePolicies.length} />
+        <StatTile label="Upcoming Renewals" value={0} />
+        <StatTile label="Open Tasks" value={openTasks.length} />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard label="My Clients" value={contacts.length} icon={Users} />
-        <StatCard label="Active Policies" value={activePolicies.length} icon={Shield} />
-        <StatCard label="Upcoming Renewals" value={0} icon={RefreshCw} />
-        <StatCard label="Open Tasks" value={openTasks.length} icon={ClipboardList} />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px", marginBottom: "24px" }}>
         <GlassCard>
-          <div className="flex items-center gap-2 mb-4">
-            <Users className="w-4 h-4" style={{ color: "#E91E8C" }} />
-            <h3 className="text-base font-semibold text-white">Client Contacts</h3>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
+            <Users style={{ width: "16px", height: "16px", color: "#E91E8C" }} />
+            <h3 style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, margin: 0 }}>Client Contacts</h3>
           </div>
           {contacts.length === 0 ? (
-            <p className="text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>No clients assigned</p>
+            <p style={{ fontSize: "14px", color: textMuted }}>No clients assigned</p>
           ) : (
-            <div className="space-y-3">
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
               {contacts.slice(0, 6).map((c: any) => (
-                <div
-                  key={c.id}
-                  className="flex items-center justify-between py-2"
-                  style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
-                >
+                <div key={c.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingBottom: "8px", borderBottom: `1px solid ${borderSubtle}` }}>
                   <div>
-                    <p className="text-sm font-medium text-white">
-                      {c.firstName} {c.lastName}
-                    </p>
-                    <p className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
-                      {c.email || "—"} · {c.role || "—"}
-                    </p>
+                    <p style={{ fontSize: "14px", fontWeight: 500, color: textPrimary }}>{c.firstName} {c.lastName}</p>
+                    <p style={{ fontSize: "12px", color: textMuted }}>{c.email || "—"} · {c.role || "—"}</p>
                   </div>
-                  <span
-                    className="text-xs px-2 py-1 rounded-full"
-                    style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.5)" }}
-                  >
-                    {c.type || "Contact"}
-                  </span>
+                  <AxelBadge label={c.type || "Contact"} color="gray" />
                 </div>
               ))}
             </div>
@@ -65,35 +54,21 @@ export default function CsaDashboard() {
         </GlassCard>
 
         <GlassCard>
-          <div className="flex items-center gap-2 mb-4">
-            <ClipboardList className="w-4 h-4" style={{ color: "#E91E8C" }} />
-            <h3 className="text-base font-semibold text-white">My Tasks</h3>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
+            <ClipboardList style={{ width: "16px", height: "16px", color: "#E91E8C" }} />
+            <h3 style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, margin: 0 }}>My Tasks</h3>
           </div>
           {openTasks.length === 0 ? (
-            <p className="text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>All tasks complete</p>
+            <p style={{ fontSize: "14px", color: textMuted }}>All tasks complete</p>
           ) : (
-            <div className="space-y-3">
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
               {openTasks.slice(0, 6).map((t: any) => (
-                <div
-                  key={t.id}
-                  className="flex items-center justify-between py-2"
-                  style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
-                >
+                <div key={t.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingBottom: "8px", borderBottom: `1px solid ${borderSubtle}` }}>
                   <div>
-                    <p className="text-sm font-medium text-white">{t.title}</p>
-                    <p className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
-                      Due: {t.dueDate ? new Date(t.dueDate).toLocaleDateString() : "—"}
-                    </p>
+                    <p style={{ fontSize: "14px", fontWeight: 500, color: textPrimary }}>{t.title}</p>
+                    <p style={{ fontSize: "12px", color: textMuted }}>Due: {t.dueDate ? new Date(t.dueDate).toLocaleDateString() : "—"}</p>
                   </div>
-                  <span
-                    className="text-xs font-medium px-2.5 py-1 rounded-full"
-                    style={{
-                      background: t.priority === "HIGH" ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.06)",
-                      color: t.priority === "HIGH" ? "#ef4444" : "rgba(255,255,255,0.5)",
-                    }}
-                  >
-                    {t.status}
-                  </span>
+                  <AxelBadge label={t.status} color={t.priority === "HIGH" ? "red" : "gray"} />
                 </div>
               ))}
             </div>
@@ -102,24 +77,18 @@ export default function CsaDashboard() {
       </div>
 
       <GlassCard>
-        <div className="flex items-center gap-2 mb-4">
-          <Shield className="w-4 h-4" style={{ color: "#E91E8C" }} />
-          <h3 className="text-base font-semibold text-white">Active Policies</h3>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
+          <Shield style={{ width: "16px", height: "16px", color: "#E91E8C" }} />
+          <h3 style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, margin: 0 }}>Active Policies</h3>
         </div>
         {policies.length === 0 ? (
-          <p className="text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>No active policies</p>
+          <p style={{ fontSize: "14px", color: textMuted }}>No active policies</p>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "12px" }}>
             {policies.slice(0, 6).map((p: any) => (
-              <div
-                key={p.id}
-                className="p-3 rounded-lg"
-                style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
-              >
-                <p className="text-sm font-medium text-white">{p.policyNumber}</p>
-                <p className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.4)" }}>
-                  {p.productType} · {p.status}
-                </p>
+              <div key={p.id} style={{ padding: "12px", borderRadius: "8px", background: subtleBg, border: `1px solid ${borderSubtle}` }}>
+                <p style={{ fontSize: "14px", fontWeight: 500, color: textPrimary }}>{p.policyNumber}</p>
+                <p style={{ fontSize: "12px", marginTop: "4px", color: textMuted }}>{p.productType} · {p.status}</p>
               </div>
             ))}
           </div>

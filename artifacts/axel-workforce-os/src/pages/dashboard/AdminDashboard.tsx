@@ -1,75 +1,60 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import GlassCard from "@/components/GlassCard";
-import StatCard from "@/components/StatCard";
-import {
-  Building2,
-  Handshake,
-  Shield,
-  Users,
-  DollarSign,
-  TrendingUp,
-  ArrowUpRight,
-} from "lucide-react";
+import { GlassCard, StatTile, SectionHeader, AxelBadge } from "@/components/ui/axel-index";
+import { ArrowUpRight } from "lucide-react";
+import { useThemeStore } from "@/lib/theme-store";
 
 export default function AdminDashboard() {
+  const { theme } = useThemeStore();
+  const isDark = theme === "dark";
   const { data: orgs = [] } = useQuery({ queryKey: ["organizations"], queryFn: () => api.get<any[]>("/organizations") });
   const { data: deals = [] } = useQuery({ queryKey: ["deals"], queryFn: () => api.get<any[]>("/deals") });
   const { data: policies = [] } = useQuery({ queryKey: ["policies"], queryFn: () => api.get<any[]>("/policies") });
-  const { data: employees = [] } = useQuery({ queryKey: ["employees"], queryFn: () => api.get<any[]>("/employees") });
   const { data: contacts = [] } = useQuery({ queryKey: ["contacts"], queryFn: () => api.get<any[]>("/contacts") });
   const { data: workforce = [] } = useQuery({ queryKey: ["workforce-verticals"], queryFn: () => api.get<any[]>("/workforce/verticals") });
 
-  const totalEmployees = workforce.reduce((sum: number, v: any) => sum + (v.totalEmployees || 0), 0);
+  const textPrimary = isDark ? "#fff" : "#111";
+  const textMuted = isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.45)";
+  const textSecondary = isDark ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.55)";
+  const borderSubtle = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)";
+  const subtleBg = isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)";
 
-  const stageColors: Record<string, string> = {
-    NEW_LEAD: "border-blue-500/30 text-blue-400",
-    QUOTING: "border-yellow-500/30 text-yellow-400",
-    PROPOSAL: "border-purple-500/30 text-purple-400",
-    BOUND: "border-green-500/30 text-green-400",
-    LOST: "border-red-500/30 text-red-400",
+  const stageColor: Record<string, string> = {
+    NEW_LEAD: "blue",
+    QUOTING: "yellow",
+    PROPOSAL: "pink",
+    BOUND: "green",
+    LOST: "red",
   };
 
   return (
-    <div className="max-w-7xl">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-white">Admin Dashboard</h1>
-        <p className="text-sm mt-1" style={{ color: "rgba(255,255,255,0.5)" }}>
-          Complete platform overview
-        </p>
+    <div style={{ maxWidth: "1200px" }}>
+      <SectionHeader title="Admin Dashboard" subtitle="Complete platform overview" />
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px", marginBottom: "32px" }}>
+        <StatTile label="Organizations" value={orgs.length} />
+        <StatTile label="Active Deals" value={deals.length} />
+        <StatTile label="Policies" value={policies.length} />
+        <StatTile label="Contacts" value={contacts.length} />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard label="Organizations" value={orgs.length} icon={Building2} />
-        <StatCard label="Active Deals" value={deals.length} icon={Handshake} />
-        <StatCard label="Policies" value={policies.length} icon={Shield} />
-        <StatCard label="Contacts" value={contacts.length} icon={Users} />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px", marginBottom: "24px" }}>
         <GlassCard>
-          <h3 className="text-base font-semibold text-white mb-4">Recent Deals</h3>
+          <h3 style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, marginBottom: "16px" }}>Recent Deals</h3>
           {deals.length === 0 ? (
-            <p className="text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>No deals yet</p>
+            <p style={{ fontSize: "14px", color: textMuted }}>No deals yet</p>
           ) : (
-            <div className="space-y-3">
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
               {deals.slice(0, 5).map((d: any) => (
                 <div
                   key={d.id}
-                  className="flex items-center justify-between py-2"
-                  style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingBottom: "8px", borderBottom: `1px solid ${borderSubtle}` }}
                 >
                   <div>
-                    <p className="text-sm font-medium text-white">{d.referenceCode}</p>
-                    <p className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
-                      {d.vertical || "—"} · {d.state || "—"}
-                    </p>
+                    <p style={{ fontSize: "14px", fontWeight: 500, color: textPrimary }}>{d.referenceCode}</p>
+                    <p style={{ fontSize: "12px", color: textMuted }}>{d.vertical || "—"} · {d.state || "—"}</p>
                   </div>
-                  <span
-                    className={`text-xs font-medium px-2.5 py-1 rounded-full border ${stageColors[d.stage] || "border-white/10 text-white/50"}`}
-                  >
-                    {d.stage?.replace(/_/g, " ")}
-                  </span>
+                  <AxelBadge label={d.stage?.replace(/_/g, " ") || "—"} color={stageColor[d.stage] || "gray"} />
                 </div>
               ))}
             </div>
@@ -77,11 +62,11 @@ export default function AdminDashboard() {
         </GlassCard>
 
         <GlassCard>
-          <h3 className="text-base font-semibold text-white mb-4">Pipeline Summary</h3>
+          <h3 style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, marginBottom: "16px" }}>Pipeline Summary</h3>
           {deals.length === 0 ? (
-            <p className="text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>No pipeline data</p>
+            <p style={{ fontSize: "14px", color: textMuted }}>No pipeline data</p>
           ) : (
-            <div className="space-y-3">
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
               {Object.entries(
                 deals.reduce((acc: Record<string, number>, d: any) => {
                   const stage = d.stage || "UNKNOWN";
@@ -89,24 +74,13 @@ export default function AdminDashboard() {
                   return acc;
                 }, {})
               ).map(([stage, count]) => (
-                <div key={stage} className="flex items-center justify-between">
-                  <span className="text-sm" style={{ color: "rgba(255,255,255,0.6)" }}>
-                    {stage.replace(/_/g, " ")}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <div
-                      className="w-24 h-2 rounded-full overflow-hidden"
-                      style={{ background: "rgba(255,255,255,0.06)" }}
-                    >
-                      <div
-                        className="h-full rounded-full"
-                        style={{
-                          width: `${((count as number) / deals.length) * 100}%`,
-                          background: "#E91E8C",
-                        }}
-                      />
+                <div key={stage} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span style={{ fontSize: "14px", color: textSecondary }}>{stage.replace(/_/g, " ")}</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <div style={{ width: "96px", height: "8px", borderRadius: "9999px", overflow: "hidden", background: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)" }}>
+                      <div style={{ height: "100%", borderRadius: "9999px", width: `${((count as number) / deals.length) * 100}%`, background: "#E91E8C" }} />
                     </div>
-                    <span className="text-sm font-medium text-white w-6 text-right">{count as number}</span>
+                    <span style={{ fontSize: "14px", fontWeight: 500, color: textPrimary, width: "24px", textAlign: "right" }}>{count as number}</span>
                   </div>
                 </div>
               ))}
@@ -115,28 +89,22 @@ export default function AdminDashboard() {
         </GlassCard>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "24px" }}>
         <GlassCard>
-          <h3 className="text-base font-semibold text-white mb-4">Workforce Verticals</h3>
-          <div className="space-y-2">
+          <h3 style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, marginBottom: "16px" }}>Workforce Verticals</h3>
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
             {workforce.slice(0, 6).map((v: any) => (
-              <div
-                key={v.id}
-                className="flex items-center justify-between py-1.5"
-                style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}
-              >
-                <span className="text-sm" style={{ color: "rgba(255,255,255,0.6)" }}>
-                  {v.vertical}
-                </span>
-                <span className="text-sm font-medium text-white">{v.clientCount} clients</span>
+              <div key={v.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingBottom: "6px", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)"}` }}>
+                <span style={{ fontSize: "14px", color: textSecondary }}>{v.vertical}</span>
+                <span style={{ fontSize: "14px", fontWeight: 500, color: textPrimary }}>{v.clientCount} clients</span>
               </div>
             ))}
           </div>
         </GlassCard>
 
-        <GlassCard className="lg:col-span-2">
-          <h3 className="text-base font-semibold text-white mb-4">Quick Actions</h3>
-          <div className="grid grid-cols-2 gap-3">
+        <GlassCard>
+          <h3 style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, marginBottom: "16px" }}>Quick Actions</h3>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
             {[
               { label: "New Deal", desc: "Create a new pipeline entry" },
               { label: "Add Organization", desc: "Register a new org" },
@@ -145,21 +113,15 @@ export default function AdminDashboard() {
             ].map((action) => (
               <button
                 key={action.label}
-                className="text-left p-4 rounded-xl transition-colors"
-                style={{
-                  background: "rgba(255,255,255,0.03)",
-                  border: "1px solid rgba(255,255,255,0.06)",
-                }}
+                style={{ textAlign: "left", padding: "16px", borderRadius: "12px", background: subtleBg, border: `1px solid ${borderSubtle}`, cursor: "pointer", transition: "border-color 0.15s" }}
                 onMouseEnter={(e) => (e.currentTarget.style.borderColor = "rgba(233,30,140,0.3)")}
-                onMouseLeave={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)")}
+                onMouseLeave={(e) => (e.currentTarget.style.borderColor = borderSubtle)}
               >
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-medium text-white">{action.label}</p>
-                  <ArrowUpRight className="w-3.5 h-3.5" style={{ color: "rgba(255,255,255,0.3)" }} />
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <p style={{ fontSize: "14px", fontWeight: 500, color: textPrimary, margin: 0 }}>{action.label}</p>
+                  <ArrowUpRight style={{ width: "14px", height: "14px", color: isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.3)" }} />
                 </div>
-                <p className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.4)" }}>
-                  {action.desc}
-                </p>
+                <p style={{ fontSize: "12px", marginTop: "4px", color: textMuted }}>{action.desc}</p>
               </button>
             ))}
           </div>

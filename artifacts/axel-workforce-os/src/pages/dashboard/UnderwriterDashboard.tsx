@@ -1,61 +1,52 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import GlassCard from "@/components/GlassCard";
-import StatCard from "@/components/StatCard";
-import { ListChecks, Handshake, Shield, BarChart3, Clock, AlertTriangle } from "lucide-react";
+import { GlassCard, StatTile, SectionHeader, AxelBadge } from "@/components/ui/axel-index";
+import { ListChecks, BarChart3, Shield } from "lucide-react";
+import { useThemeStore } from "@/lib/theme-store";
 
 export default function UnderwriterDashboard() {
+  const { theme } = useThemeStore();
+  const isDark = theme === "dark";
   const { data: deals = [] } = useQuery({ queryKey: ["deals"], queryFn: () => api.get<any[]>("/deals") });
   const { data: policies = [] } = useQuery({ queryKey: ["policies"], queryFn: () => api.get<any[]>("/policies") });
   const { data: rates = [] } = useQuery({ queryKey: ["pepm-rates"], queryFn: () => api.get<any[]>("/rate-tables/pepm") });
 
   const pendingDeals = deals.filter((d: any) => ["NEW_LEAD", "QUOTING"].includes(d.stage));
-  const boundDeals = deals.filter((d: any) => d.stage === "BOUND");
+
+  const textPrimary = isDark ? "#fff" : "#111";
+  const textMuted = isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.45)";
+  const textSecondary = isDark ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.55)";
+  const borderSubtle = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)";
+  const subtleBg = isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)";
 
   return (
-    <div className="max-w-7xl">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-white">Underwriter Dashboard</h1>
-        <p className="text-sm mt-1" style={{ color: "rgba(255,255,255,0.5)" }}>
-          Deal review and approval center
-        </p>
+    <div style={{ maxWidth: "1200px" }}>
+      <SectionHeader title="Underwriter Dashboard" subtitle="Deal review and approval center" />
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px", marginBottom: "32px" }}>
+        <StatTile label="Pending Review" value={pendingDeals.length} />
+        <StatTile label="Total Deals" value={deals.length} />
+        <StatTile label="Bound Policies" value={policies.length} />
+        <StatTile label="Rate Entries" value={rates.length} />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard label="Pending Review" value={pendingDeals.length} icon={Clock} />
-        <StatCard label="Total Deals" value={deals.length} icon={Handshake} />
-        <StatCard label="Bound Policies" value={policies.length} icon={Shield} />
-        <StatCard label="Rate Entries" value={rates.length} icon={BarChart3} />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px", marginBottom: "24px" }}>
         <GlassCard>
-          <div className="flex items-center gap-2 mb-4">
-            <ListChecks className="w-4 h-4" style={{ color: "#E91E8C" }} />
-            <h3 className="text-base font-semibold text-white">Underwriting Queue</h3>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
+            <ListChecks style={{ width: "16px", height: "16px", color: "#E91E8C" }} />
+            <h3 style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, margin: 0 }}>Underwriting Queue</h3>
           </div>
           {pendingDeals.length === 0 ? (
-            <p className="text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>No deals pending review</p>
+            <p style={{ fontSize: "14px", color: textMuted }}>No deals pending review</p>
           ) : (
-            <div className="space-y-3">
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
               {pendingDeals.map((d: any) => (
-                <div
-                  key={d.id}
-                  className="flex items-center justify-between py-2"
-                  style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
-                >
+                <div key={d.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingBottom: "8px", borderBottom: `1px solid ${borderSubtle}` }}>
                   <div>
-                    <p className="text-sm font-medium text-white">{d.referenceCode}</p>
-                    <p className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
-                      {d.vertical} · {d.state} · EEs: {d.employeeCount || "—"}
-                    </p>
+                    <p style={{ fontSize: "14px", fontWeight: 500, color: textPrimary }}>{d.referenceCode}</p>
+                    <p style={{ fontSize: "12px", color: textMuted }}>{d.vertical} · {d.state} · EEs: {d.employeeCount || "—"}</p>
                   </div>
-                  <span
-                    className="text-xs font-medium px-2.5 py-1 rounded-full"
-                    style={{ background: "rgba(233,30,140,0.15)", color: "#E91E8C" }}
-                  >
-                    Review
-                  </span>
+                  <AxelBadge label="Review" color="pink" />
                 </div>
               ))}
             </div>
@@ -63,29 +54,21 @@ export default function UnderwriterDashboard() {
         </GlassCard>
 
         <GlassCard>
-          <div className="flex items-center gap-2 mb-4">
-            <BarChart3 className="w-4 h-4" style={{ color: "#E91E8C" }} />
-            <h3 className="text-base font-semibold text-white">Rate Table Overview</h3>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
+            <BarChart3 style={{ width: "16px", height: "16px", color: "#E91E8C" }} />
+            <h3 style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, margin: 0 }}>Rate Table Overview</h3>
           </div>
           {rates.length === 0 ? (
-            <p className="text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>No rates configured</p>
+            <p style={{ fontSize: "14px", color: textMuted }}>No rates configured</p>
           ) : (
-            <div className="space-y-2">
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
               {rates.slice(0, 8).map((r: any) => (
-                <div
-                  key={r.id}
-                  className="flex items-center justify-between py-1.5"
-                  style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}
-                >
+                <div key={r.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingBottom: "6px", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)"}` }}>
                   <div>
-                    <span className="text-sm" style={{ color: "rgba(255,255,255,0.6)" }}>
-                      {r.vertical}
-                    </span>
-                    <span className="text-xs ml-2" style={{ color: "rgba(255,255,255,0.3)" }}>
-                      {r.productType} · {r.employeeBandMin}-{r.employeeBandMax} EEs
-                    </span>
+                    <span style={{ fontSize: "14px", color: textSecondary }}>{r.vertical}</span>
+                    <span style={{ fontSize: "12px", marginLeft: "8px", color: textMuted }}>{r.productType} · {r.employeeBandMin}-{r.employeeBandMax} EEs</span>
                   </div>
-                  <span className="text-sm font-mono text-white">${r.pepmRate}</span>
+                  <span style={{ fontSize: "14px", fontFamily: "monospace", color: textPrimary }}>${r.pepmRate}</span>
                 </div>
               ))}
             </div>
@@ -94,24 +77,18 @@ export default function UnderwriterDashboard() {
       </div>
 
       <GlassCard>
-        <div className="flex items-center gap-2 mb-4">
-          <Shield className="w-4 h-4" style={{ color: "#E91E8C" }} />
-          <h3 className="text-base font-semibold text-white">Bound Policies</h3>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
+          <Shield style={{ width: "16px", height: "16px", color: "#E91E8C" }} />
+          <h3 style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, margin: 0 }}>Bound Policies</h3>
         </div>
         {policies.length === 0 ? (
-          <p className="text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>No bound policies yet</p>
+          <p style={{ fontSize: "14px", color: textMuted }}>No bound policies yet</p>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
             {policies.slice(0, 4).map((p: any) => (
-              <div
-                key={p.id}
-                className="p-3 rounded-lg"
-                style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
-              >
-                <p className="text-sm font-medium text-white">{p.policyNumber}</p>
-                <p className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.4)" }}>
-                  {p.productType} · {p.status}
-                </p>
+              <div key={p.id} style={{ padding: "12px", borderRadius: "8px", background: subtleBg, border: `1px solid ${borderSubtle}` }}>
+                <p style={{ fontSize: "14px", fontWeight: 500, color: textPrimary }}>{p.policyNumber}</p>
+                <p style={{ fontSize: "12px", marginTop: "4px", color: textMuted }}>{p.productType} · {p.status}</p>
               </div>
             ))}
           </div>

@@ -2,7 +2,7 @@
 
 ## Overview
 
-Full-stack workforce management platform built with a pnpm workspace monorepo using TypeScript. Covers organizations, deals/pipeline, policies, CRM, workforce management, agent registration, rate tables, implementation tracking, commissions, and onboarding. Features 8 role-based party environment dashboards with a dark glassmorphism design system.
+Full-stack workforce management platform built with a pnpm workspace monorepo using TypeScript. Covers organizations, deals/pipeline, policies, CRM, workforce management, agent registration, rate tables, implementation tracking, commissions, and onboarding. Features 8 role-based party environment dashboards with a dark glassmorphism design system, AppShell layout with collapsible sidebar, and light/dark mode toggle.
 
 ## Stack
 
@@ -13,7 +13,7 @@ Full-stack workforce management platform built with a pnpm workspace monorepo us
 - **Frontend**: React 18 + Vite + Tailwind CSS
 - **Backend**: Express 5 with helmet, morgan, cors, socket.io
 - **Database**: PostgreSQL (28 tables) + Drizzle ORM
-- **State Management**: Zustand (auth store persisted to localStorage)
+- **State Management**: Zustand (auth store + theme store persisted to localStorage)
 - **Data Fetching**: @tanstack/react-query
 - **Forms**: react-hook-form + zod
 - **Icons**: lucide-react
@@ -81,57 +81,72 @@ Drizzle ORM schema files in `lib/db/src/schema/` (one per domain).
 - `/api/implementation` — trackers with phases/tasks
 - `/api/workforce` — summaries, vertical rollups
 
-## Authentication & Role System (Phase 3)
+## Authentication & Role System
 
-Auth is managed via Zustand store (`auth-store.ts`) persisted to localStorage.
+Auth is managed via Zustand store (`auth-store.ts`) persisted to localStorage (`axel-auth`).
 - **Login page** at `/login` — role selector with 8 party types
-- **ProtectedRoute** component guards dashboard routes
-- **Role switcher** in sidebar allows switching between all 8 roles
+- **ProtectedRoute** component guards dashboard routes with `allowedRoles`
+- **Role switcher** in sidebar allows switching between all 8 roles (uses setTimeout for navigation timing)
 
 ### Party Types & Dashboard Routes
 
-| Role | Route | Description |
-|------|-------|-------------|
-| Admin | `/dashboard/admin` | Full platform access — orgs, deals, pipeline, agents, UW queue |
-| Underwriter | `/dashboard/underwriter` | Deal review, bound policies, rate tables |
-| CSA | `/dashboard/csa` | Client servicing, active policies, renewals, tasks |
-| Agent | `/dashboard/agent` | Deal submissions, commissions, clients |
-| Employer | `/dashboard/employer` | Policy view, claims, payroll/billing, PEO onboarding |
-| Carrier | `/dashboard/carrier` | Bound business, claims, performance summary |
-| PEO Partner | `/dashboard/peo` | PEO clients, workforce data, billing |
-| Vendor | `/dashboard/vendor` | Assigned tasks, documents, completion tracking |
+| Role | Route | Nav Items (P4) |
+|------|-------|----------------|
+| Admin | `/dashboard/admin` | Home, Marketplace, Pipeline, Accounts, Implementations, Billing, Network, Resources |
+| Underwriter | `/dashboard/underwriter` | Home, Pipeline, Accounts |
+| CSA | `/dashboard/csa` | Home, Pipeline, Accounts, Implementations |
+| Agent | `/dashboard/agent` | Home, Pipeline, Accounts |
+| Employer | `/dashboard/employer` | My Program (locked until Active Client) |
+| Carrier | `/dashboard/carrier` | Home, Accounts |
+| PEO Partner | `/dashboard/peo` | Home, Network |
+| Vendor | `/dashboard/vendor` | Home, Accounts |
 
-### Design System
+## Design System (Phase 4)
 
-- **Background**: `#060608` (near-black)
-- **Card/Panel**: `rgba(255,255,255,0.04)` with `1px border rgba(255,255,255,0.08)`
-- **Accent**: `#E91E8C` (magenta/pink) for CTAs, active states, badges
-- **Secondary accent**: `rgba(233,30,140,0.15)` for hover states
-- **Font**: Inter (400, 500, 600, 700)
-- **Sidebar**: 240px fixed
-- **Top nav**: 56px fixed
-- **Card border-radius**: 12px
-- **Glassmorphism**: `backdrop-filter: blur(12px)`
+### Rules (Non-Negotiable)
+- **Background**: `#060608` (dark), `#f4f4f5` (light)
+- **Accent**: `#E91E8C` (solid pink) — ONLY accent color, NO gradients anywhere
+- **Glass panels**: `rgba(255,255,255,0.05)` bg, `backdrop-filter: blur(12px)`, `border: 1px solid rgba(255,255,255,0.08)`, `border-radius: 12px`
+- **Typography**: White primary, `rgba(255,255,255,0.5)` secondary/muted (dark mode)
+- **Light/Dark**: Toggle in top-right header. Dark is default. Light mode keeps `#E91E8C` accent.
 
-### Key Frontend Components
+### Component Library (`/components/ui/`)
 
-- `DashboardLayout.tsx` — Dark-themed layout with role-specific sidebar + top nav
-- `AppLayout.tsx` — Original light-themed layout (legacy pages at `/organizations`, `/deals`, etc.)
-- `GlassCard.tsx` — Reusable glassmorphism card component
-- `StatCard.tsx` — Metric stat card with icon + optional trend
-- `ProtectedRoute.tsx` — Auth + role guard wrapper
+All importable from `@/components/ui/axel-index`:
+
+| Component | File | Description |
+|-----------|------|-------------|
+| GlassCard | GlassCard.tsx | Frosted glass panel, theme-aware, accepts className, children, padding |
+| PinkButton | PinkButton.tsx | Solid #E91E8C, white text, hover darkens 10% |
+| GhostButton | GhostButton.tsx | Transparent, #E91E8C border+text, solid fill on hover |
+| StatTile | StatTile.tsx | Glass card with label + large number + optional trend |
+| SectionHeader | SectionHeader.tsx | Page title + optional subtitle |
+| Badge/AxelBadge | AxelBadge.tsx | Status pill with color + label, solid colors only |
+| Modal/AxelModal | AxelModal.tsx | Glassmorphism overlay modal, isOpen/onClose/children |
+| Tooltip/AxelTooltip | AxelTooltip.tsx | Hover tooltip, dark glass surface |
+
+### Layout Components
+
+- **AppShell.tsx** — Main layout shell for all dashboard routes. Collapsible left nav (icons-only collapsed), top header with wordmark/theme toggle/user dropdown, scrollable content area with 24px padding.
+- **DashboardLayout.tsx** — Legacy P3 layout (kept for backwards compat, gradients removed)
+- **AppLayout.tsx** — Light-themed layout for legacy CRUD pages
+- **ProtectedRoute.tsx** — Auth + role guard wrapper
+
+### Theme Store
+
+`lib/theme-store.ts` — Zustand store persisted to localStorage (`axel-theme`). Toggle between `dark` and `light`. AppShell adds/removes `dark`/`light` class on `<html>`.
+
+### Role Config
+
+`lib/role-config.ts` — `NavItem[]` per role with `{ label, path, icon, locked? }`. `ROLE_NAV` record maps `PartyRole` to nav items. Employer has `locked: true` on "My Program".
 
 ## Frontend Pages
 
-### Dashboard Pages (Dark Theme)
-8 role-based dashboards under `/dashboard/{role}`, each with role-specific stat cards, data panels, and quick actions.
+### Dashboard Pages (Dark/Light Theme via AppShell)
+8 role-based dashboards under `/dashboard/{role}`, each using AppShell with StatTile, GlassCard, SectionHeader, AxelBadge from the component library.
 
 ### Legacy Pages (Light Theme)
-Sidebar layout (`AppLayout.tsx`) with 12 navigation items:
-- Dashboard, Organizations, Deals/Pipeline, Policies, Contacts, Employees
-- Tasks, Commissions, Agent Registration, Rate Tables, Implementation, Workforce
-
-All pages use React Query for data fetching. Create forms on Organizations, Deals, Contacts, and Employees pages.
+Sidebar layout (`AppLayout.tsx`) with 12 navigation items at `/organizations`, `/deals`, `/policies`, etc.
 
 ## Running the App
 

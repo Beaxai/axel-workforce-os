@@ -18,7 +18,7 @@ export default function UnauthorizedPage() {
         <button
           onClick={() => navigate("/login")}
           className="px-6 py-2.5 rounded-xl text-sm font-semibold text-white"
-          style={{ background: "linear-gradient(135deg, #E91E8C, #b8157a)" }}
+          style={{ background: "#E91E8C" }}
         >
           Return to Login
         </button>

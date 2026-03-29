@@ -1,58 +1,48 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import GlassCard from "@/components/GlassCard";
-import StatCard from "@/components/StatCard";
-import { Shield, HeartPulse, Receipt, FileText, Rocket, Users } from "lucide-react";
+import { GlassCard, StatTile, SectionHeader, AxelBadge } from "@/components/ui/axel-index";
+import { Shield, Receipt, Rocket } from "lucide-react";
+import { useThemeStore } from "@/lib/theme-store";
 
 export default function EmployerDashboard() {
+  const { theme } = useThemeStore();
+  const isDark = theme === "dark";
   const { data: policies = [] } = useQuery({ queryKey: ["policies"], queryFn: () => api.get<any[]>("/policies") });
   const { data: employees = [] } = useQuery({ queryKey: ["employees"], queryFn: () => api.get<any[]>("/employees") });
 
+  const textPrimary = isDark ? "#fff" : "#111";
+  const textMuted = isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.45)";
+  const borderSubtle = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)";
+  const subtleBg = isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)";
+
   return (
-    <div className="max-w-7xl">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-white">Employer Dashboard</h1>
-        <p className="text-sm mt-1" style={{ color: "rgba(255,255,255,0.5)" }}>
-          Your account overview
-        </p>
+    <div style={{ maxWidth: "1200px" }}>
+      <SectionHeader title="Employer Dashboard" subtitle="Your account overview" />
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px", marginBottom: "32px" }}>
+        <StatTile label="Active Policies" value={policies.length} />
+        <StatTile label="Employees" value={employees.length} />
+        <StatTile label="Open Claims" value={0} />
+        <StatTile label="Documents" value={0} />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard label="Active Policies" value={policies.length} icon={Shield} />
-        <StatCard label="Employees" value={employees.length} icon={Users} />
-        <StatCard label="Open Claims" value={0} icon={HeartPulse} />
-        <StatCard label="Documents" value={0} icon={FileText} />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
         <GlassCard>
-          <div className="flex items-center gap-2 mb-4">
-            <Shield className="w-4 h-4" style={{ color: "#E91E8C" }} />
-            <h3 className="text-base font-semibold text-white">My Policies</h3>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
+            <Shield style={{ width: "16px", height: "16px", color: "#E91E8C" }} />
+            <h3 style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, margin: 0 }}>My Policies</h3>
           </div>
           {policies.length === 0 ? (
-            <p className="text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>No active policies</p>
+            <p style={{ fontSize: "14px", color: textMuted }}>No active policies</p>
           ) : (
-            <div className="space-y-3">
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
               {policies.map((p: any) => (
-                <div
-                  key={p.id}
-                  className="p-3 rounded-lg"
-                  style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
-                >
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium text-white">{p.policyNumber}</p>
-                    <span
-                      className="text-xs px-2 py-1 rounded-full"
-                      style={{
-                        background: p.status === "ACTIVE" ? "rgba(34,197,94,0.15)" : "rgba(255,255,255,0.06)",
-                        color: p.status === "ACTIVE" ? "#22c55e" : "rgba(255,255,255,0.5)",
-                      }}
-                    >
-                      {p.status}
-                    </span>
+                <div key={p.id} style={{ padding: "12px", borderRadius: "8px", background: subtleBg, border: `1px solid ${borderSubtle}` }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <p style={{ fontSize: "14px", fontWeight: 500, color: textPrimary, margin: 0 }}>{p.policyNumber}</p>
+                    <AxelBadge label={p.status} color={p.status === "ACTIVE" ? "green" : "gray"} />
                   </div>
-                  <p className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.4)" }}>
+                  <p style={{ fontSize: "12px", marginTop: "4px", color: textMuted }}>
                     {p.productType} · Eff: {p.effectiveDate ? new Date(p.effectiveDate).toLocaleDateString() : "—"}
                   </p>
                 </div>
@@ -61,44 +51,33 @@ export default function EmployerDashboard() {
           )}
         </GlassCard>
 
-        <div className="space-y-6">
+        <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
           <GlassCard>
-            <div className="flex items-center gap-2 mb-4">
-              <Receipt className="w-4 h-4" style={{ color: "#E91E8C" }} />
-              <h3 className="text-base font-semibold text-white">Payroll / Billing</h3>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
+              <Receipt style={{ width: "16px", height: "16px", color: "#E91E8C" }} />
+              <h3 style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, margin: 0 }}>Payroll / Billing</h3>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div
-                className="p-3 rounded-lg text-center"
-                style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
-              >
-                <p className="text-lg font-bold text-white">{employees.length}</p>
-                <p className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>Active Employees</p>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+              <div style={{ padding: "12px", borderRadius: "8px", textAlign: "center", background: subtleBg, border: `1px solid ${borderSubtle}` }}>
+                <p style={{ fontSize: "20px", fontWeight: 700, color: textPrimary }}>{employees.length}</p>
+                <p style={{ fontSize: "12px", color: textMuted }}>Active Employees</p>
               </div>
-              <div
-                className="p-3 rounded-lg text-center"
-                style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
-              >
-                <p className="text-lg font-bold text-white">$0</p>
-                <p className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>Current Invoice</p>
+              <div style={{ padding: "12px", borderRadius: "8px", textAlign: "center", background: subtleBg, border: `1px solid ${borderSubtle}` }}>
+                <p style={{ fontSize: "20px", fontWeight: 700, color: textPrimary }}>$0</p>
+                <p style={{ fontSize: "12px", color: textMuted }}>Current Invoice</p>
               </div>
             </div>
           </GlassCard>
 
           <GlassCard>
-            <div className="flex items-center gap-2 mb-4">
-              <Rocket className="w-4 h-4" style={{ color: "#E91E8C" }} />
-              <h3 className="text-base font-semibold text-white">PEO Onboarding</h3>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
+              <Rocket style={{ width: "16px", height: "16px", color: "#E91E8C" }} />
+              <h3 style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, margin: 0 }}>PEO Onboarding</h3>
             </div>
-            <div
-              className="w-full h-2 rounded-full overflow-hidden"
-              style={{ background: "rgba(255,255,255,0.06)" }}
-            >
-              <div className="h-full rounded-full w-0" style={{ background: "#E91E8C" }} />
+            <div style={{ width: "100%", height: "8px", borderRadius: "9999px", overflow: "hidden", background: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)" }}>
+              <div style={{ height: "100%", borderRadius: "9999px", width: "0%", background: "#E91E8C" }} />
             </div>
-            <p className="text-xs mt-2" style={{ color: "rgba(255,255,255,0.4)" }}>
-              No onboarding in progress
-            </p>
+            <p style={{ fontSize: "12px", marginTop: "8px", color: textMuted }}>No onboarding in progress</p>
           </GlassCard>
         </div>
       </div>

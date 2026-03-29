@@ -1,76 +1,52 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import GlassCard from "@/components/GlassCard";
-import StatCard from "@/components/StatCard";
-import { ClipboardList, FileText, BarChart3, CheckCircle2 } from "lucide-react";
+import { GlassCard, StatTile, SectionHeader, AxelBadge } from "@/components/ui/axel-index";
+import { ClipboardList, CheckCircle2 } from "lucide-react";
+import { useThemeStore } from "@/lib/theme-store";
 
 export default function VendorDashboard() {
+  const { theme } = useThemeStore();
+  const isDark = theme === "dark";
   const { data: tasks = [] } = useQuery({ queryKey: ["tasks"], queryFn: () => api.get<any[]>("/tasks") });
 
   const openTasks = tasks.filter((t: any) => t.status !== "COMPLETE");
   const completedTasks = tasks.filter((t: any) => t.status === "COMPLETE");
 
+  const textPrimary = isDark ? "#fff" : "#111";
+  const textMuted = isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.45)";
+  const borderSubtle = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)";
+
   return (
-    <div className="max-w-7xl">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-white">Vendor Dashboard</h1>
-        <p className="text-sm mt-1" style={{ color: "rgba(255,255,255,0.5)" }}>
-          Your assigned tasks and deliverables
-        </p>
+    <div style={{ maxWidth: "1200px" }}>
+      <SectionHeader title="Vendor Dashboard" subtitle="Your assigned tasks and deliverables" />
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px", marginBottom: "32px" }}>
+        <StatTile label="Assigned Tasks" value={tasks.length} />
+        <StatTile label="Open" value={openTasks.length} />
+        <StatTile label="Completed" value={completedTasks.length} />
+        <StatTile label="Completion Rate" value={tasks.length > 0 ? `${Math.round((completedTasks.length / tasks.length) * 100)}%` : "—"} />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard label="Assigned Tasks" value={tasks.length} icon={ClipboardList} />
-        <StatCard label="Open" value={openTasks.length} icon={FileText} />
-        <StatCard label="Completed" value={completedTasks.length} icon={CheckCircle2} />
-        <StatCard
-          label="Completion Rate"
-          value={tasks.length > 0 ? `${Math.round((completedTasks.length / tasks.length) * 100)}%` : "—"}
-          icon={BarChart3}
-        />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
         <GlassCard>
-          <div className="flex items-center gap-2 mb-4">
-            <ClipboardList className="w-4 h-4" style={{ color: "#E91E8C" }} />
-            <h3 className="text-base font-semibold text-white">Open Tasks</h3>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
+            <ClipboardList style={{ width: "16px", height: "16px", color: "#E91E8C" }} />
+            <h3 style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, margin: 0 }}>Open Tasks</h3>
           </div>
           {openTasks.length === 0 ? (
-            <p className="text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>No open tasks</p>
+            <p style={{ fontSize: "14px", color: textMuted }}>No open tasks</p>
           ) : (
-            <div className="space-y-3">
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
               {openTasks.slice(0, 8).map((t: any) => (
-                <div
-                  key={t.id}
-                  className="flex items-center justify-between py-2"
-                  style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
-                >
+                <div key={t.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingBottom: "8px", borderBottom: `1px solid ${borderSubtle}` }}>
                   <div>
-                    <p className="text-sm font-medium text-white">{t.title}</p>
-                    <p className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
-                      {t.category || "—"} · Due: {t.dueDate ? new Date(t.dueDate).toLocaleDateString() : "—"}
-                    </p>
+                    <p style={{ fontSize: "14px", fontWeight: 500, color: textPrimary }}>{t.title}</p>
+                    <p style={{ fontSize: "12px", color: textMuted }}>{t.category || "—"} · Due: {t.dueDate ? new Date(t.dueDate).toLocaleDateString() : "—"}</p>
                   </div>
-                  <span
-                    className="text-xs font-medium px-2.5 py-1 rounded-full"
-                    style={{
-                      background:
-                        t.priority === "HIGH"
-                          ? "rgba(239,68,68,0.15)"
-                          : t.priority === "MEDIUM"
-                            ? "rgba(234,179,8,0.15)"
-                            : "rgba(255,255,255,0.06)",
-                      color:
-                        t.priority === "HIGH"
-                          ? "#ef4444"
-                          : t.priority === "MEDIUM"
-                            ? "#eab308"
-                            : "rgba(255,255,255,0.5)",
-                    }}
-                  >
-                    {t.priority || "NORMAL"}
-                  </span>
+                  <AxelBadge
+                    label={t.priority || "NORMAL"}
+                    color={t.priority === "HIGH" ? "red" : t.priority === "MEDIUM" ? "yellow" : "gray"}
+                  />
                 </div>
               ))}
             </div>
@@ -78,32 +54,21 @@ export default function VendorDashboard() {
         </GlassCard>
 
         <GlassCard>
-          <div className="flex items-center gap-2 mb-4">
-            <CheckCircle2 className="w-4 h-4" style={{ color: "#E91E8C" }} />
-            <h3 className="text-base font-semibold text-white">Completed Tasks</h3>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
+            <CheckCircle2 style={{ width: "16px", height: "16px", color: "#E91E8C" }} />
+            <h3 style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, margin: 0 }}>Completed Tasks</h3>
           </div>
           {completedTasks.length === 0 ? (
-            <p className="text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>No completed tasks</p>
+            <p style={{ fontSize: "14px", color: textMuted }}>No completed tasks</p>
           ) : (
-            <div className="space-y-3">
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
               {completedTasks.slice(0, 6).map((t: any) => (
-                <div
-                  key={t.id}
-                  className="flex items-center justify-between py-2"
-                  style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
-                >
+                <div key={t.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingBottom: "8px", borderBottom: `1px solid ${borderSubtle}` }}>
                   <div>
-                    <p className="text-sm font-medium text-white line-through opacity-60">{t.title}</p>
-                    <p className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>
-                      {t.category || "—"}
-                    </p>
+                    <p style={{ fontSize: "14px", fontWeight: 500, color: textPrimary, textDecoration: "line-through", opacity: 0.6 }}>{t.title}</p>
+                    <p style={{ fontSize: "12px", color: isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.3)" }}>{t.category || "—"}</p>
                   </div>
-                  <span
-                    className="text-xs px-2 py-1 rounded-full"
-                    style={{ background: "rgba(34,197,94,0.15)", color: "#22c55e" }}
-                  >
-                    Done
-                  </span>
+                  <AxelBadge label="Done" color="green" />
                 </div>
               ))}
             </div>

@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import AppLayout from "@/components/AppLayout";
-import DashboardLayout from "@/components/DashboardLayout";
+import AppShell from "@/components/AppShell";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import LoginPage from "@/pages/LoginPage";
 import UnauthorizedPage from "@/pages/UnauthorizedPage";
@@ -54,7 +54,7 @@ function App() {
             <Route
               element={
                 <ProtectedRoute allowedRoles={["ADMIN"]}>
-                  <DashboardLayout />
+                  <AppShell />
                 </ProtectedRoute>
               }
             >
@@ -65,7 +65,7 @@ function App() {
             <Route
               element={
                 <ProtectedRoute allowedRoles={["UNDERWRITER"]}>
-                  <DashboardLayout />
+                  <AppShell />
                 </ProtectedRoute>
               }
             >
@@ -76,7 +76,7 @@ function App() {
             <Route
               element={
                 <ProtectedRoute allowedRoles={["CSA"]}>
-                  <DashboardLayout />
+                  <AppShell />
                 </ProtectedRoute>
               }
             >
@@ -87,7 +87,7 @@ function App() {
             <Route
               element={
                 <ProtectedRoute allowedRoles={["AGENT"]}>
-                  <DashboardLayout />
+                  <AppShell />
                 </ProtectedRoute>
               }
             >
@@ -98,7 +98,7 @@ function App() {
             <Route
               element={
                 <ProtectedRoute allowedRoles={["EMPLOYER"]}>
-                  <DashboardLayout />
+                  <AppShell />
                 </ProtectedRoute>
               }
             >
@@ -109,7 +109,7 @@ function App() {
             <Route
               element={
                 <ProtectedRoute allowedRoles={["CARRIER"]}>
-                  <DashboardLayout />
+                  <AppShell />
                 </ProtectedRoute>
               }
             >
@@ -120,7 +120,7 @@ function App() {
             <Route
               element={
                 <ProtectedRoute allowedRoles={["PEO"]}>
-                  <DashboardLayout />
+                  <AppShell />
                 </ProtectedRoute>
               }
             >
@@ -131,7 +131,7 @@ function App() {
             <Route
               element={
                 <ProtectedRoute allowedRoles={["VENDOR"]}>
-                  <DashboardLayout />
+                  <AppShell />
                 </ProtectedRoute>
               }
             >
