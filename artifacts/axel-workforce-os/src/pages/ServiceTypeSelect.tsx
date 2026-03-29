@@ -57,7 +57,7 @@ export default function ServiceTypeSelect() {
   };
 
   const handleBack = () => {
-    navigate(-1);
+    navigate("/marketplace");
   };
 
   return (

@@ -51,7 +51,7 @@ export default function Marketplace() {
           <button
             key={v.slug}
             type="button"
-            onClick={() => navigate(`/marketplace/${v.slug}`)}
+            onClick={() => navigate("/marketplace/quote/service-type", { state: { vertical: v.name } })}
             style={{
               background: cardBg,
               borderRadius: 16,
