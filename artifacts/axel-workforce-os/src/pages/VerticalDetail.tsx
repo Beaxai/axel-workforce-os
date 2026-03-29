@@ -21,9 +21,9 @@ export default function VerticalDetail() {
     );
   }
 
-  const handleStartSubmission = (quoteType: "WC" | "PEO") => {
-    navigate("/marketplace/quote/new", {
-      state: { vertical: vertical.name, quoteType },
+  const handleStartSubmission = () => {
+    navigate("/marketplace/quote/service-type", {
+      state: { vertical: vertical.name },
     });
   };
 
@@ -116,7 +116,7 @@ export default function VerticalDetail() {
           badge="Workers' Compensation"
           description={vertical.wcDescription}
           features={vertical.wcFeatures}
-          onStart={() => handleStartSubmission("WC")}
+          onStart={handleStartSubmission}
         />
         <CoverageCard
           title="Workforce Solution (PEO)"
@@ -124,7 +124,7 @@ export default function VerticalDetail() {
           badge="Workforce Solution (PEO)"
           description={vertical.peoDescription}
           features={vertical.peoFeatures}
-          onStart={() => handleStartSubmission("PEO")}
+          onStart={handleStartSubmission}
         />
       </div>
     </div>

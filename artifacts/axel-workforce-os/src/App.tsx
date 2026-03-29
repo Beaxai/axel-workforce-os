@@ -29,6 +29,7 @@ import PeoDashboard from "@/pages/dashboard/PeoDashboard";
 import VendorDashboard from "@/pages/dashboard/VendorDashboard";
 import Marketplace from "@/pages/Marketplace";
 import VerticalDetail from "@/pages/VerticalDetail";
+import ServiceTypeSelect from "@/pages/ServiceTypeSelect";
 import QuoteNew from "@/pages/QuoteNew";
 import Pipeline from "@/pages/Pipeline";
 import Accounts from "@/pages/Accounts";
@@ -175,6 +176,7 @@ function App() {
               }
             >
               <Route path="/marketplace" element={<Marketplace />} />
+              <Route path="/marketplace/quote/service-type" element={<ServiceTypeSelect />} />
               <Route path="/marketplace/quote/new" element={<QuoteNew />} />
               <Route path="/marketplace/:slug" element={<VerticalDetail />} />
             </Route>
