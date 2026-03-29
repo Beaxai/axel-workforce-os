@@ -42,5 +42,7 @@ import searchRouter from "./search";
 router.use("/search", searchRouter);
 import wcRatesRouter from "./wc-rates";
 router.use("/wc-rates", wcRatesRouter);
+import rateRouter from "./rate";
+router.use("/rate", rateRouter);
 
 export default router;

@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, numeric, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, numeric, timestamp, jsonb, integer, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { sql } from "drizzle-orm";
@@ -22,6 +22,19 @@ export const quotesTable = pgTable("quotes", {
   aiRiskFactors: jsonb("ai_risk_factors"),
   expiresAt: timestamp("expires_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).default(sql`now()`),
+  state: text("state"),
+  classCode: text("class_code"),
+  annualPayroll: numeric("annual_payroll", { precision: 18, scale: 2 }),
+  headcount: integer("headcount"),
+  eMod: numeric("e_mod", { precision: 4, scale: 2 }).default("1.0"),
+  scheduleRating: numeric("schedule_rating", { precision: 4, scale: 2 }).default("1.0"),
+  isPeo: boolean("is_peo").default(false),
+  wcPremium: numeric("wc_premium", { precision: 18, scale: 2 }),
+  monthlyWfsFee: numeric("monthly_wfs_fee", { precision: 18, scale: 2 }),
+  pepm: numeric("pepm", { precision: 10, scale: 2 }),
+  wcRatingBreakdown: jsonb("wc_rating_breakdown"),
+  wfsRatingBreakdown: jsonb("wfs_rating_breakdown"),
+  ratedAt: timestamp("rated_at", { withTimezone: true }),
 });
 
 export const insertQuoteSchema = createInsertSchema(quotesTable).omit({ id: true, createdAt: true });

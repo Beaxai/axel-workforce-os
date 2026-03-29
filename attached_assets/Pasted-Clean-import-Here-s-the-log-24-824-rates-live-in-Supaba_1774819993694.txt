@@ -1,0 +1,204 @@
+Clean import. Here's the log:
+
+24,824 rates live in Supabase
+46 states covered
+243 skipped (missing fields), 86 duplicates deduplicated
+Rate lookup confirmed working — CA 8810 returning 0.1800 ✓
+
+One thing to flag — the file has 3 additional sheets: ALIC, 7710, and Cannabis. The Cannabis sheet is relevant given Kind PEO Program is your first PEO product (cannabis vertical). Flag that for later — we can import those sheets when needed.
+Here's R.2:
+
+AXEL WORKFORCE OS — Replit Build Prompt — R.2: Rating Engine Logic
+Context: R.1 is complete. 24,824 WC rates are live in the wc_rates table and the getWCRate utility is working. R.2 builds the rating engine — the server-side logic that calculates WC premium and WFS PEPM from form inputs and stores a full audit breakdown.
+
+OBJECTIVE
+Build the server-side rating engine as a Node.js service. It must calculate WC premium and WFS PEPM, enforce business rules, and store a complete rating_breakdown JSON on every calculation.
+
+RATING ENGINE — SERVER SIDE
+Create the rating engine at /utils/ratingEngine.js.
+It must export two functions: calculateWCPremium and calculateWFSPEPM.
+
+FUNCTION 1 — calculateWCPremium
+javascriptasync function calculateWCPremium({ state, classCode, annualPayroll, eMod, scheduleRating, isPEO })
+```
+
+**Logic:**
+
+1. Look up base rate using `getWCRate(state, classCode)` — if no rate found, throw an error: `"No rate found for state [state], class code [classCode]"`
+2. Calculate gross premium:
+```
+   grossPremium = (annualPayroll / 100) * baseRate * eMod * scheduleRating
+```
+3. Apply minimum premium: if `grossPremium < 500`, set `grossPremium = 500`
+4. Apply PEO discount if `isPEO === true`:
+```
+   peoDiscount = grossPremium * 0.10
+   finalPremium = grossPremium - peoDiscount
+If isPEO === false: peoDiscount = 0, finalPremium = grossPremium
+5. Build and return rating_breakdown object:
+javascript{
+  inputs: {
+    state,
+    classCode,
+    annualPayroll,
+    eMod,
+    scheduleRating,
+    isPEO
+  },
+  rateData: {
+    baseRate,
+    effectiveDate,   // from wc_rates row
+    description      // class code description from wc_rates row
+  },
+  calculation: {
+    payrollPer100: annualPayroll / 100,
+    grossPremium,
+    minimumPremiumApplied: grossPremium === 500 && (annualPayroll / 100) * baseRate * eMod * scheduleRating < 500,
+    peoDiscountApplied: isPEO,
+    peoDiscountAmount: peoDiscount,
+    finalPremium
+  },
+  result: {
+    wcPremium: finalPremium
+  },
+  calculatedAt: new Date().toISOString()
+}
+
+FUNCTION 2 — calculateWFSPEPM
+javascriptfunction calculateWFSPEPM({ annualPayroll, headcount })
+```
+
+**Logic:**
+```
+monthlyWFSFee = (annualPayroll * 0.02) / 12
+pepm = monthlyWFSFee / headcount
+Return:
+javascript{
+  inputs: {
+    annualPayroll,
+    headcount
+  },
+  calculation: {
+    annualWFSFee: annualPayroll * 0.02,
+    monthlyWFSFee,
+    pepm
+  },
+  result: {
+    monthlyWFSFee,
+    pepm
+  },
+  calculatedAt: new Date().toISOString()
+}
+
+API ENDPOINTS
+Create two POST endpoints in the Node.js backend:
+POST /api/rate/wc
+Request body:
+json{
+  "state": "CA",
+  "classCode": "8810",
+  "annualPayroll": 500000,
+  "eMod": 1.0,
+  "scheduleRating": 1.0,
+  "isPEO": false
+}
+Response:
+json{
+  "success": true,
+  "data": { ...rating_breakdown }
+}
+On error:
+json{
+  "success": false,
+  "error": "No rate found for state CA, class code 9999"
+}
+POST /api/rate/wfs
+Request body:
+json{
+  "annualPayroll": 500000,
+  "headcount": 25
+}
+Response:
+json{
+  "success": true,
+  "data": { ...wfs_breakdown }
+}
+```
+
+---
+
+**SAVE RATING TO SUPABASE**
+
+Update the `quotes` table to store rating results. Add these columns if not present:
+```
+wc_rating_breakdown     jsonb
+wfs_rating_breakdown    jsonb
+wc_premium              numeric
+monthly_wfs_fee         numeric
+pepm                    numeric
+rated_at                timestamptz
+```
+
+After a successful rating calculation via either endpoint, save the results to the `quotes` table tied to the relevant `deal_id`.
+
+**Supabase — `quotes` table (full schema):**
+```
+id                    uuid, primary key
+deal_id               uuid, references deals(id)
+state                 text
+class_code            text
+annual_payroll        numeric
+headcount             integer
+e_mod                 numeric, default 1.0
+schedule_rating       numeric, default 1.0
+is_peo                boolean, default false
+wc_premium            numeric
+monthly_wfs_fee       numeric
+pepm                  numeric
+wc_rating_breakdown   jsonb
+wfs_rating_breakdown  jsonb
+rated_at              timestamptz
+created_at            timestamptz, default now()
+
+VALIDATION RULES
+Enforce these before running any calculation:
+
+annualPayroll must be a positive number greater than 0
+headcount must be a positive integer greater than 0
+eMod must be between 0.5 and 2.0
+scheduleRating must be between 0.5 and 2.0
+state must be a valid 2-letter US state code
+classCode must be a non-empty string
+
+Return a 400 error with a descriptive message if any validation fails.
+
+UNIT TESTS
+Write a test file at /scripts/testRatingEngine.js that runs the following cases and logs pass/fail to console:
+
+Standard WC quote — CA, class code 8810, $500,000 payroll, EMod 1.0, Schedule 1.0, not PEO → expect premium > $500
+Minimum premium trigger — any state/code, $1,000 payroll → expect premium = $500
+PEO discount — same as test 1 but isPEO: true → expect premium = test 1 result × 0.90
+WFS PEPM — $500,000 payroll, 25 employees → expect monthlyWFSFee = $833.33, PEPM = $33.33
+Invalid class code → expect error thrown
+Invalid EMod (e.g. 5.0) → expect validation error
+
+Run with: node scripts/testRatingEngine.js
+
+DESIGN RULES
+No UI in this phase — R.2 is backend only. All UI integration happens in R.3.
+
+TECH STACK REMINDER
+
+Node.js + Supabase
+No external calculation libraries — plain JavaScript math only
+
+
+DELIVERABLES
+
+/utils/ratingEngine.js — both calculation functions
+POST /api/rate/wc and POST /api/rate/wfs endpoints live
+quotes table updated with rating columns
+/scripts/testRatingEngine.js — all 6 tests passing
+Rating results saving to Supabase quotes table on successful calculation
+
+When complete, confirm: all 6 unit tests pass, both API endpoints return correct responses, and a test quote saves to the quotes table in Supabase.
