@@ -23,7 +23,7 @@ export interface NavItem {
 const adminNav: NavItem[] = [
   { label: "Home", path: "/dashboard/admin", icon: LayoutDashboard },
   { label: "Marketplace", path: "/marketplace", icon: Store },
-  { label: "Pipeline", path: "/dashboard/admin/pipeline", icon: Handshake },
+  { label: "Pipeline", path: "/pipeline", icon: Handshake },
   { label: "Accounts", path: "/dashboard/admin/accounts", icon: Users },
   { label: "Implementations", path: "/dashboard/admin/implementations", icon: Rocket },
   { label: "Billing", path: "/dashboard/admin/billing", icon: Receipt },
@@ -34,20 +34,20 @@ const adminNav: NavItem[] = [
 const csaNav: NavItem[] = [
   { label: "Home", path: "/dashboard/csa", icon: LayoutDashboard },
   { label: "Marketplace", path: "/marketplace", icon: Store },
-  { label: "Pipeline", path: "/dashboard/csa/pipeline", icon: Handshake },
+  { label: "Pipeline", path: "/pipeline", icon: Handshake },
   { label: "Accounts", path: "/dashboard/csa/accounts", icon: Users },
   { label: "Implementations", path: "/dashboard/csa/implementations", icon: Rocket },
 ];
 
 const agentNav: NavItem[] = [
   { label: "Home", path: "/dashboard/agent", icon: LayoutDashboard },
-  { label: "Pipeline", path: "/dashboard/agent/pipeline", icon: Handshake },
+  { label: "Pipeline", path: "/pipeline", icon: Handshake },
   { label: "Accounts", path: "/dashboard/agent/accounts", icon: Users },
 ];
 
 const underwriterNav: NavItem[] = [
   { label: "Home", path: "/dashboard/underwriter", icon: LayoutDashboard },
-  { label: "Pipeline", path: "/dashboard/underwriter/pipeline", icon: Handshake },
+  { label: "Pipeline", path: "/pipeline", icon: Handshake },
   { label: "Accounts", path: "/dashboard/underwriter/accounts", icon: Users },
 ];
 

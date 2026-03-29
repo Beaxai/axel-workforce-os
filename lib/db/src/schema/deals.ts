@@ -8,6 +8,7 @@ import { usersTable } from "./users";
 export const dealsTable = pgTable("deals", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   referenceCode: text("reference_code").unique().notNull(),
+  businessName: text("business_name"),
   orgId: uuid("org_id").references(() => organizationsTable.id),
   ownerId: uuid("owner_id").references(() => usersTable.id),
   producingAgentId: uuid("producing_agent_id").references(() => usersTable.id),

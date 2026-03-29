@@ -48,6 +48,7 @@ CREATE TABLE org_members (
 CREATE TABLE deals (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   reference_code text UNIQUE NOT NULL,
+  business_name text,
   org_id uuid REFERENCES organizations(id),
   owner_id uuid REFERENCES users(id),
   producing_agent_id uuid REFERENCES users(id),

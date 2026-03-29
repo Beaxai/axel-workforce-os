@@ -145,6 +145,15 @@ All importable from `@/components/ui/axel-index`:
 ### Dashboard Pages (Dark/Light Theme via AppShell)
 8 role-based dashboards under `/dashboard/{role}`, each using AppShell with StatTile, GlassCard, SectionHeader, AxelBadge from the component library.
 
+### Pipeline (Phase 6)
+- **`/pipeline`** — 10-stage Kanban board (New Lead → Client). Accessible to Admin, CSA, Agent, Underwriter.
+- Each column is 280px wide, horizontally scrollable, with deal count badges.
+- Deal cards show business name, vertical with icon, WC/PEO badge, WC Premium, PEPM (PEO only), team avatars.
+- "New Deal" button opens modal form (Business Name, Vertical, Quote Type, State, Payroll, Employees, Assigned To).
+- HTML5 drag-and-drop between columns updates deal stage via API.
+- Stage 9 (Bound) drop logs implementation trigger to console.
+- Click card opens placeholder deal detail modal (full implementation in P7).
+
 ### Marketplace (Phase 5)
 - **`/marketplace`** — Vertical card grid with 8 industry verticals (Cannabis, Construction, Staffing, Healthcare, Hospitality, Transportation, Manufacturing, Retail). Each card has WC Quote and PEO Quote buttons. Accessible to Admin and CSA only.
 - **`/marketplace/quote/new`** — Quote initiation form (Business Name, State, Annual Payroll with currency formatting, Employee Count, Class Code, EMod, Schedule Rating). "Calculate Quote" logs form state to console. Redirects to `/marketplace` if accessed without route state.
