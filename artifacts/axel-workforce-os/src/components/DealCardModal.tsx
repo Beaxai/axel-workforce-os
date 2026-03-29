@@ -7,6 +7,8 @@ import {
 } from "@/components/ui/axel-index";
 import { useThemeStore } from "@/lib/theme-store";
 import { api } from "@/lib/api";
+import { useNavigate } from "react-router-dom";
+import ProposalPanel from "@/components/ProposalPanel";
 import {
   X,
   Copy,
@@ -16,6 +18,7 @@ import {
   FileText,
   Clock,
   User,
+  Calculator,
 } from "lucide-react";
 
 const STAGES = [
@@ -92,6 +95,20 @@ interface TaskEntry {
   completedAt?: string;
 }
 
+interface QuoteRecord {
+  id: string;
+  dealId: string;
+  wcRatingBreakdown: any;
+  wfsRatingBreakdown: any;
+  ratedAt: string;
+  classCode?: string;
+  state?: string;
+  annualPayroll?: string;
+  headcount?: number;
+  eMod?: string;
+  scheduleRating?: string;
+}
+
 interface DealCardModalProps {
   dealId: string;
   isOpen: boolean;
@@ -106,13 +123,17 @@ function formatCurrency(val: string | number | undefined | null): string {
   return n.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0 });
 }
 
+type TabKey = "activity" | "quote";
+
 export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }: DealCardModalProps) {
   const { theme } = useThemeStore();
   const isDark = theme === "dark";
+  const navigate = useNavigate();
 
   const [deal, setDeal] = useState<Deal | null>(null);
   const [activity, setActivity] = useState<ActivityEntry[]>([]);
   const [tasks, setTasks] = useState<TaskEntry[]>([]);
+  const [quoteRecord, setQuoteRecord] = useState<QuoteRecord | null>(null);
   const [listenerEmail, setListenerEmail] = useState("");
   const [noteText, setNoteText] = useState("");
   const [copied, setCopied] = useState(false);
@@ -122,6 +143,7 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
   const [editForm, setEditForm] = useState({ businessName: "", state: "", annualPayroll: "", employeeCountFt: "" });
   const [taskForm, setTaskForm] = useState({ taskName: "", assignedTo: "", dueDate: "" });
   const [showMentions, setShowMentions] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabKey>("activity");
 
   const textPrimary = isDark ? "#fff" : "#111";
   const textMuted = isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.45)";
@@ -183,21 +205,33 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
     }
   }, [dealId]);
 
+  const fetchQuote = useCallback(async () => {
+    try {
+      const row = await api.get<QuoteRecord>(`/quotes/by-deal/${dealId}`);
+      setQuoteRecord(row);
+    } catch {
+      setQuoteRecord(null);
+    }
+  }, [dealId]);
+
   useEffect(() => {
     if (!isOpen || !dealId) return;
     setDeal(null);
     setActivity([]);
     setTasks([]);
+    setQuoteRecord(null);
     setListenerEmail("");
     setNoteText("");
     setEditMode(false);
     setShowAddTask(false);
     setShowTemplates(false);
+    setActiveTab("activity");
     fetchDeal();
     fetchActivity();
     fetchTasks();
     fetchEmail();
-  }, [isOpen, dealId, fetchDeal, fetchActivity, fetchTasks, fetchEmail]);
+    fetchQuote();
+  }, [isOpen, dealId, fetchDeal, fetchActivity, fetchTasks, fetchEmail, fetchQuote]);
 
   if (!isOpen) return null;
 
@@ -339,6 +373,30 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
     }
   };
 
+  const handleRequote = () => {
+    onClose();
+    navigate("/marketplace/quote/new", {
+      state: {
+        vertical: deal?.vertical || "Cannabis",
+        quoteType: deal?.productType === "PEO" ? "PEO+WC" : "WC Only",
+        prefill: {
+          businessName: deal?.businessName || "",
+          state: quoteRecord?.state || deal?.state || "",
+          annualPayroll: quoteRecord?.annualPayroll || deal?.annualPayroll || "",
+          employeeCount: String(quoteRecord?.headcount || deal?.employeeCountFt || ""),
+          classCode: quoteRecord?.classCode || "",
+          eMod: quoteRecord?.eMod || "1.0",
+          scheduleRating: quoteRecord?.scheduleRating || "1.0",
+        },
+      },
+    });
+  };
+
+  const tabs: { key: TabKey; label: string; icon: any }[] = [
+    { key: "activity", label: "Activity & Tasks", icon: Clock },
+    { key: "quote", label: "Quote", icon: Calculator },
+  ];
+
   return (
     <div
       style={{
@@ -381,7 +439,7 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
           <div style={{ display: "flex", alignItems: "center", gap: "16px", flex: 1 }}>
             <div>
               <h2 style={{ fontSize: "20px", fontWeight: 700, color: textPrimary, margin: 0 }}>
-                {deal?.businessName || "Loading…"}
+                {deal?.businessName || "Loading..."}
               </h2>
               <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "4px" }}>
                 {deal?.vertical && <span style={{ fontSize: "13px", color: textMuted }}>{deal.vertical}</span>}
@@ -453,6 +511,37 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
           </div>
         </div>
 
+        {/* TABS */}
+        <div style={{ display: "flex", borderBottom: `1px solid ${borderSubtle}`, paddingLeft: "24px", flexShrink: 0 }}>
+          {tabs.map((tab) => {
+            const isActive = activeTab === tab.key;
+            const TabIcon = tab.icon;
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  padding: "10px 18px",
+                  fontSize: "13px",
+                  fontWeight: 500,
+                  border: "none",
+                  borderBottom: isActive ? "2px solid #E91E8C" : "2px solid transparent",
+                  cursor: "pointer",
+                  background: "transparent",
+                  color: isActive ? "#E91E8C" : textMuted,
+                  transition: "color 0.15s, border-color 0.15s",
+                }}
+              >
+                <TabIcon style={{ width: "14px", height: "14px" }} />
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+
         {/* BODY */}
         <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
           {/* LEFT COLUMN */}
@@ -467,243 +556,285 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
               gap: "24px",
             }}
           >
-            {/* LISTENER EMAIL */}
-            {listenerEmail && (
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  padding: "10px 14px",
-                  background: inputBg,
-                  borderRadius: "8px",
-                  border: `1px solid ${borderSubtle}`,
-                }}
-              >
-                <FileText style={{ width: "14px", height: "14px", color: textMuted, flexShrink: 0 }} />
-                <span style={{ fontSize: "12px", color: textMuted, flexShrink: 0 }}>Listener:</span>
-                <span style={{ fontSize: "12px", color: textPrimary, fontFamily: "monospace" }}>{listenerEmail}</span>
-                <button
-                  onClick={handleCopyEmail}
-                  style={{ background: "transparent", border: "none", cursor: "pointer", color: textMuted, padding: "2px", marginLeft: "auto" }}
-                >
-                  {copied ? <Check style={{ width: "14px", height: "14px", color: "#22c55e" }} /> : <Copy style={{ width: "14px", height: "14px" }} />}
-                </button>
-              </div>
-            )}
-
-            {/* ACTIVITY FEED */}
-            <div>
-              <h3 style={{ fontSize: "14px", fontWeight: 600, color: textPrimary, margin: "0 0 12px" }}>Activity</h3>
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px", maxHeight: "280px", overflowY: "auto", marginBottom: "12px" }}>
-                {activity.length === 0 && (
-                  <p style={{ fontSize: "13px", color: textMuted }}>No activity yet.</p>
-                )}
-                {activity.map((a) => (
+            {activeTab === "activity" && (
+              <>
+                {/* LISTENER EMAIL */}
+                {listenerEmail && (
                   <div
-                    key={a.id}
                     style={{
                       display: "flex",
-                      gap: "10px",
-                      padding: "10px 12px",
+                      alignItems: "center",
+                      gap: "8px",
+                      padding: "10px 14px",
                       background: inputBg,
                       borderRadius: "8px",
-                      alignItems: "flex-start",
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: "24px",
-                        height: "24px",
-                        borderRadius: "50%",
-                        background: a.eventType === "NOTE" ? "rgba(233,30,140,0.15)" : "rgba(59,130,246,0.15)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        flexShrink: 0,
-                        marginTop: "1px",
-                      }}
-                    >
-                      {a.eventType === "NOTE" ? (
-                        <User style={{ width: "12px", height: "12px", color: "#E91E8C" }} />
-                      ) : (
-                        <Clock style={{ width: "12px", height: "12px", color: "#3b82f6" }} />
-                      )}
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <p style={{ fontSize: "13px", color: textPrimary, margin: 0 }}>{a.description}</p>
-                      <span style={{ fontSize: "11px", color: textMuted }}>
-                        {a.createdAt ? new Date(a.createdAt).toLocaleString() : ""}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* NOTE INPUT */}
-              <div style={{ position: "relative" }}>
-                <div style={{ display: "flex", gap: "8px" }}>
-                  <input
-                    type="text"
-                    value={noteText}
-                    onChange={(e) => setNoteText(e.target.value)}
-                    onKeyDown={(e) => {
-                      handleNoteKeyDown(e);
-                      if (e.key === "Enter") handlePostNote();
-                    }}
-                    placeholder="Add a note... (use @ to mention)"
-                    style={{ ...inputStyle, flex: 1 }}
-                    onFocus={(e) => (e.currentTarget.style.borderColor = "#E91E8C")}
-                    onBlur={(e) => {
-                      e.currentTarget.style.borderColor = inputBorder;
-                      setTimeout(() => setShowMentions(false), 200);
-                    }}
-                  />
-                  <PinkButton onClick={handlePostNote} style={{ padding: "8px 16px", fontSize: "13px" }}>
-                    Post
-                  </PinkButton>
-                </div>
-                {showMentions && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      bottom: "100%",
-                      left: 0,
-                      marginBottom: "4px",
-                      background: isDark ? "rgba(20,20,24,0.98)" : "rgba(255,255,255,0.98)",
                       border: `1px solid ${borderSubtle}`,
-                      borderRadius: "8px",
-                      overflow: "hidden",
-                      zIndex: 10,
-                      minWidth: "180px",
                     }}
                   >
-                    {PLACEHOLDER_USERS.map((u) => (
-                      <button
-                        key={u.id}
-                        onMouseDown={() => insertMention(u.name)}
+                    <FileText style={{ width: "14px", height: "14px", color: textMuted, flexShrink: 0 }} />
+                    <span style={{ fontSize: "12px", color: textMuted, flexShrink: 0 }}>Listener:</span>
+                    <span style={{ fontSize: "12px", color: textPrimary, fontFamily: "monospace" }}>{listenerEmail}</span>
+                    <button
+                      onClick={handleCopyEmail}
+                      style={{ background: "transparent", border: "none", cursor: "pointer", color: textMuted, padding: "2px", marginLeft: "auto" }}
+                    >
+                      {copied ? <Check style={{ width: "14px", height: "14px", color: "#22c55e" }} /> : <Copy style={{ width: "14px", height: "14px" }} />}
+                    </button>
+                  </div>
+                )}
+
+                {/* ACTIVITY FEED */}
+                <div>
+                  <h3 style={{ fontSize: "14px", fontWeight: 600, color: textPrimary, margin: "0 0 12px" }}>Activity</h3>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px", maxHeight: "280px", overflowY: "auto", marginBottom: "12px" }}>
+                    {activity.length === 0 && (
+                      <p style={{ fontSize: "13px", color: textMuted }}>No activity yet.</p>
+                    )}
+                    {activity.map((a) => (
+                      <div
+                        key={a.id}
                         style={{
-                          display: "block",
-                          width: "100%",
-                          textAlign: "left",
-                          padding: "8px 14px",
-                          border: "none",
-                          background: "transparent",
-                          color: textPrimary,
-                          fontSize: "13px",
-                          cursor: "pointer",
+                          display: "flex",
+                          gap: "10px",
+                          padding: "10px 12px",
+                          background: inputBg,
+                          borderRadius: "8px",
+                          alignItems: "flex-start",
                         }}
-                        onMouseEnter={(e) => { e.currentTarget.style.background = inputBg; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
                       >
-                        @{u.name}
-                      </button>
+                        <div
+                          style={{
+                            width: "24px",
+                            height: "24px",
+                            borderRadius: "50%",
+                            background: a.eventType === "NOTE" ? "rgba(233,30,140,0.15)" : "rgba(59,130,246,0.15)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            flexShrink: 0,
+                            marginTop: "1px",
+                          }}
+                        >
+                          {a.eventType === "NOTE" ? (
+                            <User style={{ width: "12px", height: "12px", color: "#E91E8C" }} />
+                          ) : (
+                            <Clock style={{ width: "12px", height: "12px", color: "#3b82f6" }} />
+                          )}
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <p style={{ fontSize: "13px", color: textPrimary, margin: 0 }}>{a.description}</p>
+                          <span style={{ fontSize: "11px", color: textMuted }}>
+                            {a.createdAt ? new Date(a.createdAt).toLocaleString() : ""}
+                          </span>
+                        </div>
+                      </div>
                     ))}
+                  </div>
+
+                  {/* NOTE INPUT */}
+                  <div style={{ position: "relative" }}>
+                    <div style={{ display: "flex", gap: "8px" }}>
+                      <input
+                        type="text"
+                        value={noteText}
+                        onChange={(e) => setNoteText(e.target.value)}
+                        onKeyDown={(e) => {
+                          handleNoteKeyDown(e);
+                          if (e.key === "Enter") handlePostNote();
+                        }}
+                        placeholder="Add a note... (use @ to mention)"
+                        style={{ ...inputStyle, flex: 1 }}
+                        onFocus={(e) => (e.currentTarget.style.borderColor = "#E91E8C")}
+                        onBlur={(e) => {
+                          e.currentTarget.style.borderColor = inputBorder;
+                          setTimeout(() => setShowMentions(false), 200);
+                        }}
+                      />
+                      <PinkButton onClick={handlePostNote} style={{ padding: "8px 16px", fontSize: "13px" }}>
+                        Post
+                      </PinkButton>
+                    </div>
+                    {showMentions && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          bottom: "100%",
+                          left: 0,
+                          marginBottom: "4px",
+                          background: isDark ? "rgba(20,20,24,0.98)" : "rgba(255,255,255,0.98)",
+                          border: `1px solid ${borderSubtle}`,
+                          borderRadius: "8px",
+                          overflow: "hidden",
+                          zIndex: 10,
+                          minWidth: "180px",
+                        }}
+                      >
+                        {PLACEHOLDER_USERS.map((u) => (
+                          <button
+                            key={u.id}
+                            onMouseDown={() => insertMention(u.name)}
+                            style={{
+                              display: "block",
+                              width: "100%",
+                              textAlign: "left",
+                              padding: "8px 14px",
+                              border: "none",
+                              background: "transparent",
+                              color: textPrimary,
+                              fontSize: "13px",
+                              cursor: "pointer",
+                            }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = inputBg; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                          >
+                            @{u.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* TASKS SECTION */}
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
+                    <h3 style={{ fontSize: "14px", fontWeight: 600, color: textPrimary, margin: 0 }}>Tasks</h3>
+                    <div style={{ display: "flex", gap: "8px" }}>
+                      <GhostButton
+                        onClick={() => setShowTemplates(true)}
+                        style={{ padding: "5px 12px", fontSize: "12px" }}
+                      >
+                        Use Template
+                      </GhostButton>
+                      <PinkButton
+                        onClick={() => setShowAddTask(!showAddTask)}
+                        style={{ display: "flex", alignItems: "center", gap: "4px", padding: "5px 12px", fontSize: "12px" }}
+                      >
+                        <Plus style={{ width: "12px", height: "12px" }} />
+                        Add Task
+                      </PinkButton>
+                    </div>
+                  </div>
+
+                  {showAddTask && (
+                    <div style={{ display: "flex", gap: "8px", marginBottom: "12px", flexWrap: "wrap" }}>
+                      <input
+                        type="text"
+                        value={taskForm.taskName}
+                        onChange={(e) => setTaskForm((p) => ({ ...p, taskName: e.target.value }))}
+                        placeholder="Task name"
+                        style={{ ...inputStyle, flex: "2 1 200px" }}
+                        onFocus={(e) => (e.currentTarget.style.borderColor = "#E91E8C")}
+                        onBlur={(e) => (e.currentTarget.style.borderColor = inputBorder)}
+                      />
+                      <select
+                        value={taskForm.assignedTo}
+                        onChange={(e) => setTaskForm((p) => ({ ...p, assignedTo: e.target.value }))}
+                        style={{ ...inputStyle, flex: "1 1 140px", cursor: "pointer", appearance: "auto" }}
+                      >
+                        <option value="" style={{ background: isDark ? "#141418" : "#fff" }}>Assign to</option>
+                        {PLACEHOLDER_USERS.map((u) => (
+                          <option key={u.id} value={u.id} style={{ background: isDark ? "#141418" : "#fff" }}>{u.name}</option>
+                        ))}
+                      </select>
+                      <input
+                        type="date"
+                        value={taskForm.dueDate}
+                        onChange={(e) => setTaskForm((p) => ({ ...p, dueDate: e.target.value }))}
+                        style={{ ...inputStyle, flex: "1 1 130px" }}
+                      />
+                      <GhostButton onClick={handleAddTask} style={{ padding: "8px 14px", fontSize: "12px" }}>
+                        Save Task
+                      </GhostButton>
+                    </div>
+                  )}
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                    {tasks.length === 0 && !showAddTask && (
+                      <p style={{ fontSize: "13px", color: textMuted }}>No tasks yet.</p>
+                    )}
+                    {tasks.map((task) => {
+                      const isComplete = task.status === "COMPLETED";
+                      const assignee = PLACEHOLDER_USERS.find((u) => u.id === task.assignedTo);
+                      return (
+                        <div
+                          key={task.id}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "10px",
+                            padding: "8px 12px",
+                            borderRadius: "8px",
+                            background: inputBg,
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isComplete}
+                            onChange={() => handleToggleTask(task)}
+                            style={{ width: "16px", height: "16px", accentColor: "#E91E8C", cursor: "pointer" }}
+                          />
+                          <span
+                            style={{
+                              flex: 1,
+                              fontSize: "13px",
+                              color: isComplete ? textMuted : textPrimary,
+                              textDecoration: isComplete ? "line-through" : "none",
+                            }}
+                          >
+                            {task.taskName}
+                          </span>
+                          {assignee && (
+                            <span style={{ fontSize: "11px", color: textMuted }}>{assignee.name}</span>
+                          )}
+                          {task.dueDate && (
+                            <span style={{ fontSize: "11px", color: textMuted }}>{task.dueDate}</span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {activeTab === "quote" && (
+              <div>
+                {quoteRecord && quoteRecord.wcRatingBreakdown ? (
+                  <ProposalPanel
+                    businessName={deal?.businessName || ""}
+                    quoteType={deal?.productType === "PEO" ? "PEO+WC" : "WC Only"}
+                    wcBreakdown={quoteRecord.wcRatingBreakdown?.data || quoteRecord.wcRatingBreakdown}
+                    wfsBreakdown={quoteRecord.wfsRatingBreakdown?.data || quoteRecord.wfsRatingBreakdown}
+                    readOnly
+                    ratedAt={quoteRecord.ratedAt}
+                  />
+                ) : (
+                  <div style={{ padding: "40px 20px", textAlign: "center" }}>
+                    <Calculator style={{ width: "40px", height: "40px", color: textMuted, marginBottom: "12px" }} />
+                    <p style={{ fontSize: "15px", color: textPrimary, margin: "0 0 8px" }}>No quote on file</p>
+                    <p style={{ fontSize: "13px", color: textMuted, margin: "0 0 16px" }}>Generate a quote from the Marketplace.</p>
+                    <GhostButton
+                      onClick={() => {
+                        onClose();
+                        navigate("/marketplace");
+                      }}
+                      style={{ padding: "8px 20px" }}
+                    >
+                      Go to Marketplace
+                    </GhostButton>
+                  </div>
+                )}
+
+                {quoteRecord && quoteRecord.wcRatingBreakdown && (
+                  <div style={{ marginTop: "16px", textAlign: "center" }}>
+                    <GhostButton onClick={handleRequote} style={{ padding: "8px 20px" }}>
+                      Requote
+                    </GhostButton>
                   </div>
                 )}
               </div>
-            </div>
-
-            {/* TASKS SECTION */}
-            <div>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
-                <h3 style={{ fontSize: "14px", fontWeight: 600, color: textPrimary, margin: 0 }}>Tasks</h3>
-                <div style={{ display: "flex", gap: "8px" }}>
-                  <GhostButton
-                    onClick={() => setShowTemplates(true)}
-                    style={{ padding: "5px 12px", fontSize: "12px" }}
-                  >
-                    Use Template
-                  </GhostButton>
-                  <PinkButton
-                    onClick={() => setShowAddTask(!showAddTask)}
-                    style={{ display: "flex", alignItems: "center", gap: "4px", padding: "5px 12px", fontSize: "12px" }}
-                  >
-                    <Plus style={{ width: "12px", height: "12px" }} />
-                    Add Task
-                  </PinkButton>
-                </div>
-              </div>
-
-              {showAddTask && (
-                <div style={{ display: "flex", gap: "8px", marginBottom: "12px", flexWrap: "wrap" }}>
-                  <input
-                    type="text"
-                    value={taskForm.taskName}
-                    onChange={(e) => setTaskForm((p) => ({ ...p, taskName: e.target.value }))}
-                    placeholder="Task name"
-                    style={{ ...inputStyle, flex: "2 1 200px" }}
-                    onFocus={(e) => (e.currentTarget.style.borderColor = "#E91E8C")}
-                    onBlur={(e) => (e.currentTarget.style.borderColor = inputBorder)}
-                  />
-                  <select
-                    value={taskForm.assignedTo}
-                    onChange={(e) => setTaskForm((p) => ({ ...p, assignedTo: e.target.value }))}
-                    style={{ ...inputStyle, flex: "1 1 140px", cursor: "pointer", appearance: "auto" }}
-                  >
-                    <option value="" style={{ background: isDark ? "#141418" : "#fff" }}>Assign to</option>
-                    {PLACEHOLDER_USERS.map((u) => (
-                      <option key={u.id} value={u.id} style={{ background: isDark ? "#141418" : "#fff" }}>{u.name}</option>
-                    ))}
-                  </select>
-                  <input
-                    type="date"
-                    value={taskForm.dueDate}
-                    onChange={(e) => setTaskForm((p) => ({ ...p, dueDate: e.target.value }))}
-                    style={{ ...inputStyle, flex: "1 1 130px" }}
-                  />
-                  <GhostButton onClick={handleAddTask} style={{ padding: "8px 14px", fontSize: "12px" }}>
-                    Save Task
-                  </GhostButton>
-                </div>
-              )}
-
-              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                {tasks.length === 0 && !showAddTask && (
-                  <p style={{ fontSize: "13px", color: textMuted }}>No tasks yet.</p>
-                )}
-                {tasks.map((task) => {
-                  const isComplete = task.status === "COMPLETED";
-                  const assignee = PLACEHOLDER_USERS.find((u) => u.id === task.assignedTo);
-                  return (
-                    <div
-                      key={task.id}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "10px",
-                        padding: "8px 12px",
-                        borderRadius: "8px",
-                        background: inputBg,
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isComplete}
-                        onChange={() => handleToggleTask(task)}
-                        style={{ width: "16px", height: "16px", accentColor: "#E91E8C", cursor: "pointer" }}
-                      />
-                      <span
-                        style={{
-                          flex: 1,
-                          fontSize: "13px",
-                          color: isComplete ? textMuted : textPrimary,
-                          textDecoration: isComplete ? "line-through" : "none",
-                        }}
-                      >
-                        {task.taskName}
-                      </span>
-                      {assignee && (
-                        <span style={{ fontSize: "11px", color: textMuted }}>{assignee.name}</span>
-                      )}
-                      {task.dueDate && (
-                        <span style={{ fontSize: "11px", color: textMuted }}>{task.dueDate}</span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+            )}
           </div>
 
           {/* RIGHT COLUMN */}

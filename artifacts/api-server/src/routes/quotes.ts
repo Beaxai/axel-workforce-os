@@ -9,6 +9,12 @@ router.get("/", async (_req, res) => {
   res.json(rows);
 });
 
+router.get("/by-deal/:dealId", async (req, res) => {
+  const [row] = await db.select().from(quotesTable).where(eq(quotesTable.dealId, req.params.dealId));
+  if (!row) return res.status(404).json({ error: "Not found" });
+  res.json(row);
+});
+
 router.get("/:id", async (req, res) => {
   const [row] = await db.select().from(quotesTable).where(eq(quotesTable.id, req.params.id));
   if (!row) return res.status(404).json({ error: "Not found" });

@@ -425,11 +425,11 @@ export default function Pipeline() {
                       <td style={{ padding: "10px 14px", borderBottom: `1px solid ${borderSubtle}` }}>
                         <Badge label={stageLabel} color="gray" />
                       </td>
-                      <td style={{ padding: "10px 14px", color: textPrimary, borderBottom: `1px solid ${borderSubtle}` }}>
-                        {formatCurrency(deal.wcPremium)}
+                      <td style={{ padding: "10px 14px", color: deal.wcPremium && parseFloat(deal.wcPremium) > 0 ? textPrimary : textMuted, borderBottom: `1px solid ${borderSubtle}` }}>
+                        {deal.wcPremium && parseFloat(deal.wcPremium) > 0 ? formatCurrency(deal.wcPremium) : "Pending Quote"}
                       </td>
                       <td style={{ padding: "10px 14px", color: textMuted, borderBottom: `1px solid ${borderSubtle}` }}>
-                        {deal.productType === "PEO" && deal.wfsPepmRate ? formatCurrency(deal.wfsPepmRate) : "—"}
+                        {deal.productType === "PEO" ? (deal.wfsPepmRate && parseFloat(deal.wfsPepmRate) > 0 ? formatCurrency(deal.wfsPepmRate) : "Pending Quote") : "—"}
                       </td>
                       <td style={{ padding: "10px 14px", color: textMuted, borderBottom: `1px solid ${borderSubtle}`, whiteSpace: "nowrap" }}>
                         {deal.createdAt ? new Date(deal.createdAt).toLocaleDateString() : "—"}
@@ -530,13 +530,17 @@ export default function Pipeline() {
                           />
                         </div>
 
-                        <p style={{ fontSize: "12px", color: textMuted, margin: "0 0 2px" }}>
-                          {formatCurrency(deal.wcPremium)} WC Premium
+                        <p style={{ fontSize: "12px", color: deal.wcPremium && parseFloat(deal.wcPremium) > 0 ? textPrimary : textMuted, margin: "0 0 2px" }}>
+                          {deal.wcPremium && parseFloat(deal.wcPremium) > 0
+                            ? `${formatCurrency(deal.wcPremium)} WC Premium`
+                            : "Pending Quote"}
                         </p>
 
-                        {deal.productType === "PEO" && deal.wfsPepmRate && (
-                          <p style={{ fontSize: "12px", color: textMuted, margin: 0 }}>
-                            {formatCurrency(deal.wfsPepmRate)} PEPM
+                        {deal.productType === "PEO" && (
+                          <p style={{ fontSize: "12px", color: deal.wfsPepmRate && parseFloat(deal.wfsPepmRate) > 0 ? textPrimary : textMuted, margin: 0 }}>
+                            {deal.wfsPepmRate && parseFloat(deal.wfsPepmRate) > 0
+                              ? `${formatCurrency(deal.wfsPepmRate)} PEPM`
+                              : "Pending Quote"}
                           </p>
                         )}
 
