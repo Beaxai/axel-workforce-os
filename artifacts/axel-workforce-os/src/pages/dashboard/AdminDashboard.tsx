@@ -1,17 +1,65 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
-import { GlassCard, StatTile, SectionHeader, AxelBadge } from "@/components/ui/axel-index";
-import { ArrowUpRight } from "lucide-react";
+import { GlassCard, StatTile, SectionHeader, AxelBadge, PinkButton, GhostButton } from "@/components/ui/axel-index";
+import { ArrowUpRight, UserCheck, UserX, KeyRound } from "lucide-react";
 import { useThemeStore } from "@/lib/theme-store";
 
 export default function AdminDashboard() {
   const { theme } = useThemeStore();
   const isDark = theme === "dark";
+  const navigate = useNavigate();
+  const qc = useQueryClient();
   const { data: orgs = [] } = useQuery({ queryKey: ["organizations"], queryFn: () => api.get<any[]>("/organizations") });
   const { data: deals = [] } = useQuery({ queryKey: ["deals"], queryFn: () => api.get<any[]>("/deals") });
   const { data: policies = [] } = useQuery({ queryKey: ["policies"], queryFn: () => api.get<any[]>("/policies") });
   const { data: contacts = [] } = useQuery({ queryKey: ["contacts"], queryFn: () => api.get<any[]>("/contacts") });
   const { data: workforce = [] } = useQuery({ queryKey: ["workforce-verticals"], queryFn: () => api.get<any[]>("/workforce/verticals") });
+  const { data: registrations = [] } = useQuery({ queryKey: ["agent-registrations"], queryFn: () => api.get<any[]>("/agent-registrations") });
+
+  const approveMut = useMutation({
+    mutationFn: (id: string) => api.patch(`/agent-registrations/${id}`, { status: "AGREEMENT_PENDING", reviewedAt: new Date().toISOString() }),
+    onSuccess: (_, id) => {
+      console.log(`[Agent Registration] Approved. Agreement link: /register/agent/agreement/${id}`);
+      qc.invalidateQueries({ queryKey: ["agent-registrations"] });
+    },
+  });
+
+  const rejectMut = useMutation({
+    mutationFn: (id: string) => api.patch(`/agent-registrations/${id}`, { status: "REJECTED", reviewedAt: new Date().toISOString() }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["agent-registrations"] }),
+  });
+
+  const markCallMut = useMutation({
+    mutationFn: (id: string) => api.patch(`/agent-registrations/${id}`, { status: "CREDENTIALS_PENDING", zoomCompletedAt: new Date().toISOString() }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["agent-registrations"] }),
+  });
+
+  const issueCredsMut = useMutation({
+    mutationFn: async (reg: any) => {
+      const [partner] = await Promise.all([
+        api.post("/partners", {
+          partnerType: "Agent", name: `${reg.firstName} ${reg.lastName}`,
+          agencyName: reg.agencyName, npn: reg.individualNpn,
+          licenseStates: reg.statesLicensed || [], contactName: `${reg.firstName} ${reg.lastName}`,
+          contactEmail: reg.email, contactPhone: reg.phone, status: "Active",
+        }),
+      ]) as any[];
+      const tempPassword = `Axel${Math.random().toString(36).slice(2, 8)}!`;
+      await api.patch(`/agent-registrations/${reg.id}`, {
+        status: "ACTIVE", partnerId: partner.id,
+      });
+      console.log(`[Agent Registration] Credentials issued for ${reg.email}. Temp password: ${tempPassword}`);
+      return { email: reg.email, tempPassword, partnerId: partner.id };
+    },
+    onSuccess: (result) => {
+      alert(`Credentials issued!\nEmail: ${result.email}\nTemp Password: ${result.tempPassword}`);
+      qc.invalidateQueries({ queryKey: ["agent-registrations"] });
+      qc.invalidateQueries({ queryKey: ["partners"] });
+    },
+  });
+
+  const pendingRegs = registrations.filter((r: any) => r.status !== "ACTIVE" && r.status !== "REJECTED");
 
   const textPrimary = isDark ? "#fff" : "#111";
   const textMuted = isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.45)";
@@ -88,6 +136,56 @@ export default function AdminDashboard() {
           )}
         </GlassCard>
       </div>
+
+      {pendingRegs.length > 0 && (
+        <div style={{ marginBottom: "24px" }}>
+          <GlassCard>
+            <h3 style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, marginBottom: "16px" }}>Agent Applications ({pendingRegs.length})</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              {pendingRegs.map((r: any) => {
+                const statusLabels: Record<string, string> = {
+                  PENDING_REVIEW: "Pending Review", AGREEMENT_PENDING: "Agreement Pending",
+                  ONBOARDING_CALL_PENDING: "Onboarding Call Pending", CREDENTIALS_PENDING: "Credentials Pending",
+                };
+                const statusColors: Record<string, string> = {
+                  PENDING_REVIEW: "yellow", AGREEMENT_PENDING: "blue", ONBOARDING_CALL_PENDING: "orange", CREDENTIALS_PENDING: "light-violet",
+                };
+                return (
+                  <div key={r.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px", background: subtleBg, borderRadius: "10px", border: `1px solid ${borderSubtle}` }}>
+                    <div>
+                      <p style={{ fontSize: "14px", fontWeight: 500, color: textPrimary, margin: 0 }}>{r.firstName} {r.lastName}</p>
+                      <p style={{ fontSize: "12px", color: textMuted, margin: "2px 0 0" }}>{r.agencyName} · {r.email}</p>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <AxelBadge label={statusLabels[r.status] || r.status} color={statusColors[r.status] || "gray"} />
+                      {r.status === "PENDING_REVIEW" && (
+                        <>
+                          <GhostButton onClick={() => approveMut.mutate(r.id)} style={{ padding: "4px 10px", fontSize: "12px", color: "#1EE97B" }}>
+                            <UserCheck style={{ width: 14, height: 14 }} /> Approve
+                          </GhostButton>
+                          <GhostButton onClick={() => rejectMut.mutate(r.id)} style={{ padding: "4px 10px", fontSize: "12px", color: "#E91E1E" }}>
+                            <UserX style={{ width: 14, height: 14 }} /> Reject
+                          </GhostButton>
+                        </>
+                      )}
+                      {r.status === "ONBOARDING_CALL_PENDING" && (
+                        <GhostButton onClick={() => markCallMut.mutate(r.id)} style={{ padding: "4px 10px", fontSize: "12px" }}>
+                          <UserCheck style={{ width: 14, height: 14 }} /> Mark Call Complete
+                        </GhostButton>
+                      )}
+                      {r.status === "CREDENTIALS_PENDING" && (
+                        <PinkButton onClick={() => issueCredsMut.mutate(r)} style={{ padding: "4px 12px", fontSize: "12px" }}>
+                          <KeyRound style={{ width: 14, height: 14 }} /> Issue Credentials
+                        </PinkButton>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </GlassCard>
+        </div>
+      )}
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "24px" }}>
         <GlassCard>

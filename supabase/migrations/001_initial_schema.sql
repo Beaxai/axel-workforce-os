@@ -345,6 +345,23 @@ CREATE TABLE implementation_tasks (
 -- AGENT REGISTRATION
 -- ========================
 
+CREATE TABLE partners (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  partner_type text NOT NULL,
+  name text NOT NULL,
+  agency_name text,
+  license_states text[],
+  npn text,
+  contact_name text,
+  contact_email text,
+  contact_phone text,
+  status text DEFAULT 'Active',
+  notes text,
+  metadata jsonb,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
 CREATE TABLE agent_registrations (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   agency_name text NOT NULL,
@@ -379,6 +396,8 @@ CREATE TABLE agent_registrations (
   zoom_completed_at timestamptz,
   onboarding_admin_id uuid REFERENCES users(id),
   referral_source text,
+  partner_id uuid REFERENCES partners(id),
+  user_id uuid,
   created_at timestamptz DEFAULT now()
 );
 

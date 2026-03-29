@@ -34,5 +34,7 @@ router.use("/rate-tables", rateTablesRouter);
 router.use("/implementation", implementationRouter);
 router.use("/workforce", workforceRouter);
 router.use("/accounts", accountsRouter);
+import partnersRouter from "./partners";
+router.use("/partners", partnersRouter);
 
 export default router;

@@ -34,6 +34,13 @@ import Accounts from "@/pages/Accounts";
 import AccountDetail from "@/pages/AccountDetail";
 import Implementations from "@/pages/Implementations";
 import Billing from "@/pages/Billing";
+import Network from "@/pages/Network";
+import AgentDetail from "@/pages/network/AgentDetail";
+import CarrierDetail from "@/pages/network/CarrierDetail";
+import PEODetail from "@/pages/network/PEODetail";
+import AgentRegister from "@/pages/register/AgentRegister";
+import AgentAgreement from "@/pages/register/AgentAgreement";
+import AgentOnboarding from "@/pages/register/AgentOnboarding";
 import NotFound from "@/pages/not-found";
 import { useAuthStore } from "@/lib/auth-store";
 
@@ -57,6 +64,9 @@ function App() {
             <Route path="/" element={<RootRedirect />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/unauthorized" element={<UnauthorizedPage />} />
+            <Route path="/register/agent" element={<AgentRegister />} />
+            <Route path="/register/agent/agreement/:id" element={<AgentAgreement />} />
+            <Route path="/register/agent/onboarding/:id" element={<AgentOnboarding />} />
 
             <Route
               element={
@@ -187,6 +197,19 @@ function App() {
               }
             >
               <Route path="/billing" element={<Billing />} />
+            </Route>
+
+            <Route
+              element={
+                <ProtectedRoute allowedRoles={["ADMIN", "CSA"]}>
+                  <AppShell />
+                </ProtectedRoute>
+              }
+            >
+              <Route path="/network" element={<Network />} />
+              <Route path="/network/agents/:id" element={<AgentDetail />} />
+              <Route path="/network/carriers/:id" element={<CarrierDetail />} />
+              <Route path="/network/peo/:id" element={<PEODetail />} />
             </Route>
 
             <Route element={<AppLayout />}>

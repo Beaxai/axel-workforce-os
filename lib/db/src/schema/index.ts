@@ -18,5 +18,6 @@ export * from "./implementation";
 export * from "./agent-registrations";
 export * from "./rate-tables";
 export * from "./onboarding";
+export * from "./partners";
 export * from "./employees";
 export * from "./workforce";

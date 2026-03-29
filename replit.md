@@ -48,7 +48,7 @@ artifacts-monorepo/
 
 ## Database
 
-28 tables provisioned in PostgreSQL:
+29 tables provisioned in PostgreSQL:
 
 - **Core**: organizations, users, org_members, accounts
 - **Deals/Pipeline**: deals (with account_id FK), quotes
@@ -56,7 +56,8 @@ artifacts-monorepo/
 - **CRM**: contacts, notes, tasks, task_library, activity_log
 - **Email**: deal_email_addresses, deal_inbound_emails, task_send_log
 - **Implementation**: implementation_trackers, implementation_phases, implementation_tasks
-- **Agent Registration**: agent_registrations, agent_compliance
+- **Partners/Network**: partners
+- **Agent Registration**: agent_registrations (with partner_id, user_id FKs), agent_compliance
 - **Rate Tables**: rate_tables, pepm_rates
 - **Workforce**: employees, workforce_summaries, vertical_workforce_rollups
 - **Onboarding**: onboarding_checklist
@@ -81,6 +82,7 @@ Drizzle ORM schema files in `lib/db/src/schema/` (one per domain).
 - `/api/implementation` — trackers with phases/tasks
 - `/api/workforce` — summaries, vertical rollups
 - `/api/accounts` — CRUD + /deals, /policies, /activity sub-resources
+- `/api/partners` — CRUD with ?type= filter (Agent, Carrier, PEO, Vendor)
 
 ## Authentication & Role System
 
@@ -95,7 +97,7 @@ Auth is managed via Zustand store (`auth-store.ts`) persisted to localStorage (`
 |------|-------|----------------|
 | Admin | `/dashboard/admin` | Home, Marketplace, Pipeline, Accounts (/accounts), Implementations (/implementations), Billing (/billing), Network, Resources |
 | Underwriter | `/dashboard/underwriter` | Home, Pipeline, Accounts |
-| CSA | `/dashboard/csa` | Home, Marketplace, Pipeline, Accounts (/accounts), Implementations (/implementations) |
+| CSA | `/dashboard/csa` | Home, Marketplace, Pipeline, Accounts (/accounts), Implementations (/implementations), Network (/network) |
 | Agent | `/dashboard/agent` | Home, Pipeline, Accounts |
 | Employer | `/dashboard/employer` | My Program (locked until Active Client) |
 | Carrier | `/dashboard/carrier` | Home, Accounts |
@@ -177,6 +179,21 @@ All importable from `@/components/ui/axel-index`:
 
 ### Billing (Phase 8)
 - **`/billing`** — Admin-only. Two tabs: "WC Premiums" (policies list with stat tiles) and "Workforce Solutions Fees" (PEO clients with PEPM data). Search filter and CSV export button.
+
+### Network (Phase 9)
+- **`/network`** — Four-tab partner directory (Agents, Carriers, PEO Partners, Vendors). Accessible to Admin, CSA.
+- Each tab shows partner cards with status badges (Active=#1EE97B, Pending=#E9C31E, Suspended=#E91E1E). "Add Partner" modal.
+- **`/network/agents/:id`** — Agent detail: profile, contact, registration status, commission summary (placeholder), associated deals. Edit & Suspend Agent actions.
+- **`/network/carriers/:id`** — Carrier detail: AM Best rating, appetite notes, contact info, bound policies list. Edit action.
+- **`/network/peo/:id`** — PEO Partner detail: program name, verticals served, WC bundled discount rate (editable), client organizations. Edit action.
+- Vendors tab has inline editing directly on cards (no detail page).
+
+### Agent Registration (Phase 9)
+- **`/register/agent`** — Public route (no auth). Multi-step registration: name, agency, NPN, license states, email, phone. Submits to agent_registrations table with PENDING_REVIEW status.
+- **`/register/agent/agreement/:id`** — Agreement signing placeholder (HelloSign integration — coming soon).
+- **`/register/agent/onboarding/:id`** — Onboarding call scheduling placeholder (Calendly integration — coming soon).
+- **Admin dashboard** shows "Agent Applications" panel with pending registrations. Admin can Approve (→ Agreement Pending), Mark Call Complete (→ Credentials Pending), Issue Credentials (creates partner record, sets status to Active).
+- Registration statuses: PENDING_REVIEW → AGREEMENT_PENDING → ONBOARDING_CALL_PENDING → CREDENTIALS_PENDING → ACTIVE (or REJECTED).
 
 ### Marketplace (Phase 5)
 - **`/marketplace`** — Vertical card grid with 8 industry verticals (Cannabis, Construction, Staffing, Healthcare, Hospitality, Transportation, Manufacturing, Retail). Each card has WC Quote and PEO Quote buttons. Accessible to Admin and CSA only.

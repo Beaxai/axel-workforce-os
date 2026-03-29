@@ -27,7 +27,7 @@ const adminNav: NavItem[] = [
   { label: "Accounts", path: "/accounts", icon: Users },
   { label: "Implementations", path: "/implementations", icon: Rocket },
   { label: "Billing", path: "/billing", icon: Receipt },
-  { label: "Network", path: "/dashboard/admin/network", icon: Network },
+  { label: "Network", path: "/network", icon: Network },
   { label: "Resources", path: "/dashboard/admin/resources", icon: BookOpen },
 ];
 
@@ -37,6 +37,7 @@ const csaNav: NavItem[] = [
   { label: "Pipeline", path: "/pipeline", icon: Handshake },
   { label: "Accounts", path: "/accounts", icon: Users },
   { label: "Implementations", path: "/implementations", icon: Rocket },
+  { label: "Network", path: "/network", icon: Network },
 ];
 
 const agentNav: NavItem[] = [

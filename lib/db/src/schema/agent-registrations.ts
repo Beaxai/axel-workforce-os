@@ -4,6 +4,7 @@ import { z } from "zod/v4";
 import { sql } from "drizzle-orm";
 import { usersTable } from "./users";
 import { organizationsTable } from "./organizations";
+import { partnersTable } from "./partners";
 
 export const agentRegistrationsTable = pgTable("agent_registrations", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -39,6 +40,8 @@ export const agentRegistrationsTable = pgTable("agent_registrations", {
   zoomCompletedAt: timestamp("zoom_completed_at", { withTimezone: true }),
   onboardingAdminId: uuid("onboarding_admin_id").references(() => usersTable.id),
   referralSource: text("referral_source"),
+  partnerId: uuid("partner_id").references(() => partnersTable.id),
+  userId: uuid("user_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).default(sql`now()`),
 });
 
