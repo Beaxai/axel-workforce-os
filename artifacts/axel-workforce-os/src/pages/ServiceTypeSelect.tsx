@@ -299,7 +299,6 @@ function SelectionCard({
           {isSelected && <Check style={{ width: 18, height: 18, color: "#fff" }} />}
         </div>
       </div>
-
       <h3
         style={{
           fontSize: 22,
@@ -321,7 +320,6 @@ function SelectionCard({
       >
         {subtitle}
       </p>
-
       <div
         style={{
           display: "flex",
@@ -354,7 +352,6 @@ function SelectionCard({
           </div>
         ))}
       </div>
-
       <div
         style={{
           display: "flex",
@@ -366,7 +363,9 @@ function SelectionCard({
         }}
       >
         <Clock style={{ width: 14, height: 14, color: "#E91E8C", flexShrink: 0 }} />
-        <span style={{ fontSize: 13, color: "#E91E8C" }}>{turnaround}</span>
+        <span
+          style={{ fontSize: 13, color: "#E91E8C" }}
+          className="text-[#e91f8c] text-[13px]">{turnaround}</span>
       </div>
     </button>
   );
