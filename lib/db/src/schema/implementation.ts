@@ -8,7 +8,7 @@ import { usersTable } from "./users";
 
 export const implementationTrackersTable = pgTable("implementation_trackers", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  dealId: uuid("deal_id").references(() => dealsTable.id).unique(),
+  dealId: uuid("deal_id").references(() => dealsTable.id),
   policyId: uuid("policy_id").references(() => policiesTable.id),
   productType: text("product_type").notNull(),
   goLiveDate: date("go_live_date").notNull(),

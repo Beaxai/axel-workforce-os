@@ -4,12 +4,14 @@ import { z } from "zod/v4";
 import { sql } from "drizzle-orm";
 import { organizationsTable } from "./organizations";
 import { usersTable } from "./users";
+import { accountsTable } from "./accounts";
 
 export const dealsTable = pgTable("deals", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   referenceCode: text("reference_code").unique().notNull(),
   businessName: text("business_name"),
   orgId: uuid("org_id").references(() => organizationsTable.id),
+  accountId: uuid("account_id").references(() => accountsTable.id),
   ownerId: uuid("owner_id").references(() => usersTable.id),
   producingAgentId: uuid("producing_agent_id").references(() => usersTable.id),
   referralPartnerId: uuid("referral_partner_id").references(() => usersTable.id),

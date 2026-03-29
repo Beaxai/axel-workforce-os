@@ -1,6 +1,7 @@
 export * from "./organizations";
 export * from "./users";
 export * from "./org-members";
+export * from "./accounts";
 export * from "./deals";
 export * from "./quotes";
 export * from "./policies";

@@ -24,9 +24,9 @@ const adminNav: NavItem[] = [
   { label: "Home", path: "/dashboard/admin", icon: LayoutDashboard },
   { label: "Marketplace", path: "/marketplace", icon: Store },
   { label: "Pipeline", path: "/pipeline", icon: Handshake },
-  { label: "Accounts", path: "/dashboard/admin/accounts", icon: Users },
-  { label: "Implementations", path: "/dashboard/admin/implementations", icon: Rocket },
-  { label: "Billing", path: "/dashboard/admin/billing", icon: Receipt },
+  { label: "Accounts", path: "/accounts", icon: Users },
+  { label: "Implementations", path: "/implementations", icon: Rocket },
+  { label: "Billing", path: "/billing", icon: Receipt },
   { label: "Network", path: "/dashboard/admin/network", icon: Network },
   { label: "Resources", path: "/dashboard/admin/resources", icon: BookOpen },
 ];
@@ -35,8 +35,8 @@ const csaNav: NavItem[] = [
   { label: "Home", path: "/dashboard/csa", icon: LayoutDashboard },
   { label: "Marketplace", path: "/marketplace", icon: Store },
   { label: "Pipeline", path: "/pipeline", icon: Handshake },
-  { label: "Accounts", path: "/dashboard/csa/accounts", icon: Users },
-  { label: "Implementations", path: "/dashboard/csa/implementations", icon: Rocket },
+  { label: "Accounts", path: "/accounts", icon: Users },
+  { label: "Implementations", path: "/implementations", icon: Rocket },
 ];
 
 const agentNav: NavItem[] = [

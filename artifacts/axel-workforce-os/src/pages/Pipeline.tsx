@@ -231,12 +231,36 @@ export default function Pipeline() {
       prev.map((d) => (d.id === dealId ? { ...d, stage: stageKey } : d))
     );
 
-    if (stageKey === "BOUND") {
-      console.log(`Implementation trigger fired for deal ${dealId}`);
-    }
-
     try {
       await api.patch(`/deals/${dealId}`, { stage: stageKey });
+
+      if (stageKey === "BOUND" && deal) {
+        const today = new Date().toISOString().slice(0, 10);
+        api.post("/implementation", {
+          dealId,
+          productType: "WC",
+          goLiveDate: today,
+          status: "IN_PROGRESS",
+          overallProgress: 1,
+        }).catch(() => {});
+
+        if (deal.productType === "PEO") {
+          api.post("/implementation", {
+            dealId: dealId,
+            productType: "PEO",
+            goLiveDate: today,
+            status: "IN_PROGRESS",
+            overallProgress: 1,
+          }).catch(() => {});
+        }
+
+        api.post(`/deals/${dealId}/activity`, {
+          entityType: "deal",
+          entityId: dealId,
+          eventType: "STAGE_CHANGE",
+          description: `Deal moved to Bound — implementation tracker${deal.productType === "PEO" ? "s" : ""} created`,
+        }).catch(() => {});
+      }
     } catch (err) {
       console.error("Failed to update deal stage:", err);
       fetchDeals();

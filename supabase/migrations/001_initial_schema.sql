@@ -42,12 +42,34 @@ CREATE TABLE org_members (
 );
 
 -- ========================
+-- ACCOUNTS
+-- ========================
+
+CREATE TABLE accounts (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  business_name text NOT NULL,
+  vertical text,
+  state text,
+  annual_payroll numeric(18,2),
+  headcount integer,
+  account_status text DEFAULT 'Prospect',
+  primary_contact text,
+  contact_email text,
+  contact_phone text,
+  notes text,
+  assigned_csa uuid REFERENCES users(id),
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
+-- ========================
 -- QUOTING + PIPELINE TABLES
 -- ========================
 
 CREATE TABLE deals (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   reference_code text UNIQUE NOT NULL,
+  account_id uuid REFERENCES accounts(id),
   business_name text,
   org_id uuid REFERENCES organizations(id),
   owner_id uuid REFERENCES users(id),
@@ -279,7 +301,7 @@ CREATE TABLE task_send_log (
 
 CREATE TABLE implementation_trackers (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  deal_id uuid REFERENCES deals(id) UNIQUE,
+  deal_id uuid REFERENCES deals(id),
   policy_id uuid REFERENCES policies(id),
   product_type text NOT NULL,
   go_live_date date NOT NULL,

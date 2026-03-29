@@ -30,6 +30,10 @@ import VendorDashboard from "@/pages/dashboard/VendorDashboard";
 import Marketplace from "@/pages/Marketplace";
 import QuoteNew from "@/pages/QuoteNew";
 import Pipeline from "@/pages/Pipeline";
+import Accounts from "@/pages/Accounts";
+import AccountDetail from "@/pages/AccountDetail";
+import Implementations from "@/pages/Implementations";
+import Billing from "@/pages/Billing";
 import NotFound from "@/pages/not-found";
 import { useAuthStore } from "@/lib/auth-store";
 
@@ -161,6 +165,28 @@ function App() {
               }
             >
               <Route path="/pipeline" element={<Pipeline />} />
+            </Route>
+
+            <Route
+              element={
+                <ProtectedRoute allowedRoles={["ADMIN", "CSA"]}>
+                  <AppShell />
+                </ProtectedRoute>
+              }
+            >
+              <Route path="/accounts" element={<Accounts />} />
+              <Route path="/accounts/:id" element={<AccountDetail />} />
+              <Route path="/implementations" element={<Implementations />} />
+            </Route>
+
+            <Route
+              element={
+                <ProtectedRoute allowedRoles={["ADMIN"]}>
+                  <AppShell />
+                </ProtectedRoute>
+              }
+            >
+              <Route path="/billing" element={<Billing />} />
             </Route>
 
             <Route element={<AppLayout />}>

@@ -50,8 +50,8 @@ artifacts-monorepo/
 
 28 tables provisioned in PostgreSQL:
 
-- **Core**: organizations, users, org_members
-- **Deals/Pipeline**: deals, quotes
+- **Core**: organizations, users, org_members, accounts
+- **Deals/Pipeline**: deals (with account_id FK), quotes
 - **Policies/AMS**: policies, commissions, policy_documents
 - **CRM**: contacts, notes, tasks, task_library, activity_log
 - **Email**: deal_email_addresses, deal_inbound_emails, task_send_log
@@ -80,6 +80,7 @@ Drizzle ORM schema files in `lib/db/src/schema/` (one per domain).
 - `/api/rate-tables` — list with filters, PEPM rates
 - `/api/implementation` — trackers with phases/tasks
 - `/api/workforce` — summaries, vertical rollups
+- `/api/accounts` — CRUD + /deals, /policies, /activity sub-resources
 
 ## Authentication & Role System
 
@@ -92,9 +93,9 @@ Auth is managed via Zustand store (`auth-store.ts`) persisted to localStorage (`
 
 | Role | Route | Nav Items (P4) |
 |------|-------|----------------|
-| Admin | `/dashboard/admin` | Home, Marketplace, Pipeline, Accounts, Implementations, Billing, Network, Resources |
+| Admin | `/dashboard/admin` | Home, Marketplace, Pipeline, Accounts (/accounts), Implementations (/implementations), Billing (/billing), Network, Resources |
 | Underwriter | `/dashboard/underwriter` | Home, Pipeline, Accounts |
-| CSA | `/dashboard/csa` | Home, Marketplace, Pipeline, Accounts, Implementations |
+| CSA | `/dashboard/csa` | Home, Marketplace, Pipeline, Accounts (/accounts), Implementations (/implementations) |
 | Agent | `/dashboard/agent` | Home, Pipeline, Accounts |
 | Employer | `/dashboard/employer` | My Program (locked until Active Client) |
 | Carrier | `/dashboard/carrier` | Home, Accounts |
@@ -165,6 +166,17 @@ All importable from `@/components/ui/axel-index`:
 - **Documents**: Placeholder section for future file storage integration.
 - **API Routes**: `POST /deals/:id/activity`, `GET/POST /deals/:id/email`, plus existing `GET /deals/:id/tasks`, `GET /deals/:id/activity`.
 - **Stage Advance**: Updates deal stage via PATCH and logs activity entry. Kanban board refreshes on close.
+
+### Accounts (Phase 8)
+- **`/accounts`** — Account list with search, status filters (All/Active Client/Prospect/Inactive), 2-column card grid. New Account modal. Accessible to Admin, CSA.
+- **`/accounts/:id`** — Account detail with two-column layout: business info (editable), associated deals (clickable → DealCardModal), policies, contact info, account status, notes, activity log.
+
+### Implementations (Phase 8)
+- **`/implementations`** — Dual-tab view: "WC Bind Journey" (4 phases) and "PEO / ASO Onboarding" (5 phases). Shows tracker cards with progress bars (#E91E8C solid fill), phase labels, days elapsed, "Advance Phase" button.
+- Auto-creates trackers when a deal is dropped to BOUND stage in Pipeline Kanban. Completed trackers auto-advance deal to CLIENT stage.
+
+### Billing (Phase 8)
+- **`/billing`** — Admin-only. Two tabs: "WC Premiums" (policies list with stat tiles) and "Workforce Solutions Fees" (PEO clients with PEPM data). Search filter and CSV export button.
 
 ### Marketplace (Phase 5)
 - **`/marketplace`** — Vertical card grid with 8 industry verticals (Cannabis, Construction, Staffing, Healthcare, Hospitality, Transportation, Manufacturing, Retail). Each card has WC Quote and PEO Quote buttons. Accessible to Admin and CSA only.

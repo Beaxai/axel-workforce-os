@@ -14,6 +14,7 @@ import agentRegistrationsRouter from "./agent-registrations";
 import rateTablesRouter from "./rate-tables";
 import implementationRouter from "./implementation";
 import workforceRouter from "./workforce";
+import accountsRouter from "./accounts";
 
 const router: IRouter = Router();
 
@@ -32,5 +33,6 @@ router.use("/agent-registrations", agentRegistrationsRouter);
 router.use("/rate-tables", rateTablesRouter);
 router.use("/implementation", implementationRouter);
 router.use("/workforce", workforceRouter);
+router.use("/accounts", accountsRouter);
 
 export default router;
