@@ -19,6 +19,8 @@ import {
   Factory,
   ShoppingBag,
   Plus,
+  Columns3,
+  List,
   type LucideIcon,
 } from "lucide-react";
 
@@ -109,6 +111,7 @@ export default function Pipeline() {
   const [dragOverStage, setDragOverStage] = useState<string | null>(null);
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
   const [saving, setSaving] = useState(false);
+  const [viewMode, setViewMode] = useState<"kanban" | "list">("kanban");
 
   const [form, setForm] = useState({
     businessName: "",
@@ -268,17 +271,147 @@ export default function Pipeline() {
           title="Pipeline"
           subtitle={`${totalDeals} deals · ${formatCurrency(totalWcPremium)} WC Premium`}
         />
-        <PinkButton
-          onClick={() => setShowNewDeal(true)}
-          style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 20px", marginTop: "4px" }}
-        >
-          <Plus style={{ width: "16px", height: "16px" }} />
-          New Deal
-        </PinkButton>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "4px" }}>
+          <div
+            style={{
+              display: "flex",
+              borderRadius: "8px",
+              border: `1px solid ${borderSubtle}`,
+              overflow: "hidden",
+            }}
+          >
+            <button
+              onClick={() => setViewMode("kanban")}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "5px",
+                padding: "7px 14px",
+                fontSize: "13px",
+                fontWeight: 500,
+                border: "none",
+                cursor: "pointer",
+                background: viewMode === "kanban" ? "rgba(233,30,140,0.15)" : "transparent",
+                color: viewMode === "kanban" ? "#E91E8C" : textMuted,
+                transition: "background 0.15s, color 0.15s",
+              }}
+            >
+              <Columns3 style={{ width: "14px", height: "14px" }} />
+              Board
+            </button>
+            <button
+              onClick={() => setViewMode("list")}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "5px",
+                padding: "7px 14px",
+                fontSize: "13px",
+                fontWeight: 500,
+                border: "none",
+                borderLeft: `1px solid ${borderSubtle}`,
+                cursor: "pointer",
+                background: viewMode === "list" ? "rgba(233,30,140,0.15)" : "transparent",
+                color: viewMode === "list" ? "#E91E8C" : textMuted,
+                transition: "background 0.15s, color 0.15s",
+              }}
+            >
+              <List style={{ width: "14px", height: "14px" }} />
+              List
+            </button>
+          </div>
+          <PinkButton
+            onClick={() => setShowNewDeal(true)}
+            style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 20px" }}
+          >
+            <Plus style={{ width: "16px", height: "16px" }} />
+            New Deal
+          </PinkButton>
+        </div>
       </div>
 
       {loading ? (
         <div style={{ color: textMuted, padding: "40px", textAlign: "center" }}>Loading pipeline…</div>
+      ) : viewMode === "list" ? (
+        <div style={{ flex: 1, overflowY: "auto", paddingBottom: "12px" }}>
+          <GlassCard padding="0px">
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+              <thead>
+                <tr>
+                  {["Business", "Vertical", "Type", "State", "Stage", "WC Premium", "PEPM", "Created"].map((h) => (
+                    <th
+                      key={h}
+                      style={{
+                        textAlign: "left",
+                        padding: "12px 14px",
+                        fontWeight: 600,
+                        fontSize: "12px",
+                        color: textMuted,
+                        borderBottom: `1px solid ${borderSubtle}`,
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {deals.map((deal) => {
+                  const Icon = deal.vertical ? VERTICAL_ICONS[deal.vertical] : null;
+                  const stageLabel = STAGES.find((s) => s.key === deal.stage)?.label || deal.stage || "—";
+                  return (
+                    <tr
+                      key={deal.id}
+                      onClick={() => setSelectedDeal(deal)}
+                      style={{ cursor: "pointer", transition: "background 0.12s" }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                    >
+                      <td style={{ padding: "10px 14px", color: textPrimary, fontWeight: 500, borderBottom: `1px solid ${borderSubtle}` }}>
+                        {deal.businessName || "Untitled"}
+                      </td>
+                      <td style={{ padding: "10px 14px", borderBottom: `1px solid ${borderSubtle}` }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "5px", color: textMuted }}>
+                          {Icon && <Icon style={{ width: "13px", height: "13px" }} />}
+                          {deal.vertical || "—"}
+                        </div>
+                      </td>
+                      <td style={{ padding: "10px 14px", borderBottom: `1px solid ${borderSubtle}` }}>
+                        <Badge
+                          label={deal.productType === "PEO" ? "PEO" : "WC"}
+                          color={deal.productType === "PEO" ? "#E91E8C" : "#1E6BE9"}
+                        />
+                      </td>
+                      <td style={{ padding: "10px 14px", color: textMuted, borderBottom: `1px solid ${borderSubtle}` }}>
+                        {deal.state || "—"}
+                      </td>
+                      <td style={{ padding: "10px 14px", borderBottom: `1px solid ${borderSubtle}` }}>
+                        <Badge label={stageLabel} color="gray" />
+                      </td>
+                      <td style={{ padding: "10px 14px", color: textPrimary, borderBottom: `1px solid ${borderSubtle}` }}>
+                        {formatCurrency(deal.wcPremium)}
+                      </td>
+                      <td style={{ padding: "10px 14px", color: textMuted, borderBottom: `1px solid ${borderSubtle}` }}>
+                        {deal.productType === "PEO" && deal.wfsPepmRate ? formatCurrency(deal.wfsPepmRate) : "—"}
+                      </td>
+                      <td style={{ padding: "10px 14px", color: textMuted, borderBottom: `1px solid ${borderSubtle}`, whiteSpace: "nowrap" }}>
+                        {deal.createdAt ? new Date(deal.createdAt).toLocaleDateString() : "—"}
+                      </td>
+                    </tr>
+                  );
+                })}
+                {deals.length === 0 && (
+                  <tr>
+                    <td colSpan={8} style={{ padding: "40px", textAlign: "center", color: textMuted }}>
+                      No deals yet — click "New Deal" to create one.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </GlassCard>
+        </div>
       ) : (
         <div
           style={{
