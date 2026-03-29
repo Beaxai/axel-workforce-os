@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Axel Workforce OS"
+version = "1.0.0"
+id = "artifacts/axel-workforce-os"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 23354
+
+[services.development]
+run = "pnpm --filter @workspace/axel-workforce-os run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/axel-workforce-os", "run", "build" ]
+publicDir = "artifacts/axel-workforce-os/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23354"
+BASE_PATH = "/"
