@@ -94,7 +94,7 @@ Auth is managed via Zustand store (`auth-store.ts`) persisted to localStorage (`
 |------|-------|----------------|
 | Admin | `/dashboard/admin` | Home, Marketplace, Pipeline, Accounts, Implementations, Billing, Network, Resources |
 | Underwriter | `/dashboard/underwriter` | Home, Pipeline, Accounts |
-| CSA | `/dashboard/csa` | Home, Pipeline, Accounts, Implementations |
+| CSA | `/dashboard/csa` | Home, Marketplace, Pipeline, Accounts, Implementations |
 | Agent | `/dashboard/agent` | Home, Pipeline, Accounts |
 | Employer | `/dashboard/employer` | My Program (locked until Active Client) |
 | Carrier | `/dashboard/carrier` | Home, Accounts |
@@ -144,6 +144,10 @@ All importable from `@/components/ui/axel-index`:
 
 ### Dashboard Pages (Dark/Light Theme via AppShell)
 8 role-based dashboards under `/dashboard/{role}`, each using AppShell with StatTile, GlassCard, SectionHeader, AxelBadge from the component library.
+
+### Marketplace (Phase 5)
+- **`/marketplace`** — Vertical card grid with 8 industry verticals (Cannabis, Construction, Staffing, Healthcare, Hospitality, Transportation, Manufacturing, Retail). Each card has WC Quote and PEO Quote buttons. Accessible to Admin and CSA only.
+- **`/marketplace/quote/new`** — Quote initiation form (Business Name, State, Annual Payroll with currency formatting, Employee Count, Class Code, EMod, Schedule Rating). "Calculate Quote" logs form state to console. Redirects to `/marketplace` if accessed without route state.
 
 ### Legacy Pages (Light Theme)
 Sidebar layout (`AppLayout.tsx`) with 12 navigation items at `/organizations`, `/deals`, `/policies`, etc.

@@ -27,6 +27,8 @@ import EmployerDashboard from "@/pages/dashboard/EmployerDashboard";
 import CarrierDashboard from "@/pages/dashboard/CarrierDashboard";
 import PeoDashboard from "@/pages/dashboard/PeoDashboard";
 import VendorDashboard from "@/pages/dashboard/VendorDashboard";
+import Marketplace from "@/pages/Marketplace";
+import QuoteNew from "@/pages/QuoteNew";
 import NotFound from "@/pages/not-found";
 import { useAuthStore } from "@/lib/auth-store";
 
@@ -137,6 +139,17 @@ function App() {
             >
               <Route path="/dashboard/vendor" element={<VendorDashboard />} />
               <Route path="/dashboard/vendor/*" element={<VendorDashboard />} />
+            </Route>
+
+            <Route
+              element={
+                <ProtectedRoute allowedRoles={["ADMIN", "CSA"]}>
+                  <AppShell />
+                </ProtectedRoute>
+              }
+            >
+              <Route path="/marketplace" element={<Marketplace />} />
+              <Route path="/marketplace/quote/new" element={<QuoteNew />} />
             </Route>
 
             <Route element={<AppLayout />}>
