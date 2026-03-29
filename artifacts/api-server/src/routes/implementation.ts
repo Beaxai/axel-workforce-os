@@ -27,7 +27,9 @@ router.post("/", async (req, res) => {
 });
 
 router.patch("/:id", async (req, res) => {
-  const [row] = await db.update(implementationTrackersTable).set(req.body).where(eq(implementationTrackersTable.id, req.params.id)).returning();
+  const parsed = insertImplementationTrackerSchema.partial().safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues });
+  const [row] = await db.update(implementationTrackersTable).set(parsed.data).where(eq(implementationTrackersTable.id, req.params.id)).returning();
   if (!row) return res.status(404).json({ error: "Not found" });
   res.json(row);
 });
