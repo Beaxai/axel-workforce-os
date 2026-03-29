@@ -2,7 +2,7 @@
 
 ## Overview
 
-Full-stack workforce management platform built with a pnpm workspace monorepo using TypeScript.
+Full-stack workforce management platform built with a pnpm workspace monorepo using TypeScript. Covers organizations, deals/pipeline, policies, CRM, workforce management, agent registration, rate tables, implementation tracking, commissions, and onboarding.
 
 ## Stack
 
@@ -12,7 +12,7 @@ Full-stack workforce management platform built with a pnpm workspace monorepo us
 - **TypeScript version**: 5.9
 - **Frontend**: React 18 + Vite + Tailwind CSS
 - **Backend**: Express 5 with helmet, morgan, cors, socket.io
-- **Database**: PostgreSQL + Drizzle ORM
+- **Database**: PostgreSQL (28 tables) + Drizzle ORM
 - **State Management**: Zustand
 - **Data Fetching**: @tanstack/react-query
 - **Forms**: react-hook-form + zod
@@ -36,7 +36,7 @@ artifacts-monorepo/
 │   ├── api-zod/               # Generated Zod schemas from OpenAPI
 │   └── db/                    # Drizzle ORM schema + DB connection
 ├── supabase/
-│   ├── migrations/            # SQL migration files
+│   ├── migrations/            # SQL migration files (001_initial_schema.sql)
 │   └── seed/                  # Seed data files
 ├── docs/                      # Documentation
 ├── scripts/                   # Utility scripts
@@ -46,52 +46,57 @@ artifacts-monorepo/
 └── package.json
 ```
 
+## Database
+
+28 tables provisioned in PostgreSQL:
+
+- **Core**: organizations, users, org_members
+- **Deals/Pipeline**: deals, quotes
+- **Policies/AMS**: policies, commissions, policy_documents
+- **CRM**: contacts, notes, tasks, task_library, activity_log
+- **Email**: deal_email_addresses, deal_inbound_emails, task_send_log
+- **Implementation**: implementation_trackers, implementation_phases, implementation_tasks
+- **Agent Registration**: agent_registrations, agent_compliance
+- **Rate Tables**: rate_tables, pepm_rates
+- **Workforce**: employees, workforce_summaries, vertical_workforce_rollups
+- **Onboarding**: onboarding_checklist
+
+Drizzle ORM schema files in `lib/db/src/schema/` (one per domain).
+
+## API Routes (Express, mounted at `/api`)
+
+- `GET /api/healthz` — health check
+- `/api/organizations` — CRUD
+- `/api/users` — CRUD
+- `/api/deals` — CRUD + sub-resources (quotes, contacts, notes, tasks, activity)
+- `/api/quotes` — CRUD
+- `/api/policies` — CRUD + commissions, documents
+- `/api/commissions` — CRUD
+- `/api/contacts` — CRUD
+- `/api/employees` — CRUD
+- `/api/tasks` — CRUD
+- `/api/notes` — CRUD
+- `/api/agent-registrations` — CRUD
+- `/api/rate-tables` — list with filters, PEPM rates
+- `/api/implementation` — trackers with phases/tasks
+- `/api/workforce` — summaries, vertical rollups
+
+## Frontend Pages
+
+Sidebar layout (`AppLayout.tsx`) with 12 navigation items:
+- Dashboard (live counts from all entities)
+- Organizations, Deals/Pipeline, Policies, Contacts, Employees
+- Tasks, Commissions, Agent Registration, Rate Tables
+- Implementation, Workforce
+
+All pages use React Query for data fetching. Create forms on Organizations, Deals, Contacts, and Employees pages.
+
 ## Running the App
 
 Both frontend and backend start via their respective workflows:
 - **Frontend**: `pnpm --filter @workspace/axel-workforce-os run dev` (Vite dev server)
 - **Backend**: `pnpm --filter @workspace/api-server run dev` (Express server)
 
-## Backend Packages
+## GitHub
 
-express, typescript, @supabase/supabase-js, zod, jsonwebtoken, cors, helmet, morgan, dotenv, socket.io, bullmq
-
-## Frontend Packages
-
-react, react-dom, react-router-dom, typescript, tailwindcss, @supabase/supabase-js, zustand, @tanstack/react-query, react-hook-form, zod, lucide-react, recharts, socket.io-client
-
-## Packages
-
-### `artifacts/axel-workforce-os` (`@workspace/axel-workforce-os`)
-
-React + Vite frontend for Axel Workforce OS. Uses react-router-dom for routing, Tailwind CSS for styling, and zustand for state management.
-
-- Entry: `src/main.tsx`
-- App: `src/App.tsx` — BrowserRouter with routes
-- Pages: `src/pages/` — Dashboard and other pages
-- Components: `src/components/` — UI components (shadcn/ui based)
-
-### `artifacts/api-server` (`@workspace/api-server`)
-
-Express 5 API server with helmet, morgan, cors. Routes live in `src/routes/`.
-
-- Entry: `src/index.ts` — reads `PORT`, starts Express
-- App setup: `src/app.ts` — mounts middleware and routes at `/api`
-- Routes: `src/routes/index.ts` mounts sub-routers; `src/routes/health.ts` exposes `GET /healthz`
-- Depends on: `@workspace/db`, `@workspace/api-zod`
-
-### `lib/db` (`@workspace/db`)
-
-Database layer using Drizzle ORM with PostgreSQL.
-
-### `lib/api-spec` (`@workspace/api-spec`)
-
-OpenAPI 3.1 spec and Orval codegen config. Run codegen: `pnpm --filter @workspace/api-spec run codegen`
-
-### `lib/api-zod` (`@workspace/api-zod`)
-
-Generated Zod schemas from the OpenAPI spec.
-
-### `lib/api-client-react` (`@workspace/api-client-react`)
-
-Generated React Query hooks and fetch client from the OpenAPI spec.
+Repository: https://github.com/Beaxai/axel-workforce-os (main branch)
