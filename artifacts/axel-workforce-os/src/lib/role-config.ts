@@ -10,6 +10,7 @@ import {
   Shield,
   Lock,
   ClipboardList,
+  Calculator,
   type LucideIcon,
 } from "lucide-react";
 import type { PartyRole } from "./auth-store";
@@ -30,6 +31,7 @@ const adminNav: NavItem[] = [
   { label: "Billing", path: "/billing", icon: Receipt },
   { label: "Network", path: "/network", icon: Network },
   { label: "Resources", path: "/resources", icon: BookOpen },
+  { label: "Rate Table", path: "/admin/rates", icon: Calculator },
 ];
 
 const csaNav: NavItem[] = [

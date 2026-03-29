@@ -20,5 +20,6 @@ export * from "./rate-tables";
 export * from "./onboarding";
 export * from "./partners";
 export * from "./resources";
+export * from "./wc-rates";
 export * from "./employees";
 export * from "./workforce";

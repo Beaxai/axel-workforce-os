@@ -1,0 +1,112 @@
+R.1: BIC.csv Rate Table Ingestion
+Context: Phases P1–P10 are complete. The full platform shell is built. The rating engine phases (R.1, R.2, R.3) wire in the WC quoting capability. R.1 is purely about getting the BIC.csv rate data into Supabase correctly and building the admin tooling to manage it.
+
+OBJECTIVE
+Import the BIC.csv file into Supabase as a queryable rate table. Build an admin UI to verify the import and look up rates manually.
+
+THE DATA FILE
+
+Filename: BIC.csv
+Rows: 25,153
+Columns: State, EffectiveDate, ClassCode, Description, Base Rate
+
+CRITICAL RATE LOOKUP RULE — READ CAREFULLY:
+The EffectiveDate column exists for internal reference only. It does NOT filter queries. When looking up a rate for a given State + ClassCode, always return the row with the most recent EffectiveDate for that State + ClassCode combination. Never filter by a target date — always use the latest available rate.
+
+SUPABASE — wc_rates TABLE
+Create this table:
+id               uuid, primary key, default gen_random_uuid()
+state            text, not null
+effective_date   date, not null
+class_code       text, not null
+description      text
+base_rate        numeric(10,4), not null
+created_at       timestamptz, default now()
+Add a unique constraint on (state, class_code, effective_date) to prevent duplicate rows.
+Add an index on (state, class_code) for fast lookups.
+
+IMPORT SCRIPT
+Write a Node.js script at /scripts/importBIC.js that:
+
+Reads BIC.csv from the project root (the file will be placed there)
+Parses all 25,153 rows
+Cleans the data:
+
+Trim whitespace from all fields
+Strip any $ or % characters from Base Rate and parse as float
+Parse EffectiveDate as a valid ISO date
+Skip any row missing State, ClassCode, or Base Rate — log skipped rows to console
+
+
+Upserts all rows into the wc_rates table in Supabase using the unique constraint on (state, class_code, effective_date) — do not create duplicates on re-run
+Logs final count: rows processed, rows inserted, rows skipped
+
+Run with: node scripts/importBIC.js
+Use the Supabase service role key for the import script (server-side only — never expose this key client-side).
+
+RATE LOOKUP FUNCTION
+Create a Supabase database function (SQL) that returns the correct rate for a given state and class code:
+sqlcreate or replace function get_wc_rate(p_state text, p_class_code text)
+returns numeric as $$
+  select base_rate
+  from wc_rates
+  where state = p_state
+    and class_code = p_class_code
+  order by effective_date desc
+  limit 1;
+$$ language sql stable;
+Also create a server-side Node.js utility function at /utils/getWCRate.js:
+javascript// Returns the base rate for a given state + class code
+// Always uses most recent effective date — EffectiveDate does NOT filter
+async function getWCRate(state, classCode) { ... }
+This utility will be called by the rating engine in R.2.
+
+ADMIN RATE LOOKUP UI
+Build a rate lookup tool inside the Admin dashboard at /admin/rates.
+Accessible to: Admin only.
+Page layout inside AppShell:
+
+SectionHeader: "Rate Table", subtitle "BIC — Benchmark Insurance Company"
+Two StatTiles at top: "Total Rate Records" (count from wc_rates), "States Covered" (distinct state count)
+Rate lookup form (GlassCard):
+
+State dropdown (50 states)
+Class Code (text input)
+PinkButton "Look Up Rate"
+Result display below: shows Class Code, Description, Base Rate, Effective Date — styled as a GlassCard result panel
+If no rate found: "No rate found for [State] class code [ClassCode]"
+
+
+Rate table browser (below lookup form):
+
+Filterable by State (dropdown) and Class Code (text search)
+Paginated table — 50 rows per page — showing State, Class Code, Description, Base Rate, Effective Date
+Use a clean table layout inside a GlassCard — alternating row shading with rgba(255,255,255,0.02) and rgba(255,255,255,0.05)
+
+
+
+
+DESIGN RULES (REMINDER)
+
+Background: #060608
+Accent: #E91E8C only — no other accent colors
+NO gradients — solid colors only
+Glassmorphism panels: rgba(255,255,255,0.05) background, blur(12px), 1px solid rgba(255,255,255,0.08) border
+Lucide React for all icons
+
+
+TECH STACK REMINDER
+
+React + Node.js + Supabase + Railway
+No external UI libraries — custom CSS or CSS modules only
+
+
+DELIVERABLES
+
+wc_rates table created in Supabase with correct schema, unique constraint, and index
+get_wc_rate SQL function created in Supabase
+/scripts/importBIC.js — import script ready to run once BIC.csv is placed in project root
+/utils/getWCRate.js — server-side rate lookup utility
+/admin/rates — rate lookup and browser UI inside AppShell
+
+When complete, confirm: wc_rates table exists with correct schema, import script runs without errors on the BIC.csv file, get_wc_rate function returns correct results, and the admin rate lookup UI returns a rate for a test state + class code query.

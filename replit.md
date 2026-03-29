@@ -2,236 +2,81 @@
 
 ## Overview
 
-Full-stack workforce management platform built with a pnpm workspace monorepo using TypeScript. Covers organizations, deals/pipeline, policies, CRM, workforce management, agent registration, rate tables, implementation tracking, commissions, and onboarding. Features 8 role-based party environment dashboards with a dark glassmorphism design system, AppShell layout with collapsible sidebar, and light/dark mode toggle.
+Axel Workforce OS is a full-stack workforce management platform designed to streamline operations for various stakeholders in the insurance and PEO (Professional Employer Organization) industries. Built as a pnpm workspace monorepo using TypeScript, it offers comprehensive solutions for managing organizations, deals, policies, CRM activities, workforce, agent registrations, rate tables, implementation tracking, commissions, and onboarding processes. The platform features eight role-based dashboards, each utilizing a dark glassmorphism design system, an AppShell layout with a collapsible sidebar, and light/dark mode toggles. Its primary purpose is to provide a unified and efficient system for all aspects of workforce management, from lead generation and policy binding to client onboarding and ongoing account management, targeting a diverse user base including administrators, underwriters, agents, employers, carriers, and PEO partners.
 
-## Stack
+## User Preferences
 
-- **Monorepo tool**: pnpm workspaces
-- **Node.js version**: 24
-- **Package manager**: pnpm
-- **TypeScript version**: 5.9
-- **Frontend**: React 18 + Vite + Tailwind CSS
-- **Backend**: Express 5 with helmet, morgan, cors, socket.io
-- **Database**: PostgreSQL (28 tables) + Drizzle ORM
-- **State Management**: Zustand (auth store + theme store persisted to localStorage)
-- **Data Fetching**: @tanstack/react-query
-- **Forms**: react-hook-form + zod
-- **Icons**: lucide-react
-- **Charts**: recharts
-- **Real-time**: socket.io / socket.io-client
-- **Validation**: Zod (`zod/v4`), `drizzle-zod`
-- **API codegen**: Orval (from OpenAPI spec)
-- **Build**: esbuild (CJS bundle for server), Vite (frontend)
+I prefer detailed explanations.
+I want iterative development.
+Ask before making major changes.
 
-## Structure
+## System Architecture
 
-```text
-artifacts-monorepo/
-├── artifacts/
-│   ├── api-server/            # Express API server (backend)
-│   └── axel-workforce-os/     # React + Vite frontend
-├── lib/                       # Shared libraries
-│   ├── api-spec/              # OpenAPI spec + Orval codegen config
-│   ├── api-client-react/      # Generated React Query hooks
-│   ├── api-zod/               # Generated Zod schemas from OpenAPI
-│   └── db/                    # Drizzle ORM schema + DB connection
-├── supabase/
-│   ├── migrations/            # SQL migration files (001_initial_schema.sql)
-│   └── seed/                  # Seed data files
-├── docs/                      # Documentation
-├── scripts/                   # Utility scripts
-├── pnpm-workspace.yaml
-├── tsconfig.base.json
-├── tsconfig.json
-└── package.json
-```
+The project is structured as a pnpm workspace monorepo.
 
-## Database
+**Technology Stack:**
+- **Monorepo Tool:** pnpm workspaces
+- **Node.js:** 24
+- **Package Manager:** pnpm
+- **TypeScript:** 5.9
+- **Frontend:** React 18, Vite, Tailwind CSS
+- **Backend:** Express 5 with helmet, morgan, cors, socket.io
+- **Database:** PostgreSQL (29 tables) with Drizzle ORM
+- **State Management:** Zustand (for authentication and theme, persisted to localStorage)
+- **Data Fetching:** @tanstack/react-query
+- **Forms:** react-hook-form with Zod
+- **Icons:** lucide-react
+- **Charts:** recharts
+- **Real-time:** socket.io / socket.io-client
+- **Validation:** Zod (`zod/v4`), `drizzle-zod`
+- **API Codegen:** Orval (from OpenAPI spec)
+- **Build:** esbuild (CJS bundle for server), Vite (frontend)
 
-29 tables provisioned in PostgreSQL:
+**Project Structure:**
+The monorepo includes `api-server` (Express backend) and `axel-workforce-os` (React frontend), along with shared libraries for API specifications, generated API clients, Zod schemas, and Drizzle ORM configurations.
 
-- **Core**: organizations, users, org_members, accounts
-- **Deals/Pipeline**: deals (with account_id FK), quotes
-- **Policies/AMS**: policies, commissions, policy_documents
-- **CRM**: contacts, notes, tasks, task_library, activity_log
-- **Email**: deal_email_addresses, deal_inbound_emails, task_send_log
-- **Implementation**: implementation_trackers, implementation_phases, implementation_tasks
-- **Partners/Network**: partners
-- **Resources**: resources (title, category, description, file_url, resource_type)
-- **Agent Registration**: agent_registrations (with partner_id, user_id FKs), agent_compliance
-- **Rate Tables**: rate_tables, pepm_rates
-- **Workforce**: employees, workforce_summaries, vertical_workforce_rollups
-- **Onboarding**: onboarding_checklist
+**Database Schema:**
+The PostgreSQL database comprises 29 tables categorized into Core, Deals/Pipeline, Policies/AMS, CRM, Email, Implementation, Partners/Network, Resources, Agent Registration, Rate Tables, Workforce, and Onboarding. Drizzle ORM schema files are organized by domain.
 
-Drizzle ORM schema files in `lib/db/src/schema/` (one per domain).
+**API Design:**
+The Express API server exposes RESTful endpoints for CRUD operations across various entities such as organizations, users, deals, policies, commissions, accounts, partners, and resources. It also includes specific endpoints for implementation tracking, workforce summaries, and a global search functionality. All API routes are mounted at `/api`.
 
-## API Routes (Express, mounted at `/api`)
+**Authentication and Role System:**
+Authentication is managed via a Zustand store persisted in localStorage. The system supports eight distinct party types (Admin, Underwriter, CSA, Agent, Employer, Carrier, PEO Partner, Vendor), each with specific dashboard routes and navigation items. A `ProtectedRoute` component guards access based on user roles, and a role switcher allows users to change roles within the application.
 
-- `GET /api/healthz` — health check
-- `/api/organizations` — CRUD
-- `/api/users` — CRUD
-- `/api/deals` — CRUD + sub-resources (quotes, contacts, notes, tasks, activity)
-- `/api/quotes` — CRUD
-- `/api/policies` — CRUD + commissions, documents
-- `/api/commissions` — CRUD
-- `/api/contacts` — CRUD
-- `/api/employees` — CRUD
-- `/api/tasks` — CRUD
-- `/api/notes` — CRUD
-- `/api/agent-registrations` — CRUD
-- `/api/rate-tables` — list with filters, PEPM rates
-- `/api/implementation` — trackers with phases/tasks
-- `/api/workforce` — summaries, vertical rollups
-- `/api/accounts` — CRUD + /deals, /policies, /activity sub-resources
-- `/api/partners` — CRUD with ?type= filter (Agent, Carrier, PEO, Vendor)
-- `/api/resources` — CRUD (GET with ?q= search, POST, DELETE /:id)
-- `/api/search` — Global search across deals, accounts, partners, resources (?q= param)
+**UI/UX and Design System:**
+A strict design system is enforced:
+- **Background:** `#060608` (dark), `#f4f4f5` (light). Dark mode is default.
+- **Accent Color:** `#E91E8C` (solid pink), used exclusively as an accent. No gradients are allowed.
+- **Glass Panels:** `rgba(255,255,255,0.05)` background, `backdrop-filter: blur(12px)`, `border: 1px solid rgba(255,255,255,0.08)`, `border-radius: 12px`.
+- **Typography:** White primary, `rgba(255,255,255,0.5)` secondary/muted in dark mode.
+- **Theme:** A light/dark mode toggle is available, with the accent color remaining consistent.
 
-## Authentication & Role System
+**Core UI Components:**
+A custom component library (`/components/ui/`) provides reusable UI elements adhering to the design system, including `GlassCard`, `PinkButton`, `GhostButton`, `StatTile`, `SectionHeader`, `AxelBadge`, `AxelModal`, and `AxelTooltip`.
 
-Auth is managed via Zustand store (`auth-store.ts`) persisted to localStorage (`axel-auth`).
-- **Login page** at `/login` — role selector with 8 party types
-- **ProtectedRoute** component guards dashboard routes with `allowedRoles`
-- **Role switcher** in sidebar allows switching between all 8 roles (uses setTimeout for navigation timing)
+**Layouts:**
+- **AppShell.tsx:** The main dashboard layout featuring a collapsible left navigation, top header, and scrollable content area.
+- **ProtectedRoute.tsx:** Handles authentication and role-based access.
 
-### Party Types & Dashboard Routes
+**Key Features:**
+- **Role-based Dashboards:** Eight distinct dashboards tailored to specific user roles, each leveraging the common UI components and AppShell layout.
+- **Pipeline Management:** An 8-stage Kanban board for tracking deals, supporting drag-and-drop functionality to update deal stages.
+- **Deal Card Modal:** A detailed, full-screen modal for viewing and interacting with deal information, including activity feeds, tasks, editable details, and document placeholders.
+- **Accounts Management:** Features account listing with search and filters, and detailed account views showing associated deals, policies, and activity logs.
+- **Implementation Tracking:** Dual-tab view for WC Bind Journey and PEO/ASO Onboarding, with progress trackers and phase advancement capabilities.
+- **Network Management:** A multi-tab partner directory for Agents, Carriers, PEO Partners, and Vendors, supporting partner details and administrative actions.
+- **Agent Registration:** A public multi-step registration process for agents, with administrative workflows for approval and onboarding.
+- **Resources Library:** A searchable and filterable library of resources (guides, templates, forms), with admin capabilities for adding and deleting resources.
+- **Global Search:** An integrated search functionality accessible from the AppShell header, capable of searching across deals, accounts, partners, and resources.
+- **Client Progressive Unlock:** Dedicated views for employers to manage their program (`/my-program`) and track onboarding progress (`/my-program/onboarding`).
+- **Marketplace:** A vertical-specific marketplace for initiating quotes, accessible to Admin and CSA roles.
+- **Rate Table (R.1):** BIC.csv rate table ingestion system. `wc_rates` DB table with unique constraint on (state, class_code, effective_date). Admin rate lookup UI at `/admin/rates` with state/class code lookup, stats tiles, and paginated rate browser. Import script at `scripts/importBIC.js`. Server-side utility at `artifacts/api-server/src/utils/getWCRate.ts`. SQL function `get_wc_rate(state, classCode)` returns most recent rate. API routes: `/api/wc-rates` (paginated browse), `/api/wc-rates/stats`, `/api/wc-rates/lookup`.
 
-| Role | Route | Nav Items (P4) |
-|------|-------|----------------|
-| Admin | `/dashboard/admin` | Home, Marketplace, Pipeline, Accounts (/accounts), Implementations (/implementations), Billing (/billing), Network, Resources (/resources) |
-| Underwriter | `/dashboard/underwriter` | Home, Pipeline, Accounts |
-| CSA | `/dashboard/csa` | Home, Marketplace, Pipeline, Accounts (/accounts), Implementations (/implementations), Network (/network), Resources (/resources) |
-| Agent | `/dashboard/agent` | Home, Pipeline, Accounts, Resources (/resources) |
-| Employer | `/dashboard/employer` | Home, My Program (/my-program), Onboarding (/my-program/onboarding) |
-| Carrier | `/dashboard/carrier` | Home, Accounts |
-| PEO Partner | `/dashboard/peo` | Home, Network |
-| Vendor | `/dashboard/vendor` | Home, Accounts |
+## External Dependencies
 
-## Design System (Phase 4)
-
-### Rules (Non-Negotiable)
-- **Background**: `#060608` (dark), `#f4f4f5` (light)
-- **Accent**: `#E91E8C` (solid pink) — ONLY accent color, NO gradients anywhere
-- **Glass panels**: `rgba(255,255,255,0.05)` bg, `backdrop-filter: blur(12px)`, `border: 1px solid rgba(255,255,255,0.08)`, `border-radius: 12px`
-- **Typography**: White primary, `rgba(255,255,255,0.5)` secondary/muted (dark mode)
-- **Light/Dark**: Toggle in top-right header. Dark is default. Light mode keeps `#E91E8C` accent.
-
-### Component Library (`/components/ui/`)
-
-All importable from `@/components/ui/axel-index`:
-
-| Component | File | Description |
-|-----------|------|-------------|
-| GlassCard | GlassCard.tsx | Frosted glass panel, theme-aware, accepts className, children, padding |
-| PinkButton | PinkButton.tsx | Solid #E91E8C, white text, hover darkens 10% |
-| GhostButton | GhostButton.tsx | Transparent, #E91E8C border+text, solid fill on hover |
-| StatTile | StatTile.tsx | Glass card with label + large number + optional trend |
-| SectionHeader | SectionHeader.tsx | Page title + optional subtitle |
-| Badge/AxelBadge | AxelBadge.tsx | Status pill with color + label, solid colors only |
-| Modal/AxelModal | AxelModal.tsx | Glassmorphism overlay modal, isOpen/onClose/children |
-| Tooltip/AxelTooltip | AxelTooltip.tsx | Hover tooltip, dark glass surface |
-
-### Layout Components
-
-- **AppShell.tsx** — Main layout shell for all dashboard routes. Collapsible left nav (icons-only collapsed), top header with wordmark/theme toggle/user dropdown, scrollable content area with 24px padding.
-- **DashboardLayout.tsx** — Legacy P3 layout (kept for backwards compat, gradients removed)
-- **AppLayout.tsx** — Light-themed layout for legacy CRUD pages
-- **ProtectedRoute.tsx** — Auth + role guard wrapper
-
-### Theme Store
-
-`lib/theme-store.ts` — Zustand store persisted to localStorage (`axel-theme`). Toggle between `dark` and `light`. AppShell adds/removes `dark`/`light` class on `<html>`.
-
-### Role Config
-
-`lib/role-config.ts` — `NavItem[]` per role with `{ label, path, icon, locked? }`. `ROLE_NAV` record maps `PartyRole` to nav items. Employer has `locked: true` on "My Program".
-
-## Frontend Pages
-
-### Dashboard Pages (Dark/Light Theme via AppShell)
-8 role-based dashboards under `/dashboard/{role}`, each using AppShell with StatTile, GlassCard, SectionHeader, AxelBadge from the component library.
-
-### Pipeline (Phase 6)
-- **`/pipeline`** — 8-stage Kanban board (Submission Review → Indication → U/W Review → Approved/Quoted → Bind Order → Bound → Client → Lost). Accessible to Admin, CSA, Agent, Underwriter.
-- Each column is 280px wide, horizontally scrollable, with deal count badges.
-- Deal cards show business name, vertical with icon, WC/PEO badge, WC Premium, PEPM (PEO only), team avatars.
-- "New Deal" button opens modal form (Business Name, Vertical, Quote Type, State, Payroll, Employees, Assigned To).
-- HTML5 drag-and-drop between columns updates deal stage via API.
-- Stage 9 (Bound) drop logs implementation trigger to console.
-- Click card opens DealCardModal (Phase 7).
-
-### Deal Card Modal (Phase 7)
-- **`DealCardModal.tsx`** — Full-screen overlay modal opened by clicking any deal card on the Pipeline Kanban board.
-- **Layout**: Two-column — left (65%) has activity feed + tasks, right (35%) has deal details + documents.
-- **Header**: Business name, vertical badge (WC/PEO), stage indicator, "Advance Stage" button, team avatars, close button.
-- **Activity Feed**: Shows timestamped activity entries (stage changes, notes, task events). Note input with @ mention support and "Post" button.
-- **Tasks**: Task list with checkboxes (toggle complete/open), "Add Task" inline form, "Use Template" with 3 preset templates (WC New Business, PEO Onboarding, Renewal).
-- **Deal Details**: Editable fields (Business Name, State, Annual Payroll, Headcount) via "Edit Details" toggle. Read-only view shows all deal fields.
-- **Listener Email**: Auto-generated on deal creation (`slug@listener.axel.io`), displayed with copy button.
-- **Documents**: Placeholder section for future file storage integration.
-- **API Routes**: `POST /deals/:id/activity`, `GET/POST /deals/:id/email`, plus existing `GET /deals/:id/tasks`, `GET /deals/:id/activity`.
-- **Stage Advance**: Updates deal stage via PATCH and logs activity entry. Kanban board refreshes on close.
-
-### Accounts (Phase 8)
-- **`/accounts`** — Account list with search, status filters (All/Active Client/Prospect/Inactive), 2-column card grid. New Account modal. Accessible to Admin, CSA.
-- **`/accounts/:id`** — Account detail with two-column layout: business info (editable), associated deals (clickable → DealCardModal), policies, contact info, account status, notes, activity log.
-
-### Implementations (Phase 8)
-- **`/implementations`** — Dual-tab view: "WC Bind Journey" (4 phases) and "PEO / ASO Onboarding" (5 phases). Shows tracker cards with progress bars (#E91E8C solid fill), phase labels, days elapsed, "Advance Phase" button.
-- Auto-creates trackers when a deal is dropped to BOUND stage in Pipeline Kanban. Completed trackers auto-advance deal to CLIENT stage.
-
-### Billing (Phase 8)
-- **`/billing`** — Admin-only. Two tabs: "WC Premiums" (policies list with stat tiles) and "Workforce Solutions Fees" (PEO clients with PEPM data). Search filter and CSV export button.
-
-### Network (Phase 9)
-- **`/network`** — Four-tab partner directory (Agents, Carriers, PEO Partners, Vendors). Accessible to Admin, CSA.
-- Each tab shows partner cards with status badges (Active=#1EE97B, Pending=#E9C31E, Suspended=#E91E1E). "Add Partner" modal.
-- **`/network/agents/:id`** — Agent detail: profile, contact, registration status, commission summary (placeholder), associated deals. Edit & Suspend Agent actions.
-- **`/network/carriers/:id`** — Carrier detail: AM Best rating, appetite notes, contact info, bound policies list. Edit action.
-- **`/network/peo/:id`** — PEO Partner detail: program name, verticals served, WC bundled discount rate (editable), client organizations. Edit action.
-- Vendors tab has inline editing directly on cards (no detail page).
-
-### Agent Registration (Phase 9)
-- **`/register/agent`** — Public route (no auth). Multi-step registration: name, agency, NPN, license states, email, phone. Submits to agent_registrations table with PENDING_REVIEW status.
-- **`/register/agent/agreement/:id`** — Agreement signing placeholder (HelloSign integration — coming soon).
-- **`/register/agent/onboarding/:id`** — Onboarding call scheduling placeholder (Calendly integration — coming soon).
-- **Admin dashboard** shows "Agent Applications" panel with pending registrations. Admin can Approve (→ Agreement Pending), Mark Call Complete (→ Credentials Pending), Issue Credentials (creates partner record, sets status to Active).
-- Registration statuses: PENDING_REVIEW → AGREEMENT_PENDING → ONBOARDING_CALL_PENDING → CREDENTIALS_PENDING → ACTIVE (or REJECTED).
-
-### Resources (Phase 10)
-- **`/resources`** — Resource library with search, category filters (All/Guides/Templates/Forms/Training/Marketing), 3-column card grid. Accessible to Admin, CSA, Agent.
-- Each card shows title, category badge, description, file type icon, View/Download button.
-- Admin sees "Add Resource" button (modal with title, category, type, description, file URL).
-- Admin can delete resources (Trash2 icon on hover).
-- 8 seeded resources across categories.
-
-### Global Search (Phase 10)
-- Search icon in AppShell header (visible on all authenticated screens).
-- Clicking opens full-width glassmorphism overlay.
-- Searches across deals, accounts, partners, resources via `/api/search`.
-- Results grouped by type with section headers. 300ms debounce.
-- ESC key or click outside closes overlay.
-
-### Client Progressive Unlock (Phase 10)
-- **`/my-program`** — Client program view with WC/PEO tabs. Shows policy summary, coverage details, team contact info.
-- **`/my-program/onboarding`** — Read-only onboarding progress with client-friendly phase labels and encouragement messaging.
-- **`/welcome`** — Prospect holding screen (no auth required). Full-screen "Your program is being prepared" message.
-- `client_stage` column on accounts table: Prospect, Active Prospect, New Client, Active Client.
-- Employer role nav shows Home, My Program, Onboarding.
-
-### Marketplace (Phase 5)
-- **`/marketplace`** — Vertical card grid with 8 industry verticals (Cannabis, Construction, Staffing, Healthcare, Hospitality, Transportation, Manufacturing, Retail). Each card has WC Quote and PEO Quote buttons. Accessible to Admin and CSA only.
-- **`/marketplace/quote/new`** — Quote initiation form (Business Name, State, Annual Payroll with currency formatting, Employee Count, Class Code, EMod, Schedule Rating). "Calculate Quote" logs form state to console. Redirects to `/marketplace` if accessed without route state.
-
-### Legacy Pages (Light Theme)
-Sidebar layout (`AppLayout.tsx`) with 12 navigation items at `/organizations`, `/deals`, `/policies`, etc.
-
-## Running the App
-
-Both frontend and backend start via their respective workflows:
-- **Frontend**: `pnpm --filter @workspace/axel-workforce-os run dev` (Vite dev server)
-- **Backend**: `pnpm --filter @workspace/api-server run dev` (Express server)
-
-## GitHub
-
-Repository: https://github.com/Beaxai/axel-workforce-os (main branch)
+- **PostgreSQL:** Primary database for all application data.
+- **Socket.IO:** Used for real-time communication between the frontend and backend.
+- **GitHub:** Project repository is hosted on GitHub.
+- **HelloSign (planned):** For agreement signing in agent registration.
+- **Calendly (planned):** For onboarding call scheduling in agent registration.

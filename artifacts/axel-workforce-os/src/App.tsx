@@ -42,6 +42,7 @@ import AgentRegister from "@/pages/register/AgentRegister";
 import AgentAgreement from "@/pages/register/AgentAgreement";
 import AgentOnboarding from "@/pages/register/AgentOnboarding";
 import Resources from "@/pages/Resources";
+import RateLookup from "@/pages/RateLookup";
 import MyProgram from "@/pages/MyProgram";
 import ClientOnboarding from "@/pages/ClientOnboarding";
 import Welcome from "@/pages/Welcome";
@@ -81,6 +82,7 @@ function App() {
             >
               <Route path="/dashboard/admin" element={<AdminDashboard />} />
               <Route path="/dashboard/admin/*" element={<AdminDashboard />} />
+              <Route path="/admin/rates" element={<RateLookup />} />
             </Route>
 
             <Route
