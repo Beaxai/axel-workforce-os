@@ -13,7 +13,7 @@ export const dealsTable = pgTable("deals", {
   ownerId: uuid("owner_id").references(() => usersTable.id),
   producingAgentId: uuid("producing_agent_id").references(() => usersTable.id),
   referralPartnerId: uuid("referral_partner_id").references(() => usersTable.id),
-  stage: text("stage").default("NEW_LEAD"),
+  stage: text("stage").default("SUBMISSION_REVIEW"),
   productType: text("product_type"),
   vertical: text("vertical"),
   state: text("state"),

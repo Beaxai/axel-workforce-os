@@ -53,7 +53,7 @@ CREATE TABLE deals (
   owner_id uuid REFERENCES users(id),
   producing_agent_id uuid REFERENCES users(id),
   referral_partner_id uuid REFERENCES users(id),
-  stage text DEFAULT 'NEW_LEAD',
+  stage text DEFAULT 'SUBMISSION_REVIEW',
   product_type text,
   vertical text,
   state text,

@@ -39,16 +39,14 @@ interface Deal {
 }
 
 const STAGES = [
-  { num: 1, key: "NEW_LEAD", label: "New Lead" },
-  { num: 2, key: "QUALIFIED", label: "Qualified" },
-  { num: 3, key: "NEEDS_ANALYSIS", label: "Needs Analysis" },
-  { num: 4, key: "PROPOSAL_SENT", label: "Proposal Sent" },
-  { num: 5, key: "NEGOTIATION", label: "Negotiation" },
-  { num: 6, key: "DECISION_PENDING", label: "Decision Pending" },
-  { num: 7, key: "COMMITTED", label: "Committed" },
-  { num: 8, key: "DOCUMENTATION", label: "Documentation" },
-  { num: 9, key: "BOUND", label: "Bound" },
-  { num: 10, key: "CLIENT", label: "Client" },
+  { num: 1, key: "SUBMISSION_REVIEW", label: "Submission Review" },
+  { num: 2, key: "INDICATION", label: "Indication" },
+  { num: 3, key: "UW_REVIEW", label: "U/W Review" },
+  { num: 4, key: "APPROVED_QUOTED", label: "Approved / Quoted" },
+  { num: 5, key: "BIND_ORDER", label: "Bind Order" },
+  { num: 6, key: "BOUND", label: "Bound" },
+  { num: 7, key: "CLIENT", label: "Client" },
+  { num: 8, key: "LOST", label: "Lost" },
 ];
 
 const VERTICALS = [
@@ -144,7 +142,7 @@ export default function Pipeline() {
   }, [fetchDeals]);
 
   const dealsByStage = (stageKey: string) =>
-    deals.filter((d) => (d.stage || "NEW_LEAD") === stageKey);
+    deals.filter((d) => (d.stage || "SUBMISSION_REVIEW") === stageKey);
 
   const totalDeals = deals.length;
   const totalWcPremium = deals.reduce((sum, d) => {
@@ -164,7 +162,7 @@ export default function Pipeline() {
         state: form.state,
         annualPayroll: form.annualPayroll || undefined,
         employeeCountFt: form.employeeCountFt ? parseInt(form.employeeCountFt) : undefined,
-        stage: "NEW_LEAD",
+        stage: "SUBMISSION_REVIEW",
       };
       if (form.assignedTo) {
         payload.ownerId = form.assignedTo;

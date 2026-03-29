@@ -146,7 +146,7 @@ All importable from `@/components/ui/axel-index`:
 8 role-based dashboards under `/dashboard/{role}`, each using AppShell with StatTile, GlassCard, SectionHeader, AxelBadge from the component library.
 
 ### Pipeline (Phase 6)
-- **`/pipeline`** — 10-stage Kanban board (New Lead → Client). Accessible to Admin, CSA, Agent, Underwriter.
+- **`/pipeline`** — 8-stage Kanban board (Submission Review → Indication → U/W Review → Approved/Quoted → Bind Order → Bound → Client → Lost). Accessible to Admin, CSA, Agent, Underwriter.
 - Each column is 280px wide, horizontally scrollable, with deal count badges.
 - Deal cards show business name, vertical with icon, WC/PEO badge, WC Premium, PEPM (PEO only), team avatars.
 - "New Deal" button opens modal form (Business Name, Vertical, Quote Type, State, Payroll, Employees, Assigned To).
