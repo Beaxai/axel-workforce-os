@@ -1,6 +1,6 @@
-import { readFileSync } from "fs";
 import { resolve } from "path";
 import pg from "pg";
+import XLSX from "xlsx";
 
 const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) {
@@ -8,17 +8,27 @@ if (!DATABASE_URL) {
   process.exit(1);
 }
 
-const csvPath = resolve(process.cwd(), "BIC.csv");
-let csvData;
+const xlsxPath = resolve(process.cwd(), "Benchmark - Cannabis Rates 11-25 (1).xlsx");
+let wb;
 try {
-  csvData = readFileSync(csvPath, "utf-8");
+  wb = XLSX.readFile(xlsxPath);
 } catch {
-  console.error(`BIC.csv not found at ${csvPath}`);
+  console.error(`Excel file not found at ${xlsxPath}`);
   process.exit(1);
 }
 
-const lines = csvData.split("\n").map((l) => l.trim()).filter(Boolean);
-const header = lines[0].split(",").map((h) => h.trim());
+const sheetName = process.argv[2] || "BIC";
+const ws = wb.Sheets[sheetName];
+if (!ws) {
+  console.error(`Sheet "${sheetName}" not found. Available: ${wb.SheetNames.join(", ")}`);
+  process.exit(1);
+}
+
+console.log(`Importing sheet: ${sheetName}`);
+console.log(`Available sheets: ${wb.SheetNames.join(", ")}`);
+
+const rawData = XLSX.utils.sheet_to_json(ws, { header: 1 });
+const header = rawData[0].map((h) => String(h).trim());
 const stateIdx = header.indexOf("State");
 const dateIdx = header.indexOf("EffectiveDate");
 const codeIdx = header.indexOf("ClassCode");
@@ -26,24 +36,36 @@ const descIdx = header.indexOf("Description");
 const rateIdx = header.indexOf("Base Rate");
 
 if ([stateIdx, dateIdx, codeIdx, rateIdx].includes(-1)) {
-  console.error("CSV header missing required columns. Found:", header);
+  console.error("Sheet header missing required columns. Found:", header);
   process.exit(1);
+}
+
+function excelDateToISO(serial) {
+  if (typeof serial === "string") {
+    const d = new Date(serial);
+    if (!isNaN(d.getTime())) return d.toISOString().split("T")[0];
+    return null;
+  }
+  if (typeof serial === "number") {
+    const utcDays = Math.floor(serial - 25569);
+    const d = new Date(utcDays * 86400000);
+    return d.toISOString().split("T")[0];
+  }
+  return null;
 }
 
 const rows = [];
 let skipped = 0;
 
-for (let i = 1; i < lines.length; i++) {
-  const parts = parseCSVLine(lines[i]);
-  const state = (parts[stateIdx] || "").trim();
-  const effDateRaw = (parts[dateIdx] || "").trim();
-  const classCode = (parts[codeIdx] || "").trim();
-  const desc = (parts[descIdx] || "").trim();
-  const rateRaw = (parts[rateIdx] || "").trim().replace(/[$%]/g, "");
+for (let i = 1; i < rawData.length; i++) {
+  const r = rawData[i];
+  const state = String(r[stateIdx] || "").trim();
+  const classCode = String(r[codeIdx] || "").trim();
+  const desc = String(r[descIdx] || "").trim();
+  const rateRaw = String(r[rateIdx] || "").trim().replace(/[$%]/g, "");
 
   if (!state || !classCode || !rateRaw) {
     skipped++;
-    console.log(`Skipped row ${i + 1}: missing required field`);
     continue;
   }
 
@@ -54,53 +76,35 @@ for (let i = 1; i < lines.length; i++) {
     continue;
   }
 
-  const effDate = parseDate(effDateRaw);
+  const effDate = excelDateToISO(r[dateIdx]);
   if (!effDate) {
     skipped++;
-    console.log(`Skipped row ${i + 1}: invalid date "${effDateRaw}"`);
+    console.log(`Skipped row ${i + 1}: invalid date "${r[dateIdx]}"`);
     continue;
   }
 
   rows.push({ state, effectiveDate: effDate, classCode, description: desc || null, baseRate });
 }
 
-function parseCSVLine(line) {
-  const result = [];
-  let current = "";
-  let inQuotes = false;
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i];
-    if (ch === '"') {
-      inQuotes = !inQuotes;
-    } else if (ch === "," && !inQuotes) {
-      result.push(current);
-      current = "";
-    } else {
-      current += ch;
-    }
-  }
-  result.push(current);
-  return result;
+const deduped = new Map();
+for (const row of rows) {
+  const key = `${row.state}|${row.classCode}|${row.effectiveDate}`;
+  deduped.set(key, row);
 }
-
-function parseDate(raw) {
-  if (!raw) return null;
-  const d = new Date(raw);
-  if (isNaN(d.getTime())) return null;
-  return d.toISOString().split("T")[0];
-}
+const uniqueRows = Array.from(deduped.values());
+console.log(`Deduplicated: ${rows.length} → ${uniqueRows.length} unique rows`);
 
 async function main() {
   const client = new pg.Client({ connectionString: DATABASE_URL });
   await client.connect();
 
-  console.log(`Parsed ${rows.length} valid rows, ${skipped} skipped`);
+  console.log(`Inserting ${uniqueRows.length} unique rows...`);
 
   const BATCH = 500;
   let inserted = 0;
 
-  for (let i = 0; i < rows.length; i += BATCH) {
-    const batch = rows.slice(i, i + BATCH);
+  for (let i = 0; i < uniqueRows.length; i += BATCH) {
+    const batch = uniqueRows.slice(i, i + BATCH);
     const values = [];
     const params = [];
     let paramIdx = 1;
@@ -121,7 +125,7 @@ async function main() {
 
     await client.query(query, params);
     inserted += batch.length;
-    if (i % 5000 === 0) console.log(`Progress: ${inserted}/${rows.length}`);
+    if (i % 5000 === 0) console.log(`Progress: ${inserted}/${uniqueRows.length}`);
   }
 
   console.log(`\nImport complete:`);
