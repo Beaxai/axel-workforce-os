@@ -4,6 +4,30 @@ import { eq, and, desc, ilike, sql, count, countDistinct } from "drizzle-orm";
 
 const router: IRouter = Router();
 
+router.get("/class-codes/search", async (req, res) => {
+  const { q = "", state: stateFilter } = req.query;
+  const searchTerm = String(q).trim();
+  if (searchTerm.length < 1) return res.json([]);
+
+  const conditions = [];
+  conditions.push(
+    sql`(${wcRatesTable.classCode} ILIKE ${`%${searchTerm}%`} OR ${wcRatesTable.description} ILIKE ${`%${searchTerm}%`})`
+  );
+  if (stateFilter) conditions.push(eq(wcRatesTable.state, String(stateFilter)));
+
+  const rows = await db
+    .selectDistinctOn([wcRatesTable.classCode], {
+      classCode: wcRatesTable.classCode,
+      description: wcRatesTable.description,
+    })
+    .from(wcRatesTable)
+    .where(conditions.length === 1 ? conditions[0] : and(...conditions))
+    .orderBy(wcRatesTable.classCode)
+    .limit(50);
+
+  res.json(rows);
+});
+
 router.get("/stats", async (_req, res) => {
   const [totalResult] = await db.select({ total: count() }).from(wcRatesTable);
   const [statesResult] = await db.select({ states: countDistinct(wcRatesTable.state) }).from(wcRatesTable);
