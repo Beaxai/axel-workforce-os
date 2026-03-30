@@ -143,7 +143,7 @@ export default function ServiceTypeSelect() {
             title="Standalone Workers' Compensation"
             subtitle="Traditional WC policy with competitive rates"
             features={WC_FEATURES}
-            turnaround="Est. 2-3 business days for indication"
+            turnaround="Instant Price Indication!"
             isSelected={selected.has("WC")}
             onToggle={() => toggleCard("WC")}
           />
