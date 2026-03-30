@@ -51,8 +51,8 @@ export default function ServiceTypeSelect() {
   const handleContinue = () => {
     if (selected.size === 0) return;
     const quoteType = selected.has("WC") && selected.has("PEO") ? "PEO+WC" : selected.has("PEO") ? "PEO" : "WC";
-    navigate("/marketplace/quote/new", {
-      state: { vertical, quoteType },
+    navigate("/marketplace/quote/wizard", {
+      state: { vertical, coverageType: quoteType },
     });
   };
 

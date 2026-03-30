@@ -30,6 +30,7 @@ import VendorDashboard from "@/pages/dashboard/VendorDashboard";
 import Marketplace from "@/pages/Marketplace";
 import ServiceTypeSelect from "@/pages/ServiceTypeSelect";
 import QuoteNew from "@/pages/QuoteNew";
+import QuoteWizard from "@/pages/quote-flow/QuoteWizard";
 import Pipeline from "@/pages/Pipeline";
 import Accounts from "@/pages/Accounts";
 import AccountDetail from "@/pages/AccountDetail";
@@ -177,6 +178,7 @@ function App() {
               <Route path="/marketplace" element={<Marketplace />} />
               <Route path="/marketplace/quote/service-type" element={<ServiceTypeSelect />} />
               <Route path="/marketplace/quote/new" element={<QuoteNew />} />
+              <Route path="/marketplace/quote/wizard" element={<QuoteWizard />} />
             </Route>
 
             <Route
