@@ -48,5 +48,7 @@ import submissionRouter from "./submission";
 router.use("/submission", submissionRouter);
 import lossHistoryRouter from "./loss-history";
 router.use("/loss-history", lossHistoryRouter);
+import proposalsRouter from "./proposals";
+router.use("/proposals", proposalsRouter);
 
 export default router;

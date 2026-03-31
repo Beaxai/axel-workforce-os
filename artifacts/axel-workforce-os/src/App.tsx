@@ -46,6 +46,7 @@ import AgentOnboarding from "@/pages/register/AgentOnboarding";
 import Resources from "@/pages/Resources";
 import RateLookup from "@/pages/RateLookup";
 import SubmissionPage from "@/pages/SubmissionPage";
+import ProposalScreen from "@/pages/ProposalScreen";
 import MyProgram from "@/pages/MyProgram";
 import ClientOnboarding from "@/pages/ClientOnboarding";
 import Welcome from "@/pages/Welcome";
@@ -190,6 +191,7 @@ function App() {
               }
             >
               <Route path="/submission" element={<SubmissionPage />} />
+              <Route path="/proposal" element={<ProposalScreen />} />
             </Route>
 
             <Route

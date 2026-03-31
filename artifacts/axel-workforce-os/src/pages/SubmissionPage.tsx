@@ -1,13 +1,14 @@
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, FileText, Upload, FileSignature } from "lucide-react";
+import { ArrowLeft, FileText, Upload, FileSignature, FileCheck } from "lucide-react";
 import SubmissionFlow from "@/components/submission/SubmissionFlow";
 import LossHistoryUpload from "@/components/submission/LossHistoryUpload";
 import RequestBindButton from "@/components/submission/RequestBindButton";
+import ProposalTab from "@/components/submission/ProposalTab";
 
 const accent = "#E91E8C";
 
-type Tab = "application" | "loss-history" | "bind";
+type Tab = "application" | "loss-history" | "proposal" | "bind";
 
 export default function SubmissionPage() {
   const [searchParams] = useSearchParams();
@@ -36,6 +37,7 @@ export default function SubmissionPage() {
   const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
     { key: "application", label: "Application", icon: <FileText size={16} /> },
     { key: "loss-history", label: "Loss History", icon: <Upload size={16} /> },
+    { key: "proposal", label: "Proposal", icon: <FileCheck size={16} /> },
     { key: "bind", label: "Bind Request", icon: <FileSignature size={16} /> },
   ];
 
@@ -165,6 +167,10 @@ export default function SubmissionPage() {
 
       {activeTab === "loss-history" && dealId && (
         <LossHistoryUpload dealId={dealId} />
+      )}
+
+      {activeTab === "proposal" && dealId && (
+        <ProposalTab dealId={dealId} dealName={dealName} />
       )}
 
       {activeTab === "bind" && dealId && (

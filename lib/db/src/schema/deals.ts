@@ -48,6 +48,7 @@ export const dealsTable = pgTable("deals", {
   verticalId: text("vertical_id"),
   hasPriorCoverage: boolean("has_prior_coverage").default(false),
   submissionStatus: text("submission_status").default("not_started"),
+  proposalStatus: text("proposal_status").default("none"),
 });
 
 export const insertDealSchema = createInsertSchema(dealsTable).omit({ id: true, createdAt: true });

@@ -123,7 +123,7 @@ function formatCurrency(val: string | number | undefined | null): string {
   return n.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0 });
 }
 
-type TabKey = "activity" | "quote";
+type TabKey = "activity" | "quote" | "proposal";
 
 export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }: DealCardModalProps) {
   const { theme } = useThemeStore();
@@ -407,6 +407,7 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
   const tabs: { key: TabKey; label: string; icon: any }[] = [
     { key: "activity", label: "Activity & Tasks", icon: Clock },
     { key: "quote", label: "Quote", icon: Calculator },
+    { key: "proposal", label: "Proposal", icon: FileText },
   ];
 
   return (
@@ -871,6 +872,10 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
                 )}
               </div>
             )}
+
+            {activeTab === "proposal" && (
+              <ProposalTabInline dealId={dealId} />
+            )}
           </div>
 
           {/* RIGHT COLUMN */}
@@ -1070,6 +1075,164 @@ function DetailField({ label, isDark, children }: { label: string; isDark: boole
         {label}
       </span>
       {children}
+    </div>
+  );
+}
+
+function ProposalTabInline({ dealId }: { dealId: string }) {
+  const [proposal, setProposal] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
+  const [errMsg, setErrMsg] = useState("");
+
+  useEffect(() => {
+    load();
+  }, [dealId]);
+
+  async function load() {
+    setLoading(true);
+    try {
+      const data = await api.get<{ proposal: any }>(`/proposals/${dealId}`);
+      setProposal(data.proposal);
+    } catch {
+      setProposal(null);
+    }
+    setLoading(false);
+  }
+
+  async function handleCreate() {
+    setCreating(true);
+    setErrMsg("");
+    try {
+      const data = await api.post<{ success: boolean; proposal: any }>(`/proposals/${dealId}/create-from-quote`, {});
+      setProposal(data.proposal);
+    } catch (err: any) {
+      setErrMsg(err.message || "Failed to generate proposal. Make sure a quote exists.");
+    }
+    setCreating(false);
+  }
+
+  function fmt(val: string | null) {
+    if (!val) return "\u2014";
+    const n = Number(val);
+    return isNaN(n) ? "\u2014" : `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
+
+  function fmtDate(d: string | null) {
+    if (!d) return "\u2014";
+    return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  }
+
+  if (loading) {
+    return (
+      <div style={{ padding: "40px 20px", textAlign: "center", color: "rgba(255,255,255,0.4)", fontSize: 14 }}>
+        Loading proposal...
+      </div>
+    );
+  }
+
+  if (!proposal) {
+    return (
+      <div style={{ padding: "40px 20px", textAlign: "center" }}>
+        <FileText style={{ width: 40, height: 40, color: "rgba(255,255,255,0.2)", marginBottom: 12 }} />
+        <p style={{ fontSize: 15, color: "#fff", margin: "0 0 8px" }}>No proposal yet</p>
+        <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", margin: "0 0 16px" }}>
+          Generate a proposal from the deal's quote data.
+        </p>
+        <button
+          type="button"
+          onClick={handleCreate}
+          disabled={creating}
+          style={{
+            display: "inline-flex", alignItems: "center", gap: 8,
+            padding: "10px 22px", borderRadius: 8, border: "none",
+            background: "#E91E8C", color: "#fff", cursor: creating ? "not-allowed" : "pointer",
+            fontSize: 14, fontWeight: 600,
+          }}
+        >
+          {creating ? "Creating..." : "Generate Proposal"}
+        </button>
+        {errMsg && (
+          <p style={{ marginTop: 12, color: "#ff4d4f", fontSize: 13 }}>{errMsg}</p>
+        )}
+      </div>
+    );
+  }
+
+  const statusMap: Record<string, { label: string; color: string }> = {
+    draft: { label: "Draft", color: "rgba(255,255,255,0.5)" },
+    approved_proposal_requested: { label: "UW Submitted", color: "#ffb74d" },
+    underwriting_notified: { label: "UW Notified", color: "#4caf50" },
+    accepted: { label: "Accepted", color: "#4caf50" },
+    declined: { label: "Declined", color: "#ff4d4f" },
+  };
+  const st = statusMap[proposal.status] || statusMap.draft;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div>
+          <h3 style={{ fontSize: 16, fontWeight: 600, color: "#fff", margin: "0 0 2px" }}>
+            {proposal.programName || "Workers' Comp Proposal"}
+          </h3>
+          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", margin: 0 }}>
+            {proposal.carrierName || "Carrier TBD"} {"\u00b7"} {fmtDate(proposal.createdAt)}
+          </p>
+        </div>
+        <span style={{
+          padding: "4px 12px", borderRadius: 16, fontSize: 11, fontWeight: 600,
+          color: st.color, background: `${st.color}18`, border: `1px solid ${st.color}33`,
+        }}>
+          {st.label}
+        </span>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+        {[
+          { label: "WC Annual", value: fmt(proposal.wcAnnualPremium), accent: true },
+          { label: "WC Monthly", value: fmt(proposal.wcMonthlyPremium) },
+          { label: "WFS PEPM", value: fmt(proposal.wfsMonthlyPepm) },
+        ].map((c) => (
+          <div key={c.label} style={{
+            background: "rgba(255,255,255,0.04)",
+            border: `1px solid ${c.accent ? "rgba(233,30,140,0.2)" : "rgba(255,255,255,0.06)"}`,
+            borderRadius: 8, padding: "12px 14px",
+          }}>
+            <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 10, textTransform: "uppercase", margin: "0 0 4px", letterSpacing: "0.3px" }}>{c.label}</p>
+            <p style={{ color: c.accent ? "#E91E8C" : "#fff", fontSize: 18, fontWeight: 700, margin: 0 }}>{c.value}</p>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 8, padding: "12px 14px" }}>
+          <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 10, textTransform: "uppercase", margin: "0 0 4px" }}>Total Monthly</p>
+          <p style={{ color: "#fff", fontSize: 18, fontWeight: 700, margin: 0 }}>{fmt(proposal.totalMonthly)}</p>
+        </div>
+        <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 8, padding: "12px 14px" }}>
+          <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 10, textTransform: "uppercase", margin: "0 0 4px" }}>Total Annual</p>
+          <p style={{ color: "#fff", fontSize: 18, fontWeight: 700, margin: 0 }}>{fmt(proposal.totalAnnual)}</p>
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+        <div>
+          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>Effective</span>
+          <p style={{ fontSize: 13, color: "#fff", margin: "2px 0 0", fontWeight: 500 }}>{fmtDate(proposal.effectiveDate)}</p>
+        </div>
+        <div>
+          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>Expiration</span>
+          <p style={{ fontSize: 13, color: "#fff", margin: "2px 0 0", fontWeight: 500 }}>{fmtDate(proposal.expirationDate)}</p>
+        </div>
+        <div>
+          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>EMod</span>
+          <p style={{ fontSize: 13, color: "#fff", margin: "2px 0 0", fontWeight: 500 }}>{proposal.emod ? `${proposal.emod}x` : "\u2014"}</p>
+        </div>
+        <div>
+          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>Carrier</span>
+          <p style={{ fontSize: 13, color: "#fff", margin: "2px 0 0", fontWeight: 500 }}>{proposal.carrierName || "\u2014"}</p>
+        </div>
+      </div>
     </div>
   );
 }
