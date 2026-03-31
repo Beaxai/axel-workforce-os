@@ -85,6 +85,8 @@ export const bindDocumentPackagesTable = pgTable("bind_document_packages", {
   lossHistoryIncluded: boolean("loss_history_included").default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).default(sql`now()`),
   updatedAt: timestamp("updated_at", { withTimezone: true }).default(sql`now()`),
+  signatureRequestId: uuid("signature_request_id"),
+  hellosignSignatureRequestId: text("hellosign_signature_request_id"),
 }, (t) => [
   index("idx_bind_packages_deal").on(t.dealId),
 ]);

@@ -25,3 +25,4 @@ export * from "./employees";
 export * from "./workforce";
 export * from "./submission";
 export * from "./proposals";
+export * from "./signatures";

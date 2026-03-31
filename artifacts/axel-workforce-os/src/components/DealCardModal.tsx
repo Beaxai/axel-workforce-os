@@ -19,7 +19,9 @@ import {
   Clock,
   User,
   Calculator,
+  FileSignature,
 } from "lucide-react";
+import BindStatusPanel from "@/components/submission/BindStatusPanel";
 
 const STAGES = [
   { num: 1, key: "SUBMISSION_REVIEW", label: "Submission Review" },
@@ -76,6 +78,7 @@ interface Deal {
   stage?: string;
   wcPremium?: string;
   wfsPepmRate?: string;
+  bindStatus?: string;
 }
 
 interface ActivityEntry {
@@ -123,7 +126,7 @@ function formatCurrency(val: string | number | undefined | null): string {
   return n.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0 });
 }
 
-type TabKey = "activity" | "quote" | "proposal";
+type TabKey = "activity" | "quote" | "proposal" | "bind";
 
 export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }: DealCardModalProps) {
   const { theme } = useThemeStore();
@@ -408,6 +411,7 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
     { key: "activity", label: "Activity & Tasks", icon: Clock },
     { key: "quote", label: "Quote", icon: Calculator },
     { key: "proposal", label: "Proposal", icon: FileText },
+    { key: "bind", label: "Bind", icon: FileSignature },
   ];
 
   return (
@@ -875,6 +879,12 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
 
             {activeTab === "proposal" && (
               <ProposalTabInline dealId={dealId} />
+            )}
+
+            {activeTab === "bind" && (
+              <div style={{ padding: "0 4px" }}>
+                <BindStatusPanel dealId={dealId} bindStatus={deal?.bindStatus || "not_started"} />
+              </div>
             )}
           </div>
 

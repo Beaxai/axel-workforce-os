@@ -5,6 +5,8 @@ import SubmissionFlow from "@/components/submission/SubmissionFlow";
 import LossHistoryUpload from "@/components/submission/LossHistoryUpload";
 import RequestBindButton from "@/components/submission/RequestBindButton";
 import ProposalTab from "@/components/submission/ProposalTab";
+import BindStatusPanel from "@/components/submission/BindStatusPanel";
+import UwFileViewer from "@/components/submission/UwFileViewer";
 
 const accent = "#E91E8C";
 
@@ -174,7 +176,7 @@ export default function SubmissionPage() {
       )}
 
       {activeTab === "bind" && dealId && (
-        <div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
           <div
             style={{
               background: "#13131f",
@@ -196,6 +198,10 @@ export default function SubmissionPage() {
               submissionStatus={submissionStatus}
             />
           </div>
+
+          <BindStatusPanel dealId={dealId} />
+
+          <UwFileViewer dealId={dealId} />
         </div>
       )}
     </div>

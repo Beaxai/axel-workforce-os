@@ -50,5 +50,13 @@ import lossHistoryRouter from "./loss-history";
 router.use("/loss-history", lossHistoryRouter);
 import proposalsRouter from "./proposals";
 router.use("/proposals", proposalsRouter);
+import signaturesRouter from "./signatures";
+router.use("/signatures", signaturesRouter);
+import documentsRouter from "./documents";
+router.use("/documents", documentsRouter);
+router.use("/bind-packages", (req, res, next) => {
+  req.url = "/bind-package" + req.url;
+  documentsRouter(req, res, next);
+});
 
 export default router;

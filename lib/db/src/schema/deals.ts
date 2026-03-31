@@ -49,6 +49,9 @@ export const dealsTable = pgTable("deals", {
   hasPriorCoverage: boolean("has_prior_coverage").default(false),
   submissionStatus: text("submission_status").default("not_started"),
   proposalStatus: text("proposal_status").default("none"),
+  bindStatus: text("bind_status").default("not_started"),
+  boundAt: timestamp("bound_at", { withTimezone: true }),
+  signedDocumentsPath: text("signed_documents_path"),
 });
 
 export const insertDealSchema = createInsertSchema(dealsTable).omit({ id: true, createdAt: true });

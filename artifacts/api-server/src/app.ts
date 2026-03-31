@@ -30,6 +30,10 @@ app.use(
   }),
 );
 app.use(cors());
+
+import webhooksRouter from "./routes/webhooks";
+app.use("/webhooks", webhooksRouter);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

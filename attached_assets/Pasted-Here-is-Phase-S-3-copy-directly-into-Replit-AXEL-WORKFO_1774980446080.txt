@@ -1,0 +1,1353 @@
+Here is Phase S.3 — copy directly into Replit.
+
+AXEL WORKFORCE OS — Phase S.3: HelloSign Bind Package Signature Flow, Underwriter File Viewer, Webhook Handler & Deal Card Bind Status
+
+CONTEXT
+Continuing build on Axel Workforce OS. Tech stack: React frontend, Node.js backend, Supabase database, Railway hosting. Design system: dark glassmorphism, background #060608, sole accent #E91E8C (solid, no gradients), panels rgba(255,255,255,0.05) / blur(12px) / 1px solid rgba(255,255,255,0.08). Lucide React icons only. No external UI component libraries.
+This phase depends on S.1 and S.2 being complete. The following must already exist: bind_document_packages, underwriting_packages, proposals, submission_answers, loss_history_documents, activity_log, deals, underwriting-documents Supabase Storage bucket, generateBindPackage service, sendUwSubmissionPackage service.
+
+PART 1 — ENVIRONMENT VARIABLES
+Add to .env and Railway environment config:
+HELLOSIGN_API_KEY=your_hellosign_api_key_here
+HELLOSIGN_CLIENT_ID=your_hellosign_client_id_here
+HELLOSIGN_WEBHOOK_SECRET=your_hellosign_webhook_secret_here
+HELLOSIGN_TEST_MODE=1
+# Set HELLOSIGN_TEST_MODE=0 in production
+Install the HelloSign SDK:
+bashnpm install @hellosign/openapi-javascript-sdk
+
+PART 2 — DATABASE SCHEMA ADDITIONS
+Run in Supabase SQL editor.
+sql-- Signature requests — one per bind package sent to HelloSign
+CREATE TABLE signature_requests (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  bind_package_id uuid REFERENCES bind_document_packages(id) ON DELETE CASCADE,
+  deal_id uuid REFERENCES deals(id) ON DELETE CASCADE,
+  proposal_id uuid REFERENCES proposals(id),
+
+  -- HelloSign identifiers
+  hellosign_signature_request_id text UNIQUE NOT NULL,
+  hellosign_signing_url text,        -- Embedded signing URL (if embedded flow used)
+  hellosign_files_url text,          -- URL to download signed docs from HelloSign
+
+  -- Signers
+  signers jsonb NOT NULL DEFAULT '[]',
+  -- Array of { role, name, email, signature_id, status, signed_at }
+
+  -- Status lifecycle
+  status text NOT NULL DEFAULT 'pending',
+  -- 'pending' | 'awaiting_signature' | 'partially_signed' | 'signed' | 'declined' | 'expired' | 'error'
+
+  -- Signed document storage
+  signed_documents_path text,        -- Supabase Storage path after all signed
+  signed_at timestamptz,             -- When all parties signed
+
+  -- Webhook events log
+  webhook_events jsonb DEFAULT '[]', -- Appended on each webhook call
+
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
+-- Underwriter file view sessions — for audit trail
+CREATE TABLE uw_file_views (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  deal_id uuid REFERENCES deals(id) ON DELETE CASCADE,
+  viewer_id uuid REFERENCES auth.users(id),
+  document_type text,
+  storage_path text,
+  viewed_at timestamptz DEFAULT now()
+);
+
+-- Add signature tracking columns to bind_document_packages
+ALTER TABLE bind_document_packages
+  ADD COLUMN IF NOT EXISTS signature_request_id uuid REFERENCES signature_requests(id),
+  ADD COLUMN IF NOT EXISTS hellosign_signature_request_id text;
+
+-- Add bind completion columns to deals
+ALTER TABLE deals
+  ADD COLUMN IF NOT EXISTS bind_status text DEFAULT 'not_started',
+  ADD COLUMN IF NOT EXISTS bound_at timestamptz,
+  ADD COLUMN IF NOT EXISTS signed_documents_path text;
+-- bind_status: 'not_started' | 'bind_requested' | 'sent_for_signature' | 'partially_signed' | 'signed' | 'bound'
+
+-- Indexes
+CREATE INDEX idx_signature_requests_bind ON signature_requests(bind_package_id);
+CREATE INDEX idx_signature_requests_hs_id ON signature_requests(hellosign_signature_request_id);
+CREATE INDEX idx_signature_requests_deal ON signature_requests(deal_id);
+CREATE INDEX idx_uw_file_views_deal ON uw_file_views(deal_id);
+
+PART 3 — BACKEND SERVICE: HelloSign Send-for-Signature
+File: server/services/helloSignService.js
+javascriptconst HelloSign = require('@hellosign/openapi-javascript-sdk');
+const { supabase } = require('../lib/supabase');
+const https = require('https');
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
+
+const client = new HelloSign.SignatureRequestApi();
+client.username = process.env.HELLOSIGN_API_KEY;
+
+const TEST_MODE = process.env.HELLOSIGN_TEST_MODE === '1';
+
+/**
+ * Sends the bind document package to HelloSign for signature.
+ * Signers are derived from the deal record:
+ *   - Client contact (from submission answers)
+ *   - Axel authorized signer (fixed internal signer)
+ *
+ * Called after bind_document_packages status reaches 'pending_signature'.
+ */
+async function sendBindPackageForSignature(bindPackageId) {
+  // Load bind package
+  const { data: bindPkg, error: bpError } = await supabase
+    .from('bind_document_packages')
+    .select('*')
+    .eq('id', bindPackageId)
+    .single();
+
+  if (bpError || !bindPkg) throw new Error('Bind package not found: ' + bindPackageId);
+  if (!bindPkg.documents || bindPkg.documents.length === 0) throw new Error('Bind package has no documents.');
+
+  // Load submission answers for signer info
+  const { data: submission } = await supabase
+    .from('submission_answers')
+    .select('answers')
+    .eq('deal_id', bindPkg.deal_id)
+    .single();
+
+  const answers = submission?.answers || {};
+
+  // Load deal for client name
+  const { data: deal } = await supabase
+    .from('deals')
+    .select('*, accounts(company_name)')
+    .eq('id', bindPkg.deal_id)
+    .single();
+
+  const clientName = answers.primary_contact_name || deal?.accounts?.company_name || 'Client';
+  const clientEmail = answers.primary_contact_email || deal?.client_email || '';
+
+  if (!clientEmail) throw new Error('Client email not found in submission answers. Cannot send for signature.');
+
+  // Download PDFs from Supabase Storage to temp files for HelloSign upload
+  // Only include the 4 bind documents — not loss history (loss history is for UW reference only)
+  const signatureDocTypes = ['axel_supplemental', 'acord_130', 'carrier_supplemental', 'bind_order'];
+  const docsToSign = bindPkg.documents.filter(d => signatureDocTypes.includes(d.document_type));
+
+  if (docsToSign.length === 0) throw new Error('No signable documents found in bind package.');
+
+  const tempFiles = [];
+
+  for (const doc of docsToSign) {
+    const { data: signedUrlData, error: urlError } = await supabase.storage
+      .from('underwriting-documents')
+      .createSignedUrl(doc.storage_path, 300); // 5-minute URL for download
+
+    if (urlError || !signedUrlData?.signedUrl) {
+      throw new Error(`Could not generate download URL for ${doc.document_type}: ${urlError?.message}`);
+    }
+
+    const tempPath = path.join(os.tmpdir(), `axel_bind_${bindPackageId}_${doc.document_type}.pdf`);
+    await downloadFile(signedUrlData.signedUrl, tempPath);
+    tempFiles.push({ path: tempPath, label: doc.label });
+  }
+
+  // Build HelloSign signature request
+  const signers = [
+    {
+      role: 'Client',
+      name: clientName,
+      emailAddress: clientEmail,
+      order: 0
+    },
+    {
+      role: 'Axel Authorized Signer',
+      name: 'Axel Insurance Services',
+      emailAddress: 'signatures@axelworkforce.com',
+      order: 1
+    }
+  ];
+
+  const fileObjects = tempFiles.map(f => fs.createReadStream(f.path));
+
+  const signatureRequestData = {
+    testMode: TEST_MODE,
+    title: `Workers\' Compensation Bind Documents — ${clientName}`,
+    subject: `Please sign your Workers\' Compensation bind documents`,
+    message: `Your Workers\' Compensation bind package is ready for signature. Please review and sign all documents. If you have any questions, contact your Axel representative.`,
+    signers,
+    files: fileObjects,
+    signingOptions: {
+      draw: true,
+      type: true,
+      upload: true,
+      phone: false,
+      defaultType: 'draw'
+    },
+    fieldOptions: { dateFormat: 'MM/DD/YYYY' },
+    metadata: {
+      deal_id: bindPkg.deal_id,
+      bind_package_id: bindPackageId
+    }
+  };
+
+  let hsResponse;
+  try {
+    hsResponse = await client.signatureRequestSend({ signatureRequestSendRequest: signatureRequestData });
+  } catch (hsError) {
+    const msg = hsError?.response?.data?.error?.errorMsg || hsError.message;
+    throw new Error('HelloSign send failed: ' + msg);
+  } finally {
+    // Clean up temp files regardless of outcome
+    tempFiles.forEach(f => { try { fs.unlinkSync(f.path); } catch {} });
+  }
+
+  const hsRequest = hsResponse.body?.signatureRequest;
+  if (!hsRequest) throw new Error('HelloSign returned no signature request object.');
+
+  const signersPayload = (hsRequest.signatures || []).map(sig => ({
+    role: sig.signerRole,
+    name: sig.signerName,
+    email: sig.signerEmailAddress,
+    signature_id: sig.signatureId,
+    status: sig.statusCode,
+    signed_at: null
+  }));
+
+  // Store signature request record
+  const { data: sigRecord, error: sigError } = await supabase
+    .from('signature_requests')
+    .insert({
+      bind_package_id: bindPackageId,
+      deal_id: bindPkg.deal_id,
+      proposal_id: bindPkg.proposal_id || null,
+      hellosign_signature_request_id: hsRequest.signatureRequestId,
+      hellosign_files_url: hsRequest.filesUrl || null,
+      signers: signersPayload,
+      status: 'awaiting_signature'
+    })
+    .select()
+    .single();
+
+  if (sigError) throw new Error('Failed to store signature request: ' + sigError.message);
+
+  // Update bind package
+  await supabase.from('bind_document_packages').update({
+    status: 'pending_signature',
+    hellosign_signature_request_id: hsRequest.signatureRequestId,
+    signature_request_id: sigRecord.id,
+    updated_at: new Date().toISOString()
+  }).eq('id', bindPackageId);
+
+  // Update deal bind_status
+  await supabase.from('deals').update({ bind_status: 'sent_for_signature' }).eq('id', bindPkg.deal_id);
+
+  // Auto-log
+  await supabase.from('activity_log').insert({
+    deal_id: bindPkg.deal_id,
+    action: 'signature_request_sent',
+    description: `Bind documents sent to HelloSign for signature. Awaiting signatures from: ${signersPayload.map(s => s.name).join(', ')}.`,
+    metadata: {
+      hellosign_signature_request_id: hsRequest.signatureRequestId,
+      signature_request_id: sigRecord.id,
+      signers: signersPayload.map(s => ({ name: s.name, email: s.email, role: s.role }))
+    }
+  });
+
+  return { signatureRequestId: sigRecord.id, helloSignId: hsRequest.signatureRequestId };
+}
+
+/**
+ * Downloads a file from a URL to a local temp path.
+ */
+function downloadFile(url, destPath) {
+  return new Promise((resolve, reject) => {
+    const file = fs.createWriteStream(destPath);
+    https.get(url, response => {
+      response.pipe(file);
+      file.on('finish', () => file.close(resolve));
+    }).on('error', err => {
+      fs.unlink(destPath, () => {});
+      reject(err);
+    });
+  });
+}
+
+/**
+ * Downloads the signed document package from HelloSign and stores in Supabase.
+ * Called after all_signed webhook event.
+ */
+async function retrieveAndStoreSignedDocuments(helloSignRequestId) {
+  const { data: sigRecord, error } = await supabase
+    .from('signature_requests')
+    .select('*, bind_document_packages(*)')
+    .eq('hellosign_signature_request_id', helloSignRequestId)
+    .single();
+
+  if (error || !sigRecord) throw new Error('Signature request not found for HS ID: ' + helloSignRequestId);
+
+  // Download signed PDF from HelloSign
+  const tempPath = path.join(os.tmpdir(), `axel_signed_${helloSignRequestId}.pdf`);
+
+  try {
+    const fileResponse = await client.signatureRequestFiles({
+      signatureRequestId: helloSignRequestId,
+      fileType: 'pdf'
+    });
+
+    fs.writeFileSync(tempPath, fileResponse.body);
+
+    const storagePath = `signed-documents/${sigRecord.deal_id}/${helloSignRequestId}/signed_bind_package.pdf`;
+    const fileBuffer = fs.readFileSync(tempPath);
+
+    const { error: uploadError } = await supabase.storage
+      .from('underwriting-documents')
+      .upload(storagePath, fileBuffer, { contentType: 'application/pdf', upsert: true });
+
+    if (uploadError) throw new Error('Signed document upload failed: ' + uploadError.message);
+
+    // Update signature request record
+    await supabase.from('signature_requests').update({
+      status: 'signed',
+      signed_documents_path: storagePath,
+      signed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }).eq('id', sigRecord.id);
+
+    // Update bind package
+    await supabase.from('bind_document_packages').update({
+      status: 'signed',
+      updated_at: new Date().toISOString()
+    }).eq('id', sigRecord.bind_package_id);
+
+    // Update deal — fully bound
+    await supabase.from('deals').update({
+      bind_status: 'signed',
+      bound_at: new Date().toISOString(),
+      signed_documents_path: storagePath,
+      submission_status: 'bound'
+    }).eq('id', sigRecord.deal_id);
+
+    // Auto-log
+    await supabase.from('activity_log').insert({
+      deal_id: sigRecord.deal_id,
+      action: 'bind_documents_signed',
+      description: 'All bind documents have been signed by all parties. Deal is bound.',
+      metadata: {
+        hellosign_signature_request_id: helloSignRequestId,
+        signed_documents_path: storagePath,
+        signature_request_id: sigRecord.id
+      }
+    });
+
+  } finally {
+    try { fs.unlinkSync(tempPath); } catch {}
+  }
+}
+
+module.exports = { sendBindPackageForSignature, retrieveAndStoreSignedDocuments };
+
+PART 4 — BACKEND: HelloSign Webhook Handler
+File: server/routes/webhooks.js
+javascriptconst express = require('express');
+const router = express.Router();
+const crypto = require('crypto');
+const { supabase } = require('../lib/supabase');
+const { retrieveAndStoreSignedDocuments } = require('../services/helloSignService');
+
+/**
+ * POST /webhooks/hellosign
+ * HelloSign sends all signature lifecycle events here.
+ * Must be registered in your HelloSign developer dashboard.
+ * Set webhook URL to: https://your-railway-app-url.com/webhooks/hellosign
+ */
+router.post('/hellosign', express.raw({ type: '*/*' }), async (req, res) => {
+  // HelloSign requires an immediate 200 response with text 'Hello API Event Received'
+  // Process async after responding
+  res.status(200).send('Hello API Event Received');
+
+  try {
+    // Parse payload — HelloSign sends as form-encoded with a 'json' field
+    let payload;
+    const bodyStr = req.body.toString();
+
+    if (bodyStr.includes('json=')) {
+      const params = new URLSearchParams(bodyStr);
+      payload = JSON.parse(params.get('json'));
+    } else {
+      payload = JSON.parse(bodyStr);
+    }
+
+    const event = payload?.event;
+    const signatureRequest = payload?.signature_request;
+
+    if (!event || !signatureRequest) return;
+
+    // Verify webhook hash (HMAC-SHA256)
+    const expectedHash = crypto
+      .createHmac('sha256', process.env.HELLOSIGN_WEBHOOK_SECRET)
+      .update(event.event_time + event.event_type)
+      .digest('hex');
+
+    if (event.event_hash !== expectedHash) {
+      console.error('HelloSign webhook: invalid event hash — possible spoofed request');
+      return;
+    }
+
+    const helloSignId = signatureRequest.signature_request_id;
+    const eventType = event.event_type;
+
+    // Load our signature request record
+    const { data: sigRecord } = await supabase
+      .from('signature_requests')
+      .select('*')
+      .eq('hellosign_signature_request_id', helloSignId)
+      .single();
+
+    if (!sigRecord) {
+      console.warn('HelloSign webhook: no matching signature_request for HS ID', helloSignId);
+      return;
+    }
+
+    // Append event to webhook_events log
+    const updatedEvents = [...(sigRecord.webhook_events || []), {
+      event_type: eventType,
+      event_time: event.event_time,
+      received_at: new Date().toISOString(),
+      metadata: event.event_metadata || {}
+    }];
+
+    // Handle each event type
+    switch (eventType) {
+
+      case 'signature_request_viewed': {
+        const signerEmail = event.event_metadata?.related_signature_id
+          ? signatureRequest.signatures?.find(s => s.signature_id === event.event_metadata.related_signature_id)?.signer_email_address
+          : null;
+
+        await supabase.from('activity_log').insert({
+          deal_id: sigRecord.deal_id,
+          action: 'signature_viewed',
+          description: `Bind document package viewed${signerEmail ? ' by ' + signerEmail : ''}.`,
+          metadata: { hellosign_signature_request_id: helloSignId, signer_email: signerEmail }
+        });
+        break;
+      }
+
+      case 'signature_request_signed': {
+        // A single signer has signed — update their status in signers array
+        const relatedSigId = event.event_metadata?.related_signature_id;
+        const updatedSigners = (sigRecord.signers || []).map(s =>
+          s.signature_id === relatedSigId
+            ? { ...s, status: 'signed', signed_at: new Date().toISOString() }
+            : s
+        );
+
+        const allSigned = updatedSigners.every(s => s.status === 'signed');
+
+        await supabase.from('signature_requests').update({
+          signers: updatedSigners,
+          status: allSigned ? 'signed' : 'partially_signed',
+          webhook_events: updatedEvents,
+          updated_at: new Date().toISOString()
+        }).eq('id', sigRecord.id);
+
+        await supabase.from('deals').update({
+          bind_status: allSigned ? 'signed' : 'partially_signed'
+        }).eq('id', sigRecord.deal_id);
+
+        const signerName = updatedSigners.find(s => s.signature_id === relatedSigId)?.name || 'A signer';
+
+        await supabase.from('activity_log').insert({
+          deal_id: sigRecord.deal_id,
+          action: 'document_signed',
+          description: `${signerName} signed the bind documents. ${allSigned ? 'All parties have signed.' : 'Awaiting remaining signatures.'}`,
+          metadata: {
+            hellosign_signature_request_id: helloSignId,
+            signer_name: signerName,
+            all_signed: allSigned,
+            signers: updatedSigners
+          }
+        });
+        break;
+      }
+
+      case 'signature_request_all_signed': {
+        // All parties signed — retrieve and store signed document package
+        await supabase.from('signature_requests').update({
+          webhook_events: updatedEvents,
+          updated_at: new Date().toISOString()
+        }).eq('id', sigRecord.id);
+
+        // Retrieve signed PDF from HelloSign and store in Supabase
+        await retrieveAndStoreSignedDocuments(helloSignId);
+        break;
+      }
+
+      case 'signature_request_declined': {
+        const declinerSigId = event.event_metadata?.related_signature_id;
+        const decliner = signatureRequest.signatures?.find(s => s.signature_id === declinerSigId);
+
+        await supabase.from('signature_requests').update({
+          status: 'declined',
+          webhook_events: updatedEvents,
+          updated_at: new Date().toISOString()
+        }).eq('id', sigRecord.id);
+
+        await supabase.from('bind_document_packages').update({
+          status: 'generating', // Reset to allow resend
+          updated_at: new Date().toISOString()
+        }).eq('id', sigRecord.bind_package_id);
+
+        await supabase.from('deals').update({ bind_status: 'bind_requested' }).eq('id', sigRecord.deal_id);
+
+        await supabase.from('activity_log').insert({
+          deal_id: sigRecord.deal_id,
+          action: 'signature_declined',
+          description: `Signature declined${decliner ? ' by ' + decliner.signer_name : ''}. Bind package has been reset — review and resend.`,
+          metadata: { hellosign_signature_request_id: helloSignId, decliner_email: decliner?.signer_email_address }
+        });
+        break;
+      }
+
+      case 'signature_request_expired': {
+        await supabase.from('signature_requests').update({
+          status: 'expired',
+          webhook_events: updatedEvents,
+          updated_at: new Date().toISOString()
+        }).eq('id', sigRecord.id);
+
+        await supabase.from('deals').update({ bind_status: 'bind_requested' }).eq('id', sigRecord.deal_id);
+
+        await supabase.from('activity_log').insert({
+          deal_id: sigRecord.deal_id,
+          action: 'signature_expired',
+          description: 'Signature request expired before all parties signed. Please resend.',
+          metadata: { hellosign_signature_request_id: helloSignId }
+        });
+        break;
+      }
+
+      default: {
+        // Log unknown events without failing
+        await supabase.from('signature_requests').update({
+          webhook_events: updatedEvents,
+          updated_at: new Date().toISOString()
+        }).eq('id', sigRecord.id);
+        break;
+      }
+    }
+
+  } catch (err) {
+    console.error('HelloSign webhook processing error:', err);
+    // Do not re-throw — response already sent
+  }
+});
+
+module.exports = router;
+
+PART 5 — BACKEND: Signature & Bind Routes
+File: server/routes/signatures.js
+javascriptconst express = require('express');
+const router = express.Router();
+const { supabase } = require('../lib/supabase');
+const { requireAuth, requireRole } = require('../middleware/auth');
+const { sendBindPackageForSignature } = require('../services/helloSignService');
+
+// POST /api/signatures/send/:bindPackageId
+// Sends a completed bind package to HelloSign
+// Allowed: internal_sales, underwriter, admin
+router.post('/send/:bindPackageId',
+  requireAuth,
+  requireRole(['internal_sales', 'underwriter', 'admin']),
+  async (req, res) => {
+    const { bindPackageId } = req.params;
+
+    const { data: bindPkg } = await supabase
+      .from('bind_document_packages')
+      .select('status, deal_id')
+      .eq('id', bindPackageId)
+      .single();
+
+    if (!bindPkg) return res.status(404).json({ error: 'Bind package not found.' });
+
+    if (bindPkg.status === 'signed') {
+      return res.status(400).json({ error: 'This bind package has already been fully signed.' });
+    }
+
+    if (bindPkg.status !== 'pending_signature') {
+      return res.status(400).json({ error: `Cannot send for signature — current status: ${bindPkg.status}. Package must be in pending_signature state.` });
+    }
+
+    try {
+      const result = await sendBindPackageForSignature(bindPackageId);
+      res.json({ success: true, ...result });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  }
+);
+
+// GET /api/signatures/:dealId
+// Returns the current signature request for a deal
+router.get('/:dealId', requireAuth, async (req, res) => {
+  const { data, error } = await supabase
+    .from('signature_requests')
+    .select('*')
+    .eq('deal_id', req.params.dealId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (error && error.code !== 'PGRST116') return res.status(500).json({ error: error.message });
+  res.json({ signatureRequest: data || null });
+});
+
+// GET /api/signatures/:dealId/signed-url
+// Returns a signed download URL for the completed signed document package
+// Allowed: all authenticated roles
+router.get('/:dealId/signed-url', requireAuth, async (req, res) => {
+  const { data: sigRecord } = await supabase
+    .from('signature_requests')
+    .select('status, signed_documents_path')
+    .eq('deal_id', req.params.dealId)
+    .eq('status', 'signed')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (!sigRecord?.signed_documents_path) {
+    return res.status(404).json({ error: 'Signed documents not yet available.' });
+  }
+
+  const { data: signedUrl, error: urlError } = await supabase.storage
+    .from('underwriting-documents')
+    .createSignedUrl(sigRecord.signed_documents_path, 3600);
+
+  if (urlError) return res.status(500).json({ error: urlError.message });
+
+  res.json({ signedUrl: signedUrl.signedUrl });
+});
+
+// POST /api/signatures/:dealId/resend
+// Resends a signature request reminder via HelloSign
+router.post('/:dealId/resend',
+  requireAuth,
+  requireRole(['internal_sales', 'underwriter', 'admin']),
+  async (req, res) => {
+    const { emailAddress } = req.body;
+
+    const { data: sigRecord } = await supabase
+      .from('signature_requests')
+      .select('*')
+      .eq('deal_id', req.params.dealId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (!sigRecord) return res.status(404).json({ error: 'No signature request found.' });
+    if (sigRecord.status === 'signed') return res.status(400).json({ error: 'Already fully signed.' });
+
+    const HelloSign = require('@hellosign/openapi-javascript-sdk');
+    const client = new HelloSign.SignatureRequestApi();
+    client.username = process.env.HELLOSIGN_API_KEY;
+
+    try {
+      await client.signatureRequestRemind({
+        signatureRequestId: sigRecord.hellosign_signature_request_id,
+        signatureRequestRemindRequest: { emailAddress }
+      });
+
+      await supabase.from('activity_log').insert({
+        deal_id: req.params.dealId,
+        actor_id: req.user.id,
+        action: 'signature_reminder_sent',
+        description: `Signature reminder sent to ${emailAddress}.`,
+        metadata: { hellosign_signature_request_id: sigRecord.hellosign_signature_request_id }
+      });
+
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  }
+);
+
+module.exports = router;
+Register both new routes in server/index.js:
+javascriptconst signatureRoutes = require('./routes/signatures');
+const webhookRoutes = require('./routes/webhooks');
+
+// Webhook must use raw body parser — register BEFORE express.json() middleware
+app.use('/webhooks', webhookRoutes);
+
+// Standard routes
+app.use('/api/signatures', signatureRoutes);
+Critical: The /webhooks/hellosign route must be registered before any express.json() global middleware because it needs the raw request body for HMAC verification. Confirm the order in server/index.js is: webhook route → then app.use(express.json()) → then all other routes.
+
+PART 6 — FRONTEND: Underwriter File Viewer
+This is a dedicated view accessible to users with role underwriter or admin. It shows all documents for a deal organized by category, with signed URL download links and an audit trail.
+File: client/src/components/underwriter/UwFileViewer.jsx
+jsximport React, { useState, useEffect } from 'react';
+import {
+  FileText, Download, Eye, CheckCircle, Clock,
+  AlertCircle, ChevronDown, ChevronUp, Loader, Shield
+} from 'lucide-react';
+
+const glass = {
+  background: 'rgba(255,255,255,0.05)',
+  backdropFilter: 'blur(12px)',
+  border: '1px solid rgba(255,255,255,0.08)',
+  borderRadius: '12px'
+};
+const accent = '#E91E8C';
+
+const DOC_CATEGORY_LABELS = {
+  proposal: 'Proposal',
+  axel_supplemental: 'Axel Supplemental Application',
+  acord_130: 'ACORD 130',
+  carrier_supplemental: 'Carrier Supplemental Application',
+  bind_order: 'Bind Order Form',
+  loss_history: 'Loss Run Documents',
+  signed_package: 'Signed Bind Package'
+};
+
+const DOC_CATEGORY_ORDER = [
+  'proposal', 'axel_supplemental', 'acord_130',
+  'carrier_supplemental', 'bind_order', 'loss_history', 'signed_package'
+];
+
+export default function UwFileViewer({ dealId }) {
+  const [documents, setDocuments] = useState([]);
+  const [signatureRequest, setSignatureRequest] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [downloadingPath, setDownloadingPath] = useState(null);
+  const [expandedCategories, setExpandedCategories] = useState({});
+  const [bindPkg, setBindPkg] = useState(null);
+
+  useEffect(() => {
+    loadAll();
+  }, [dealId]);
+
+  async function loadAll() {
+    setLoading(true);
+    await Promise.all([loadDocuments(), loadSignatureRequest()]);
+    setLoading(false);
+  }
+
+  async function loadDocuments() {
+    // Load bind package documents
+    const res = await fetch(`/api/bind-packages/${dealId}`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+    });
+    const data = await res.json();
+    if (data.bindPackage) {
+      setBindPkg(data.bindPackage);
+      const docs = (data.bindPackage.documents || []).map(d => ({
+        ...d,
+        category: d.document_type
+      }));
+
+      // If signed, add signed package entry
+      if (data.bindPackage.status === 'signed') {
+        docs.push({
+          category: 'signed_package',
+          document_type: 'signed_package',
+          label: 'Fully Executed Bind Package',
+          storage_path: null // fetched via separate signed-url endpoint
+        });
+      }
+
+      setDocuments(docs);
+
+      // Default expand all categories
+      const expanded = {};
+      DOC_CATEGORY_ORDER.forEach(c => { expanded[c] = true; });
+      setExpandedCategories(expanded);
+    }
+  }
+
+  async function loadSignatureRequest() {
+    const res = await fetch(`/api/signatures/${dealId}`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+    });
+    const data = await res.json();
+    setSignatureRequest(data.signatureRequest);
+  }
+
+  async function handleDownload(doc) {
+    setDownloadingPath(doc.storage_path || doc.document_type);
+
+    try {
+      let url;
+
+      if (doc.document_type === 'signed_package') {
+        const res = await fetch(`/api/signatures/${dealId}/signed-url`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        });
+        const data = await res.json();
+        url = data.signedUrl;
+      } else {
+        const res = await fetch(`/api/documents/signed-url`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
+          body: JSON.stringify({ storage_path: doc.storage_path, deal_id: dealId })
+        });
+        const data = await res.json();
+        url = data.signedUrl;
+      }
+
+      if (url) {
+        window.open(url, '_blank');
+
+        // Log view for audit trail
+        await fetch(`/api/documents/log-view`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
+          body: JSON.stringify({ deal_id: dealId, document_type: doc.document_type, storage_path: doc.storage_path })
+        });
+      }
+    } catch (err) {
+      console.error('Download error:', err);
+    } finally {
+      setDownloadingPath(null);
+    }
+  }
+
+  function toggleCategory(cat) {
+    setExpandedCategories(prev => ({ ...prev, [cat]: !prev[cat] }));
+  }
+
+  function getDocsByCategory(cat) {
+    return documents.filter(d => d.category === cat);
+  }
+
+  function SignerRow({ signer }) {
+    return (
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '10px 16px',
+        background: 'rgba(255,255,255,0.03)',
+        borderRadius: '8px',
+        border: '1px solid rgba(255,255,255,0.06)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {signer.status === 'signed'
+            ? <CheckCircle size={14} color="#4caf50" />
+            : <Clock size={14} color="rgba(255,255,255,0.3)" />}
+          <div>
+            <p style={{ color: '#fff', fontSize: '13px', fontWeight: '500', margin: 0 }}>{signer.name}</p>
+            <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: '11px', margin: '2px 0 0' }}>{signer.role} · {signer.email}</p>
+          </div>
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <span style={{
+            fontSize: '11px', fontWeight: '600', padding: '3px 10px', borderRadius: '12px',
+            background: signer.status === 'signed' ? 'rgba(76,175,80,0.12)' : 'rgba(255,255,255,0.06)',
+            color: signer.status === 'signed' ? '#4caf50' : 'rgba(255,255,255,0.4)',
+            border: `1px solid ${signer.status === 'signed' ? 'rgba(76,175,80,0.3)' : 'rgba(255,255,255,0.08)'}`
+          }}>
+            {signer.status === 'signed' ? 'Signed' : 'Awaiting'}
+          </span>
+          {signer.signed_at && (
+            <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '11px', margin: '4px 0 0' }}>
+              {new Date(signer.signed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (loading) return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '300px', color: 'rgba(255,255,255,0.4)' }}>
+      <Loader size={18} style={{ marginRight: '10px' }} /> Loading underwriting file...
+    </div>
+  );
+
+  const categoriesWithDocs = DOC_CATEGORY_ORDER.filter(cat => getDocsByCategory(cat).length > 0);
+
+  return (
+    <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
+        <Shield size={20} color={accent} />
+        <div>
+          <h2 style={{ color: '#fff', fontSize: '18px', fontWeight: '700', margin: 0 }}>Underwriting File</h2>
+          <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: '13px', margin: '3px 0 0' }}>All submission documents, loss history, and executed bind package</p>
+        </div>
+      </div>
+
+      {/* Signature Status Panel */}
+      {signatureRequest && (
+        <div style={{ ...glass, padding: '20px 24px', marginBottom: '16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <h3 style={{ color: '#fff', fontSize: '14px', fontWeight: '600', margin: 0 }}>Signature Status</h3>
+            <SignatureStatusBadge status={signatureRequest.status} />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {(signatureRequest.signers || []).map((signer, i) => (
+              <SignerRow key={i} signer={signer} />
+            ))}
+          </div>
+          {signatureRequest.status === 'awaiting_signature' && (
+            <ResendReminder dealId={dealId} signers={signatureRequest.signers} />
+          )}
+        </div>
+      )}
+
+      {/* Document Categories */}
+      {categoriesWithDocs.length === 0 ? (
+        <div style={{ ...glass, padding: '40px', textAlign: 'center' }}>
+          <FileText size={32} color="rgba(255,255,255,0.15)" style={{ marginBottom: '12px' }} />
+          <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: '14px', margin: 0 }}>No documents available yet.</p>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {categoriesWithDocs.map(cat => {
+            const docs = getDocsByCategory(cat);
+            const expanded = expandedCategories[cat] !== false;
+            return (
+              <div key={cat} style={{ ...glass, overflow: 'hidden' }}>
+                <button
+                  onClick={() => toggleCategory(cat)}
+                  style={{
+                    width: '100%', display: 'flex', justifyContent: 'space-between',
+                    alignItems: 'center', padding: '14px 20px',
+                    background: 'none', border: 'none', cursor: 'pointer'
+                  }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <FileText size={15} color={accent} />
+                    <span style={{ color: '#fff', fontSize: '14px', fontWeight: '500' }}>
+                      {DOC_CATEGORY_LABELS[cat] || cat}
+                    </span>
+                    <span style={{
+                      background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.45)',
+                      fontSize: '11px', padding: '2px 8px', borderRadius: '10px'
+                    }}>{docs.length}</span>
+                  </div>
+                  {expanded ? <ChevronUp size={15} color="rgba(255,255,255,0.3)" /> : <ChevronDown size={15} color="rgba(255,255,255,0.3)" />}
+                </button>
+
+                {expanded && (
+                  <div style={{ padding: '0 20px 16px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingTop: '12px' }}>
+                      {docs.map((doc, i) => (
+                        <div key={i} style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                          padding: '10px 14px',
+                          background: 'rgba(255,255,255,0.03)',
+                          borderRadius: '8px',
+                          border: '1px solid rgba(255,255,255,0.06)'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <FileText size={14} color="rgba(255,255,255,0.4)" />
+                            <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: '13px' }}>
+                              {doc.label || DOC_CATEGORY_LABELS[doc.document_type] || doc.document_type}
+                            </span>
+                          </div>
+                          <button
+                            onClick={() => handleDownload(doc)}
+                            disabled={downloadingPath === (doc.storage_path || doc.document_type)}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: '6px',
+                              padding: '6px 14px', borderRadius: '6px',
+                              border: `1px solid rgba(255,255,255,0.12)`,
+                              background: 'transparent',
+                              color: 'rgba(255,255,255,0.6)',
+                              cursor: 'pointer', fontSize: '12px'
+                            }}>
+                            {downloadingPath === (doc.storage_path || doc.document_type)
+                              ? <Loader size={12} />
+                              : <Download size={12} />}
+                            Download
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SignatureStatusBadge({ status }) {
+  const map = {
+    pending: { label: 'Pending', color: 'rgba(255,255,255,0.4)', bg: 'rgba(255,255,255,0.06)' },
+    awaiting_signature: { label: 'Awaiting Signatures', color: '#ffb74d', bg: 'rgba(255,183,77,0.1)' },
+    partially_signed: { label: 'Partially Signed', color: '#64b5f6', bg: 'rgba(100,181,246,0.1)' },
+    signed: { label: 'Fully Signed', color: '#4caf50', bg: 'rgba(76,175,80,0.1)' },
+    declined: { label: 'Declined', color: '#ff4d4f', bg: 'rgba(255,77,79,0.1)' },
+    expired: { label: 'Expired', color: '#ff4d4f', bg: 'rgba(255,77,79,0.1)' },
+    error: { label: 'Error', color: '#ff4d4f', bg: 'rgba(255,77,79,0.1)' }
+  };
+  const s = map[status] || map.pending;
+  return (
+    <span style={{
+      padding: '4px 12px', borderRadius: '20px',
+      background: s.bg, color: s.color,
+      fontSize: '12px', fontWeight: '600',
+      border: `1px solid ${s.color}44`
+    }}>{s.label}</span>
+  );
+}
+
+function ResendReminder({ dealId, signers }) {
+  const [selectedEmail, setSelectedEmail] = useState('');
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  const awaitingSigners = (signers || []).filter(s => s.status !== 'signed');
+
+  async function handleResend() {
+    if (!selectedEmail) return;
+    setSending(true);
+    await fetch(`/api/signatures/${dealId}/resend`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
+      body: JSON.stringify({ emailAddress: selectedEmail })
+    });
+    setSending(false);
+    setSent(true);
+    setTimeout(() => setSent(false), 4000);
+  }
+
+  if (awaitingSigners.length === 0) return null;
+
+  return (
+    <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', gap: '8px', alignItems: 'center' }}>
+      <select
+        value={selectedEmail}
+        onChange={e => setSelectedEmail(e.target.value)}
+        style={{
+          background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)',
+          borderRadius: '8px', color: '#fff', padding: '7px 12px', fontSize: '13px', flex: 1
+        }}>
+        <option value="">Select signer to remind...</option>
+        {awaitingSigners.map(s => <option key={s.email} value={s.email}>{s.name} ({s.email})</option>)}
+      </select>
+      <button
+        onClick={handleResend}
+        disabled={!selectedEmail || sending}
+        style={{
+          padding: '7px 16px', borderRadius: '8px',
+          border: 'none', background: accent, color: '#fff',
+          cursor: selectedEmail && !sending ? 'pointer' : 'not-allowed',
+          fontSize: '13px', fontWeight: '600', whiteSpace: 'nowrap'
+        }}>
+        {sending ? 'Sending...' : sent ? '✓ Sent' : 'Send Reminder'}
+      </button>
+    </div>
+  );
+}
+
+PART 7 — BACKEND: Document Signed URL + View Log Routes
+File: server/routes/documents.js
+javascriptconst express = require('express');
+const router = express.Router();
+const { supabase } = require('../lib/supabase');
+const { requireAuth, requireRole } = require('../middleware/auth');
+
+// POST /api/documents/signed-url
+// Generates a 1-hour signed download URL for any document in the underwriting-documents bucket
+// Underwriters and admins only
+router.post('/signed-url',
+  requireAuth,
+  requireRole(['underwriter', 'admin', 'internal_sales']),
+  async (req, res) => {
+    const { storage_path, deal_id } = req.body;
+    if (!storage_path) return res.status(400).json({ error: 'storage_path is required.' });
+
+    // Verify path belongs to this deal (security check)
+    if (!storage_path.includes(deal_id)) {
+      return res.status(403).json({ error: 'Document does not belong to this deal.' });
+    }
+
+    const { data, error } = await supabase.storage
+      .from('underwriting-documents')
+      .createSignedUrl(storage_path, 3600);
+
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ signedUrl: data.signedUrl });
+  }
+);
+
+// POST /api/documents/log-view
+// Logs a document view to uw_file_views for audit trail
+router.post('/log-view', requireAuth, async (req, res) => {
+  const { deal_id, document_type, storage_path } = req.body;
+  await supabase.from('uw_file_views').insert({
+    deal_id,
+    viewer_id: req.user.id,
+    document_type,
+    storage_path
+  });
+  res.json({ success: true });
+});
+
+// GET /api/documents/bind-package/:dealId
+// Returns the most recent bind package for a deal
+router.get('/bind-package/:dealId', requireAuth, async (req, res) => {
+  const { data, error } = await supabase
+    .from('bind_document_packages')
+    .select('*')
+    .eq('deal_id', req.params.dealId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (error && error.code !== 'PGRST116') return res.status(500).json({ error: error.message });
+  res.json({ bindPackage: data || null });
+});
+
+module.exports = router;
+Also add an alias route so the UwFileViewer's /api/bind-packages/:dealId call resolves:
+javascript// In server/index.js
+const documentRoutes = require('./routes/documents');
+app.use('/api/documents', documentRoutes);
+app.use('/api/bind-packages', (req, res, next) => {
+  req.url = '/bind-package' + req.url;
+  documentRoutes(req, res, next);
+});
+
+PART 8 — FRONTEND: Deal Card Bind Status Panel
+Add this component inside the existing Deal Card Modal. It surfaces bind lifecycle status directly on the deal card so any team member can see where the deal stands without navigating away.
+File: client/src/components/dealcard/BindStatusPanel.jsx
+jsximport React, { useState, useEffect } from 'react';
+import {
+  FileSignature, CheckCircle, Clock, AlertCircle,
+  Loader, ChevronRight, Send, RefreshCw
+} from 'lucide-react';
+
+const accent = '#E91E8C';
+
+const BIND_STAGES = [
+  { key: 'not_started', label: 'Not Started' },
+  { key: 'bind_requested', label: 'Bind Requested' },
+  { key: 'sent_for_signature', label: 'Sent for Signature' },
+  { key: 'partially_signed', label: 'Partially Signed' },
+  { key: 'signed', label: 'Fully Signed' },
+  { key: 'bound', label: 'Bound' }
+];
+
+export default function BindStatusPanel({ dealId, bindStatus, userRole, onSendForSignature }) {
+  const [signatureRequest, setSignatureRequest] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [bindPkg, setBindPkg] = useState(null);
+  const [sending, setSending] = useState(false);
+  const [sendResult, setSendResult] = useState(null);
+
+  useEffect(() => {
+    if (dealId) loadData();
+  }, [dealId, bindStatus]);
+
+  async function loadData() {
+    setLoading(true);
+    const [sigRes, pkgRes] = await Promise.all([
+      fetch(`/api/signatures/${dealId}`, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }),
+      fetch(`/api/bind-packages/${dealId}`, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } })
+    ]);
+    const [sigData, pkgData] = await Promise.all([sigRes.json(), pkgRes.json()]);
+    setSignatureRequest(sigData.signatureRequest);
+    setBindPkg(pkgData.bindPackage);
+    setLoading(false);
+  }
+
+  async function handleSendForSignature() {
+    if (!bindPkg?.id) return;
+    setSending(true);
+    setSendResult(null);
+    const res = await fetch(`/api/signatures/send/${bindPkg.id}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+    });
+    const data = await res.json();
+    setSending(false);
+    setSendResult(data.success ? 'success' : 'error');
+    if (data.success) loadData();
+  }
+
+  const currentStageIndex = BIND_STAGES.findIndex(s => s.key === (bindStatus || 'not_started'));
+  const canSendForSig = ['internal_sales', 'underwriter', 'admin'].includes(userRole);
+  const pkgReadyToSign = bindPkg?.status === 'pending_signature' && bindStatus !== 'sent_for_signature';
+
+  return (
+    <div style={{
+      background: 'rgba(255,255,255,0.03)',
+      border: '1px solid rgba(255,255,255,0.07)',
+      borderRadius: '10px',
+      padding: '16px 20px'
+    }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <FileSignature size={15} color={accent} />
+          <span style={{ color: '#fff', fontSize: '13px', fontWeight: '600' }}>Bind & Signature Status</span>
+        </div>
+        <button onClick={loadData} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)', padding: '2px' }}>
+          <RefreshCw size={13} />
+        </button>
+      </div>
+
+      {/* Progress Track */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '16px', overflowX: 'auto', paddingBottom: '4px' }}>
+        {BIND_STAGES.map((stage, i) => {
+          const isComplete = i < currentStageIndex;
+          const isCurrent = i === currentStageIndex;
+          const isFuture = i > currentStageIndex;
+          return (
+            <React.Fragment key={stage.key}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: '70px' }}>
+                <div style={{
+                  width: '24px', height: '24px', borderRadius: '50%',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: isComplete ? '#4caf50' : isCurrent ? accent : 'rgba(255,255,255,0.08)',
+                  border: `2px solid ${isComplete ? '#4caf50' : isCurrent ? accent : 'rgba(255,255,255,0.12)'}`,
+                  flexShrink: 0
+                }}>
+                  {isComplete
+                    ? <CheckCircle size={12} color="#fff" />
+                    : isCurrent
+                      ? <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#fff' }} />
+                      : <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'rgba(255,255,255,0.2)' }} />}
+                </div>
+                <span style={{
+                  color: isComplete ? '#4caf50' : isCurrent ? '#fff' : 'rgba(255,255,255,0.25)',
+                  fontSize: '10px', textAlign: 'center', marginTop: '4px',
+                  lineHeight: '1.3', fontWeight: isCurrent ? '600' : '400'
+                }}>
+                  {stage.label}
+                </span>
+              </div>
+              {i < BIND_STAGES.length - 1 && (
+                <div style={{
+                  flex: 1, height: '2px', minWidth: '12px',
+                  background: i < currentStageIndex ? '#4caf50' : 'rgba(255,255,255,0.08)',
+                  marginBottom: '16px', flexShrink: 0
+                }} />
+              )}
+            </React.Fragment>
+          );
+        })}
+      </div>
+
+      {/* Signer Status */}
+      {signatureRequest && (signatureRequest.status === 'awaiting_signature' || signatureRequest.status === 'partially_signed') && (
+        <div style={{ marginBottom: '12px' }}>
+          {(signatureRequest.signers || []).map((signer, i) => (
+            <div key={i} style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '7px 12px', marginBottom: '4px',
+              background: 'rgba(255,255,255,0.03)', borderRadius: '6px',
+              border: '1px solid rgba(255,255,255,0.05)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {signer.status === 'signed'
+                  ? <CheckCircle size={12} color="#4caf50" />
+                  : <Clock size={12} color="rgba(255,255,255,0.3)" />}
+                <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '12px' }}>{signer.name}</span>
+                <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '11px' }}>{signer.role}</span>
+              </div>
+              <span style={{
+                fontSize: '10px', fontWeight: '600',
+                color: signer.status === 'signed' ? '#4caf50' : '#ffb74d'
+              }}>
+                {signer.status === 'signed' ? 'Signed' : 'Pending'}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Signed confirmation */}
+      {(bindStatus === 'signed' || bindStatus === 'bound') && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '8px',
+          padding: '10px 14px', borderRadius: '8px',
+          background: 'rgba(76,175,80,0.1)', border: '1px solid rgba(76,175,80,0.25)',
+          marginBottom: '12px'
+        }}>
+          <CheckCircle size={14} color="#4caf50" />
+          <span style={{ color: '#4caf50', fontSize: '13px', fontWeight: '500' }}>
+            All parties have signed. Deal is bound.
+          </span>
+        </div>
+      )}
+
+      {/* Send for Signature CTA — internal staff only, shown when package ready */}
+      {canSendForSig && pkgReadyToSign && (
+        <div>
+          <button
+            onClick={handleSendForSignature}
+            disabled={sending}
+            style={{
+              width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+              padding: '10px', borderRadius: '8px',
+              border: 'none', background: accent, color: '#fff',
+              cursor: sending ? 'not-allowed' : 'pointer',
+              fontSize: '13px', fontWeight: '600'
+            }}>
+            {sending ? <Loader size={14} /> : <Send size={14} />}
+            {sending ? 'Sending to HelloSign...' : 'Send Bind Package for Signature'}
+          </button>
+          {sendResult === 'success' && (
+            <p style={{ color: '#4caf50', fontSize: '12px', textAlign: 'center', margin: '8px 0 0' }}>
+              ✓ Sent successfully — signers will receive an email from HelloSign.
+            </p>
+          )}
+          {sendResult === 'error' && (
+            <p style={{ color: '#ff4d4f', fontSize: '12px', textAlign: 'center', margin: '8px 0 0' }}>
+              Send failed — check the console and verify HelloSign credentials.
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+Integration: Import BindStatusPanel inside the existing Deal Card Modal component and render it in the deal card's bottom section or a dedicated "Bind" tab, passing dealId, bindStatus (from the deal record), and userRole from auth context.
+
+PART 9 — HELLOSIGN WEBHOOK REGISTRATION
+After deploying to Railway, register the webhook in your HelloSign developer dashboard:
+
+Log into app.hellosign.com → API → Webhooks
+Add webhook URL: https://your-railway-app-url.com/webhooks/hellosign
+Select all event types: signature_request_viewed, signature_request_signed, signature_request_all_signed, signature_request_declined, signature_request_expired
+Copy the webhook secret key into your HELLOSIGN_WEBHOOK_SECRET environment variable in Railway
+Click "Test" in the HelloSign dashboard — you should see a log entry appear in Supabase activity_log within a few seconds confirming the connection
+
+While HELLOSIGN_TEST_MODE=1 is active, no real emails are sent and no real signatures are captured. Switch to 0 only in production.
+
+PART 10 — ROUTE REGISTRATION SUMMARY
+Confirm all of the following are registered in server/index.js in this exact order:
+javascript// 1. Raw body webhook — MUST come before express.json()
+const webhookRoutes = require('./routes/webhooks');
+app.use('/webhooks', webhookRoutes);
+
+// 2. JSON body parser
+app.use(express.json());
+
+// 3. All API routes
+const submissionRoutes = require('./routes/submission');
+const lossHistoryRoutes = require('./routes/lossHistory');
+const proposalRoutes = require('./routes/proposals');
+const signatureRoutes = require('./routes/signatures');
+const documentRoutes = require('./routes/documents');
+
+app.use('/api/submission', submissionRoutes);
+app.use('/api/loss-history', lossHistoryRoutes);
+app.use('/api/proposals', proposalRoutes);
+app.use('/api/signatures', signatureRoutes);
+app.use('/api/documents', documentRoutes);
+app.use('/api/bind-packages', (req, res, next) => {
+  req.url = '/bind-package' + req.url;
+  documentRoutes(req, res, next);
+});
