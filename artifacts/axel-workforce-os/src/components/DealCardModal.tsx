@@ -137,6 +137,7 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
   const [listenerEmail, setListenerEmail] = useState("");
   const [noteText, setNoteText] = useState("");
   const [copied, setCopied] = useState(false);
+  const [dealDocuments, setDealDocuments] = useState<Array<{ id: string; name: string; documentType: string; status: string; generatedAt: string }>>([]);
   const [showAddTask, setShowAddTask] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
   const [editMode, setEditMode] = useState(false);
@@ -214,12 +215,22 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
     }
   }, [dealId]);
 
+  const fetchDocuments = useCallback(async () => {
+    try {
+      const res = await api.get<{ documents: typeof dealDocuments }>(`/submission/deal-documents/${dealId}`);
+      setDealDocuments(res.documents || []);
+    } catch {
+      setDealDocuments([]);
+    }
+  }, [dealId]);
+
   useEffect(() => {
     if (!isOpen || !dealId) return;
     setDeal(null);
     setActivity([]);
     setTasks([]);
     setQuoteRecord(null);
+    setDealDocuments([]);
     setListenerEmail("");
     setNoteText("");
     setEditMode(false);
@@ -231,7 +242,8 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
     fetchTasks();
     fetchEmail();
     fetchQuote();
-  }, [isOpen, dealId, fetchDeal, fetchActivity, fetchTasks, fetchEmail, fetchQuote]);
+    fetchDocuments();
+  }, [isOpen, dealId, fetchDeal, fetchActivity, fetchTasks, fetchEmail, fetchQuote, fetchDocuments]);
 
   if (!isOpen) return null;
 
@@ -944,13 +956,40 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
             <GlassCard padding="16px">
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px" }}>
                 <h3 style={{ fontSize: "14px", fontWeight: 600, color: textPrimary, margin: 0 }}>Documents</h3>
-                <PinkButton style={{ padding: "4px 12px", fontSize: "12px" }} onClick={() => console.log("Upload document — file storage wires in a later phase")}>
-                  Upload
-                </PinkButton>
+                <Badge style={{ fontSize: "11px" }}>{dealDocuments.length}</Badge>
               </div>
-              <p style={{ fontSize: "13px", color: textMuted, margin: 0 }}>
-                No documents uploaded yet.
-              </p>
+              {dealDocuments.length === 0 ? (
+                <p style={{ fontSize: "13px", color: textMuted, margin: 0 }}>
+                  No documents generated yet.
+                </p>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  {dealDocuments.map((doc) => (
+                    <div
+                      key={doc.id}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "10px",
+                        padding: "8px 10px",
+                        background: inputBg,
+                        borderRadius: "8px",
+                        border: `1px solid ${borderSubtle}`,
+                      }}
+                    >
+                      <FileText style={{ width: "16px", height: "16px", color: "#E91E8C", flexShrink: 0 }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: "12px", fontWeight: 600, color: textPrimary, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {doc.name}
+                        </p>
+                        <p style={{ fontSize: "11px", color: textMuted, margin: 0 }}>
+                          {doc.documentType.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())} — {new Date(doc.generatedAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </GlassCard>
           </div>
         </div>

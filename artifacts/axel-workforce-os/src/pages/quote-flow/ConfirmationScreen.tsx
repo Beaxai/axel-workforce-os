@@ -6,7 +6,9 @@ export default function ConfirmationScreen() {
   const navigate = useNavigate();
   const s = useQuoteFlowStore();
 
-  const dealNumber = `DL-${Date.now().toString(36).toUpperCase().slice(-6)}`;
+  const dealNumber = s.submittedDealId
+    ? `DL-${s.submittedDealId.slice(0, 8).toUpperCase()}`
+    : `DL-${Date.now().toString(36).toUpperCase().slice(-6)}`;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "70vh", textAlign: "center" }}>

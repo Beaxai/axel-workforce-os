@@ -13,6 +13,7 @@ import P2Step4CannabisOps from "./P2Step4CannabisOps";
 import P2Step5SafetyPremises from "./P2Step5SafetyPremises";
 import P2Step6Extraction from "./P2Step6Extraction";
 import P2Step7AutoExposure from "./P2Step7AutoExposure";
+import P2StepLossHistory from "./P2StepLossHistory";
 import FinalSubmission from "./FinalSubmission";
 import ConfirmationScreen from "./ConfirmationScreen";
 import { ArrowLeft, ArrowRight } from "lucide-react";
@@ -51,6 +52,7 @@ export default function QuoteWizard() {
     ];
     if (hasExtraction) steps.push({ key: "p2-extraction", label: "Extraction" });
     if (hasDelivery) steps.push({ key: "p2-auto", label: "Auto Exposure" });
+    steps.push({ key: "p2-loss-history", label: "Loss History" });
     steps.push({ key: "p2-final", label: "Final Submission" });
     steps.push({ key: "p2-confirm", label: "Confirmation" });
     return steps;
@@ -58,6 +60,25 @@ export default function QuoteWizard() {
 
   const phase1Total = 4;
   const phase2Steps = getPhase2Steps();
+
+  const getPhase2ComponentList = () => {
+    const components: React.ReactNode[] = [
+      <Phase2Transition key="transition" />,
+      <P2Step1Applicant key="applicant" />,
+      <P2Step2CoverageHistory key="coverage" />,
+      <P2Step3GeneralInfo key="general" />,
+      <P2Step4CannabisOps key="cannabis" />,
+      <P2Step5SafetyPremises key="safety" />,
+    ];
+    if (hasExtraction) components.push(<P2Step6Extraction key="extraction" />);
+    if (hasDelivery) components.push(<P2Step7AutoExposure key="auto" />);
+    components.push(<P2StepLossHistory key="loss-history" />);
+    components.push(<FinalSubmission key="final" />);
+    components.push(<ConfirmationScreen key="confirm" />);
+    return components;
+  };
+
+  const phase2Components = getPhase2ComponentList();
 
   const renderStep = () => {
     if (store.phase === 1) {
@@ -69,30 +90,17 @@ export default function QuoteWizard() {
         default: return <Step1BusinessDetails />;
       }
     } else {
-      switch (store.currentStep) {
-        case 0: return <Phase2Transition />;
-        case 1: return <P2Step1Applicant />;
-        case 2: return <P2Step2CoverageHistory />;
-        case 3: return <P2Step3GeneralInfo />;
-        case 4: return <P2Step4CannabisOps />;
-        case 5: return <P2Step5SafetyPremises />;
-        case 6: return hasExtraction ? <P2Step6Extraction /> : hasDelivery ? <P2Step7AutoExposure /> : <FinalSubmission />;
-        case 7: return hasExtraction && hasDelivery ? <P2Step7AutoExposure /> : hasExtraction || hasDelivery ? <FinalSubmission /> : <ConfirmationScreen />;
-        case 8: return hasExtraction && hasDelivery ? <FinalSubmission /> : <ConfirmationScreen />;
-        case 9: return <ConfirmationScreen />;
-        default: return <P2Step1Applicant />;
-      }
+      return phase2Components[store.currentStep] || <P2Step1Applicant />;
     }
   };
+
+  const finalStepIndex = phase2Components.length - 2;
+  const confirmStepIndex = phase2Components.length - 1;
 
   const isIndicationScreen = store.phase === 1 && store.currentStep === 4;
   const isTransition = store.phase === 2 && store.currentStep === 0;
   const isFinalOrConfirm = store.phase === 2 && (
-    (store.currentStep === 6 && !hasExtraction && !hasDelivery) ||
-    (store.currentStep === 7 && (hasExtraction !== hasDelivery)) ||
-    (store.currentStep === 8 && hasExtraction && hasDelivery) ||
-    store.currentStep === 9 ||
-    (store.currentStep === 7 && !hasExtraction && !hasDelivery)
+    store.currentStep === finalStepIndex || store.currentStep === confirmStepIndex
   );
 
   const showNav = !isIndicationScreen && !isTransition && !isFinalOrConfirm;
@@ -104,10 +112,11 @@ export default function QuoteWizard() {
     }
     const step = store.currentStep;
     if (step === 0) return { current: 0, total: 1, label: "Transition" };
-    const totalP2 = 6 + (hasExtraction ? 1 : 0) + (hasDelivery ? 1 : 0);
+    const totalP2 = phase2Components.length - 2;
     const labels = ["Applicant Details", "Coverage History", "General Information", "Cannabis Operations", "Safety & Premises"];
     if (hasExtraction) labels.push("Extraction");
     if (hasDelivery) labels.push("Auto Exposure");
+    labels.push("Loss History");
     labels.push("Final Review");
     return { current: step, total: totalP2, label: labels[step - 1] || "Review" };
   };
@@ -132,11 +141,7 @@ export default function QuoteWizard() {
     }
   };
 
-  const isConfirmationScreen = store.phase === 2 && (
-    (store.currentStep === 7 && !hasExtraction && !hasDelivery) ||
-    (store.currentStep === 8 && (hasExtraction !== hasDelivery)) ||
-    (store.currentStep === 9 && hasExtraction && hasDelivery)
-  );
+  const isConfirmationScreen = store.phase === 2 && store.currentStep === confirmStepIndex;
 
   if (isConfirmationScreen) {
     return <ConfirmationScreen />;

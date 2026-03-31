@@ -105,6 +105,22 @@ export const insertLossHistoryDocSchema = createInsertSchema(lossHistoryDocument
 export type InsertLossHistoryDoc = z.infer<typeof insertLossHistoryDocSchema>;
 export type LossHistoryDoc = typeof lossHistoryDocumentsTable.$inferSelect;
 
+export const dealDocumentsTable = pgTable("deal_documents", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  dealId: uuid("deal_id").references(() => dealsTable.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  documentType: text("document_type").notNull(),
+  status: text("status").notNull().default("generated"),
+  metadata: jsonb("metadata"),
+  generatedAt: timestamp("generated_at", { withTimezone: true }).default(sql`now()`),
+}, (t) => [
+  index("idx_deal_documents_deal").on(t.dealId),
+]);
+
 export const insertBindDocPackageSchema = createInsertSchema(bindDocumentPackagesTable).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertBindDocPackage = z.infer<typeof insertBindDocPackageSchema>;
 export type BindDocPackage = typeof bindDocumentPackagesTable.$inferSelect;
+
+export const insertDealDocumentSchema = createInsertSchema(dealDocumentsTable).omit({ id: true, generatedAt: true });
+export type InsertDealDocument = z.infer<typeof insertDealDocumentSchema>;
+export type DealDocument = typeof dealDocumentsTable.$inferSelect;

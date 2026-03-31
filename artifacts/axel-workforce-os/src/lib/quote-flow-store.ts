@@ -194,6 +194,9 @@ export interface QuoteFlowState {
   distractedDrivingPolicy: string;
   bicycleDelivery: string;
   bicycleDeliveryExplain: string;
+
+  lossHistoryFiles: Array<{ id: string; name: string; size: number; yearsCovered: string; notes: string }>;
+  submittedDealId: string | null;
 }
 
 interface QuoteFlowActions {
@@ -369,6 +372,8 @@ const initialState: Omit<QuoteFlowState, keyof QuoteFlowActions> = {
   distractedDrivingPolicy: "",
   bicycleDelivery: "",
   bicycleDeliveryExplain: "",
+  lossHistoryFiles: [],
+  submittedDealId: null,
 };
 
 export const useQuoteFlowStore = create<QuoteFlowState & QuoteFlowActions>((set, get) => ({

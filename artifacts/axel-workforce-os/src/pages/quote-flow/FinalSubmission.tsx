@@ -1,16 +1,12 @@
+import { useState } from "react";
 import { useQuoteFlowStore } from "@/lib/quote-flow-store";
-import { CheckCircle } from "lucide-react";
+import { api } from "@/lib/api";
+import { CheckCircle, Loader2 } from "lucide-react";
 
 export default function FinalSubmission() {
   const s = useQuoteFlowStore();
-  const hasExtraction = s.cannabisOperations.includes("Extraction");
-  const hasDelivery = s.cannabisOperations.includes("Delivery");
-
-  const totalSteps = 6 + (hasExtraction ? 1 : 0) + (hasDelivery ? 1 : 0);
-
-  const handleSubmit = () => {
-    s.setStep(s.currentStep + 1);
-  };
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
 
   const stateList = [...new Set(s.locations.map((l) => l.state).filter(Boolean))].join(", ") || s.businessState;
   const totalPayroll = s.indicationData?.totalPayroll || s.getTotalPayroll();
@@ -18,6 +14,40 @@ export default function FinalSubmission() {
   const premLow = s.indicationData?.premiumLow || 0;
   const premHigh = s.indicationData?.premiumHigh || 0;
   const modifier = s.indicationData?.modifier || 1.0;
+
+  const handleSubmit = async () => {
+    setSubmitting(true);
+    setError("");
+
+    try {
+      const result = await api.post<{ success: boolean; dealId: string }>("/submission/submit-for-approval", {
+        businessName: s.businessName,
+        vertical: s.vertical || "Cannabis",
+        coverageType: s.coverageType || "Workers' Compensation",
+        businessState: s.businessState,
+        totalPayroll,
+        totalEmployees,
+        experienceMod: modifier,
+        premiumLow: premLow,
+        premiumHigh: premHigh,
+        statesOfOperation: stateList.split(", ").filter(Boolean),
+        fein: s.fein,
+        entityType: s.entityType,
+        contactName: s.contactName,
+        contactEmail: s.contactEmail,
+        contactPhone: s.contactPhone,
+        lossHistoryCount: s.lossHistoryFiles.length,
+      });
+
+      s.update({ submittedDealId: result.dealId });
+      s.setStep(s.currentStep + 1);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Submission failed. Please try again.";
+      setError(msg);
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "60vh", textAlign: "center" }}>
@@ -48,6 +78,7 @@ export default function FinalSubmission() {
           ["States", stateList],
           ["Experience Modifier", modifier.toFixed(2)],
           ["Indication Range", `$${premLow.toLocaleString()} – $${premHigh.toLocaleString()}`],
+          ["Loss History Docs", s.lossHistoryFiles.length > 0 ? `${s.lossHistoryFiles.length} uploaded` : "None"],
         ].map(([label, value]) => (
           <div key={label} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
             <span style={{ fontSize: 14, color: "#888" }}>{label}</span>
@@ -56,9 +87,14 @@ export default function FinalSubmission() {
         ))}
       </div>
 
+      {error && (
+        <p style={{ fontSize: 13, color: "#ef4444", marginBottom: 16 }}>{error}</p>
+      )}
+
       <button
         type="button"
         onClick={handleSubmit}
+        disabled={submitting}
         style={{
           padding: "18px 64px",
           borderRadius: 32,
@@ -67,16 +103,26 @@ export default function FinalSubmission() {
           color: "#fff",
           fontSize: 18,
           fontWeight: 700,
-          cursor: "pointer",
+          cursor: submitting ? "wait" : "pointer",
           height: 64,
           minWidth: 320,
           transition: "opacity 0.15s",
+          opacity: submitting ? 0.7 : 1,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 10,
         }}
-        onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.9")}
-        onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+        onMouseEnter={(e) => { if (!submitting) e.currentTarget.style.opacity = "0.9"; }}
+        onMouseLeave={(e) => { if (!submitting) e.currentTarget.style.opacity = "1"; }}
       >
-        Submit for Approval
+        {submitting && <Loader2 style={{ width: 20, height: 20, animation: "spin 1s linear infinite" }} />}
+        {submitting ? "Submitting..." : "Submit for Approval"}
       </button>
+
+      <style>{`
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+      `}</style>
     </div>
   );
 }
