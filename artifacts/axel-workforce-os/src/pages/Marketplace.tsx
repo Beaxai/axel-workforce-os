@@ -1,119 +1,139 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useThemeStore } from "@/lib/theme-store";
 import { VERTICALS } from "@/lib/vertical-data";
+
+const BASE = import.meta.env.BASE_URL || "/";
 
 export default function Marketplace() {
   const navigate = useNavigate();
-  const { theme } = useThemeStore();
-  const isDark = theme === "dark";
-
-  const textPrimary = isDark ? "#fff" : "#111";
-  const textMuted = isDark ? "#888" : "#666";
-  const cardBg = isDark ? "#13131f" : "#f5f5f7";
-  const cardHoverBg = isDark ? "#16162a" : "#eeeef2";
-  const cardBorder = isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.06)";
-  const cardHoverBorder = "rgba(233,30,140,0.3)";
-  const iconBg = isDark ? "#1e1e2e" : "#e8e8f0";
+  const [hoveredSlug, setHoveredSlug] = useState<string | null>(null);
 
   return (
     <div style={{ maxWidth: 1200 }}>
       <div style={{ marginBottom: 32 }}>
-        <h1
+        <p
           style={{
-            fontSize: 28,
-            fontWeight: 700,
-            color: textPrimary,
+            fontSize: 12,
+            fontWeight: 600,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            color: "#E91E8C",
             margin: 0,
             marginBottom: 8,
           }}
         >
           Marketplace
+        </p>
+        <h1
+          style={{
+            fontSize: 28,
+            fontWeight: 700,
+            color: "#fff",
+            margin: 0,
+            marginBottom: 8,
+          }}
+        >
+          Solutions for businesses in every sector
         </h1>
         <p
           style={{
             fontSize: 15,
-            color: textMuted,
+            color: "#888",
             margin: 0,
           }}
         >
-          Explore our coverage verticals and find the right solutions for your clients.
+          Explore our coverage verticals and find the right solutions for your
+          clients.
         </p>
       </div>
 
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
-          gap: 20,
+          gridTemplateColumns: "repeat(5, 1fr)",
+          gap: 6,
         }}
       >
-        {VERTICALS.map((v) => (
-          <button
-            key={v.slug}
-            type="button"
-            onClick={() => navigate("/marketplace/quote/service-type", { state: { vertical: v.name } })}
-            style={{
-              background: cardBg,
-              borderRadius: 16,
-              border: `1px solid ${cardBorder}`,
-              padding: 24,
-              cursor: "pointer",
-              transition: "border-color 0.15s, background 0.15s",
-              display: "flex",
-              flexDirection: "column",
-              gap: 16,
-              textAlign: "left",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = cardHoverBorder;
-              e.currentTarget.style.background = cardHoverBg;
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = cardBorder;
-              e.currentTarget.style.background = cardBg;
-            }}
-          >
-            <div
+        {VERTICALS.map((v) => {
+          const isHovered = hoveredSlug === v.slug;
+          return (
+            <button
+              key={v.slug}
+              type="button"
+              onClick={() =>
+                navigate("/marketplace/quote/service-type", {
+                  state: { vertical: v.name },
+                })
+              }
+              onMouseEnter={() => setHoveredSlug(v.slug)}
+              onMouseLeave={() => setHoveredSlug(null)}
               style={{
-                width: 60,
-                height: 60,
-                borderRadius: 14,
-                background: iconBg,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
+                position: "relative",
+                aspectRatio: "1 / 1",
+                borderRadius: 8,
+                border: "none",
+                overflow: "hidden",
+                cursor: "pointer",
+                padding: 0,
+                background: "#1a1a26",
+                transition: "transform 0.2s",
+                transform: isHovered ? "scale(1.02)" : "scale(1)",
               }}
             >
-              <v.icon style={{ width: 28, height: 28, color: "#E91E8C" }} />
-            </div>
+              <img
+                src={`${BASE}${v.image.replace(/^\//, "")}`}
+                alt={v.name}
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                  filter: "brightness(0.55) grayscale(0.3)",
+                  transition: "filter 0.3s, transform 0.3s",
+                  ...(isHovered
+                    ? {
+                        filter: "brightness(0.7) grayscale(0)",
+                        transform: "scale(1.05)",
+                      }
+                    : {}),
+                }}
+              />
 
-            <div>
-              <p
+              <div
                 style={{
-                  fontSize: 18,
-                  fontWeight: 700,
-                  color: textPrimary,
-                  margin: 0,
-                  marginBottom: 6,
-                  lineHeight: 1.3,
+                  position: "absolute",
+                  inset: 0,
+                  background:
+                    "linear-gradient(180deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.15) 50%, rgba(0,0,0,0.5) 100%)",
+                }}
+              />
+
+              <div
+                style={{
+                  position: "absolute",
+                  top: 16,
+                  left: 16,
+                  right: 16,
+                  textAlign: "left",
                 }}
               >
-                {v.name}
-              </p>
-              <p
-                style={{
-                  fontSize: 13,
-                  color: textMuted,
-                  margin: 0,
-                  lineHeight: 1.4,
-                }}
-              >
-                {v.descriptor}
-              </p>
-            </div>
-          </button>
-        ))}
+                <p
+                  style={{
+                    fontSize: 15,
+                    fontWeight: 700,
+                    color: "#fff",
+                    margin: 0,
+                    lineHeight: 1.3,
+                    textShadow: "0 1px 3px rgba(0,0,0,0.5)",
+                  }}
+                >
+                  {v.name}
+                </p>
+              </div>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
