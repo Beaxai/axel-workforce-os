@@ -47,6 +47,7 @@ const csaNav: NavItem[] = [
 const agentNav: NavItem[] = [
   { label: "Home", path: "/dashboard/agent", icon: LayoutDashboard },
   { label: "Pipeline", path: "/pipeline", icon: Handshake },
+  { label: "Marketplace", path: "/marketplace", icon: Store },
   { label: "Accounts", path: "/dashboard/agent/accounts", icon: Users },
   { label: "Resources", path: "/resources", icon: BookOpen },
 ];
@@ -59,6 +60,7 @@ const underwriterNav: NavItem[] = [
 
 const employerNav: NavItem[] = [
   { label: "Home", path: "/dashboard/employer", icon: LayoutDashboard },
+  { label: "Marketplace", path: "/marketplace", icon: Store },
   { label: "My Program", path: "/my-program", icon: Shield },
   { label: "Onboarding", path: "/my-program/onboarding", icon: ClipboardList },
 ];
