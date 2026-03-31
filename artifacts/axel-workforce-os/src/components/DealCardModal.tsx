@@ -469,6 +469,30 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
               </PinkButton>
             )}
 
+            <GhostButton
+              onClick={() => {
+                onClose();
+                navigate(
+                  `/submission?dealId=${dealId}&verticalId=${
+                    (deal?.vertical || "cannabis").toLowerCase()
+                  }&quoteId=${quoteRecord?.id || ""}&dealName=${encodeURIComponent(
+                    deal?.businessName || "Deal"
+                  )}`
+                );
+              }}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+                padding: "7px 14px",
+                fontSize: "13px",
+                marginLeft: "4px",
+              }}
+            >
+              <FileText style={{ width: "14px", height: "14px" }} />
+              Complete Application
+            </GhostButton>
+
             <div style={{ display: "flex", marginLeft: "8px" }}>
               {PLACEHOLDER_USERS.slice(0, 3).map((u, i) => (
                 <div
