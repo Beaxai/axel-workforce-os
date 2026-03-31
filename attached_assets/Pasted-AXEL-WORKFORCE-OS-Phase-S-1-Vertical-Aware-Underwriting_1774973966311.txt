@@ -1,0 +1,1226 @@
+AXEL WORKFORCE OS — Phase S.1: Vertical-Aware Underwriting Submission Engine
+
+CONTEXT
+You are building on the Axel Workforce OS platform. The confirmed tech stack is React (frontend), Node.js (backend), Supabase (database), and Railway (hosting). The UI design system is dark glassmorphism: base background #060608, sole accent color #E91E8C (solid, no gradients), frosted glass panels using rgba(255,255,255,0.05) background with backdrop-filter: blur(12px) and 1px solid rgba(255,255,255,0.08) borders. All icons use Lucide React exclusively. No other icon libraries. No external UI component libraries.
+This phase builds the complete vertical-aware underwriting submission flow, loss history document upload, and bind document package generation for the WC-only product path.
+
+PART 1 — DATABASE SCHEMA (Supabase)
+Run these migrations in Supabase SQL editor.
+sql-- Vertical question sets registry
+CREATE TABLE submission_question_sets (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  vertical_id text NOT NULL,           -- e.g. 'cannabis', 'construction', 'hospitality'
+  vertical_label text NOT NULL,        -- Display name
+  version integer NOT NULL DEFAULT 1,
+  is_active boolean NOT NULL DEFAULT true,
+  created_at timestamptz DEFAULT now()
+);
+
+-- Individual questions belonging to a question set
+CREATE TABLE submission_questions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  question_set_id uuid REFERENCES submission_question_sets(id) ON DELETE CASCADE,
+  section text NOT NULL,               -- e.g. 'Business Information', 'Operations', 'Loss History'
+  display_order integer NOT NULL,
+  answer_key text NOT NULL,            -- Snake_case unique key, used for PDF field mapping
+  question_text text NOT NULL,
+  help_text text,
+  input_type text NOT NULL,            -- 'text' | 'number' | 'select' | 'multiselect' | 'boolean' | 'date' | 'textarea'
+  options jsonb,                       -- For select/multiselect: ["Option A","Option B"]
+  is_required boolean DEFAULT true,
+  conditional_on_key text,             -- answer_key of another question
+  conditional_on_value text,           -- Show this question only when that key equals this value
+  created_at timestamptz DEFAULT now()
+);
+
+-- Stored submission answers per deal
+CREATE TABLE submission_answers (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  deal_id uuid REFERENCES deals(id) ON DELETE CASCADE,
+  quote_id uuid REFERENCES quotes(id),
+  question_set_id uuid REFERENCES submission_question_sets(id),
+  answers jsonb NOT NULL DEFAULT '{}', -- { answer_key: value } flat map
+  submitted_by uuid REFERENCES auth.users(id),
+  submitted_at timestamptz,
+  status text NOT NULL DEFAULT 'draft', -- 'draft' | 'submitted' | 'bind_requested'
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
+-- PDF field mapping: answer_key → field name in each of the 4 bind documents
+CREATE TABLE form_field_mappings (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  answer_key text NOT NULL,
+  document_type text NOT NULL,         -- 'axel_supplemental' | 'acord_130' | 'carrier_supplemental' | 'bind_order'
+  pdf_field_name text NOT NULL,        -- Exact AcroForm field name in that PDF
+  transform text,                      -- Optional: 'uppercase' | 'date_mmddyyyy' | 'boolean_yes_no'
+  created_at timestamptz DEFAULT now()
+);
+
+-- Loss history documents uploaded per deal
+CREATE TABLE loss_history_documents (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  deal_id uuid REFERENCES deals(id) ON DELETE CASCADE,
+  quote_id uuid REFERENCES quotes(id),
+  file_name text NOT NULL,
+  storage_path text NOT NULL,          -- Supabase Storage path
+  file_size_bytes integer,
+  uploaded_by uuid REFERENCES auth.users(id),
+  uploaded_at timestamptz DEFAULT now(),
+  years_covered text,                  -- e.g. '2022-2024'
+  notes text
+);
+
+-- Bind document package — one record per bind request
+CREATE TABLE bind_document_packages (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  deal_id uuid REFERENCES deals(id) ON DELETE CASCADE,
+  quote_id uuid REFERENCES quotes(id),
+  requested_by uuid REFERENCES auth.users(id),
+  requested_at timestamptz DEFAULT now(),
+  status text NOT NULL DEFAULT 'generating', -- 'generating' | 'pending_signature' | 'signed' | 'failed'
+  hellosign_signature_request_id text,
+  documents jsonb,                     -- Array of { document_type, storage_path, hellosign_file_id }
+  loss_history_included boolean DEFAULT false,
+  activity_log_entry_id uuid,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
+-- Indexes
+CREATE INDEX idx_submission_answers_deal ON submission_answers(deal_id);
+CREATE INDEX idx_submission_questions_set ON submission_questions(question_set_id, display_order);
+CREATE INDEX idx_form_field_mappings_key ON form_field_mappings(answer_key, document_type);
+CREATE INDEX idx_loss_history_deal ON loss_history_documents(deal_id);
+CREATE INDEX idx_bind_packages_deal ON bind_document_packages(deal_id);
+Also add to the deals table if not already present:
+sqlALTER TABLE deals ADD COLUMN IF NOT EXISTS vertical_id text;
+ALTER TABLE deals ADD COLUMN IF NOT EXISTS has_prior_coverage boolean DEFAULT false;
+ALTER TABLE deals ADD COLUMN IF NOT EXISTS submission_status text DEFAULT 'not_started';
+-- submission_status values: 'not_started' | 'in_progress' | 'submitted' | 'bind_requested' | 'bound'
+Create a Supabase Storage bucket named underwriting-documents with private access (no public URLs). All files served via signed URLs only.
+
+PART 2 — SEED DATA: CANNABIS QUESTION SET
+Run this seed in Supabase after the schema migration. This is the question set for the cannabis vertical. Every answer_key here will map to fields across all four bind documents.
+sql-- Insert cannabis question set
+INSERT INTO submission_question_sets (id, vertical_id, vertical_label, version, is_active)
+VALUES ('qs-cannabis-v1', 'cannabis', 'Cannabis', 1, true);
+
+-- Section 1: Business Information
+INSERT INTO submission_questions (question_set_id, section, display_order, answer_key, question_text, input_type, is_required) VALUES
+('qs-cannabis-v1', 'Business Information', 1, 'legal_business_name', 'Legal Business Name', 'text', true),
+('qs-cannabis-v1', 'Business Information', 2, 'dba_name', 'DBA / Trade Name (if different)', 'text', false),
+('qs-cannabis-v1', 'Business Information', 3, 'fein', 'Federal Employer Identification Number (FEIN)', 'text', true),
+('qs-cannabis-v1', 'Business Information', 4, 'business_entity_type', 'Business Entity Type', 'select', true),
+('qs-cannabis-v1', 'Business Information', 5, 'date_business_established', 'Date Business Established', 'date', true),
+('qs-cannabis-v1', 'Business Information', 6, 'state_of_incorporation', 'State of Incorporation / Formation', 'text', true),
+('qs-cannabis-v1', 'Business Information', 7, 'mailing_address', 'Mailing Address', 'text', true),
+('qs-cannabis-v1', 'Business Information', 8, 'mailing_city', 'City', 'text', true),
+('qs-cannabis-v1', 'Business Information', 9, 'mailing_state', 'State', 'text', true),
+('qs-cannabis-v1', 'Business Information', 10, 'mailing_zip', 'Zip Code', 'text', true),
+('qs-cannabis-v1', 'Business Information', 11, 'primary_contact_name', 'Primary Contact Name', 'text', true),
+('qs-cannabis-v1', 'Business Information', 12, 'primary_contact_title', 'Primary Contact Title', 'text', true),
+('qs-cannabis-v1', 'Business Information', 13, 'primary_contact_phone', 'Primary Contact Phone', 'text', true),
+('qs-cannabis-v1', 'Business Information', 14, 'primary_contact_email', 'Primary Contact Email', 'text', true);
+
+-- Insert options for entity type separately via UPDATE
+UPDATE submission_questions SET options = '["Sole Proprietor","Partnership","LLC","S-Corp","C-Corp","Non-Profit"]'
+WHERE answer_key = 'business_entity_type';
+
+-- Section 2: Cannabis Operations
+INSERT INTO submission_questions (question_set_id, section, display_order, answer_key, question_text, input_type, options, is_required) VALUES
+('qs-cannabis-v1', 'Cannabis Operations', 20, 'license_type', 'License Type', 'multiselect', '["Cultivator","Processor","Dispensary / Retailer","Distributor","Manufacturer","Testing Lab","Delivery Only","Microbusiness"]', true),
+('qs-cannabis-v1', 'Cannabis Operations', 21, 'state_license_number', 'State Cannabis License Number', 'text', null, true),
+('qs-cannabis-v1', 'Cannabis Operations', 22, 'license_expiration_date', 'License Expiration Date', 'date', null, true),
+('qs-cannabis-v1', 'Cannabis Operations', 23, 'years_in_cannabis', 'Years Operating in Cannabis Industry', 'number', null, true),
+('qs-cannabis-v1', 'Cannabis Operations', 24, 'num_locations', 'Number of Operating Locations', 'number', null, true),
+('qs-cannabis-v1', 'Cannabis Operations', 25, 'sq_footage_total', 'Total Square Footage (all locations)', 'number', null, true),
+('qs-cannabis-v1', 'Cannabis Operations', 26, 'annual_gross_revenue', 'Annual Gross Revenue', 'number', null, true),
+('qs-cannabis-v1', 'Cannabis Operations', 27, 'annual_total_payroll', 'Annual Total Payroll', 'number', null, true),
+('qs-cannabis-v1', 'Cannabis Operations', 28, 'total_employee_count', 'Total Employee Count (W-2)', 'number', null, true),
+('qs-cannabis-v1', 'Cannabis Operations', 29, 'uses_contractors', 'Do you use 1099 contractors?', 'boolean', null, true),
+('qs-cannabis-v1', 'Cannabis Operations', 30, 'contractor_annual_payroll', 'Annual Contractor Payroll (if applicable)', 'number', null, false);
+
+UPDATE submission_questions SET conditional_on_key = 'uses_contractors', conditional_on_value = 'true'
+WHERE answer_key = 'contractor_annual_payroll';
+
+-- Section 3: Locations
+INSERT INTO submission_questions (question_set_id, section, display_order, answer_key, question_text, input_type, is_required) VALUES
+('qs-cannabis-v1', 'Locations', 40, 'location_1_address', 'Primary Location Address', 'text', true),
+('qs-cannabis-v1', 'Locations', 41, 'location_1_city', 'City', 'text', true),
+('qs-cannabis-v1', 'Locations', 42, 'location_1_state', 'State', 'text', true),
+('qs-cannabis-v1', 'Locations', 43, 'location_1_zip', 'Zip Code', 'text', true),
+('qs-cannabis-v1', 'Locations', 44, 'location_1_employee_count', 'Employee Count at This Location', 'number', true),
+('qs-cannabis-v1', 'Locations', 45, 'location_1_class_code', 'Primary WC Class Code', 'text', true),
+('qs-cannabis-v1', 'Locations', 46, 'location_1_annual_payroll', 'Annual Payroll at This Location', 'number', true);
+
+-- Section 4: Safety & Risk
+INSERT INTO submission_questions (question_set_id, section, display_order, answer_key, question_text, input_type, options, is_required) VALUES
+('qs-cannabis-v1', 'Safety & Risk', 60, 'has_safety_program', 'Do you have a written safety program?', 'boolean', null, true),
+('qs-cannabis-v1', 'Safety & Risk', 61, 'safety_program_last_updated', 'Date Safety Program Last Updated', 'date', null, false),
+('qs-cannabis-v1', 'Safety & Risk', 62, 'conducts_safety_training', 'Do you conduct regular employee safety training?', 'boolean', null, true),
+('qs-cannabis-v1', 'Safety & Risk', 63, 'training_frequency', 'Safety Training Frequency', 'select', '["Monthly","Quarterly","Annually","As Needed"]', false),
+('qs-cannabis-v1', 'Safety & Risk', 64, 'has_return_to_work', 'Do you have a return-to-work program?', 'boolean', null, true),
+('qs-cannabis-v1', 'Safety & Risk', 65, 'security_measures', 'On-site Security Measures', 'multiselect', '["Armed Security","Unarmed Security","Camera System","Access Control","Vault / Safe Room","None"]', true),
+('qs-cannabis-v1', 'Safety & Risk', 66, 'uses_delivery', 'Do employees make cannabis deliveries?', 'boolean', null, true),
+('qs-cannabis-v1', 'Safety & Risk', 67, 'delivery_vehicle_count', 'Number of Delivery Vehicles', 'number', null, false);
+
+UPDATE submission_questions SET conditional_on_key = 'uses_delivery', conditional_on_value = 'true'
+WHERE answer_key = 'delivery_vehicle_count';
+
+UPDATE submission_questions SET conditional_on_key = 'has_safety_program', conditional_on_value = 'true'
+WHERE answer_key = 'safety_program_last_updated';
+
+UPDATE submission_questions SET conditional_on_key = 'conducts_safety_training', conditional_on_value = 'true'
+WHERE answer_key = 'training_frequency';
+
+-- Section 5: Loss History
+INSERT INTO submission_questions (question_set_id, section, display_order, answer_key, question_text, input_type, options, is_required) VALUES
+('qs-cannabis-v1', 'Loss History', 80, 'has_prior_wc_coverage', 'Has the business had Workers'' Compensation coverage in the past 3 years?', 'boolean', null, true),
+('qs-cannabis-v1', 'Loss History', 81, 'prior_carrier_name', 'Prior Carrier Name', 'text', null, false),
+('qs-cannabis-v1', 'Loss History', 82, 'prior_policy_expiration', 'Prior Policy Expiration Date', 'date', null, false),
+('qs-cannabis-v1', 'Loss History', 83, 'claims_last_3_years', 'Number of WC Claims in Last 3 Years', 'number', null, false),
+('qs-cannabis-v1', 'Loss History', 84, 'total_incurred_losses', 'Total Incurred Losses Last 3 Years ($)', 'number', null, false),
+('qs-cannabis-v1', 'Loss History', 85, 'current_emod', 'Current Experience Modification Factor (EMod)', 'number', null, false),
+('qs-cannabis-v1', 'Loss History', 86, 'open_claims', 'Are there any currently open claims?', 'boolean', null, false),
+('qs-cannabis-v1', 'Loss History', 87, 'open_claims_description', 'Describe any open claims', 'textarea', null, false);
+
+-- Set conditionals for loss history section
+UPDATE submission_questions SET conditional_on_key = 'has_prior_wc_coverage', conditional_on_value = 'true'
+WHERE answer_key IN ('prior_carrier_name','prior_policy_expiration','claims_last_3_years','total_incurred_losses','current_emod','open_claims');
+
+UPDATE submission_questions SET conditional_on_key = 'open_claims', conditional_on_value = 'true'
+WHERE answer_key = 'open_claims_description';
+
+PART 3 — BACKEND: Node.js API Routes
+Create the following route files. All routes require authentication middleware. Role-based access: Agents, Clients, Axel Staff (Internal Sales Reps, Underwriters, Admins) may access submission and bind routes. Clients are scoped to their own deal only.
+File: server/routes/submission.js
+javascriptconst express = require('express');
+const router = express.Router();
+const { supabase } = require('../lib/supabase');
+const { requireAuth, requireRole } = require('../middleware/auth');
+const { generateBindPackage } = require('../services/bindDocumentService');
+
+// GET /api/submission/question-set/:verticalId
+// Returns the active question set + all questions for a vertical
+router.get('/question-set/:verticalId', requireAuth, async (req, res) => {
+  const { verticalId } = req.params;
+
+  const { data: questionSet, error: qsError } = await supabase
+    .from('submission_question_sets')
+    .select('*')
+    .eq('vertical_id', verticalId)
+    .eq('is_active', true)
+    .single();
+
+  if (qsError || !questionSet) {
+    return res.status(404).json({ error: 'Question set not found for vertical: ' + verticalId });
+  }
+
+  const { data: questions, error: qError } = await supabase
+    .from('submission_questions')
+    .select('*')
+    .eq('question_set_id', questionSet.id)
+    .order('display_order');
+
+  if (qError) return res.status(500).json({ error: qError.message });
+
+  res.json({ questionSet, questions });
+});
+
+// GET /api/submission/answers/:dealId
+// Returns saved draft answers for a deal
+router.get('/answers/:dealId', requireAuth, async (req, res) => {
+  const { dealId } = req.params;
+
+  const { data, error } = await supabase
+    .from('submission_answers')
+    .select('*')
+    .eq('deal_id', dealId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (error && error.code !== 'PGRST116') return res.status(500).json({ error: error.message });
+
+  res.json({ answers: data || null });
+});
+
+// POST /api/submission/answers/:dealId
+// Save or update draft answers (upsert)
+router.post('/answers/:dealId', requireAuth, async (req, res) => {
+  const { dealId } = req.params;
+  const { answers, questionSetId, quoteId, status } = req.body;
+
+  // Check if record exists
+  const { data: existing } = await supabase
+    .from('submission_answers')
+    .select('id')
+    .eq('deal_id', dealId)
+    .single();
+
+  let result;
+  if (existing) {
+    result = await supabase
+      .from('submission_answers')
+      .update({ answers, status: status || 'draft', updated_at: new Date().toISOString() })
+      .eq('id', existing.id)
+      .select()
+      .single();
+  } else {
+    result = await supabase
+      .from('submission_answers')
+      .insert({
+        deal_id: dealId,
+        quote_id: quoteId,
+        question_set_id: questionSetId,
+        answers,
+        submitted_by: req.user.id,
+        status: status || 'draft'
+      })
+      .select()
+      .single();
+  }
+
+  if (result.error) return res.status(500).json({ error: result.error.message });
+
+  // Update deal submission_status
+  await supabase
+    .from('deals')
+    .update({ submission_status: status || 'in_progress' })
+    .eq('id', dealId);
+
+  // Auto-log to activity feed
+  await supabase.from('activity_log').insert({
+    deal_id: dealId,
+    actor_id: req.user.id,
+    action: status === 'submitted' ? 'submission_completed' : 'submission_updated',
+    description: status === 'submitted' ? 'Submission application completed and submitted.' : 'Submission application saved as draft.',
+    metadata: { question_set_id: questionSetId }
+  });
+
+  res.json({ success: true, record: result.data });
+});
+
+// POST /api/submission/request-bind/:dealId
+// Triggers bind document package generation
+// Allowed roles: agent, client, internal_sales, underwriter, admin
+router.post('/request-bind/:dealId', requireAuth, requireRole(['agent','client','internal_sales','underwriter','admin']), async (req, res) => {
+  const { dealId } = req.params;
+  const { quoteId } = req.body;
+
+  // Verify submission is in 'submitted' status
+  const { data: submission, error: subError } = await supabase
+    .from('submission_answers')
+    .select('*')
+    .eq('deal_id', dealId)
+    .single();
+
+  if (subError || !submission) {
+    return res.status(400).json({ error: 'No completed submission found for this deal.' });
+  }
+
+  if (submission.status !== 'submitted') {
+    return res.status(400).json({ error: 'Submission must be completed before requesting bind.' });
+  }
+
+  // Check for loss history docs
+  const { data: lossHistory } = await supabase
+    .from('loss_history_documents')
+    .select('id')
+    .eq('deal_id', dealId);
+
+  const hasLossHistory = lossHistory && lossHistory.length > 0;
+
+  // Create bind package record
+  const { data: bindPackage, error: bpError } = await supabase
+    .from('bind_document_packages')
+    .insert({
+      deal_id: dealId,
+      quote_id: quoteId,
+      requested_by: req.user.id,
+      status: 'generating',
+      loss_history_included: hasLossHistory
+    })
+    .select()
+    .single();
+
+  if (bpError) return res.status(500).json({ error: bpError.message });
+
+  // Update deal and submission status
+  await supabase.from('deals').update({ submission_status: 'bind_requested' }).eq('id', dealId);
+  await supabase.from('submission_answers').update({ status: 'bind_requested' }).eq('id', submission.id);
+
+  // Auto-log activity
+  await supabase.from('activity_log').insert({
+    deal_id: dealId,
+    actor_id: req.user.id,
+    action: 'bind_requested',
+    description: `Bind requested by ${req.user.email}. Document package generation initiated.`,
+    metadata: { bind_package_id: bindPackage.id, loss_history_included: hasLossHistory }
+  });
+
+  // Trigger async document generation (do not await — return immediately)
+  generateBindPackage(bindPackage.id, dealId, quoteId, submission.answers)
+    .catch(err => console.error('Bind package generation failed:', err));
+
+  res.json({ success: true, bindPackageId: bindPackage.id, message: 'Bind request received. Document package is being generated.' });
+});
+
+module.exports = router;
+File: server/routes/lossHistory.js
+javascriptconst express = require('express');
+const router = express.Router();
+const multer = require('multer');
+const { supabase } = require('../lib/supabase');
+const { requireAuth } = require('../middleware/auth');
+
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } });
+
+// GET /api/loss-history/:dealId
+router.get('/:dealId', requireAuth, async (req, res) => {
+  const { data, error } = await supabase
+    .from('loss_history_documents')
+    .select('*')
+    .eq('deal_id', req.params.dealId)
+    .order('uploaded_at', { ascending: false });
+
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ documents: data });
+});
+
+// POST /api/loss-history/:dealId/upload
+router.post('/:dealId/upload', requireAuth, upload.single('file'), async (req, res) => {
+  const { dealId } = req.params;
+  const { yearsCovered, notes } = req.body;
+
+  if (!req.file) return res.status(400).json({ error: 'No file provided.' });
+  if (req.file.mimetype !== 'application/pdf') return res.status(400).json({ error: 'Only PDF files are accepted for loss history.' });
+
+  const storagePath = `loss-history/${dealId}/${Date.now()}_${req.file.originalname}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from('underwriting-documents')
+    .upload(storagePath, req.file.buffer, { contentType: 'application/pdf', upsert: false });
+
+  if (uploadError) return res.status(500).json({ error: uploadError.message });
+
+  const { data, error: dbError } = await supabase
+    .from('loss_history_documents')
+    .insert({
+      deal_id: dealId,
+      file_name: req.file.originalname,
+      storage_path: storagePath,
+      file_size_bytes: req.file.size,
+      uploaded_by: req.user.id,
+      years_covered: yearsCovered || null,
+      notes: notes || null
+    })
+    .select()
+    .single();
+
+  if (dbError) return res.status(500).json({ error: dbError.message });
+
+  await supabase.from('activity_log').insert({
+    deal_id: dealId,
+    actor_id: req.user.id,
+    action: 'loss_history_uploaded',
+    description: `Loss run document uploaded: ${req.file.originalname}`,
+    metadata: { storage_path: storagePath, years_covered: yearsCovered }
+  });
+
+  res.json({ success: true, document: data });
+});
+
+// DELETE /api/loss-history/:dealId/:docId
+router.delete('/:dealId/:docId', requireAuth, async (req, res) => {
+  const { dealId, docId } = req.params;
+
+  const { data: doc, error: fetchError } = await supabase
+    .from('loss_history_documents')
+    .select('*')
+    .eq('id', docId)
+    .eq('deal_id', dealId)
+    .single();
+
+  if (fetchError || !doc) return res.status(404).json({ error: 'Document not found.' });
+
+  await supabase.storage.from('underwriting-documents').remove([doc.storage_path]);
+
+  await supabase.from('loss_history_documents').delete().eq('id', docId);
+
+  res.json({ success: true });
+});
+
+module.exports = router;
+
+PART 4 — BACKEND SERVICE: Bind Document Generator
+Install the required library first:
+bashnpm install pdf-lib multer
+File: server/services/bindDocumentService.js
+javascriptconst { PDFDocument } = require('pdf-lib');
+const { supabase } = require('../lib/supabase');
+const fs = require('fs');
+const path = require('path');
+
+// Document type keys — must match filenames in server/assets/pdf-templates/
+const DOCUMENT_TYPES = [
+  { key: 'axel_supplemental', label: 'Axel Supplemental Application', filename: 'axel_supplemental.pdf' },
+  { key: 'acord_130', label: 'ACORD 130 Workers Compensation Application', filename: 'acord_130.pdf' },
+  { key: 'carrier_supplemental', label: 'Carrier Supplemental Application', filename: 'carrier_supplemental.pdf' },
+  { key: 'bind_order', label: 'Bind Order Form', filename: 'bind_order.pdf' }
+];
+
+async function generateBindPackage(bindPackageId, dealId, quoteId, answers) {
+  try {
+    // Load field mappings for all document types
+    const { data: mappings, error: mappingError } = await supabase
+      .from('form_field_mappings')
+      .select('*');
+
+    if (mappingError) throw new Error('Failed to load field mappings: ' + mappingError.message);
+
+    const generatedDocs = [];
+
+    for (const docType of DOCUMENT_TYPES) {
+      const templatePath = path.join(__dirname, '../assets/pdf-templates', docType.filename);
+
+      if (!fs.existsSync(templatePath)) {
+        console.warn(`PDF template not found: ${templatePath} — skipping.`);
+        continue;
+      }
+
+      const pdfBytes = fs.readFileSync(templatePath);
+      const pdfDoc = await PDFDocument.load(pdfBytes);
+      const form = pdfDoc.getForm();
+
+      // Get mappings for this document type
+      const docMappings = mappings.filter(m => m.document_type === docType.key);
+
+      for (const mapping of docMappings) {
+        const rawValue = answers[mapping.answer_key];
+        if (rawValue === undefined || rawValue === null) continue;
+
+        let value = String(rawValue);
+
+        // Apply transforms
+        if (mapping.transform === 'uppercase') value = value.toUpperCase();
+        if (mapping.transform === 'boolean_yes_no') value = rawValue === true || rawValue === 'true' ? 'Yes' : 'No';
+        if (mapping.transform === 'date_mmddyyyy') {
+          try {
+            const d = new Date(rawValue);
+            value = `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}/${d.getFullYear()}`;
+          } catch { /* leave as-is */ }
+        }
+
+        try {
+          const field = form.getTextField(mapping.pdf_field_name);
+          field.setText(value);
+        } catch {
+          // Field name mismatch — log but do not fail the entire package
+          console.warn(`Field not found in ${docType.key}: ${mapping.pdf_field_name}`);
+        }
+      }
+
+      // Flatten form (makes fields non-editable — appropriate for legal submission copy)
+      form.flatten();
+
+      const filledPdfBytes = await pdfDoc.save();
+
+      // Upload to Supabase Storage
+      const storagePath = `bind-packages/${dealId}/${bindPackageId}/${docType.filename}`;
+      const { error: uploadError } = await supabase.storage
+        .from('underwriting-documents')
+        .upload(storagePath, filledPdfBytes, { contentType: 'application/pdf', upsert: true });
+
+      if (uploadError) throw new Error('Upload failed for ' + docType.key + ': ' + uploadError.message);
+
+      generatedDocs.push({ document_type: docType.key, label: docType.label, storage_path: storagePath });
+    }
+
+    // Attach loss history docs to package record
+    const { data: lossHistory } = await supabase
+      .from('loss_history_documents')
+      .select('file_name, storage_path')
+      .eq('deal_id', dealId);
+
+    if (lossHistory && lossHistory.length > 0) {
+      lossHistory.forEach(doc => {
+        generatedDocs.push({ document_type: 'loss_history', label: doc.file_name, storage_path: doc.storage_path });
+      });
+    }
+
+    // Update bind package record to pending_signature
+    await supabase
+      .from('bind_document_packages')
+      .update({
+        status: 'pending_signature',
+        documents: generatedDocs,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', bindPackageId);
+
+    // Auto-log completion
+    await supabase.from('activity_log').insert({
+      deal_id: dealId,
+      action: 'bind_package_ready',
+      description: `Bind document package generated. ${generatedDocs.length} documents ready for signature.`,
+      metadata: { bind_package_id: bindPackageId, document_count: generatedDocs.length }
+    });
+
+  } catch (err) {
+    console.error('generateBindPackage error:', err);
+    await supabase
+      .from('bind_document_packages')
+      .update({ status: 'failed', updated_at: new Date().toISOString() })
+      .eq('id', bindPackageId);
+
+    await supabase.from('activity_log').insert({
+      deal_id: dealId,
+      action: 'bind_package_failed',
+      description: `Bind document package generation failed: ${err.message}`,
+      metadata: { bind_package_id: bindPackageId }
+    });
+  }
+}
+
+module.exports = { generateBindPackage };
+Important: Create the directory server/assets/pdf-templates/ and place the four AcroForm-enabled PDF templates there:
+
+axel_supplemental.pdf
+acord_130.pdf
+carrier_supplemental.pdf
+bind_order.pdf
+
+These PDFs must have fillable AcroForm text fields. The field names in each PDF must match what you enter in the form_field_mappings table. Use Adobe Acrobat or a free tool like PDF Escape to inspect and confirm AcroForm field names before populating the mapping table.
+
+PART 5 — FRONTEND: Submission Flow Component
+File: client/src/components/submission/SubmissionFlow.jsx
+jsximport React, { useState, useEffect, useCallback } from 'react';
+import { ChevronRight, ChevronLeft, Save, CheckCircle, AlertCircle, Upload, X, FileText } from 'lucide-react';
+
+const glass = {
+  background: 'rgba(255,255,255,0.05)',
+  backdropFilter: 'blur(12px)',
+  border: '1px solid rgba(255,255,255,0.08)',
+  borderRadius: '12px'
+};
+
+const accent = '#E91E8C';
+
+export default function SubmissionFlow({ dealId, verticalId, quoteId, onComplete }) {
+  const [questionSet, setQuestionSet] = useState(null);
+  const [questions, setQuestions] = useState([]);
+  const [answers, setAnswers] = useState({});
+  const [sections, setSections] = useState([]);
+  const [activeSection, setActiveSection] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [errors, setErrors] = useState({});
+  const [submissionId, setSubmissionId] = useState(null);
+  const [savedStatus, setSavedStatus] = useState(null); // 'saved' | 'error'
+
+  useEffect(() => {
+    loadQuestionSet();
+    loadSavedAnswers();
+  }, [dealId, verticalId]);
+
+  async function loadQuestionSet() {
+    setLoading(true);
+    const res = await fetch(`/api/submission/question-set/${verticalId}`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+    });
+    const data = await res.json();
+    if (data.questions) {
+      setQuestions(data.questions);
+      setQuestionSet(data.questionSet);
+      const uniqueSections = [...new Set(data.questions.map(q => q.section))];
+      setSections(uniqueSections);
+    }
+    setLoading(false);
+  }
+
+  async function loadSavedAnswers() {
+    const res = await fetch(`/api/submission/answers/${dealId}`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+    });
+    const data = await res.json();
+    if (data.answers) {
+      setAnswers(data.answers.answers || {});
+      setSubmissionId(data.answers.id);
+    }
+  }
+
+  function getSectionQuestions(sectionName) {
+    return questions.filter(q => {
+      if (q.section !== sectionName) return false;
+      if (q.conditional_on_key) {
+        const depValue = answers[q.conditional_on_key];
+        const match = depValue === q.conditional_on_value ||
+          String(depValue) === q.conditional_on_value ||
+          (q.conditional_on_value === 'true' && depValue === true);
+        if (!match) return false;
+      }
+      return true;
+    });
+  }
+
+  function handleAnswer(key, value) {
+    setAnswers(prev => ({ ...prev, [key]: value }));
+    if (errors[key]) setErrors(prev => { const e = { ...prev }; delete e[key]; return e; });
+  }
+
+  async function autoSave() {
+    if (!questionSet) return;
+    setSaving(true);
+    const res = await fetch(`/api/submission/answers/${dealId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
+      body: JSON.stringify({ answers, questionSetId: questionSet.id, quoteId, status: 'draft' })
+    });
+    setSaving(false);
+    setSavedStatus(res.ok ? 'saved' : 'error');
+    setTimeout(() => setSavedStatus(null), 3000);
+  }
+
+  function validateSection(sectionName) {
+    const sectionQuestions = getSectionQuestions(sectionName);
+    const newErrors = {};
+    sectionQuestions.forEach(q => {
+      if (q.is_required && (answers[q.answer_key] === undefined || answers[q.answer_key] === '' || answers[q.answer_key] === null)) {
+        newErrors[q.answer_key] = 'This field is required.';
+      }
+    });
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  }
+
+  async function handleNext() {
+    if (!validateSection(sections[activeSection])) return;
+    await autoSave();
+    if (activeSection < sections.length - 1) {
+      setActiveSection(prev => prev + 1);
+      window.scrollTo(0, 0);
+    }
+  }
+
+  async function handleSubmit() {
+    if (!validateSection(sections[activeSection])) return;
+    setSaving(true);
+    const res = await fetch(`/api/submission/answers/${dealId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
+      body: JSON.stringify({ answers, questionSetId: questionSet.id, quoteId, status: 'submitted' })
+    });
+    setSaving(false);
+    if (res.ok && onComplete) onComplete(answers);
+  }
+
+  function renderInput(q) {
+    const val = answers[q.answer_key] ?? '';
+    const err = errors[q.answer_key];
+
+    const inputBase = {
+      background: 'rgba(255,255,255,0.06)',
+      border: `1px solid ${err ? '#ff4d4f' : 'rgba(255,255,255,0.12)'}`,
+      borderRadius: '8px',
+      color: '#fff',
+      padding: '10px 14px',
+      width: '100%',
+      fontSize: '14px',
+      outline: 'none',
+      boxSizing: 'border-box'
+    };
+
+    if (q.input_type === 'boolean') {
+      return (
+        <div style={{ display: 'flex', gap: '12px' }}>
+          {['true', 'false'].map(opt => (
+            <button
+              key={opt}
+              onClick={() => handleAnswer(q.answer_key, opt === 'true')}
+              style={{
+                padding: '8px 24px',
+                borderRadius: '8px',
+                border: `1px solid ${String(val) === opt ? accent : 'rgba(255,255,255,0.12)'}`,
+                background: String(val) === opt ? `${accent}22` : 'rgba(255,255,255,0.04)',
+                color: String(val) === opt ? accent : 'rgba(255,255,255,0.7)',
+                cursor: 'pointer',
+                fontSize: '14px'
+              }}
+            >
+              {opt === 'true' ? 'Yes' : 'No'}
+            </button>
+          ))}
+        </div>
+      );
+    }
+
+    if (q.input_type === 'select') {
+      return (
+        <select value={val} onChange={e => handleAnswer(q.answer_key, e.target.value)}
+          style={{ ...inputBase, appearance: 'none' }}>
+          <option value="">Select...</option>
+          {(q.options || []).map(o => <option key={o} value={o}>{o}</option>)}
+        </select>
+      );
+    }
+
+    if (q.input_type === 'multiselect') {
+      const selected = Array.isArray(val) ? val : (val ? [val] : []);
+      return (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+          {(q.options || []).map(opt => {
+            const active = selected.includes(opt);
+            return (
+              <button key={opt} onClick={() => {
+                const next = active ? selected.filter(s => s !== opt) : [...selected, opt];
+                handleAnswer(q.answer_key, next);
+              }} style={{
+                padding: '6px 14px',
+                borderRadius: '20px',
+                border: `1px solid ${active ? accent : 'rgba(255,255,255,0.12)'}`,
+                background: active ? `${accent}22` : 'rgba(255,255,255,0.04)',
+                color: active ? accent : 'rgba(255,255,255,0.7)',
+                cursor: 'pointer',
+                fontSize: '13px'
+              }}>
+                {opt}
+              </button>
+            );
+          })}
+        </div>
+      );
+    }
+
+    if (q.input_type === 'textarea') {
+      return <textarea value={val} onChange={e => handleAnswer(q.answer_key, e.target.value)}
+        rows={4} style={{ ...inputBase, resize: 'vertical' }} />;
+    }
+
+    return (
+      <input
+        type={q.input_type === 'number' ? 'number' : q.input_type === 'date' ? 'date' : 'text'}
+        value={val}
+        onChange={e => handleAnswer(q.answer_key, e.target.value)}
+        style={inputBase}
+      />
+    );
+  }
+
+  if (loading) return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '300px', color: 'rgba(255,255,255,0.5)' }}>
+      Loading submission form...
+    </div>
+  );
+
+  const currentSection = sections[activeSection];
+  const sectionQuestions = getSectionQuestions(currentSection);
+  const isLastSection = activeSection === sections.length - 1;
+  const progress = ((activeSection + 1) / sections.length) * 100;
+
+  return (
+    <div style={{ maxWidth: '760px', margin: '0 auto', padding: '0 0 60px' }}>
+
+      {/* Header */}
+      <div style={{ marginBottom: '28px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+          <h2 style={{ color: '#fff', fontSize: '20px', fontWeight: '600', margin: 0 }}>
+            {questionSet?.vertical_label} Workers' Compensation Application
+          </h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            {saving && <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '13px' }}>Saving...</span>}
+            {savedStatus === 'saved' && <span style={{ color: '#4caf50', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '4px' }}><CheckCircle size={14} /> Saved</span>}
+            {savedStatus === 'error' && <span style={{ color: '#ff4d4f', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '4px' }}><AlertCircle size={14} /> Save failed</span>}
+          </div>
+        </div>
+
+        {/* Progress bar */}
+        <div style={{ background: 'rgba(255,255,255,0.08)', borderRadius: '4px', height: '4px', overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: `${progress}%`, background: accent, borderRadius: '4px', transition: 'width 0.3s ease' }} />
+        </div>
+
+        {/* Section tabs */}
+        <div style={{ display: 'flex', gap: '8px', marginTop: '16px', flexWrap: 'wrap' }}>
+          {sections.map((s, i) => (
+            <button
+              key={s}
+              onClick={() => i < activeSection && setActiveSection(i)}
+              style={{
+                padding: '5px 14px',
+                borderRadius: '20px',
+                border: `1px solid ${i === activeSection ? accent : i < activeSection ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.06)'}`,
+                background: i === activeSection ? `${accent}22` : 'transparent',
+                color: i === activeSection ? accent : i < activeSection ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.25)',
+                cursor: i < activeSection ? 'pointer' : 'default',
+                fontSize: '12px',
+                fontWeight: i === activeSection ? '600' : '400'
+              }}>
+              {i < activeSection ? '✓ ' : ''}{s}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Questions */}
+      <div style={{ ...glass, padding: '28px' }}>
+        <h3 style={{ color: '#fff', fontSize: '16px', fontWeight: '600', marginTop: 0, marginBottom: '24px', paddingBottom: '16px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+          {currentSection}
+        </h3>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {sectionQuestions.map(q => (
+            <div key={q.id}>
+              <label style={{ display: 'block', color: 'rgba(255,255,255,0.85)', fontSize: '14px', marginBottom: '8px', fontWeight: '500' }}>
+                {q.question_text}
+                {q.is_required && <span style={{ color: accent, marginLeft: '4px' }}>*</span>}
+              </label>
+              {q.help_text && <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '12px', marginBottom: '8px', marginTop: '-4px' }}>{q.help_text}</p>}
+              {renderInput(q)}
+              {errors[q.answer_key] && (
+                <p style={{ color: '#ff4d4f', fontSize: '12px', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <AlertCircle size={12} /> {errors[q.answer_key]}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Navigation */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '20px' }}>
+        <button
+          onClick={() => { if (activeSection > 0) setActiveSection(prev => prev - 1); }}
+          disabled={activeSection === 0}
+          style={{
+            display: 'flex', alignItems: 'center', gap: '6px',
+            padding: '10px 20px', borderRadius: '8px',
+            border: '1px solid rgba(255,255,255,0.12)',
+            background: 'transparent', color: activeSection === 0 ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.7)',
+            cursor: activeSection === 0 ? 'not-allowed' : 'pointer', fontSize: '14px'
+          }}>
+          <ChevronLeft size={16} /> Back
+        </button>
+
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <button onClick={autoSave} style={{
+            display: 'flex', alignItems: 'center', gap: '6px',
+            padding: '10px 20px', borderRadius: '8px',
+            border: '1px solid rgba(255,255,255,0.12)',
+            background: 'transparent', color: 'rgba(255,255,255,0.6)',
+            cursor: 'pointer', fontSize: '14px'
+          }}>
+            <Save size={16} /> Save Draft
+          </button>
+
+          {isLastSection ? (
+            <button onClick={handleSubmit} disabled={saving} style={{
+              display: 'flex', alignItems: 'center', gap: '6px',
+              padding: '10px 24px', borderRadius: '8px',
+              border: 'none', background: accent, color: '#fff',
+              cursor: saving ? 'not-allowed' : 'pointer', fontSize: '14px', fontWeight: '600'
+            }}>
+              <CheckCircle size={16} /> Submit Application
+            </button>
+          ) : (
+            <button onClick={handleNext} style={{
+              display: 'flex', alignItems: 'center', gap: '6px',
+              padding: '10px 24px', borderRadius: '8px',
+              border: 'none', background: accent, color: '#fff',
+              cursor: 'pointer', fontSize: '14px', fontWeight: '600'
+            }}>
+              Next <ChevronRight size={16} />
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+PART 6 — FRONTEND: Loss History Upload Component
+File: client/src/components/submission/LossHistoryUpload.jsx
+jsximport React, { useState, useEffect, useRef } from 'react';
+import { Upload, FileText, X, AlertCircle, CheckCircle } from 'lucide-react';
+
+const glass = {
+  background: 'rgba(255,255,255,0.05)',
+  backdropFilter: 'blur(12px)',
+  border: '1px solid rgba(255,255,255,0.08)',
+  borderRadius: '12px'
+};
+const accent = '#E91E8C';
+
+export default function LossHistoryUpload({ dealId, quoteId, showWhenNoPriorCoverage = false }) {
+  const [documents, setDocuments] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const [uploadError, setUploadError] = useState(null);
+  const [yearsCovered, setYearsCovered] = useState('');
+  const [notes, setNotes] = useState('');
+  const fileInputRef = useRef(null);
+
+  useEffect(() => { loadDocuments(); }, [dealId]);
+
+  async function loadDocuments() {
+    const res = await fetch(`/api/loss-history/${dealId}`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+    });
+    const data = await res.json();
+    if (data.documents) setDocuments(data.documents);
+  }
+
+  async function handleUpload(file) {
+    if (!file || file.type !== 'application/pdf') {
+      setUploadError('Only PDF files are accepted.');
+      return;
+    }
+    setUploading(true);
+    setUploadError(null);
+    const formData = new FormData();
+    formData.append('file', file);
+    if (yearsCovered) formData.append('yearsCovered', yearsCovered);
+    if (notes) formData.append('notes', notes);
+
+    const res = await fetch(`/api/loss-history/${dealId}/upload`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+      body: formData
+    });
+    const data = await res.json();
+    setUploading(false);
+    if (data.success) {
+      setYearsCovered('');
+      setNotes('');
+      loadDocuments();
+    } else {
+      setUploadError(data.error || 'Upload failed.');
+    }
+  }
+
+  async function handleDelete(docId) {
+    await fetch(`/api/loss-history/${dealId}/${docId}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+    });
+    loadDocuments();
+  }
+
+  function formatBytes(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / 1048576).toFixed(1) + ' MB';
+  }
+
+  return (
+    <div style={{ ...glass, padding: '24px' }}>
+      <h3 style={{ color: '#fff', fontSize: '15px', fontWeight: '600', margin: '0 0 6px' }}>Loss Run Documents</h3>
+      <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '13px', margin: '0 0 20px' }}>
+        Upload prior carrier loss runs (last 3 years). Required if client has prior WC coverage. PDFs only.
+      </p>
+
+      {/* Metadata fields */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+        <div>
+          <label style={{ display: 'block', color: 'rgba(255,255,255,0.6)', fontSize: '12px', marginBottom: '6px' }}>Years Covered</label>
+          <input
+            value={yearsCovered}
+            onChange={e => setYearsCovered(e.target.value)}
+            placeholder="e.g. 2022–2024"
+            style={{
+              background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)',
+              borderRadius: '8px', color: '#fff', padding: '8px 12px', width: '100%',
+              fontSize: '13px', boxSizing: 'border-box'
+            }}
+          />
+        </div>
+        <div>
+          <label style={{ display: 'block', color: 'rgba(255,255,255,0.6)', fontSize: '12px', marginBottom: '6px' }}>Notes (optional)</label>
+          <input
+            value={notes}
+            onChange={e => setNotes(e.target.value)}
+            placeholder="e.g. 3-year loss run from Hartford"
+            style={{
+              background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)',
+              borderRadius: '8px', color: '#fff', padding: '8px 12px', width: '100%',
+              fontSize: '13px', boxSizing: 'border-box'
+            }}
+          />
+        </div>
+      </div>
+
+      {/* Drop zone */}
+      <div
+        onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={e => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files[0]; if (f) handleUpload(f); }}
+        onClick={() => fileInputRef.current?.click()}
+        style={{
+          border: `2px dashed ${dragOver ? accent : 'rgba(255,255,255,0.15)'}`,
+          borderRadius: '10px',
+          padding: '32px',
+          textAlign: 'center',
+          cursor: 'pointer',
+          background: dragOver ? `${accent}11` : 'rgba(255,255,255,0.02)',
+          transition: 'all 0.2s',
+          marginBottom: '16px'
+        }}>
+        <Upload size={24} color={dragOver ? accent : 'rgba(255,255,255,0.35)'} style={{ marginBottom: '10px' }} />
+        <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '14px', margin: '0 0 4px' }}>
+          {uploading ? 'Uploading...' : 'Drop PDF here or click to browse'}
+        </p>
+        <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '12px', margin: 0 }}>PDF files only · Max 25MB per file</p>
+        <input ref={fileInputRef} type="file" accept=".pdf" style={{ display: 'none' }} onChange={e => { if (e.target.files[0]) handleUpload(e.target.files[0]); }} />
+      </div>
+
+      {uploadError && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#ff4d4f', fontSize: '13px', marginBottom: '12px' }}>
+          <AlertCircle size={14} /> {uploadError}
+        </div>
+      )}
+
+      {/* Uploaded documents list */}
+      {documents.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {documents.map(doc => (
+            <div key={doc.id} style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              background: 'rgba(255,255,255,0.04)', borderRadius: '8px',
+              border: '1px solid rgba(255,255,255,0.08)', padding: '10px 14px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <FileText size={16} color={accent} />
+                <div>
+                  <p style={{ color: '#fff', fontSize: '13px', margin: 0 }}>{doc.file_name}</p>
+                  <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: '11px', margin: 0 }}>
+                    {doc.years_covered && `${doc.years_covered} · `}{formatBytes(doc.file_size_bytes)}
+                  </p>
+                </div>
+              </div>
+              <button onClick={() => handleDelete(doc.id)} style={{
+                background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)',
+                padding: '4px', display: 'flex', alignItems: 'center'
+              }}>
+                <X size={16} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+PART 7 — FRONTEND: Request to Bind Button + Status
+File: client/src/components/submission/RequestBindButton.jsx
+jsximport React, { useState } from 'react';
+import { FileSignature, Loader, CheckCircle, AlertCircle } from 'lucide-react';
+
+const accent = '#E91E8C';
+
+// allowedRoles must be enforced server-side. This component accepts a prop for display purposes.
+// Pass userRole from auth context.
+const BIND_ALLOWED_ROLES = ['agent', 'client', 'internal_sales', 'underwriter', 'admin'];
+
+export default function RequestBindButton({ dealId, quoteId, submissionStatus, userRole, onSuccess }) {
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null); // 'success' | 'error'
+  const [message, setMessage] = useState('');
+
+  const canBind = BIND_ALLOWED_ROLES.includes(userRole);
+  const isReady = submissionStatus === 'submitted';
+  const alreadyRequested = submissionStatus === 'bind_requested';
+
+  async function handleRequestBind() {
+    if (!canBind || !isReady) return;
+    setLoading(true);
+    setResult(null);
+
+    const res = await fetch(`/api/submission/request-bind/${dealId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
+      body: JSON.stringify({ quoteId })
+    });
+
+    const data = await res.json();
+    setLoading(false);
+
+    if (data.success) {
+      setResult('success');
+      setMessage('Bind request submitted. Document package is being prepared.');
+      if (onSuccess) onSuccess(data.bindPackageId);
+    } else {
+      setResult('error');
+      setMessage(data.error || 'Request failed. Please try again.');
+    }
+  }
+
+  if (alreadyRequested) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#4caf50', fontSize: '14px' }}>
+        <CheckCircle size={16} /> Bind Requested — Document package in preparation
+      </div>
+    );
+  }
+
+  if (!canBind) return null;
+
+  return (
+    <div>
+      <button
+        onClick={handleRequestBind}
+        disabled={!isReady || loading}
+        style={{
+          display: 'flex', alignItems: 'center', gap: '8px',
+          padding: '12px 28px', borderRadius: '8px',
+          border: 'none',
+          background: isReady ? accent : 'rgba(255,255,255,0.08)',
+          color: isReady ? '#fff' : 'rgba(255,255,255,0.3)',
+          cursor: isReady && !loading ? 'pointer' : 'not-allowed',
+          fontSize: '15px', fontWeight: '600'
+        }}>
+        {loading ? <Loader size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <FileSignature size={16} />}
+        {loading ? 'Submitting...' : 'Request to Bind Coverage'}
+      </button>
+      {!isReady && !alreadyRequested && (
+        <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: '12px', marginTop: '6px' }}>
+          Complete and submit the application before requesting bind.
+        </p>
+      )}
+      {result && (
+        <p style={{ color: result === 'success' ? '#4caf50' : '#ff4d4f', fontSize: '13px', marginTop: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          {result === 'success' ? <CheckCircle size={13} /> : <AlertCircle size={13} />} {message}
+        </p>
+      )}
+    </div>
+  );
+}
+
+PART 8 — INTEGRATION POINTS
+
+Marketplace → Submission trigger: When a deal is created from any marketplace vertical tile, store vertical_id on the deal record. The submission flow reads this to load the correct question set automatically.
+Deal Card Modal — Documents tab: Import and render <LossHistoryUpload dealId={deal.id} /> inside the existing Documents tab of the Deal Card Modal. This provides the "both locations" access pattern.
+Quote/Proposal screen: Import and render <LossHistoryUpload dealId={deal.id} /> alongside the approved quote proposal panel, conditionally displayed when answers.has_prior_wc_coverage === true. Also render <RequestBindButton> on the proposal screen.
+Submission entry point: Add a "Complete Application" button on the Deal Card Modal (visible when submission_status is not_started or in_progress). This opens <SubmissionFlow> as a full-screen glassmorphism overlay.
+PDF templates: Place AcroForm-enabled PDFs in server/assets/pdf-templates/. Then populate the form_field_mappings table by inspecting the actual AcroForm field names in each PDF. This is a one-time data entry step — not code. Use Acrobat's form field inspector or the following script to extract field names:
+
+javascript// Run once to inspect field names: node server/scripts/inspectPdfFields.js <filename>
+const { PDFDocument } = require('pdf-lib');
+const fs = require('fs');
+const path = process.argv[2];
+const bytes = fs.readFileSync(path);
+PDFDocument.load(bytes).then(doc => {
+  const form = doc.getForm();
+  form.getFields().forEach(f => console.log(f.constructor.name, ':', f.getName()));
+});
+
+Register routes in server/index.js:
+
+javascriptconst submissionRoutes = require('./routes/submission');
+const lossHistoryRoutes = require('./routes/lossHistory');
+app.use('/api/submission', submissionRoutes);
+app.use('/api/loss-history', lossHistoryRoutes);
+
+PART 9 — DEPENDENCIES TO INSTALL
+bashnpm install pdf-lib multer
+pdf-lib handles AcroForm field population and PDF flattening. multer handles multipart file uploads in Node.js. Both are well-maintained and have no license restrictions for commercial use.

@@ -44,5 +44,9 @@ import wcRatesRouter from "./wc-rates";
 router.use("/wc-rates", wcRatesRouter);
 import rateRouter from "./rate";
 router.use("/rate", rateRouter);
+import submissionRouter from "./submission";
+router.use("/submission", submissionRouter);
+import lossHistoryRouter from "./loss-history";
+router.use("/loss-history", lossHistoryRouter);
 
 export default router;

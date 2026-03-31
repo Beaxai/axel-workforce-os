@@ -45,6 +45,7 @@ import AgentAgreement from "@/pages/register/AgentAgreement";
 import AgentOnboarding from "@/pages/register/AgentOnboarding";
 import Resources from "@/pages/Resources";
 import RateLookup from "@/pages/RateLookup";
+import SubmissionPage from "@/pages/SubmissionPage";
 import MyProgram from "@/pages/MyProgram";
 import ClientOnboarding from "@/pages/ClientOnboarding";
 import Welcome from "@/pages/Welcome";
@@ -179,6 +180,16 @@ function App() {
               <Route path="/marketplace/quote/service-type" element={<ServiceTypeSelect />} />
               <Route path="/marketplace/quote/new" element={<QuoteNew />} />
               <Route path="/marketplace/quote/wizard" element={<QuoteWizard />} />
+            </Route>
+
+            <Route
+              element={
+                <ProtectedRoute allowedRoles={["ADMIN", "CSA", "AGENT", "UNDERWRITER"]}>
+                  <AppShell />
+                </ProtectedRoute>
+              }
+            >
+              <Route path="/submission" element={<SubmissionPage />} />
             </Route>
 
             <Route

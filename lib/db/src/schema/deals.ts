@@ -45,6 +45,9 @@ export const dealsTable = pgTable("deals", {
   createdAt: timestamp("created_at", { withTimezone: true }).default(sql`now()`),
   closedAt: timestamp("closed_at", { withTimezone: true }),
   metadata: jsonb("metadata"),
+  verticalId: text("vertical_id"),
+  hasPriorCoverage: boolean("has_prior_coverage").default(false),
+  submissionStatus: text("submission_status").default("not_started"),
 });
 
 export const insertDealSchema = createInsertSchema(dealsTable).omit({ id: true, createdAt: true });

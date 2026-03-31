@@ -83,7 +83,6 @@ export default function ClassCodeSearch({ value, description, onChange }: {
           type="text"
           value={query}
           onChange={(e) => handleInputChange(e.target.value)}
-          onFocus={() => { if (query.length >= 1 && !value) setOpen(true); }}
           placeholder="Search code or description..."
           style={{
             width: "100%",
