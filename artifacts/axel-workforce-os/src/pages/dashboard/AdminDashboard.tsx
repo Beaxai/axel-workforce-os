@@ -1,230 +1,821 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
-import { api } from "@/lib/api";
-import { GlassCard, StatTile, SectionHeader, AxelBadge, PinkButton, GhostButton } from "@/components/ui/axel-index";
-import { ArrowUpRight, UserCheck, UserX, KeyRound } from "lucide-react";
-import { useThemeStore } from "@/lib/theme-store";
+import { useState } from "react";
+import {
+  CreditCard,
+  TrendingUp,
+  Users,
+  Shield,
+  MoreHorizontal,
+} from "lucide-react";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  CartesianGrid,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+} from "recharts";
+
+// TODO: replace with Supabase query
+const KPI_DATA = [
+  {
+    label: "TOTAL PREMIUM IN FORCE",
+    value: "$142.8M",
+    delta: "+12.4%",
+    icon: CreditCard,
+  },
+  {
+    label: "TOTAL WORKFORCE REVENUE",
+    value: "$28.4M",
+    delta: "+8.2%",
+    icon: TrendingUp,
+  },
+  {
+    label: "TOTAL WORKFORCE HEADCOUNT",
+    value: "12,482 Active",
+    delta: null,
+    icon: Users,
+  },
+  {
+    label: "AGENTS APPOINTED",
+    value: "3,105",
+    delta: "+240",
+    icon: Shield,
+  },
+];
+
+// TODO: replace with Supabase query
+const CHART_DATA = [
+  { month: "JAN", submissions: 2800, hitRatio: 28 },
+  { month: "FEB", submissions: 3200, hitRatio: 30 },
+  { month: "MAR", submissions: 3800, hitRatio: 29 },
+  { month: "APR", submissions: 4200, hitRatio: 31 },
+  { month: "MAY", submissions: 4500, hitRatio: 33 },
+  { month: "JUN", submissions: 4822, hitRatio: 32.4 },
+];
+
+// TODO: replace with Supabase query
+const DONUT_DATA = [
+  { name: "Healthcare", value: 1420 },
+  { name: "Construction", value: 1014 },
+  { name: "Cannabis", value: 608 },
+  { name: "Staffing", value: 486 },
+  { name: "Hospitality", value: 324 },
+  { name: "Waste Management", value: 203 },
+];
+
+const DONUT_COLORS = [
+  "#7C3AED",
+  "#6D28D9",
+  "#8B5CF6",
+  "#A78BFA",
+  "#C4B5FD",
+  "#DDD6FE",
+];
+
+// TODO: replace with Supabase query
+const PIPELINE_DATA = [
+  {
+    initials: "BC",
+    name: "BuildCo Solutions",
+    vertical: "Construction",
+    status: "IN REVIEW",
+    revenue: "$450,000",
+    color: "#1E40AF",
+  },
+  {
+    initials: "GL",
+    name: "Green Leaf Logistics",
+    vertical: "Cannabis",
+    status: "ACTIVE",
+    revenue: "$1,200,000",
+    color: "#065F46",
+  },
+  {
+    initials: "HN",
+    name: "Horizon Nursing",
+    vertical: "Healthcare",
+    status: "PENDING",
+    revenue: "$890,000",
+    color: "#7C3AED",
+  },
+];
+
+const STATUS_STYLES: Record<string, { color: string; bg: string }> = {
+  "IN REVIEW": { color: "#F59E0B", bg: "rgba(245,158,11,0.15)" },
+  ACTIVE: { color: "#10B981", bg: "rgba(16,185,129,0.15)" },
+  PENDING: { color: "#F97316", bg: "rgba(249,115,22,0.15)" },
+};
+
+function GlassPanel({
+  children,
+  style,
+}: {
+  children: React.ReactNode;
+  style?: React.CSSProperties;
+}) {
+  return (
+    <div
+      style={{
+        background: "rgba(255,255,255,0.05)",
+        backdropFilter: "blur(12px)",
+        WebkitBackdropFilter: "blur(12px)",
+        border: "1px solid rgba(255,255,255,0.08)",
+        borderRadius: 12,
+        padding: 24,
+        ...style,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
 
 export default function AdminDashboard() {
-  const { theme } = useThemeStore();
-  const isDark = theme === "dark";
-  const navigate = useNavigate();
-  const qc = useQueryClient();
-  const { data: orgs = [] } = useQuery({ queryKey: ["organizations"], queryFn: () => api.get<any[]>("/organizations") });
-  const { data: deals = [] } = useQuery({ queryKey: ["deals"], queryFn: () => api.get<any[]>("/deals") });
-  const { data: policies = [] } = useQuery({ queryKey: ["policies"], queryFn: () => api.get<any[]>("/policies") });
-  const { data: contacts = [] } = useQuery({ queryKey: ["contacts"], queryFn: () => api.get<any[]>("/contacts") });
-  const { data: workforce = [] } = useQuery({ queryKey: ["workforce-verticals"], queryFn: () => api.get<any[]>("/workforce/verticals") });
-  const { data: registrations = [] } = useQuery({ queryKey: ["agent-registrations"], queryFn: () => api.get<any[]>("/agent-registrations") });
-
-  const approveMut = useMutation({
-    mutationFn: (id: string) => api.patch(`/agent-registrations/${id}`, { status: "AGREEMENT_PENDING", reviewedAt: new Date().toISOString() }),
-    onSuccess: (_, id) => {
-      console.log(`[Agent Registration] Approved. Agreement link: /register/agent/agreement/${id}`);
-      qc.invalidateQueries({ queryKey: ["agent-registrations"] });
-    },
-  });
-
-  const rejectMut = useMutation({
-    mutationFn: (id: string) => api.patch(`/agent-registrations/${id}`, { status: "REJECTED", reviewedAt: new Date().toISOString() }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["agent-registrations"] }),
-  });
-
-  const markCallMut = useMutation({
-    mutationFn: (id: string) => api.patch(`/agent-registrations/${id}`, { status: "CREDENTIALS_PENDING", zoomCompletedAt: new Date().toISOString() }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["agent-registrations"] }),
-  });
-
-  const issueCredsMut = useMutation({
-    mutationFn: async (reg: any) => {
-      const [partner] = await Promise.all([
-        api.post("/partners", {
-          partnerType: "Agent", name: `${reg.firstName} ${reg.lastName}`,
-          agencyName: reg.agencyName, npn: reg.individualNpn,
-          licenseStates: reg.statesLicensed || [], contactName: `${reg.firstName} ${reg.lastName}`,
-          contactEmail: reg.email, contactPhone: reg.phone, status: "Active",
-        }),
-      ]) as any[];
-      const tempPassword = `Axel${Math.random().toString(36).slice(2, 8)}!`;
-      await api.patch(`/agent-registrations/${reg.id}`, {
-        status: "ACTIVE", partnerId: partner.id,
-      });
-      console.log(`[Agent Registration] Credentials issued for ${reg.email}. Temp password: ${tempPassword}`);
-      return { email: reg.email, tempPassword, partnerId: partner.id };
-    },
-    onSuccess: (result) => {
-      alert(`Credentials issued!\nEmail: ${result.email}\nTemp Password: ${result.tempPassword}`);
-      qc.invalidateQueries({ queryKey: ["agent-registrations"] });
-      qc.invalidateQueries({ queryKey: ["partners"] });
-    },
-  });
-
-  const pendingRegs = registrations.filter((r: any) => r.status !== "ACTIVE" && r.status !== "REJECTED");
-
-  const textPrimary = isDark ? "#fff" : "#111";
-  const textMuted = isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.45)";
-  const textSecondary = isDark ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.55)";
-  const borderSubtle = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)";
-  const subtleBg = isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)";
-
-  const stageColor: Record<string, string> = {
-    NEW_LEAD: "blue",
-    QUOTING: "yellow",
-    PROPOSAL: "pink",
-    BOUND: "green",
-    LOST: "red",
-  };
+  const [menuOpen, setMenuOpen] = useState<string | null>(null);
 
   return (
-    <div style={{ maxWidth: "1200px" }}>
-      <SectionHeader title="Admin Dashboard" subtitle="Complete platform overview" />
-
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px", marginBottom: "32px" }}>
-        <StatTile label="Organizations" value={orgs.length} />
-        <StatTile label="Active Deals" value={deals.length} />
-        <StatTile label="Policies" value={policies.length} />
-        <StatTile label="Contacts" value={contacts.length} />
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px", marginBottom: "24px" }}>
-        <GlassCard>
-          <h3 style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, marginBottom: "16px" }}>Recent Deals</h3>
-          {deals.length === 0 ? (
-            <p style={{ fontSize: "14px", color: textMuted }}>No deals yet</p>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-              {deals.slice(0, 5).map((d: any) => (
-                <div
-                  key={d.id}
-                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingBottom: "8px", borderBottom: `1px solid ${borderSubtle}` }}
-                >
-                  <div>
-                    <p style={{ fontSize: "14px", fontWeight: 500, color: textPrimary }}>{d.referenceCode}</p>
-                    <p style={{ fontSize: "12px", color: textMuted }}>{d.vertical || "—"} · {d.state || "—"}</p>
-                  </div>
-                  <AxelBadge label={d.stage?.replace(/_/g, " ") || "—"} color={stageColor[d.stage] || "gray"} />
-                </div>
-              ))}
-            </div>
-          )}
-        </GlassCard>
-
-        <GlassCard>
-          <h3 style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, marginBottom: "16px" }}>Pipeline Summary</h3>
-          {deals.length === 0 ? (
-            <p style={{ fontSize: "14px", color: textMuted }}>No pipeline data</p>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-              {Object.entries(
-                deals.reduce((acc: Record<string, number>, d: any) => {
-                  const stage = d.stage || "UNKNOWN";
-                  acc[stage] = (acc[stage] || 0) + 1;
-                  return acc;
-                }, {})
-              ).map(([stage, count]) => (
-                <div key={stage} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <span style={{ fontSize: "14px", color: textSecondary }}>{stage.replace(/_/g, " ")}</span>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <div style={{ width: "96px", height: "8px", borderRadius: "9999px", overflow: "hidden", background: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)" }}>
-                      <div style={{ height: "100%", borderRadius: "9999px", width: `${((count as number) / deals.length) * 100}%`, background: "#E91E8C" }} />
-                    </div>
-                    <span style={{ fontSize: "14px", fontWeight: 500, color: textPrimary, width: "24px", textAlign: "right" }}>{count as number}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </GlassCard>
-      </div>
-
-      {pendingRegs.length > 0 && (
-        <div style={{ marginBottom: "24px" }}>
-          <GlassCard>
-            <h3 style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, marginBottom: "16px" }}>Agent Applications ({pendingRegs.length})</h3>
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-              {pendingRegs.map((r: any) => {
-                const statusLabels: Record<string, string> = {
-                  PENDING_REVIEW: "Pending Review", AGREEMENT_PENDING: "Agreement Pending",
-                  ONBOARDING_CALL_PENDING: "Onboarding Call Pending", CREDENTIALS_PENDING: "Credentials Pending",
-                };
-                const statusColors: Record<string, string> = {
-                  PENDING_REVIEW: "yellow", AGREEMENT_PENDING: "blue", ONBOARDING_CALL_PENDING: "orange", CREDENTIALS_PENDING: "light-violet",
-                };
-                return (
-                  <div key={r.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px", background: subtleBg, borderRadius: "10px", border: `1px solid ${borderSubtle}` }}>
-                    <div>
-                      <p style={{ fontSize: "14px", fontWeight: 500, color: textPrimary, margin: 0 }}>{r.firstName} {r.lastName}</p>
-                      <p style={{ fontSize: "12px", color: textMuted, margin: "2px 0 0" }}>{r.agencyName} · {r.email}</p>
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                      <AxelBadge label={statusLabels[r.status] || r.status} color={statusColors[r.status] || "gray"} />
-                      {r.status === "PENDING_REVIEW" && (
-                        <>
-                          <GhostButton onClick={() => approveMut.mutate(r.id)} style={{ padding: "4px 10px", fontSize: "12px", color: "#1EE97B" }}>
-                            <UserCheck style={{ width: 14, height: 14 }} /> Approve
-                          </GhostButton>
-                          <GhostButton onClick={() => rejectMut.mutate(r.id)} style={{ padding: "4px 10px", fontSize: "12px", color: "#E91E1E" }}>
-                            <UserX style={{ width: 14, height: 14 }} /> Reject
-                          </GhostButton>
-                        </>
-                      )}
-                      {r.status === "ONBOARDING_CALL_PENDING" && (
-                        <GhostButton onClick={() => markCallMut.mutate(r.id)} style={{ padding: "4px 10px", fontSize: "12px" }}>
-                          <UserCheck style={{ width: 14, height: 14 }} /> Mark Call Complete
-                        </GhostButton>
-                      )}
-                      {r.status === "CREDENTIALS_PENDING" && (
-                        <PinkButton onClick={() => issueCredsMut.mutate(r)} style={{ padding: "4px 12px", fontSize: "12px" }}>
-                          <KeyRound style={{ width: 14, height: 14 }} /> Issue Credentials
-                        </PinkButton>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </GlassCard>
+    <div style={{ maxWidth: 1200 }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          marginBottom: 24,
+        }}
+      >
+        <div>
+          <h1
+            style={{
+              fontSize: 28,
+              fontWeight: 700,
+              color: "#fff",
+              margin: 0,
+              marginBottom: 4,
+            }}
+          >
+            Dashboard
+          </h1>
+          <p
+            style={{
+              fontSize: 14,
+              color: "rgba(255,255,255,0.5)",
+              margin: 0,
+            }}
+          >
+            Real-time performance analytics across the global ecosystem.
+          </p>
         </div>
-      )}
+        <div style={{ display: "flex", gap: 10, flexShrink: 0 }}>
+          <button
+            style={{
+              background: "transparent",
+              border: "1px solid rgba(255,255,255,0.15)",
+              borderRadius: 8,
+              color: "#fff",
+              fontSize: 13,
+              fontWeight: 500,
+              padding: "8px 16px",
+              cursor: "pointer",
+            }}
+          >
+            Export Report
+          </button>
+          <button
+            style={{
+              background: "#7C3AED",
+              border: "none",
+              borderRadius: 8,
+              color: "#fff",
+              fontSize: 13,
+              fontWeight: 500,
+              padding: "8px 16px",
+              cursor: "pointer",
+            }}
+          >
+            + Generate Insight
+          </button>
+        </div>
+      </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "24px" }}>
-        <GlassCard>
-          <h3 style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, marginBottom: "16px" }}>Workforce Verticals</h3>
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-            {workforce.slice(0, 6).map((v: any) => (
-              <div key={v.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingBottom: "6px", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)"}` }}>
-                <span style={{ fontSize: "14px", color: textSecondary }}>{v.vertical}</span>
-                <span style={{ fontSize: "14px", fontWeight: 500, color: textPrimary }}>{v.clientCount} clients</span>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(4, 1fr)",
+          gap: 16,
+          marginBottom: 24,
+        }}
+      >
+        {KPI_DATA.map((kpi) => (
+          <GlassPanel key={kpi.label}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                marginBottom: 16,
+              }}
+            >
+              <span
+                style={{
+                  fontSize: 10,
+                  fontWeight: 600,
+                  letterSpacing: "0.06em",
+                  textTransform: "uppercase",
+                  color: "rgba(255,255,255,0.5)",
+                }}
+              >
+                {kpi.label}
+              </span>
+              <div
+                style={{
+                  background: "rgba(124,58,237,0.25)",
+                  borderRadius: 8,
+                  padding: 8,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <kpi.icon
+                  style={{ width: 16, height: 16, color: "#7C3AED" }}
+                />
+              </div>
+            </div>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+              <span
+                style={{ fontSize: 24, fontWeight: 700, color: "#fff" }}
+              >
+                {kpi.value}
+              </span>
+              {kpi.delta && (
+                <span
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 500,
+                    color: "#4ADE80",
+                    background: "rgba(74,222,128,0.15)",
+                    padding: "2px 8px",
+                    borderRadius: 999,
+                  }}
+                >
+                  {kpi.delta}
+                </span>
+              )}
+            </div>
+          </GlassPanel>
+        ))}
+      </div>
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "3fr 2fr",
+          gap: 16,
+          marginBottom: 24,
+        }}
+      >
+        <GlassPanel>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: 20,
+            }}
+          >
+            <span
+              style={{ fontSize: 15, fontWeight: 600, color: "#fff" }}
+            >
+              Monthly Submissions Activity
+            </span>
+            <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+              <div
+                style={{ display: "flex", alignItems: "center", gap: 6 }}
+              >
+                <div
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: 999,
+                    background: "#7C3AED",
+                  }}
+                />
+                <span
+                  style={{
+                    fontSize: 11,
+                    color: "rgba(255,255,255,0.5)",
+                  }}
+                >
+                  Submissions
+                </span>
+              </div>
+              <div
+                style={{ display: "flex", alignItems: "center", gap: 6 }}
+              >
+                <div
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: 999,
+                    background: "rgba(255,255,255,0.3)",
+                  }}
+                />
+                <span
+                  style={{
+                    fontSize: 11,
+                    color: "rgba(255,255,255,0.5)",
+                  }}
+                >
+                  Hit Ratio
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ width: "100%", height: 200 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={CHART_DATA}>
+                <CartesianGrid
+                  strokeDasharray="0"
+                  stroke="rgba(255,255,255,0.05)"
+                  vertical={false}
+                />
+                <XAxis
+                  dataKey="month"
+                  tick={{
+                    fill: "rgba(255,255,255,0.4)",
+                    fontSize: 11,
+                  }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="submissions"
+                  stroke="#7C3AED"
+                  strokeWidth={2}
+                  dot={false}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="hitRatio"
+                  stroke="rgba(255,255,255,0.25)"
+                  strokeWidth={2}
+                  strokeDasharray="6 3"
+                  dot={false}
+                  yAxisId="right"
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              gap: 48,
+              marginTop: 20,
+              paddingTop: 16,
+              borderTop: "1px solid rgba(255,255,255,0.06)",
+            }}
+          >
+            <div>
+              <span
+                style={{
+                  fontSize: 10,
+                  fontWeight: 600,
+                  letterSpacing: "0.06em",
+                  textTransform: "uppercase",
+                  color: "rgba(255,255,255,0.4)",
+                  display: "block",
+                  marginBottom: 4,
+                }}
+              >
+                CURRENT MONTH COUNT
+              </span>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "baseline",
+                  gap: 6,
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 24,
+                    fontWeight: 700,
+                    color: "#fff",
+                  }}
+                >
+                  4,822
+                </span>
+                <span
+                  style={{
+                    fontSize: 13,
+                    color: "rgba(255,255,255,0.5)",
+                  }}
+                >
+                  Submissions
+                </span>
+              </div>
+            </div>
+            <div>
+              <span
+                style={{
+                  fontSize: 10,
+                  fontWeight: 600,
+                  letterSpacing: "0.06em",
+                  textTransform: "uppercase",
+                  color: "rgba(255,255,255,0.4)",
+                  display: "block",
+                  marginBottom: 4,
+                }}
+              >
+                CURRENT HIT RATIO
+              </span>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "baseline",
+                  gap: 6,
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 24,
+                    fontWeight: 700,
+                    color: "#fff",
+                  }}
+                >
+                  32.4%
+                </span>
+                <span
+                  style={{
+                    fontSize: 13,
+                    color: "rgba(255,255,255,0.5)",
+                  }}
+                >
+                  Efficiency
+                </span>
+              </div>
+            </div>
+          </div>
+        </GlassPanel>
+
+        <GlassPanel>
+          <span style={{ fontSize: 15, fontWeight: 600, color: "#fff" }}>
+            Policies by Vertical
+          </span>
+
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              marginTop: 16,
+              marginBottom: 16,
+            }}
+          >
+            <div
+              style={{
+                position: "relative",
+                width: 200,
+                height: 200,
+              }}
+            >
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={DONUT_DATA}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={90}
+                    dataKey="value"
+                    stroke="none"
+                  >
+                    {DONUT_DATA.map((_, i) => (
+                      <Cell
+                        key={i}
+                        fill={DONUT_COLORS[i % DONUT_COLORS.length]}
+                      />
+                    ))}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+              <div
+                style={{
+                  position: "absolute",
+                  top: "50%",
+                  left: "50%",
+                  transform: "translate(-50%, -50%)",
+                  textAlign: "center",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 22,
+                    fontWeight: 700,
+                    color: "#fff",
+                  }}
+                >
+                  100%
+                </div>
+                <div
+                  style={{
+                    fontSize: 9,
+                    fontWeight: 600,
+                    letterSpacing: "0.06em",
+                    textTransform: "uppercase",
+                    color: "rgba(255,255,255,0.4)",
+                  }}
+                >
+                  DISTRIBUTION
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            {DONUT_DATA.map((item, i) => (
+              <div
+                key={item.name}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "8px 0",
+                  borderBottom:
+                    i < DONUT_DATA.length - 1
+                      ? "1px solid rgba(255,255,255,0.04)"
+                      : "none",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: 2,
+                      background: DONUT_COLORS[i % DONUT_COLORS.length],
+                    }}
+                  />
+                  <span
+                    style={{
+                      fontSize: 13,
+                      color: "rgba(255,255,255,0.7)",
+                    }}
+                  >
+                    {item.name}
+                  </span>
+                </div>
+                <span
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: "#fff",
+                  }}
+                >
+                  {item.value.toLocaleString()}
+                </span>
               </div>
             ))}
           </div>
-        </GlassCard>
-
-        <GlassCard>
-          <h3 style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, marginBottom: "16px" }}>Quick Actions</h3>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-            {[
-              { label: "New Deal", desc: "Create a new pipeline entry" },
-              { label: "Add Organization", desc: "Register a new org" },
-              { label: "View Reports", desc: "Analytics and insights" },
-              { label: "Manage Tasks", desc: "View task queue" },
-            ].map((action) => (
-              <button
-                key={action.label}
-                style={{ textAlign: "left", padding: "16px", borderRadius: "12px", background: subtleBg, border: `1px solid ${borderSubtle}`, cursor: "pointer", transition: "border-color 0.15s" }}
-                onMouseEnter={(e) => (e.currentTarget.style.borderColor = "rgba(233,30,140,0.3)")}
-                onMouseLeave={(e) => (e.currentTarget.style.borderColor = borderSubtle)}
-              >
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <p style={{ fontSize: "14px", fontWeight: 500, color: textPrimary, margin: 0 }}>{action.label}</p>
-                  <ArrowUpRight style={{ width: "14px", height: "14px", color: isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.3)" }} />
-                </div>
-                <p style={{ fontSize: "12px", marginTop: "4px", color: textMuted }}>{action.desc}</p>
-              </button>
-            ))}
-          </div>
-        </GlassCard>
+        </GlassPanel>
       </div>
+
+      <GlassPanel>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: 16,
+          }}
+        >
+          <span style={{ fontSize: 15, fontWeight: 600, color: "#fff" }}>
+            Recent Implementation Pipelines
+          </span>
+          <span
+            style={{
+              fontSize: 11,
+              fontWeight: 600,
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+              color: "#7C3AED",
+              cursor: "pointer",
+            }}
+          >
+            VIEW ALL PIPELINES
+          </span>
+        </div>
+
+        <table
+          style={{
+            width: "100%",
+            borderCollapse: "collapse",
+          }}
+        >
+          <thead>
+            <tr>
+              {[
+                "ACCOUNT NAME",
+                "VERTICAL",
+                "STATUS",
+                "ESTIMATED REVENUE",
+                "ACTIONS",
+              ].map((h) => (
+                <th
+                  key={h}
+                  style={{
+                    textAlign: "left",
+                    fontSize: 11,
+                    fontWeight: 600,
+                    letterSpacing: "0.04em",
+                    color: "rgba(255,255,255,0.4)",
+                    padding: "0 8px 12px",
+                    borderBottom: "1px solid rgba(255,255,255,0.05)",
+                  }}
+                >
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {PIPELINE_DATA.map((row) => {
+              const st = STATUS_STYLES[row.status] || {
+                color: "#fff",
+                bg: "rgba(255,255,255,0.1)",
+              };
+              return (
+                <tr
+                  key={row.initials}
+                  style={{
+                    borderBottom: "1px solid rgba(255,255,255,0.05)",
+                    transition: "background 0.15s",
+                  }}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.background =
+                      "rgba(255,255,255,0.02)")
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.background = "transparent")
+                  }
+                >
+                  <td style={{ padding: "14px 8px" }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10,
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: 32,
+                          height: 32,
+                          borderRadius: 999,
+                          background: row.color,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          color: "#fff",
+                          fontSize: 11,
+                          fontWeight: 600,
+                          flexShrink: 0,
+                        }}
+                      >
+                        {row.initials}
+                      </div>
+                      <span
+                        style={{
+                          fontSize: 14,
+                          fontWeight: 500,
+                          color: "#fff",
+                        }}
+                      >
+                        {row.name}
+                      </span>
+                    </div>
+                  </td>
+                  <td
+                    style={{
+                      padding: "14px 8px",
+                      fontSize: 13,
+                      color: "rgba(255,255,255,0.6)",
+                    }}
+                  >
+                    {row.vertical}
+                  </td>
+                  <td style={{ padding: "14px 8px" }}>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 600,
+                        color: st.color,
+                        background: st.bg,
+                        borderRadius: 4,
+                        padding: "2px 8px",
+                      }}
+                    >
+                      {row.status}
+                    </span>
+                  </td>
+                  <td
+                    style={{
+                      padding: "14px 8px",
+                      fontSize: 14,
+                      fontWeight: 500,
+                      color: "#fff",
+                    }}
+                  >
+                    {row.revenue}
+                  </td>
+                  <td style={{ padding: "14px 8px", position: "relative" }}>
+                    <button
+                      onClick={() =>
+                        setMenuOpen(
+                          menuOpen === row.initials ? null : row.initials
+                        )
+                      }
+                      style={{
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        color: "rgba(255,255,255,0.4)",
+                        padding: 4,
+                      }}
+                      onMouseEnter={(e) =>
+                        (e.currentTarget.style.color = "#fff")
+                      }
+                      onMouseLeave={(e) =>
+                        (e.currentTarget.style.color =
+                          "rgba(255,255,255,0.4)")
+                      }
+                    >
+                      <MoreHorizontal style={{ width: 18, height: 18 }} />
+                    </button>
+                    {menuOpen === row.initials && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          right: 8,
+                          top: 40,
+                          background: "#1a1a2e",
+                          border: "1px solid rgba(255,255,255,0.1)",
+                          borderRadius: 8,
+                          padding: "4px 0",
+                          minWidth: 120,
+                          zIndex: 10,
+                        }}
+                      >
+                        {["Edit", "View", "Archive"].map((action) => (
+                          <button
+                            key={action}
+                            onClick={() => setMenuOpen(null)}
+                            style={{
+                              display: "block",
+                              width: "100%",
+                              textAlign: "left",
+                              background: "none",
+                              border: "none",
+                              color: "rgba(255,255,255,0.7)",
+                              fontSize: 13,
+                              padding: "8px 14px",
+                              cursor: "pointer",
+                            }}
+                            onMouseEnter={(e) =>
+                              (e.currentTarget.style.background =
+                                "rgba(255,255,255,0.05)")
+                            }
+                            onMouseLeave={(e) =>
+                              (e.currentTarget.style.background = "none")
+                            }
+                          >
+                            {action}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </GlassPanel>
     </div>
   );
 }
