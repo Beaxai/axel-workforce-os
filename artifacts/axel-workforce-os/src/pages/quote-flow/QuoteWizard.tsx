@@ -7,7 +7,6 @@ import Step3ExperienceMod from "./Step3ExperienceMod";
 import Step4Indication from "./Step4Indication";
 import Phase2Transition from "./Phase2Transition";
 import P2Step1Applicant from "./P2Step1Applicant";
-import P2Step2CoverageHistory from "./P2Step2CoverageHistory";
 import P2Step3GeneralInfo from "./P2Step3GeneralInfo";
 import P2Step4CannabisOps from "./P2Step4CannabisOps";
 import P2Step5SafetyPremises from "./P2Step5SafetyPremises";
@@ -45,7 +44,6 @@ export default function QuoteWizard() {
     const steps: { key: string; label: string }[] = [
       { key: "p2-transition", label: "Transition" },
       { key: "p2-applicant", label: "Applicant Details" },
-      { key: "p2-coverage", label: "Coverage History" },
       { key: "p2-general", label: "General Information" },
       { key: "p2-cannabis", label: "Cannabis Operations" },
       { key: "p2-safety", label: "Safety & Premises" },
@@ -65,7 +63,6 @@ export default function QuoteWizard() {
     const components: React.ReactNode[] = [
       <Phase2Transition key="transition" />,
       <P2Step1Applicant key="applicant" />,
-      <P2Step2CoverageHistory key="coverage" />,
       <P2Step3GeneralInfo key="general" />,
       <P2Step4CannabisOps key="cannabis" />,
       <P2Step5SafetyPremises key="safety" />,
@@ -113,7 +110,7 @@ export default function QuoteWizard() {
     const step = store.currentStep;
     if (step === 0) return { current: 0, total: 1, label: "Transition" };
     const totalP2 = phase2Components.length - 2;
-    const labels = ["Applicant Details", "Coverage History", "General Information", "Cannabis Operations", "Safety & Premises"];
+    const labels = ["Applicant Details", "General Information", "Cannabis Operations", "Safety & Premises"];
     if (hasExtraction) labels.push("Extraction");
     if (hasDelivery) labels.push("Auto Exposure");
     labels.push("Loss History");
