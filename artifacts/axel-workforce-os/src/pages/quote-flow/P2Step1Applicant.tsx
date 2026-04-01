@@ -1,3 +1,4 @@
+import { useThemeColors } from "@/lib/use-theme-colors";
 import { useQuoteFlowStore } from "@/lib/quote-flow-store";
 import {
   FormSection, FieldGrid, FieldLabel, TextInput, SelectInput,
@@ -6,6 +7,7 @@ import {
 
 export default function P2Step1Applicant() {
   const s = useQuoteFlowStore();
+  const { isDark, textPrimary, textSecondary, textMuted, cardBg, borderColor } = useThemeColors();
 
   return (
     <div style={{ maxWidth: 800 }}>
@@ -63,7 +65,7 @@ export default function P2Step1Applicant() {
             }}
             onClick={() => s.update({ mailingAddressSame: !s.mailingAddressSame })}
           >
-            {s.mailingAddressSame && <span style={{ color: "#fff", fontSize: 14, fontWeight: 700 }}>✓</span>}
+            {s.mailingAddressSame && <span style={{ color: textPrimary, fontSize: 14, fontWeight: 700 }}>✓</span>}
           </div>
           <span style={{ fontSize: 14, color: "#ccc" }}>Same as business address</span>
         </label>

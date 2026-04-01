@@ -10,6 +10,7 @@ import {
   Heart,
 } from "lucide-react";
 import { getVerticalBySlug } from "@/lib/vertical-data";
+import { useThemeColors } from "@/lib/use-theme-colors";
 
 const BASE = import.meta.env.BASE_URL || "/";
 
@@ -90,11 +91,12 @@ export default function VerticalProgramOffering() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const vertical = slug ? getVerticalBySlug(slug) : undefined;
+  const { textPrimary, textSecondary, textMuted, cardBg, borderColor } = useThemeColors();
 
   if (!vertical) {
     return (
       <div style={{ padding: 40, textAlign: "center" }}>
-        <p style={{ color: "#888", fontSize: 16 }}>Vertical not found.</p>
+        <p style={{ color: textMuted, fontSize: 16 }}>Vertical not found.</p>
         <Link to="/marketplace" style={{ color: "#7C3AED", textDecoration: "none", fontSize: 14 }}>
           Back to Marketplace
         </Link>
@@ -116,11 +118,9 @@ export default function VerticalProgramOffering() {
         to="/marketplace"
         style={{
           display: "inline-flex", alignItems: "center", gap: 6,
-          color: "#888", textDecoration: "none", fontSize: 14,
+          color: textMuted, textDecoration: "none", fontSize: 14,
           marginBottom: 24, transition: "color 0.15s",
         }}
-        onMouseEnter={(e) => (e.currentTarget.style.color = "#ccc")}
-        onMouseLeave={(e) => (e.currentTarget.style.color = "#888")}
       >
         <ArrowLeft style={{ width: 16, height: 16 }} />
         Back to Marketplace
@@ -187,10 +187,10 @@ export default function VerticalProgramOffering() {
       </div>
 
       <div style={{ marginBottom: 32 }}>
-        <h2 style={{ fontSize: 22, fontWeight: 700, color: "#fff", margin: 0, marginBottom: 6 }}>
+        <h2 style={{ fontSize: 22, fontWeight: 700, color: textPrimary, margin: 0, marginBottom: 6 }}>
           Program Offering
         </h2>
-        <p style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", margin: 0 }}>
+        <p style={{ fontSize: 14, color: textMuted, margin: 0 }}>
           Everything your {vertical.name.toLowerCase()} operation needs, under one roof.
         </p>
       </div>
@@ -205,8 +205,8 @@ export default function VerticalProgramOffering() {
           <div
             key={svc.title}
             style={{
-              background: "rgba(255,255,255,0.05)", backdropFilter: "blur(12px)",
-              border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: 24,
+              background: cardBg, backdropFilter: "blur(12px)",
+              border: `1px solid ${borderColor}`, borderRadius: 12, padding: 24,
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
@@ -219,7 +219,7 @@ export default function VerticalProgramOffering() {
               >
                 <svc.icon style={{ width: 18, height: 18, color: "#7C3AED" }} />
               </div>
-              <h3 style={{ fontSize: 15, fontWeight: 700, color: "#fff", margin: 0 }}>
+              <h3 style={{ fontSize: 15, fontWeight: 700, color: textPrimary, margin: 0 }}>
                 {svc.title}
               </h3>
             </div>
@@ -228,7 +228,7 @@ export default function VerticalProgramOffering() {
                 <li
                   key={item}
                   style={{
-                    fontSize: 13, color: "rgba(255,255,255,0.6)", paddingLeft: 14,
+                    fontSize: 13, color: textSecondary, paddingLeft: 14,
                     position: "relative", lineHeight: 1.4,
                   }}
                 >
@@ -248,17 +248,17 @@ export default function VerticalProgramOffering() {
 
       <div
         style={{
-          background: "rgba(255,255,255,0.05)", backdropFilter: "blur(12px)",
-          border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12,
+          background: cardBg, backdropFilter: "blur(12px)",
+          border: `1px solid ${borderColor}`, borderRadius: 12,
           padding: 32, marginBottom: 32,
         }}
       >
-        <h2 style={{ fontSize: 18, fontWeight: 700, color: "#fff", margin: 0, marginBottom: 8 }}>
+        <h2 style={{ fontSize: 18, fontWeight: 700, color: textPrimary, margin: 0, marginBottom: 8 }}>
           Integrate insurance with a comprehensive HR platform
         </h2>
         <p
           style={{
-            fontSize: 14, color: "rgba(255,255,255,0.6)", margin: 0,
+            fontSize: 14, color: textSecondary, margin: 0,
             lineHeight: 1.7, maxWidth: 900,
           }}
         >

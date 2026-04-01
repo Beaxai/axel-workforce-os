@@ -1,3 +1,4 @@
+import { useThemeColors } from "@/lib/use-theme-colors";
 import { useState } from "react";
 import { useQuoteFlowStore } from "@/lib/quote-flow-store";
 import { api } from "@/lib/api";
@@ -5,6 +6,7 @@ import { CheckCircle, Loader2 } from "lucide-react";
 
 export default function FinalSubmission() {
   const s = useQuoteFlowStore();
+  const { isDark, textPrimary, textSecondary, textMuted, cardBg, borderColor } = useThemeColors();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -55,7 +57,7 @@ export default function FinalSubmission() {
         <CheckCircle style={{ width: 40, height: 40, color: "#E91E8C" }} />
       </div>
 
-      <h2 style={{ fontSize: 32, fontWeight: 700, color: "#fff", margin: "0 0 8px" }}>Ready to Submit</h2>
+      <h2 style={{ fontSize: 32, fontWeight: 700, color: textPrimary, margin: "0 0 8px" }}>Ready to Submit</h2>
       <p style={{ fontSize: 16, color: "#888", margin: "0 0 32px", maxWidth: 460, lineHeight: 1.6 }}>
         Your complete submission has been compiled and is ready for underwriting review.
       </p>
@@ -82,7 +84,7 @@ export default function FinalSubmission() {
         ].map(([label, value]) => (
           <div key={label} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
             <span style={{ fontSize: 14, color: "#888" }}>{label}</span>
-            <span style={{ fontSize: 14, color: "#fff", fontWeight: 500 }}>{value}</span>
+            <span style={{ fontSize: 14, color: textPrimary, fontWeight: 500 }}>{value}</span>
           </div>
         ))}
       </div>
@@ -100,7 +102,7 @@ export default function FinalSubmission() {
           borderRadius: 32,
           border: "none",
           background: "#E91E8C",
-          color: "#fff",
+          color: textPrimary,
           fontSize: 18,
           fontWeight: 700,
           cursor: submitting ? "wait" : "pointer",

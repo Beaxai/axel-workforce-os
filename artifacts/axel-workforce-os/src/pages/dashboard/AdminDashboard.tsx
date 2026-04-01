@@ -17,8 +17,8 @@ import {
   Pie,
   Cell,
 } from "recharts";
+import { useThemeColors } from "@/lib/use-theme-colors";
 
-// TODO: replace with Supabase query
 const KPI_DATA = [
   { label: "TOTAL PREMIUM IN FORCE", value: "$142.8M", delta: "+12.4%", icon: CreditCard },
   { label: "TOTAL WORKFORCE REVENUE", value: "$28.4M", delta: "+8.2%", icon: TrendingUp },
@@ -26,7 +26,6 @@ const KPI_DATA = [
   { label: "AGENTS APPOINTED", value: "3,105", delta: "+240", icon: Shield },
 ];
 
-// TODO: replace with Supabase query
 const DONUT_DATA = [
   { name: "Healthcare", value: 1420 },
   { name: "Construction", value: 1014 },
@@ -37,7 +36,6 @@ const DONUT_DATA = [
 
 const DONUT_COLORS = ["#7C3AED", "#6D28D9", "#5B21B6", "#4C1D95", "rgba(124,58,237,0.4)"];
 
-// TODO: replace with Supabase query
 const SECTOR_DATA = [
   { icon: HeartPulse, name: "Healthcare", subtitle: "Critical Care & Pharma", count: "1,420", delta: "+4.1%", deltaType: "positive" as const },
   { icon: HardHat, name: "Construction", subtitle: "Infrastructure & Residential", count: "1,014", delta: "+2.8%", deltaType: "positive" as const },
@@ -46,7 +44,6 @@ const SECTOR_DATA = [
   { icon: UtensilsCrossed, name: "Hospitality", subtitle: "F&B and Lodging", count: "324", delta: "STEADY", deltaType: "steady" as const },
 ];
 
-// TODO: replace with Supabase query
 const PIPELINE_DATA = [
   { initials: "BC", name: "BuildCo Solutions", vertical: "Construction", status: "IN REVIEW", revenue: "$450,000", color: "#1E40AF" },
   { initials: "GL", name: "Green Leaf Logistics", vertical: "Cannabis", status: "ACTIVE", revenue: "$1,200,000", color: "#065F46" },
@@ -59,40 +56,41 @@ const STATUS_STYLES: Record<string, { color: string; bg: string }> = {
   PENDING: { color: "#F97316", bg: "rgba(249,115,22,0.15)" },
 };
 
-const DELTA_COLORS = { positive: "#10B981", negative: "#EF4444", steady: "rgba(255,255,255,0.4)" };
-
-function GlassPanel({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
-  return (
-    <div style={{
-      background: "rgba(255,255,255,0.05)",
-      backdropFilter: "blur(12px)",
-      WebkitBackdropFilter: "blur(12px)",
-      border: "1px solid rgba(255,255,255,0.08)",
-      borderRadius: 12,
-      padding: 24,
-      ...style,
-    }}>
-      {children}
-    </div>
-  );
-}
-
 export default function AdminDashboard() {
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
+  const { isDark, textPrimary, textSecondary, textMuted, cardBg, borderColor, hoverBg } = useThemeColors();
+
+  const DELTA_COLORS = { positive: "#10B981", negative: "#EF4444", steady: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.35)" };
+
+  function GlassPanel({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
+    return (
+      <div style={{
+        background: cardBg,
+        backdropFilter: "blur(12px)",
+        WebkitBackdropFilter: "blur(12px)",
+        border: `1px solid ${borderColor}`,
+        borderRadius: 12,
+        padding: 24,
+        ...style,
+      }}>
+        {children}
+      </div>
+    );
+  }
 
   return (
     <div style={{ maxWidth: 1200 }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 24 }}>
         <div>
-          <h1 style={{ fontSize: 28, fontWeight: 700, color: "#fff", margin: 0, marginBottom: 4 }}>Dashboard</h1>
-          <p style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", margin: 0 }}>
+          <h1 style={{ fontSize: 28, fontWeight: 700, color: textPrimary, margin: 0, marginBottom: 4 }}>Dashboard</h1>
+          <p style={{ fontSize: 14, color: textMuted, margin: 0 }}>
             Real-time performance analytics across the global ecosystem.
           </p>
         </div>
         <div style={{ display: "flex", gap: 10, flexShrink: 0 }}>
           <button style={{
-            background: "transparent", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8,
-            color: "#fff", fontSize: 13, fontWeight: 500, padding: "8px 16px", cursor: "pointer",
+            background: "transparent", border: `1px solid ${borderColor}`, borderRadius: 8,
+            color: textSecondary, fontSize: 13, fontWeight: 500, padding: "8px 16px", cursor: "pointer",
           }}>Export Report</button>
           <button style={{
             background: "#7C3AED", border: "none", borderRadius: 8,
@@ -101,12 +99,11 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* ROW 1 — KPI CARDS */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 24 }}>
         {KPI_DATA.map((kpi) => (
           <GlassPanel key={kpi.label} style={{ borderBottom: "2px solid #7C3AED" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
-              <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: "rgba(255,255,255,0.5)" }}>
+              <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: textMuted }}>
                 {kpi.label}
               </span>
               <div style={{ background: "rgba(124,58,237,0.2)", borderRadius: 8, padding: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -114,9 +111,9 @@ export default function AdminDashboard() {
               </div>
             </div>
             <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-              <span style={{ fontSize: 24, fontWeight: 700, color: "#fff" }}>{kpi.value}</span>
+              <span style={{ fontSize: 24, fontWeight: 700, color: textPrimary }}>{kpi.value}</span>
               {"valueSuffix" in kpi && kpi.valueSuffix && (
-                <span style={{ fontSize: 13, color: "rgba(255,255,255,0.5)" }}>{kpi.valueSuffix}</span>
+                <span style={{ fontSize: 13, color: textMuted }}>{kpi.valueSuffix}</span>
               )}
               {kpi.delta && (
                 <span style={{ fontSize: 12, fontWeight: 500, color: "#4ADE80" }}>{kpi.delta}</span>
@@ -126,15 +123,13 @@ export default function AdminDashboard() {
         ))}
       </div>
 
-      {/* ROW 2 — TWO COLUMN: Donut + Sector Detail */}
       <div style={{ display: "grid", gridTemplateColumns: "45fr 55fr", gap: 16, marginBottom: 24 }}>
-        {/* Left: Policies by Vertical Distribution */}
         <GlassPanel>
           <div style={{ marginBottom: 16 }}>
-            <h2 style={{ fontSize: 16, fontWeight: 700, color: "#fff", margin: 0, marginBottom: 4 }}>
+            <h2 style={{ fontSize: 16, fontWeight: 700, color: textPrimary, margin: 0, marginBottom: 4 }}>
               Policies by Vertical Distribution
             </h2>
-            <p style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", margin: 0, lineHeight: 1.4 }}>
+            <p style={{ fontSize: 12, color: textMuted, margin: 0, lineHeight: 1.4 }}>
               Comprehensive breakdown of active policy accounts across primary market sectors.
             </p>
           </div>
@@ -151,8 +146,8 @@ export default function AdminDashboard() {
                 </PieChart>
               </ResponsiveContainer>
               <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", textAlign: "center" }}>
-                <div style={{ fontSize: 26, fontWeight: 700, color: "#fff" }}>4.2k</div>
-                <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: "rgba(255,255,255,0.4)" }}>
+                <div style={{ fontSize: 26, fontWeight: 700, color: textPrimary }}>4.2k</div>
+                <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: textMuted }}>
                   TOTAL POLICIES
                 </div>
               </div>
@@ -161,35 +156,34 @@ export default function AdminDashboard() {
 
           <div style={{
             display: "flex", gap: 16,
-            background: "rgba(255,255,255,0.05)", backdropFilter: "blur(12px)",
-            border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: 16,
+            background: cardBg, backdropFilter: "blur(12px)",
+            border: `1px solid ${borderColor}`, borderRadius: 10, padding: 16,
           }}>
             <div style={{ flex: 1 }}>
-              <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: "rgba(255,255,255,0.4)", display: "block", marginBottom: 4 }}>
+              <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: textMuted, display: "block", marginBottom: 4 }}>
                 PRIMARY GROWTH
               </span>
               <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
-                <span style={{ fontSize: 16, fontWeight: 700, color: "#fff" }}>Healthcare</span>
+                <span style={{ fontSize: 16, fontWeight: 700, color: textPrimary }}>Healthcare</span>
                 <span style={{ fontSize: 13, fontWeight: 500, color: "#10B981" }}>+12%</span>
               </div>
             </div>
-            <div style={{ width: 1, background: "rgba(255,255,255,0.08)" }} />
+            <div style={{ width: 1, background: borderColor }} />
             <div style={{ flex: 1 }}>
-              <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: "rgba(255,255,255,0.4)", display: "block", marginBottom: 4 }}>
+              <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: textMuted, display: "block", marginBottom: 4 }}>
                 AVG. RETENTION
               </span>
               <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
-                <span style={{ fontSize: 16, fontWeight: 700, color: "#fff" }}>94.8%</span>
-                <span style={{ fontSize: 13, color: "rgba(255,255,255,0.5)" }}>Stable</span>
+                <span style={{ fontSize: 16, fontWeight: 700, color: textPrimary }}>94.8%</span>
+                <span style={{ fontSize: 13, color: textMuted }}>Stable</span>
               </div>
             </div>
           </div>
         </GlassPanel>
 
-        {/* Right: Sector Performance Detail */}
         <GlassPanel>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-            <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: "rgba(255,255,255,0.5)" }}>
+            <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: textMuted }}>
               SECTOR PERFORMANCE DETAIL
             </span>
             <span style={{ fontSize: 12, color: "#7C3AED", cursor: "pointer", fontWeight: 500 }}>
@@ -203,7 +197,7 @@ export default function AdminDashboard() {
                 key={sector.name}
                 style={{
                   display: "flex", alignItems: "center", gap: 12, padding: "14px 0",
-                  borderBottom: i < SECTOR_DATA.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none",
+                  borderBottom: i < SECTOR_DATA.length - 1 ? `1px solid ${borderColor}` : "none",
                 }}
               >
                 <div style={{
@@ -213,11 +207,11 @@ export default function AdminDashboard() {
                   <sector.icon style={{ width: 18, height: 18, color: "#7C3AED" }} />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: "#fff" }}>{sector.name}</div>
-                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>{sector.subtitle}</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: textPrimary }}>{sector.name}</div>
+                  <div style={{ fontSize: 11, color: textMuted }}>{sector.subtitle}</div>
                 </div>
                 <div style={{ textAlign: "right", flexShrink: 0 }}>
-                  <div style={{ fontSize: 18, fontWeight: 700, color: "#fff" }}>{sector.count}</div>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: textPrimary }}>{sector.count}</div>
                   <div style={{ fontSize: 12, color: DELTA_COLORS[sector.deltaType] }}>{sector.delta}</div>
                 </div>
               </div>
@@ -226,10 +220,9 @@ export default function AdminDashboard() {
         </GlassPanel>
       </div>
 
-      {/* ROW 3 — RECENT IMPLEMENTATION PIPELINES */}
       <GlassPanel>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-          <span style={{ fontSize: 15, fontWeight: 600, color: "#fff" }}>Recent Implementation Pipelines</span>
+          <span style={{ fontSize: 15, fontWeight: 600, color: textPrimary }}>Recent Implementation Pipelines</span>
           <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: "#7C3AED", cursor: "pointer" }}>
             VIEW ALL PIPELINES
           </span>
@@ -241,20 +234,20 @@ export default function AdminDashboard() {
               {["ACCOUNT NAME", "VERTICAL", "STATUS", "ESTIMATED REVENUE", "ACTIONS"].map((h) => (
                 <th key={h} style={{
                   textAlign: "left", fontSize: 11, fontWeight: 600, letterSpacing: "0.04em",
-                  color: "rgba(255,255,255,0.4)", padding: "0 8px 12px",
-                  borderBottom: "1px solid rgba(255,255,255,0.05)",
+                  color: textMuted, padding: "0 8px 12px",
+                  borderBottom: `1px solid ${borderColor}`,
                 }}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {PIPELINE_DATA.map((row) => {
-              const st = STATUS_STYLES[row.status] || { color: "#fff", bg: "rgba(255,255,255,0.1)" };
+              const st = STATUS_STYLES[row.status] || { color: textPrimary, bg: cardBg };
               return (
                 <tr
                   key={row.initials}
-                  style={{ borderBottom: "1px solid rgba(255,255,255,0.05)", transition: "background 0.15s" }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.02)")}
+                  style={{ borderBottom: `1px solid ${borderColor}`, transition: "background 0.15s" }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = hoverBg)}
                   onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
                 >
                   <td style={{ padding: "14px 8px" }}>
@@ -264,29 +257,30 @@ export default function AdminDashboard() {
                         display: "flex", alignItems: "center", justifyContent: "center",
                         color: "#fff", fontSize: 11, fontWeight: 600, flexShrink: 0,
                       }}>{row.initials}</div>
-                      <span style={{ fontSize: 14, fontWeight: 500, color: "#fff" }}>{row.name}</span>
+                      <span style={{ fontSize: 14, fontWeight: 500, color: textPrimary }}>{row.name}</span>
                     </div>
                   </td>
-                  <td style={{ padding: "14px 8px", fontSize: 13, color: "rgba(255,255,255,0.6)" }}>{row.vertical}</td>
+                  <td style={{ padding: "14px 8px", fontSize: 13, color: textSecondary }}>{row.vertical}</td>
                   <td style={{ padding: "14px 8px" }}>
                     <span style={{ fontSize: 11, fontWeight: 600, color: st.color, background: st.bg, borderRadius: 4, padding: "2px 8px" }}>
                       {row.status}
                     </span>
                   </td>
-                  <td style={{ padding: "14px 8px", fontSize: 14, fontWeight: 500, color: "#fff" }}>{row.revenue}</td>
+                  <td style={{ padding: "14px 8px", fontSize: 14, fontWeight: 500, color: textPrimary }}>{row.revenue}</td>
                   <td style={{ padding: "14px 8px", position: "relative" }}>
                     <button
                       onClick={() => setMenuOpen(menuOpen === row.initials ? null : row.initials)}
-                      style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.4)", padding: 4 }}
-                      onMouseEnter={(e) => (e.currentTarget.style.color = "#fff")}
-                      onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.4)")}
+                      style={{ background: "none", border: "none", cursor: "pointer", color: textMuted, padding: 4 }}
+                      onMouseEnter={(e) => (e.currentTarget.style.color = textPrimary)}
+                      onMouseLeave={(e) => (e.currentTarget.style.color = textMuted)}
                     >
                       <MoreHorizontal style={{ width: 18, height: 18 }} />
                     </button>
                     {menuOpen === row.initials && (
                       <div style={{
-                        position: "absolute", right: 8, top: 40, background: "#1a1a2e",
-                        border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "4px 0", minWidth: 120, zIndex: 10,
+                        position: "absolute", right: 8, top: 40, background: isDark ? "#1a1a2e" : "#fff",
+                        border: `1px solid ${borderColor}`, borderRadius: 8, padding: "4px 0", minWidth: 120, zIndex: 10,
+                        boxShadow: isDark ? "none" : "0 4px 12px rgba(0,0,0,0.1)",
                       }}>
                         {["Edit", "View", "Archive"].map((action) => (
                           <button
@@ -294,9 +288,9 @@ export default function AdminDashboard() {
                             onClick={() => setMenuOpen(null)}
                             style={{
                               display: "block", width: "100%", textAlign: "left", background: "none",
-                              border: "none", color: "rgba(255,255,255,0.7)", fontSize: 13, padding: "8px 14px", cursor: "pointer",
+                              border: "none", color: textSecondary, fontSize: 13, padding: "8px 14px", cursor: "pointer",
                             }}
-                            onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.05)")}
+                            onMouseEnter={(e) => (e.currentTarget.style.background = hoverBg)}
                             onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
                           >{action}</button>
                         ))}

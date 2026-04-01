@@ -16,6 +16,7 @@ import P2StepLossHistory from "./P2StepLossHistory";
 import FinalSubmission from "./FinalSubmission";
 import ConfirmationScreen from "./ConfirmationScreen";
 import { ArrowLeft, ArrowRight } from "lucide-react";
+import { useThemeColors } from "@/lib/use-theme-colors";
 
 export default function QuoteWizard() {
   const location = useLocation();
@@ -34,6 +35,11 @@ export default function QuoteWizard() {
       navigate("/marketplace", { replace: true });
     }
   }, []);
+
+  const { isDark, textPrimary, textMuted } = useThemeColors();
+  const btnBg = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)";
+  const btnHoverBg = isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)";
+  const trackBg = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)";
 
   if (!store.vertical) return null;
 
@@ -148,14 +154,14 @@ export default function QuoteWizard() {
     <div style={{ display: "flex", flexDirection: "column", minHeight: "calc(100vh - 56px)" }}>
       {!isTransition && progress.total > 0 && (
         <div style={{ marginBottom: 32 }}>
-          <div style={{ height: 3, background: "rgba(255,255,255,0.06)", width: "100%", borderRadius: 2 }}>
+          <div style={{ height: 3, background: trackBg, width: "100%", borderRadius: 2 }}>
             <div style={{ height: "100%", width: `${(progress.current / progress.total) * 100}%`, background: "#E91E8C", borderRadius: 2, transition: "width 0.3s" }} />
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10 }}>
             <span style={{ fontSize: 12, fontWeight: 700, color: "#E91E8C", textTransform: "uppercase", letterSpacing: "0.05em" }}>
               {progress.label}
             </span>
-            <span style={{ fontSize: 13, color: "#666" }}>
+            <span style={{ fontSize: 13, color: textMuted }}>
               Step {progress.current} of {progress.total}
             </span>
           </div>
@@ -173,11 +179,11 @@ export default function QuoteWizard() {
             onClick={handleBack}
             style={{
               display: "flex", alignItems: "center", gap: 8, padding: "12px 24px", borderRadius: 24,
-              border: "none", background: "rgba(255,255,255,0.06)", color: "#fff", fontSize: 14,
+              border: "none", background: btnBg, color: textPrimary, fontSize: 14,
               fontWeight: 600, cursor: "pointer", height: 44, transition: "background 0.15s",
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.1)")}
-            onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.06)")}
+            onMouseEnter={(e) => (e.currentTarget.style.background = btnHoverBg)}
+            onMouseLeave={(e) => (e.currentTarget.style.background = btnBg)}
           >
             <ArrowLeft style={{ width: 16, height: 16 }} />
             Back
@@ -187,11 +193,11 @@ export default function QuoteWizard() {
             onClick={handleNext}
             style={{
               display: "flex", alignItems: "center", gap: 8, padding: "12px 24px", borderRadius: 24,
-              border: "none", background: "rgba(255,255,255,0.06)", color: "#fff", fontSize: 14,
+              border: "none", background: btnBg, color: textPrimary, fontSize: 14,
               fontWeight: 600, cursor: "pointer", height: 44, transition: "background 0.15s",
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.1)")}
-            onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.06)")}
+            onMouseEnter={(e) => (e.currentTarget.style.background = btnHoverBg)}
+            onMouseLeave={(e) => (e.currentTarget.style.background = btnBg)}
           >
             Continue
             <ArrowRight style={{ width: 16, height: 16 }} />

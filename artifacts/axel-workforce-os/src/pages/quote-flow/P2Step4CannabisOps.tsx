@@ -1,3 +1,4 @@
+import { useThemeColors } from "@/lib/use-theme-colors";
 import { useQuoteFlowStore } from "@/lib/quote-flow-store";
 import {
   FormSection, FieldGrid, FieldLabel, TextInput, NumberInput,
@@ -48,6 +49,7 @@ const PREHIRE_OPTIONS = [
 
 export default function P2Step4CannabisOps() {
   const s = useQuoteFlowStore();
+  const { isDark, textPrimary, textSecondary, textMuted, cardBg, borderColor } = useThemeColors();
 
   return (
     <div style={{ maxWidth: 800 }}>
@@ -82,7 +84,7 @@ export default function P2Step4CannabisOps() {
         )}
 
         <div style={{ marginTop: 20 }}>
-          <h4 style={{ fontSize: 14, fontWeight: 600, color: "#fff", margin: "0 0 12px" }}>Employee Breakdown</h4>
+          <h4 style={{ fontSize: 14, fontWeight: 600, color: textPrimary, margin: "0 0 12px" }}>Employee Breakdown</h4>
           <FieldGrid columns={4}>
             <FieldLabel label="Full Time">
               <NumberInput value={s.ftEmployees} onChange={(v) => s.update({ ftEmployees: v })} placeholder="0" />

@@ -1,3 +1,4 @@
+import { useThemeColors } from "@/lib/use-theme-colors";
 import { useState, useCallback, useRef } from "react";
 import { useQuoteFlowStore } from "@/lib/quote-flow-store";
 import { storeFile, removeFile } from "@/lib/loss-history-file-store";
@@ -7,6 +8,7 @@ const generateId = () => Math.random().toString(36).substring(2, 9);
 
 export default function P2StepLossHistory() {
   const s = useQuoteFlowStore();
+  const { isDark, textPrimary, textSecondary, textMuted, cardBg, borderColor } = useThemeColors();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
   const [error, setError] = useState("");
@@ -69,16 +71,16 @@ export default function P2StepLossHistory() {
     width: "100%",
     padding: "10px 14px",
     borderRadius: 8,
-    border: "1px solid rgba(255,255,255,0.08)",
+    border: `1px solid ${borderColor}`,
     background: "#1a1a26",
-    color: "#fff",
+    color: textPrimary,
     fontSize: 13,
     outline: "none",
   };
 
   return (
     <div style={{ maxWidth: 720, margin: "0 auto" }}>
-      <h2 style={{ fontSize: 24, fontWeight: 700, color: "#fff", margin: "0 0 6px" }}>
+      <h2 style={{ fontSize: 24, fontWeight: 700, color: textPrimary, margin: "0 0 6px" }}>
         Loss History
       </h2>
       <p style={{ fontSize: 14, color: "#888", margin: "0 0 28px" }}>
@@ -102,7 +104,7 @@ export default function P2StepLossHistory() {
         }}
       >
         <Upload style={{ width: 36, height: 36, color: dragOver ? "#E91E8C" : "#666", margin: "0 auto 12px" }} />
-        <p style={{ fontSize: 15, fontWeight: 600, color: "#fff", margin: "0 0 4px" }}>
+        <p style={{ fontSize: 15, fontWeight: 600, color: textPrimary, margin: "0 0 4px" }}>
           {dragOver ? "Drop files here" : "Drag & drop loss run PDFs"}
         </p>
         <p style={{ fontSize: 13, color: "#666", margin: 0 }}>
@@ -141,7 +143,7 @@ export default function P2StepLossHistory() {
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <FileText style={{ width: 20, height: 20, color: "#E91E8C" }} />
                   <div>
-                    <p style={{ fontSize: 14, fontWeight: 600, color: "#fff", margin: 0 }}>{file.name}</p>
+                    <p style={{ fontSize: 14, fontWeight: 600, color: textPrimary, margin: 0 }}>{file.name}</p>
                     <p style={{ fontSize: 12, color: "#666", margin: 0 }}>{formatSize(file.size)}</p>
                   </div>
                 </div>

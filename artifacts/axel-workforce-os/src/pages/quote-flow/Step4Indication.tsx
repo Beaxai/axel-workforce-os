@@ -1,3 +1,4 @@
+import { useThemeColors } from "@/lib/use-theme-colors";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuoteFlowStore } from "@/lib/quote-flow-store";
@@ -20,6 +21,7 @@ const BASE_RATES: Record<string, number> = {
 
 export default function Step4Indication() {
   const s = useQuoteFlowStore();
+  const { isDark, textPrimary, textSecondary, textMuted, cardBg, borderColor } = useThemeColors();
   const navigate = useNavigate();
   const [calculated, setCalculated] = useState(false);
 
@@ -98,7 +100,7 @@ export default function Step4Indication() {
       <div>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
           <Cannabis style={{ width: 22, height: 22, color: "#E91E8C" }} />
-          <h2 style={{ fontSize: 20, fontWeight: 700, color: "#fff", margin: 0 }}>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: textPrimary, margin: 0 }}>
             Cannabis — Workers' Compensation
           </h2>
         </div>
@@ -120,7 +122,7 @@ export default function Step4Indication() {
           <span style={{ fontSize: 12, color: "#888", textTransform: "uppercase", letterSpacing: "0.05em" }}>
             Estimated Annual Premium
           </span>
-          <div style={{ fontSize: 36, fontWeight: 700, color: "#fff", margin: "8px 0" }}>
+          <div style={{ fontSize: 36, fontWeight: 700, color: textPrimary, margin: "8px 0" }}>
             ${premiumLow.toLocaleString()} – ${premiumHigh.toLocaleString()}
           </div>
           <p style={{ fontSize: 13, color: "#888", margin: 0 }}>
@@ -131,7 +133,7 @@ export default function Step4Indication() {
         <div style={{ borderRadius: 12, background: "#13131f", overflow: "hidden", marginBottom: 16 }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead>
-              <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+              <tr style={{ borderBottom: `1px solid ${borderColor}` }}>
                 {["Location", "Class Code", "Description", "Payroll", "Rate/$100", "Est. Premium"].map((h) => (
                   <th key={h} style={{ padding: "12px 14px", textAlign: "left", color: "#888", fontWeight: 500, fontSize: 12 }}>{h}</th>
                 ))}
@@ -145,7 +147,7 @@ export default function Step4Indication() {
                   <td style={{ padding: "10px 14px", color: "#ccc" }}>{row.description}</td>
                   <td style={{ padding: "10px 14px", color: "#ccc" }}>${row.payroll.toLocaleString()}</td>
                   <td style={{ padding: "10px 14px", color: "#ccc" }}>${row.ratePer100.toFixed(2)}</td>
-                  <td style={{ padding: "10px 14px", color: "#fff", fontWeight: 600 }}>${Math.round(row.estPremium).toLocaleString()}</td>
+                  <td style={{ padding: "10px 14px", color: textPrimary, fontWeight: 600 }}>${Math.round(row.estPremium).toLocaleString()}</td>
                 </tr>
               ))}
               <tr style={{ borderTop: "2px solid rgba(233,30,140,0.3)" }}>
@@ -159,7 +161,7 @@ export default function Step4Indication() {
         </div>
 
         <p style={{ fontSize: 13, color: "#888", margin: "0 0 8px" }}>
-          Experience Modifier Applied: <strong style={{ color: "#fff" }}>{modifier.toFixed(2)}</strong>
+          Experience Modifier Applied: <strong style={{ color: textPrimary }}>{modifier.toFixed(2)}</strong>
         </p>
         <p style={{ fontSize: 13, color: "#E91E8C", fontWeight: 600, margin: "0 0 24px" }}>
           Final Indicated Range: ${premiumLow.toLocaleString()} – ${premiumHigh.toLocaleString()}
@@ -174,7 +176,7 @@ export default function Step4Indication() {
 
       <div>
         <div style={{ padding: 24, borderRadius: 12, background: "#13131f", marginBottom: 16 }}>
-          <h3 style={{ fontSize: 16, fontWeight: 700, color: "#fff", margin: "0 0 16px" }}>What's Included</h3>
+          <h3 style={{ fontSize: 16, fontWeight: 700, color: textPrimary, margin: "0 0 16px" }}>What's Included</h3>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {highlights.map((h) => (
               <div key={h} style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -189,7 +191,7 @@ export default function Step4Indication() {
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <Shield style={{ width: 18, height: 18, color: "#E91E8C" }} />
             <div>
-              <p style={{ fontSize: 14, color: "#fff", margin: 0, fontWeight: 600 }}>Benchmark Insurance</p>
+              <p style={{ fontSize: 14, color: textPrimary, margin: 0, fontWeight: 600 }}>Benchmark Insurance</p>
               <p style={{ fontSize: 12, color: "#888", margin: 0 }}>Admitted carrier — Cannabis specialist</p>
             </div>
           </div>
@@ -209,7 +211,7 @@ export default function Step4Indication() {
             borderRadius: 28,
             border: "none",
             background: "#E91E8C",
-            color: "#fff",
+            color: textPrimary,
             fontSize: 16,
             fontWeight: 700,
             cursor: "pointer",

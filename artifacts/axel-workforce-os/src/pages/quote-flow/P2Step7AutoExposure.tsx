@@ -1,3 +1,4 @@
+import { useThemeColors } from "@/lib/use-theme-colors";
 import { useQuoteFlowStore } from "@/lib/quote-flow-store";
 import {
   FormSection, FieldGrid, FieldLabel, TextInput, NumberInput,
@@ -12,6 +13,7 @@ const DELIVERY_TYPES = [
 
 export default function P2Step7AutoExposure() {
   const s = useQuoteFlowStore();
+  const { isDark, textPrimary, textSecondary, textMuted, cardBg, borderColor } = useThemeColors();
 
   return (
     <div style={{ maxWidth: 800 }}>
@@ -71,7 +73,7 @@ export default function P2Step7AutoExposure() {
         </div>
 
         <div style={{ marginTop: 16 }}>
-          <h4 style={{ fontSize: 14, fontWeight: 600, color: "#fff", margin: "0 0 12px" }}>Average Distance Per Day</h4>
+          <h4 style={{ fontSize: 14, fontWeight: 600, color: textPrimary, margin: "0 0 12px" }}>Average Distance Per Day</h4>
           <FieldGrid columns={2}>
             <FieldLabel label="Min (miles)">
               <NumberInput value={s.avgDistanceMin} onChange={(v) => s.update({ avgDistanceMin: v })} placeholder="Min" />
@@ -83,7 +85,7 @@ export default function P2Step7AutoExposure() {
         </div>
 
         <div style={{ marginTop: 16 }}>
-          <h4 style={{ fontSize: 14, fontWeight: 600, color: "#fff", margin: "0 0 12px" }}>Average # Deliveries Per Day</h4>
+          <h4 style={{ fontSize: 14, fontWeight: 600, color: textPrimary, margin: "0 0 12px" }}>Average # Deliveries Per Day</h4>
           <FieldGrid columns={2}>
             <FieldLabel label="Min">
               <NumberInput value={s.avgDeliveriesMin} onChange={(v) => s.update({ avgDeliveriesMin: v })} placeholder="Min" />
@@ -137,7 +139,7 @@ export default function P2Step7AutoExposure() {
                   display: "flex", alignItems: "center", justifyContent: "center",
                 }}
               >
-                {s.vehiclesUnmarked && <span style={{ color: "#fff", fontSize: 12, fontWeight: 700 }}>✓</span>}
+                {s.vehiclesUnmarked && <span style={{ color: textPrimary, fontSize: 12, fontWeight: 700 }}>✓</span>}
               </div>
               <span style={{ fontSize: 13, color: "#ccc" }}>Unmarked</span>
             </label>

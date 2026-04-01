@@ -1,3 +1,4 @@
+import { useThemeColors } from "@/lib/use-theme-colors";
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -7,6 +8,7 @@ import { FileSignature, CheckCircle } from "lucide-react";
 
 export default function AgentAgreement() {
   const { id } = useParams<{ id: string }>();
+  const { isDark, textPrimary, textSecondary, textMuted, cardBg, borderColor } = useThemeColors();
   const qc = useQueryClient();
   const [signed, setSigned] = useState(false);
 
@@ -31,7 +33,7 @@ export default function AgentAgreement() {
     <div style={{ minHeight: "100vh", background: "#060608", display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 20px" }}>
       <div style={{ width: "100%", maxWidth: "560px" }}>
         <div style={{ textAlign: "center", marginBottom: "32px" }}>
-          <h1 style={{ fontSize: "28px", fontWeight: 700, color: "#fff", margin: 0 }}>
+          <h1 style={{ fontSize: "28px", fontWeight: 700, color: textPrimary, margin: 0 }}>
             <span style={{ color: "#E91E8C" }}>Axel</span> Agency Agreement
           </h1>
         </div>
@@ -40,20 +42,20 @@ export default function AgentAgreement() {
           {signed ? (
             <div style={{ textAlign: "center", padding: "24px" }}>
               <CheckCircle style={{ width: 48, height: 48, color: "#1EE97B", marginBottom: "16px" }} />
-              <h2 style={{ fontSize: "20px", fontWeight: 600, color: "#fff", margin: "0 0 12px" }}>Agreement Signed</h2>
-              <p style={{ fontSize: "15px", color: "rgba(255,255,255,0.6)", lineHeight: 1.6 }}>
+              <h2 style={{ fontSize: "20px", fontWeight: 600, color: textPrimary, margin: "0 0 12px" }}>Agreement Signed</h2>
+              <p style={{ fontSize: "15px", color: textSecondary, lineHeight: 1.6 }}>
                 Thank you. Please proceed to schedule your onboarding call.
               </p>
             </div>
           ) : (
             <div style={{ textAlign: "center", padding: "24px" }}>
               <FileSignature style={{ width: 48, height: 48, color: "#E91E8C", marginBottom: "16px" }} />
-              <h2 style={{ fontSize: "20px", fontWeight: 600, color: "#fff", margin: "0 0 12px" }}>Application Approved</h2>
-              <p style={{ fontSize: "15px", color: "rgba(255,255,255,0.6)", lineHeight: 1.6, marginBottom: "24px" }}>
+              <h2 style={{ fontSize: "20px", fontWeight: 600, color: textPrimary, margin: "0 0 12px" }}>Application Approved</h2>
+              <p style={{ fontSize: "15px", color: textSecondary, lineHeight: 1.6, marginBottom: "24px" }}>
                 Your application has been approved. Please sign your agency agreement below.
               </p>
               {reg && (
-                <p style={{ fontSize: "14px", color: "rgba(255,255,255,0.4)", marginBottom: "24px" }}>
+                <p style={{ fontSize: "14px", color: textMuted, marginBottom: "24px" }}>
                   Applicant: {reg.firstName} {reg.lastName} · {reg.agencyName}
                 </p>
               )}

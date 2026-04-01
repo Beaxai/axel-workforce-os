@@ -1,3 +1,4 @@
+import { useThemeColors } from "@/lib/use-theme-colors";
 import { useQuoteFlowStore } from "@/lib/quote-flow-store";
 import {
   FormSection, FieldGrid, FieldLabel, TextInput, TextArea,
@@ -42,6 +43,7 @@ const SECURITY_OPTIONS = [
 
 export default function P2Step5SafetyPremises() {
   const s = useQuoteFlowStore();
+  const { isDark, textPrimary, textSecondary, textMuted, cardBg, borderColor } = useThemeColors();
 
   return (
     <div style={{ maxWidth: 800 }}>
@@ -122,7 +124,7 @@ export default function P2Step5SafetyPremises() {
                   display: "flex", alignItems: "center", justifyContent: "center",
                 }}
               >
-                {s.forkliftsCertified && <span style={{ color: "#fff", fontSize: 12, fontWeight: 700 }}>✓</span>}
+                {s.forkliftsCertified && <span style={{ color: textPrimary, fontSize: 12, fontWeight: 700 }}>✓</span>}
               </div>
               <span style={{ fontSize: 13, color: "#ccc" }}>Operators annually certified</span>
             </label>
@@ -198,7 +200,7 @@ export default function P2Step5SafetyPremises() {
                     display: "flex", alignItems: "center", justifyContent: "center",
                   }}
                 >
-                  {s.outsideSecurityCois && <span style={{ color: "#fff", fontSize: 12, fontWeight: 700 }}>✓</span>}
+                  {s.outsideSecurityCois && <span style={{ color: textPrimary, fontSize: 12, fontWeight: 700 }}>✓</span>}
                 </div>
                 <span style={{ fontSize: 13, color: "#ccc" }}>COIs Obtained</span>
               </label>
@@ -212,7 +214,7 @@ export default function P2Step5SafetyPremises() {
                     display: "flex", alignItems: "center", justifyContent: "center",
                   }}
                 >
-                  {s.outsideSecurityAdditionalInsured && <span style={{ color: "#fff", fontSize: 12, fontWeight: 700 }}>✓</span>}
+                  {s.outsideSecurityAdditionalInsured && <span style={{ color: textPrimary, fontSize: 12, fontWeight: 700 }}>✓</span>}
                 </div>
                 <span style={{ fontSize: 13, color: "#ccc" }}>Named as Additional Insured</span>
               </label>

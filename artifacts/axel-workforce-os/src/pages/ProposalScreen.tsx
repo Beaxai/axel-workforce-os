@@ -1,3 +1,4 @@
+import { useThemeColors } from "@/lib/use-theme-colors";
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import {
@@ -17,12 +18,6 @@ import {
 import { api } from "@/lib/api";
 
 const accent = "#E91E8C";
-const glass: React.CSSProperties = {
-  background: "rgba(255,255,255,0.05)",
-  backdropFilter: "blur(12px)",
-  border: "1px solid rgba(255,255,255,0.08)",
-  borderRadius: "12px",
-};
 
 interface ProposalData {
   id: string;
@@ -57,7 +52,15 @@ interface UwPackageData {
 
 export default function ProposalScreen() {
   const [searchParams] = useSearchParams();
+  const { isDark, textPrimary, textSecondary, textMuted, cardBg, borderColor } = useThemeColors();
   const navigate = useNavigate();
+
+  const glass: React.CSSProperties = {
+    background: cardBg,
+    backdropFilter: "blur(12px)",
+    border: `1px solid ${borderColor}`,
+    borderRadius: "12px",
+  };
   const dealId = searchParams.get("dealId") || "";
   const dealName = searchParams.get("dealName") || "Deal";
 
@@ -154,7 +157,7 @@ export default function ProposalScreen() {
   if (loading) {
     return (
       <div style={{ padding: "24px 32px", maxWidth: 900, margin: "0 auto" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 300, color: "rgba(255,255,255,0.4)" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 300, color: textMuted }}>
           <Loader size={20} style={{ marginRight: 10, animation: "spin 1s linear infinite" }} /> Loading proposal...
         </div>
       </div>
@@ -168,7 +171,7 @@ export default function ProposalScreen() {
         onClick={() => navigate(-1)}
         style={{
           display: "flex", alignItems: "center", gap: 6, background: "none", border: "none",
-          color: "rgba(255,255,255,0.5)", cursor: "pointer", fontSize: 13, marginBottom: 20, padding: 0,
+          color: textMuted, cursor: "pointer", fontSize: 13, marginBottom: 20, padding: 0,
         }}
       >
         <ArrowLeft size={14} /> Back
@@ -177,7 +180,7 @@ export default function ProposalScreen() {
       {!proposal ? (
         <div style={{ ...glass, padding: 40, textAlign: "center" }}>
           <FileText size={32} color="rgba(255,255,255,0.2)" style={{ marginBottom: 12 }} />
-          <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 15, margin: "0 0 4px" }}>No proposal available yet.</p>
+          <p style={{ color: textMuted, fontSize: 15, margin: "0 0 4px" }}>No proposal available yet.</p>
           <p style={{ color: "rgba(255,255,255,0.25)", fontSize: 13, margin: "8px 0 24px" }}>
             Generate a proposal from the deal's existing quote data.
           </p>
@@ -188,7 +191,7 @@ export default function ProposalScreen() {
             style={{
               display: "inline-flex", alignItems: "center", gap: 8,
               padding: "12px 24px", borderRadius: 8, border: "none",
-              background: accent, color: "#fff", cursor: creating ? "not-allowed" : "pointer",
+              background: accent, color: textPrimary, cursor: creating ? "not-allowed" : "pointer",
               fontSize: 14, fontWeight: 600,
             }}
           >
@@ -206,10 +209,10 @@ export default function ProposalScreen() {
         <div style={{ maxWidth: 800, margin: "0 auto", paddingBottom: 60 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
             <div>
-              <h2 style={{ color: "#fff", fontSize: 22, fontWeight: 700, margin: "0 0 4px" }}>
+              <h2 style={{ color: textPrimary, fontSize: 22, fontWeight: 700, margin: "0 0 4px" }}>
                 {proposal.programName || "Workers' Compensation Proposal"}
               </h2>
-              <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 14, margin: 0 }}>
+              <p style={{ color: textMuted, fontSize: 14, margin: 0 }}>
                 {proposal.carrierName || "Carrier TBD"} \u00b7 Prepared {fmtDate(proposal.createdAt)}
               </p>
             </div>
@@ -253,7 +256,7 @@ export default function ProposalScreen() {
               {showBreakdown && (
                 <div style={{ padding: "0 24px 20px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
                   <pre style={{
-                    color: "rgba(255,255,255,0.5)", fontSize: 12,
+                    color: textMuted, fontSize: 12,
                     background: "rgba(0,0,0,0.3)", borderRadius: 8,
                     padding: 16, overflow: "auto", margin: "16px 0 0",
                   }}>
@@ -273,7 +276,7 @@ export default function ProposalScreen() {
                 )}
                 {uwStatus.status === "failed" && <AlertCircle size={16} color="#ff4d4f" />}
                 <div>
-                  <p style={{ color: "#fff", fontSize: 13, fontWeight: 500, margin: 0 }}>
+                  <p style={{ color: textPrimary, fontSize: 13, fontWeight: 500, margin: 0 }}>
                     {uwStatus.status === "sent" && `Underwriting package sent to ${uwStatus.emailSentTo?.[0] || "underwriting"} \u00b7 ${fmtDate(uwStatus.emailSentAt)}`}
                     {(uwStatus.status === "assembling" || uwStatus.status === "pending") && "Assembling underwriting package\u2026"}
                     {uwStatus.status === "failed" && "Package assembly failed \u2014 please notify the underwriting team manually."}
@@ -291,10 +294,10 @@ export default function ProposalScreen() {
           <div style={{ ...glass, padding: 24 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
               <div>
-                <h3 style={{ color: "#fff", fontSize: 15, fontWeight: 600, margin: "0 0 4px" }}>
+                <h3 style={{ color: textPrimary, fontSize: 15, fontWeight: 600, margin: "0 0 4px" }}>
                   Request Approved Proposal
                 </h3>
-                <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 13, margin: 0 }}>
+                <p style={{ color: textMuted, fontSize: 13, margin: 0 }}>
                   Sends the full submission package to the Axel underwriting team for market placement and approval.
                 </p>
               </div>
@@ -311,7 +314,7 @@ export default function ProposalScreen() {
                   style={{
                     display: "flex", alignItems: "center", gap: 8,
                     padding: "12px 24px", borderRadius: 8,
-                    border: "none", background: accent, color: "#fff",
+                    border: "none", background: accent, color: textPrimary,
                     cursor: requesting ? "not-allowed" : "pointer",
                     fontSize: 14, fontWeight: 600, whiteSpace: "nowrap",
                   }}
@@ -345,32 +348,35 @@ export default function ProposalScreen() {
 }
 
 function PricingCard({ label, value, isAccent }: { label: string; value: string; isAccent?: boolean }) {
+  const { textPrimary, textMuted, cardBg, borderColor } = useThemeColors();
   return (
     <div style={{
-      background: "rgba(255,255,255,0.04)",
-      border: `1px solid ${isAccent ? "rgba(233,30,140,0.25)" : "rgba(255,255,255,0.07)"}`,
+      background: cardBg,
+      border: `1px solid ${isAccent ? "rgba(233,30,140,0.25)" : borderColor}`,
       borderRadius: 10, padding: "16px 20px",
     }}>
-      <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 12, margin: "0 0 6px", textTransform: "uppercase", letterSpacing: "0.5px" }}>{label}</p>
-      <p style={{ color: isAccent ? accent : "#fff", fontSize: 22, fontWeight: 700, margin: 0 }}>{value}</p>
+      <p style={{ color: textMuted, fontSize: 12, margin: "0 0 6px", textTransform: "uppercase", letterSpacing: "0.5px" }}>{label}</p>
+      <p style={{ color: isAccent ? accent : textPrimary, fontSize: 22, fontWeight: 700, margin: 0 }}>{value}</p>
     </div>
   );
 }
 
 function DetailItem({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  const { textPrimary, textMuted } = useThemeColors();
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", gap: 6, color: "rgba(255,255,255,0.4)", fontSize: 12, marginBottom: 4 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, color: textMuted, fontSize: 12, marginBottom: 4 }}>
         {icon} {label}
       </div>
-      <p style={{ color: "#fff", fontSize: 14, fontWeight: 500, margin: 0 }}>{value}</p>
+      <p style={{ color: textPrimary, fontSize: 14, fontWeight: 500, margin: 0 }}>{value}</p>
     </div>
   );
 }
 
 function StatusBadge({ status }: { status: string }) {
+  const { textMuted } = useThemeColors();
   const map: Record<string, { label: string; color: string; bg: string }> = {
-    draft: { label: "Draft", color: "rgba(255,255,255,0.4)", bg: "rgba(255,255,255,0.06)" },
+    draft: { label: "Draft", color: textMuted, bg: "rgba(255,255,255,0.06)" },
     sent_to_client: { label: "Sent to Client", color: "#64b5f6", bg: "rgba(100,181,246,0.1)" },
     approved_proposal_requested: { label: "UW Submitted", color: "#ffb74d", bg: "rgba(255,183,77,0.1)" },
     underwriting_notified: { label: "UW Notified", color: "#4caf50", bg: "rgba(76,175,80,0.1)" },

@@ -1,3 +1,4 @@
+import { useThemeColors } from "@/lib/use-theme-colors";
 import { useQuoteFlowStore } from "@/lib/quote-flow-store";
 import {
   FormSection, FieldGrid, FieldLabel, TextInput, CurrencyInput,
@@ -6,6 +7,7 @@ import {
 
 export default function P2Step2CoverageHistory() {
   const s = useQuoteFlowStore();
+  const { isDark, textPrimary, textSecondary, textMuted, cardBg, borderColor } = useThemeColors();
 
   const totalPremium = parseFloat(s.totalPremiumPaid?.replace(/[^0-9.]/g, "") || "0");
   const totalClaims = parseFloat(s.totalClaimsPaid?.replace(/[^0-9.]/g, "") || "0");
@@ -27,7 +29,7 @@ export default function P2Step2CoverageHistory() {
           <FieldLabel label="Loss Ratio">
             <div style={{
               padding: "12px 14px", borderRadius: 10, background: "#1a1a26",
-              border: "1px solid rgba(255,255,255,0.08)", color: "#fff", fontSize: 14,
+              border: `1px solid ${borderColor}`, color: textPrimary, fontSize: 14,
             }}>
               {lossRatio}%
             </div>

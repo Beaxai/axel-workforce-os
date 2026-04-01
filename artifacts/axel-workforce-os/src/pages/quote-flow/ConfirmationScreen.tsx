@@ -1,3 +1,4 @@
+import { useThemeColors } from "@/lib/use-theme-colors";
 import { useNavigate } from "react-router-dom";
 import { useQuoteFlowStore } from "@/lib/quote-flow-store";
 import { CheckCircle } from "lucide-react";
@@ -5,6 +6,7 @@ import { CheckCircle } from "lucide-react";
 export default function ConfirmationScreen() {
   const navigate = useNavigate();
   const s = useQuoteFlowStore();
+  const { isDark, textPrimary, textSecondary, textMuted, cardBg, borderColor } = useThemeColors();
 
   const dealNumber = s.submittedDealId
     ? `DL-${s.submittedDealId.slice(0, 8).toUpperCase()}`
@@ -28,7 +30,7 @@ export default function ConfirmationScreen() {
         <CheckCircle style={{ width: 44, height: 44, color: "#E91E8C" }} />
       </div>
 
-      <h2 style={{ fontSize: 32, fontWeight: 700, color: "#fff", margin: "0 0 8px" }}>
+      <h2 style={{ fontSize: 32, fontWeight: 700, color: textPrimary, margin: "0 0 8px" }}>
         Submission Received
       </h2>
       <p style={{ fontSize: 16, color: "#888", margin: "0 0 8px" }}>
@@ -48,7 +50,7 @@ export default function ConfirmationScreen() {
             borderRadius: 28,
             border: "none",
             background: "#E91E8C",
-            color: "#fff",
+            color: textPrimary,
             fontSize: 15,
             fontWeight: 700,
             cursor: "pointer",

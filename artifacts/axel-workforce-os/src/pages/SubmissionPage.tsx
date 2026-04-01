@@ -1,3 +1,4 @@
+import { useThemeColors } from "@/lib/use-theme-colors";
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, FileText, Upload, FileSignature, FileCheck } from "lucide-react";
@@ -14,6 +15,7 @@ type Tab = "application" | "loss-history" | "proposal" | "bind";
 
 export default function SubmissionPage() {
   const [searchParams] = useSearchParams();
+  const { isDark, textPrimary, textSecondary, textMuted, cardBg, borderColor } = useThemeColors();
   const navigate = useNavigate();
   const dealId = searchParams.get("dealId") || "";
   const verticalId = searchParams.get("verticalId") || "cannabis";
@@ -54,7 +56,7 @@ export default function SubmissionPage() {
           gap: 6,
           background: "none",
           border: "none",
-          color: "rgba(255,255,255,0.5)",
+          color: textMuted,
           cursor: "pointer",
           fontSize: 13,
           marginBottom: 20,
@@ -64,7 +66,7 @@ export default function SubmissionPage() {
         <ArrowLeft size={14} /> Back
       </button>
 
-      <h1 style={{ color: "#fff", fontSize: 22, fontWeight: 700, marginBottom: 6 }}>
+      <h1 style={{ color: textPrimary, fontSize: 22, fontWeight: 700, marginBottom: 6 }}>
         Underwriting Submission
       </h1>
       <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 14, marginBottom: 28 }}>
@@ -112,14 +114,14 @@ export default function SubmissionPage() {
           <div
             style={{
               background: "#13131f",
-              border: "1px solid rgba(255,255,255,0.08)",
+              border: `1px solid ${borderColor}`,
               borderRadius: 12,
               padding: 28,
               textAlign: "center",
             }}
           >
             <FileText size={36} color="rgba(255,255,255,0.2)" style={{ marginBottom: 16 }} />
-            <h3 style={{ color: "#fff", fontSize: 16, fontWeight: 600, marginBottom: 8 }}>
+            <h3 style={{ color: textPrimary, fontSize: 16, fontWeight: 600, marginBottom: 8 }}>
               Workers' Compensation Application
             </h3>
             <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 14, marginBottom: 20, maxWidth: 440, margin: "0 auto 20px" }}>
@@ -134,7 +136,7 @@ export default function SubmissionPage() {
                 borderRadius: 8,
                 border: "none",
                 background: accent,
-                color: "#fff",
+                color: textPrimary,
                 cursor: "pointer",
                 fontSize: 15,
                 fontWeight: 600,
@@ -180,12 +182,12 @@ export default function SubmissionPage() {
           <div
             style={{
               background: "#13131f",
-              border: "1px solid rgba(255,255,255,0.08)",
+              border: `1px solid ${borderColor}`,
               borderRadius: 12,
               padding: 28,
             }}
           >
-            <h3 style={{ color: "#fff", fontSize: 16, fontWeight: 600, marginBottom: 8 }}>
+            <h3 style={{ color: textPrimary, fontSize: 16, fontWeight: 600, marginBottom: 8 }}>
               Request to Bind
             </h3>
             <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 14, marginBottom: 24 }}>

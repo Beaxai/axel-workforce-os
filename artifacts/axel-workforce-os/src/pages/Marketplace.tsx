@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { VERTICALS } from "@/lib/vertical-data";
+import { useThemeColors } from "@/lib/use-theme-colors";
 
 const BASE = import.meta.env.BASE_URL || "/";
 
 export default function Marketplace() {
   const navigate = useNavigate();
   const [hoveredSlug, setHoveredSlug] = useState<string | null>(null);
+  const { textPrimary, textMuted } = useThemeColors();
 
   return (
     <div style={{ maxWidth: 1200 }}>
@@ -28,7 +30,7 @@ export default function Marketplace() {
           style={{
             fontSize: 28,
             fontWeight: 700,
-            color: "#fff",
+            color: textPrimary,
             margin: 0,
             marginBottom: 8,
           }}
@@ -38,7 +40,7 @@ export default function Marketplace() {
         <p
           style={{
             fontSize: 15,
-            color: "#888",
+            color: textMuted,
             margin: 0,
           }}
         >

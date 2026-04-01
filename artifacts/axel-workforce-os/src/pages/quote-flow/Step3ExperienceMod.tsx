@@ -1,3 +1,4 @@
+import { useThemeColors } from "@/lib/use-theme-colors";
 import { useQuoteFlowStore } from "@/lib/quote-flow-store";
 import {
   FormSection, FieldGrid, FieldLabel, TextInput, CurrencyInput,
@@ -7,6 +8,7 @@ import { AlertCircle } from "lucide-react";
 
 export default function Step3ExperienceMod() {
   const s = useQuoteFlowStore();
+  const { isDark, textPrimary, textSecondary, textMuted, cardBg, borderColor } = useThemeColors();
 
   const totalPremium = parseFloat(s.totalPremiumPaid?.replace(/[^0-9.]/g, "") || "0");
   const totalClaims = parseFloat(s.totalClaimsPaid?.replace(/[^0-9.]/g, "") || "0");
@@ -65,7 +67,7 @@ export default function Step3ExperienceMod() {
           >
             <AlertCircle style={{ width: 18, height: 18, color: "#E91E8C", flexShrink: 0, marginTop: 2 }} />
             <p style={{ fontSize: 14, color: "#ccc", margin: 0, lineHeight: 1.5 }}>
-              We'll use a neutral modifier of <strong style={{ color: "#fff" }}>1.00</strong> for your indication.
+              We'll use a neutral modifier of <strong style={{ color: textPrimary }}>1.00</strong> for your indication.
               Final pricing may vary.
             </p>
           </div>
@@ -86,7 +88,7 @@ export default function Step3ExperienceMod() {
           <FieldLabel label="Loss Ratio">
             <div style={{
               padding: "12px 14px", borderRadius: 10, background: "#1a1a26",
-              border: "1px solid rgba(255,255,255,0.08)", color: "#fff", fontSize: 14,
+              border: `1px solid ${borderColor}`, color: textPrimary, fontSize: 14,
             }}>
               {lossRatio}%
             </div>

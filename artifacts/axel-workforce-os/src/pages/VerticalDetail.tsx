@@ -1,9 +1,11 @@
+import { useThemeColors } from "@/lib/use-theme-colors";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { Shield, Users, Check, ArrowLeft } from "lucide-react";
 import { getVerticalBySlug } from "@/lib/vertical-data";
 
 export default function VerticalDetail() {
   const { slug } = useParams<{ slug: string }>();
+  const { isDark, textPrimary, textSecondary, textMuted, cardBg, borderColor } = useThemeColors();
   const navigate = useNavigate();
   const vertical = slug ? getVerticalBySlug(slug) : undefined;
 
@@ -77,7 +79,7 @@ export default function VerticalDetail() {
             style={{
               fontSize: 32,
               fontWeight: 700,
-              color: "#fff",
+              color: textPrimary,
               margin: 0,
               lineHeight: 1.2,
             }}
@@ -183,7 +185,7 @@ function CoverageCard({
           style={{
             fontSize: 18,
             fontWeight: 700,
-            color: "#fff",
+            color: textPrimary,
             margin: 0,
           }}
         >
@@ -249,7 +251,7 @@ function CoverageCard({
             <span
               style={{
                 fontSize: 14,
-                color: "rgba(255,255,255,0.6)",
+                color: textSecondary,
                 lineHeight: 1.5,
               }}
             >
@@ -268,7 +270,7 @@ function CoverageCard({
           borderRadius: 28,
           border: "none",
           background: "#E91E8C",
-          color: "#fff",
+          color: textPrimary,
           fontSize: 16,
           fontWeight: 700,
           cursor: "pointer",

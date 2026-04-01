@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Shield, Users, Check, ChevronRight, Clock, ArrowLeft, ArrowRight } from "lucide-react";
+import { useThemeColors } from "@/lib/use-theme-colors";
 
 const WC_FEATURES = [
   "Competitive premium rates",
@@ -26,6 +27,7 @@ export default function ServiceTypeSelect() {
   const location = useLocation();
   const navigate = useNavigate();
   const { vertical } = (location.state as { vertical?: string }) || {};
+  const { isDark, textPrimary, textMuted, borderColor, hoverBg } = useThemeColors();
 
   const [selected, setSelected] = useState<Set<CoverageType>>(new Set(["WC", "PEO"]));
 
@@ -60,12 +62,20 @@ export default function ServiceTypeSelect() {
     navigate("/marketplace");
   };
 
+  const btnBg = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)";
+  const btnHoverBg = isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)";
+  const cardBgColor = isDark ? "#13131f" : "#f8f8fa";
+  const cardBorderDefault = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.1)";
+  const checkBorder = isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.15)";
+  const featureBorder = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)";
+  const iconBg = isDark ? "#2d1f3d" : "rgba(124,58,237,0.12)";
+
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "calc(100vh - 56px)" }}>
       <div
         style={{
           height: 3,
-          background: "rgba(255,255,255,0.06)",
+          background: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)",
           width: "100%",
         }}
       >
@@ -100,7 +110,7 @@ export default function ServiceTypeSelect() {
         >
           Service Type
         </span>
-        <span style={{ fontSize: 13, color: "#666" }}>
+        <span style={{ fontSize: 13, color: textMuted }}>
           Step 2 of {totalSteps}
         </span>
       </div>
@@ -110,7 +120,7 @@ export default function ServiceTypeSelect() {
           style={{
             fontSize: 32,
             fontWeight: 700,
-            color: "#fff",
+            color: textPrimary,
             margin: 0,
             textAlign: "center",
             lineHeight: 1.2,
@@ -121,7 +131,7 @@ export default function ServiceTypeSelect() {
         <p
           style={{
             fontSize: 16,
-            color: "#888",
+            color: textMuted,
             margin: 0,
             marginTop: 16,
             textAlign: "center",
@@ -139,22 +149,36 @@ export default function ServiceTypeSelect() {
           }}
         >
           <SelectionCard
-            icon={<Shield style={{ width: 28, height: 28, color: "#fff" }} />}
+            icon={<Shield style={{ width: 28, height: 28, color: isDark ? "#fff" : "#7C3AED" }} />}
             title="Standalone Workers' Compensation"
             subtitle="Traditional WC policy with competitive rates"
             features={WC_FEATURES}
             turnaround="Instant Price Indication!"
             isSelected={selected.has("WC")}
             onToggle={() => toggleCard("WC")}
+            textPrimary={textPrimary}
+            textMuted={textMuted}
+            cardBg={cardBgColor}
+            cardBorderDefault={cardBorderDefault}
+            checkBorder={checkBorder}
+            featureBorder={featureBorder}
+            iconBg={iconBg}
           />
           <SelectionCard
-            icon={<Users style={{ width: 28, height: 28, color: "#fff" }} />}
+            icon={<Users style={{ width: 28, height: 28, color: isDark ? "#fff" : "#7C3AED" }} />}
             title="Comprehensive Workforce Solution (PEO)"
             subtitle="Full-service HR, payroll, benefits & WC bundled"
             features={PEO_FEATURES}
             turnaround="Est. 3-5 business days for indication"
             isSelected={selected.has("PEO")}
             onToggle={() => toggleCard("PEO")}
+            textPrimary={textPrimary}
+            textMuted={textMuted}
+            cardBg={cardBgColor}
+            cardBorderDefault={cardBorderDefault}
+            checkBorder={checkBorder}
+            featureBorder={featureBorder}
+            iconBg={iconBg}
           />
         </div>
       </div>
@@ -178,16 +202,16 @@ export default function ServiceTypeSelect() {
             padding: "12px 24px",
             borderRadius: 24,
             border: "none",
-            background: "rgba(255,255,255,0.06)",
-            color: "#fff",
+            background: btnBg,
+            color: textPrimary,
             fontSize: 14,
             fontWeight: 600,
             cursor: "pointer",
             height: 44,
             transition: "background 0.15s",
           }}
-          onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.1)")}
-          onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.06)")}
+          onMouseEnter={(e) => (e.currentTarget.style.background = btnHoverBg)}
+          onMouseLeave={(e) => (e.currentTarget.style.background = btnBg)}
         >
           <ArrowLeft style={{ width: 16, height: 16 }} />
           Back
@@ -203,8 +227,8 @@ export default function ServiceTypeSelect() {
             padding: "12px 24px",
             borderRadius: 24,
             border: "none",
-            background: selected.size > 0 ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.03)",
-            color: selected.size > 0 ? "#fff" : "rgba(255,255,255,0.3)",
+            background: selected.size > 0 ? btnBg : (isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)"),
+            color: selected.size > 0 ? textPrimary : textMuted,
             fontSize: 14,
             fontWeight: 600,
             cursor: selected.size > 0 ? "pointer" : "not-allowed",
@@ -212,10 +236,10 @@ export default function ServiceTypeSelect() {
             transition: "background 0.15s",
           }}
           onMouseEnter={(e) => {
-            if (selected.size > 0) e.currentTarget.style.background = "rgba(255,255,255,0.1)";
+            if (selected.size > 0) e.currentTarget.style.background = btnHoverBg;
           }}
           onMouseLeave={(e) => {
-            if (selected.size > 0) e.currentTarget.style.background = "rgba(255,255,255,0.06)";
+            if (selected.size > 0) e.currentTarget.style.background = btnBg;
           }}
         >
           Continue
@@ -234,6 +258,13 @@ function SelectionCard({
   turnaround,
   isSelected,
   onToggle,
+  textPrimary,
+  textMuted,
+  cardBg,
+  cardBorderDefault,
+  checkBorder,
+  featureBorder,
+  iconBg,
 }: {
   icon: React.ReactNode;
   title: string;
@@ -242,15 +273,22 @@ function SelectionCard({
   turnaround: string;
   isSelected: boolean;
   onToggle: () => void;
+  textPrimary: string;
+  textMuted: string;
+  cardBg: string;
+  cardBorderDefault: string;
+  checkBorder: string;
+  featureBorder: string;
+  iconBg: string;
 }) {
   return (
     <button
       type="button"
       onClick={onToggle}
       style={{
-        background: "#13131f",
+        background: cardBg,
         borderRadius: 16,
-        border: isSelected ? "2px solid #E91E8C" : "2px solid rgba(255,255,255,0.08)",
+        border: isSelected ? "2px solid #E91E8C" : `2px solid ${cardBorderDefault}`,
         padding: 32,
         cursor: "pointer",
         textAlign: "left",
@@ -273,7 +311,7 @@ function SelectionCard({
             width: 56,
             height: 56,
             borderRadius: 14,
-            background: "#2d1f3d",
+            background: iconBg,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -288,7 +326,7 @@ function SelectionCard({
             height: 32,
             borderRadius: 16,
             background: isSelected ? "#E91E8C" : "transparent",
-            border: isSelected ? "none" : "2px solid rgba(255,255,255,0.15)",
+            border: isSelected ? "none" : `2px solid ${checkBorder}`,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -303,7 +341,7 @@ function SelectionCard({
         style={{
           fontSize: 22,
           fontWeight: 700,
-          color: "#fff",
+          color: textPrimary,
           margin: 0,
           lineHeight: 1.3,
         }}
@@ -313,7 +351,7 @@ function SelectionCard({
       <p
         style={{
           fontSize: 14,
-          color: "#888",
+          color: textMuted,
           margin: 0,
           marginTop: 8,
         }}
@@ -346,7 +384,7 @@ function SelectionCard({
                 flexShrink: 0,
               }}
             />
-            <span style={{ fontSize: 15, color: "#fff", lineHeight: 1.4 }}>
+            <span style={{ fontSize: 15, color: textPrimary, lineHeight: 1.4 }}>
               {f}
             </span>
           </div>
@@ -359,13 +397,11 @@ function SelectionCard({
           gap: 8,
           marginTop: 28,
           paddingTop: 20,
-          borderTop: "1px solid rgba(255,255,255,0.06)",
+          borderTop: `1px solid ${featureBorder}`,
         }}
       >
         <Clock style={{ width: 14, height: 14, color: "#E91E8C", flexShrink: 0 }} />
-        <span
-          style={{ fontSize: 13, color: "#E91E8C" }}
-          className="text-[#e91f8c] text-[13px]">{turnaround}</span>
+        <span style={{ fontSize: 13, color: "#E91E8C" }}>{turnaround}</span>
       </div>
     </button>
   );
