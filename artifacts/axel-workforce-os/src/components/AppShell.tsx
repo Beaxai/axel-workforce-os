@@ -298,7 +298,6 @@ export default function AppShell() {
           </button>
         </div>
       </aside>
-
       <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
         <header
           style={{
@@ -320,9 +319,7 @@ export default function AppShell() {
               color: textPrimary,
               letterSpacing: "-0.01em",
             }}
-          >
-            Axel Workforce OS
-          </span>
+          >Workforce OS</span>
 
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
             <button
@@ -514,7 +511,6 @@ export default function AppShell() {
           <Outlet />
         </main>
       </div>
-
       {searchOpen && <GlobalSearch onClose={() => setSearchOpen(false)} />}
     </div>
   );
