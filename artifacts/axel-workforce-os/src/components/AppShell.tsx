@@ -97,40 +97,50 @@ export default function AppShell() {
             borderBottom: `1px solid ${borderColor}`,
           }}
         >
-          {!collapsed && (
+          {collapsed ? (
             <img
-              src={`${import.meta.env.BASE_URL || "/"}images/${isDark ? "axel-logo" : "axel-logo-dark"}.png`}
-              alt="Axel Workforce OS"
+              src={`${import.meta.env.BASE_URL || "/"}images/axel-icon-color.png`}
+              alt="Axel"
               style={{
-                height: isDark ? "28px" : "36px",
-                width: "auto",
+                height: "28px",
+                width: "28px",
                 objectFit: "contain",
-                filter: isDark ? "brightness(0) invert(1)" : "none",
+                cursor: "pointer",
               }}
+              onClick={() => setCollapsed(false)}
             />
+          ) : (
+            <>
+              <img
+                src={`${import.meta.env.BASE_URL || "/"}images/${isDark ? "axel-logo" : "axel-logo-dark"}.png`}
+                alt="Axel Workforce OS"
+                style={{
+                  height: isDark ? "28px" : "36px",
+                  width: "auto",
+                  objectFit: "contain",
+                  filter: isDark ? "brightness(0) invert(1)" : "none",
+                }}
+              />
+              <button
+                onClick={() => setCollapsed(true)}
+                style={{
+                  padding: "6px",
+                  borderRadius: "6px",
+                  border: "none",
+                  background: "transparent",
+                  color: textMuted,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = hoverBg)}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+              >
+                <ChevronLeft style={{ width: "16px", height: "16px" }} />
+              </button>
+            </>
           )}
-          <button
-            onClick={() => setCollapsed(!collapsed)}
-            style={{
-              padding: "6px",
-              borderRadius: "6px",
-              border: "none",
-              background: "transparent",
-              color: textMuted,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = hoverBg)}
-            onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-          >
-            {collapsed ? (
-              <ChevronRight style={{ width: "16px", height: "16px" }} />
-            ) : (
-              <ChevronLeft style={{ width: "16px", height: "16px" }} />
-            )}
-          </button>
         </div>
 
         <nav
