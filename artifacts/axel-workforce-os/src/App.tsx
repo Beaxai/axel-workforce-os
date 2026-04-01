@@ -31,7 +31,7 @@ import Marketplace from "@/pages/Marketplace";
 import ServiceTypeSelect from "@/pages/ServiceTypeSelect";
 import QuoteNew from "@/pages/QuoteNew";
 import QuoteWizard from "@/pages/quote-flow/QuoteWizard";
-import AmbulanceProgramOffering from "@/pages/AmbulanceProgramOffering";
+import VerticalProgramOffering from "@/pages/VerticalProgramOffering";
 import Pipeline from "@/pages/Pipeline";
 import Accounts from "@/pages/Accounts";
 import AccountDetail from "@/pages/AccountDetail";
@@ -179,7 +179,7 @@ function App() {
               }
             >
               <Route path="/marketplace" element={<Marketplace />} />
-              <Route path="/marketplace/ambulances-emergency-transport" element={<AmbulanceProgramOffering />} />
+              <Route path="/marketplace/:slug" element={<VerticalProgramOffering />} />
               <Route path="/marketplace/quote/service-type" element={<ServiceTypeSelect />} />
               <Route path="/marketplace/quote/new" element={<QuoteNew />} />
               <Route path="/marketplace/quote/wizard" element={<QuoteWizard />} />
