@@ -99,7 +99,7 @@ export default function AppShell() {
         >
           {!collapsed && (
             <img
-              src={`${import.meta.env.BASE_URL || "/"}images/axel-logo.png`}
+              src={`${import.meta.env.BASE_URL || "/"}images/${isDark ? "axel-logo" : "axel-logo-dark"}.png`}
               alt="Axel Workforce OS"
               style={{
                 height: "28px",
