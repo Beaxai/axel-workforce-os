@@ -60,11 +60,15 @@ export default function Marketplace() {
             <button
               key={v.slug}
               type="button"
-              onClick={() =>
-                navigate("/marketplace/quote/service-type", {
-                  state: { vertical: v.name },
-                })
-              }
+              onClick={() => {
+                if (v.slug === "ambulances-emergency-transport") {
+                  navigate("/marketplace/ambulances-emergency-transport");
+                } else {
+                  navigate("/marketplace/quote/service-type", {
+                    state: { vertical: v.name },
+                  });
+                }
+              }}
               onMouseEnter={() => setHoveredSlug(v.slug)}
               onMouseLeave={() => setHoveredSlug(null)}
               style={{
