@@ -102,7 +102,7 @@ export default function AppShell() {
               src={`${import.meta.env.BASE_URL || "/"}images/${isDark ? "axel-logo" : "axel-logo-dark"}.png`}
               alt="Axel Workforce OS"
               style={{
-                height: "28px",
+                height: isDark ? "28px" : "36px",
                 width: "auto",
                 objectFit: "contain",
                 filter: isDark ? "brightness(0) invert(1)" : "none",
