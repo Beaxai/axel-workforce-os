@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Zap } from "lucide-react";
 import { useAuthStore, ROLE_LABELS, ROLE_PATHS, type PartyRole } from "@/lib/auth-store";
 import { useThemeStore } from "@/lib/theme-store";
 
@@ -62,20 +61,18 @@ export default function LoginPage() {
     >
       <div style={{ width: "100%", maxWidth: "420px", padding: "0 16px" }}>
         <div style={{ textAlign: "center", marginBottom: "32px" }}>
-          <div
+          <img
+            src={`${import.meta.env.BASE_URL || "/"}images/axel-logo.png`}
+            alt="Axel Workforce OS"
             style={{
-              width: "56px",
-              height: "56px",
-              borderRadius: "16px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
+              height: "40px",
+              width: "auto",
+              objectFit: "contain",
               margin: "0 auto 16px",
-              background: "#E91E8C",
+              display: "block",
+              filter: isDark ? "brightness(0) invert(1)" : "none",
             }}
-          >
-            <Zap style={{ width: "28px", height: "28px", color: "#fff" }} />
-          </div>
+          />
           <h1 style={{ fontSize: "24px", fontWeight: 700, color: textPrimary, margin: 0 }}>
             Axel Workforce OS
           </h1>

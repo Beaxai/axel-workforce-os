@@ -3,7 +3,6 @@ import { Link, useLocation, Outlet, useNavigate } from "react-router-dom";
 import {
   ChevronLeft,
   ChevronRight,
-  Zap,
   LogOut,
   ChevronDown,
   Sun,
@@ -99,31 +98,16 @@ export default function AppShell() {
           }}
         >
           {!collapsed && (
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <div
-                style={{
-                  width: "32px",
-                  height: "32px",
-                  borderRadius: "8px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  background: "#E91E8C",
-                }}
-              >
-                <Zap style={{ width: "16px", height: "16px", color: "#fff" }} />
-              </div>
-              <span
-                style={{
-                  fontSize: "14px",
-                  fontWeight: 700,
-                  color: textPrimary,
-                  letterSpacing: "-0.01em",
-                }}
-              >
-                Axel WOS
-              </span>
-            </div>
+            <img
+              src={`${import.meta.env.BASE_URL || "/"}images/axel-logo.png`}
+              alt="Axel Workforce OS"
+              style={{
+                height: "28px",
+                width: "auto",
+                objectFit: "contain",
+                filter: isDark ? "brightness(0) invert(1)" : "none",
+              }}
+            />
           )}
           <button
             onClick={() => setCollapsed(!collapsed)}

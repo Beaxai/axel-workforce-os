@@ -1,5 +1,7 @@
-import { Zap, Mail, Phone, User } from "lucide-react";
+import { Mail, Phone, User } from "lucide-react";
 import { GlassCard } from "@/components/ui/axel-index";
+
+const BASE = import.meta.env.BASE_URL || "/";
 
 export default function Welcome() {
   return (
@@ -8,13 +10,18 @@ export default function Welcome() {
       display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 20px",
     }}>
       <div style={{ textAlign: "center", maxWidth: "500px" }}>
-        <div style={{
-          width: "56px", height: "56px", borderRadius: "14px", display: "flex",
-          alignItems: "center", justifyContent: "center", background: "#E91E8C",
-          margin: "0 auto 24px",
-        }}>
-          <Zap style={{ width: 28, height: 28, color: "#fff" }} />
-        </div>
+        <img
+          src={`${BASE}images/axel-logo.png`}
+          alt="Axel Workforce OS"
+          style={{
+            height: "40px",
+            width: "auto",
+            objectFit: "contain",
+            margin: "0 auto 24px",
+            display: "block",
+            filter: "brightness(0) invert(1)",
+          }}
+        />
         <h1 style={{ fontSize: "28px", fontWeight: 700, color: "#fff", margin: "0 0 8px" }}>
           Axel Workforce OS
         </h1>
