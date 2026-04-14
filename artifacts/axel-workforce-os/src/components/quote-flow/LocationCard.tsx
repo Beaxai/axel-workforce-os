@@ -15,12 +15,21 @@ interface AppetiteResult {
   uw_considerations: string | null;
 }
 
+interface RichEntry {
+  c: string;
+  ico: string;
+  n: string;
+  p: string;
+  d: string;
+}
+
 interface LocationCardProps {
   location: LocationBlock;
   index: number;
   canRemove: boolean;
   stateOptions: { value: string; label: string }[];
   appetiteMap: Record<string, AppetiteResult>;
+  richMap?: Record<string, RichEntry>;
 }
 
 function formatCurrency(n: number): string {
@@ -31,7 +40,7 @@ function parseCurrency(s: string): number {
   return Number(s.replace(/[^0-9]/g, "")) || 0;
 }
 
-export default function LocationCard({ location, index, canRemove, stateOptions, appetiteMap }: LocationCardProps) {
+export default function LocationCard({ location, index, canRemove, stateOptions, appetiteMap, richMap }: LocationCardProps) {
   const s = useQuoteFlowStore();
   const { isDark, textPrimary, textSecondary, borderColor } = useThemeColors();
   const loc = location;
@@ -138,59 +147,79 @@ export default function LocationCard({ location, index, canRemove, stateOptions,
           {loc.classCodes.map((cc, ccIdx) => {
             const appetiteKey = loc.state && cc.classCode ? `${loc.state}:${cc.classCode}` : "";
             const appetite = appetiteKey ? appetiteMap[appetiteKey] : undefined;
+            const rich = cc.classCode && richMap ? richMap[cc.classCode] : undefined;
             return (
-              <div
-                key={ccIdx}
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 72px 72px 140px auto 32px",
-                  gap: 8,
-                  alignItems: "center",
-                  padding: "8px 12px",
-                  borderRadius: 10,
-                  border: `1px solid ${isDark ? "rgba(233,30,140,0.12)" : "rgba(233,30,140,0.15)"}`,
-                  background: isDark ? "rgba(233,30,140,0.02)" : "rgba(233,30,140,0.02)",
-                  marginBottom: 6,
-                }}
-              >
-                <ClassCodeSearch
-                  value={cc.classCode}
-                  description={cc.description}
-                  onChange={(code, desc) => {
-                    s.updateClassCode(loc.id, ccIdx, { classCode: code, description: desc });
+              <div key={ccIdx} style={{ marginBottom: 6 }}>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 72px 72px 140px auto 32px",
+                    gap: 8,
+                    alignItems: "center",
+                    padding: "8px 12px",
+                    borderRadius: rich ? "10px 10px 0 0" : 10,
+                    border: `1px solid ${isDark ? "rgba(233,30,140,0.12)" : "rgba(233,30,140,0.15)"}`,
+                    borderBottom: rich ? "none" : undefined,
+                    background: isDark ? "rgba(233,30,140,0.02)" : "rgba(233,30,140,0.02)",
                   }}
-                />
-                <NumberInput
-                  value={cc.fullTimeEmployees ? String(cc.fullTimeEmployees) : ""}
-                  onChange={(v) => s.updateClassCode(loc.id, ccIdx, { fullTimeEmployees: Number(v) || 0 })}
-                  placeholder="0"
-                  min={0}
-                />
-                <NumberInput
-                  value={cc.partTimeEmployees ? String(cc.partTimeEmployees) : ""}
-                  onChange={(v) => s.updateClassCode(loc.id, ccIdx, { partTimeEmployees: Number(v) || 0 })}
-                  placeholder="0"
-                  min={0}
-                />
-                <CurrencyInput
-                  value={cc.annualPayroll ? formatCurrency(cc.annualPayroll) : ""}
-                  onChange={(v) => s.updateClassCode(loc.id, ccIdx, { annualPayroll: parseCurrency(v) })}
-                  placeholder="$0"
-                />
-                <div style={{ display: "flex", alignItems: "center", minWidth: 80 }}>
-                  {appetite && (
-                    <AppetiteBadge
-                      determination={appetite.uw_determination}
-                      considerations={appetite.uw_considerations}
-                      size="sm"
-                    />
-                  )}
+                >
+                  <ClassCodeSearch
+                    value={cc.classCode}
+                    description={cc.description}
+                    onChange={(code, desc) => {
+                      s.updateClassCode(loc.id, ccIdx, { classCode: code, description: desc });
+                    }}
+                  />
+                  <NumberInput
+                    value={cc.fullTimeEmployees ? String(cc.fullTimeEmployees) : ""}
+                    onChange={(v) => s.updateClassCode(loc.id, ccIdx, { fullTimeEmployees: Number(v) || 0 })}
+                    placeholder="0"
+                    min={0}
+                  />
+                  <NumberInput
+                    value={cc.partTimeEmployees ? String(cc.partTimeEmployees) : ""}
+                    onChange={(v) => s.updateClassCode(loc.id, ccIdx, { partTimeEmployees: Number(v) || 0 })}
+                    placeholder="0"
+                    min={0}
+                  />
+                  <CurrencyInput
+                    value={cc.annualPayroll ? formatCurrency(cc.annualPayroll) : ""}
+                    onChange={(v) => s.updateClassCode(loc.id, ccIdx, { annualPayroll: parseCurrency(v) })}
+                    placeholder="$0"
+                  />
+                  <div style={{ display: "flex", alignItems: "center", minWidth: 80 }}>
+                    {appetite && (
+                      <AppetiteBadge
+                        determination={appetite.uw_determination}
+                        considerations={appetite.uw_considerations}
+                        size="sm"
+                      />
+                    )}
+                  </div>
+                  <div>
+                    {loc.classCodes.length > 1 && (
+                      <RemoveButton onClick={() => s.removeClassCode(loc.id, ccIdx)} />
+                    )}
+                  </div>
                 </div>
-                <div>
-                  {loc.classCodes.length > 1 && (
-                    <RemoveButton onClick={() => s.removeClassCode(loc.id, ccIdx)} />
-                  )}
-                </div>
+                {rich && (
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      padding: "6px 12px",
+                      borderRadius: "0 0 10px 10px",
+                      border: `1px solid ${isDark ? "rgba(233,30,140,0.12)" : "rgba(233,30,140,0.15)"}`,
+                      borderTop: "none",
+                      background: isDark ? "rgba(233,30,140,0.04)" : "rgba(233,30,140,0.03)",
+                    }}
+                  >
+                    <span style={{ fontSize: 14 }}>{rich.ico}</span>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: "#E91E8C" }}>{rich.c}</span>
+                    <span style={{ fontSize: 11, color: textSecondary, flex: 1 }}>{rich.p}</span>
+                  </div>
+                )}
               </div>
             );
           })}

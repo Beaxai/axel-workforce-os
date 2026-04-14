@@ -5,6 +5,9 @@ import { FormSection, AddButton, US_STATES_OPTIONS } from "@/components/quote-fl
 import LocationCard from "@/components/quote-flow/LocationCard";
 import { api } from "@/lib/api";
 import { Users, DollarSign, MapPin, Sparkles, Loader2, X, Search } from "lucide-react";
+import richData from "@/data/rich-class-codes.json";
+
+const RICH: Record<string, { c: string; ico: string; n: string; p: string; d: string }> = richData;
 
 interface AppetiteResult {
   state: string;
@@ -380,6 +383,7 @@ export default function WorkforceProfile() {
             canRemove={s.locations.length > 1}
             stateOptions={stateOptions}
             appetiteMap={appetiteMap}
+            richMap={RICH}
           />
         ))}
 
