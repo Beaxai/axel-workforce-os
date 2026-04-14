@@ -1,5 +1,6 @@
 import { db, wcRatesTable } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
+import { getCATerritoryMultiplier } from "./caTerritory";
 
 export interface WCPremiumInput {
   state: string;
@@ -8,6 +9,7 @@ export interface WCPremiumInput {
   eMod: number;
   scheduleRating: number;
   isPEO: boolean;
+  zip?: string;
 }
 
 export interface WFSPEPMInput {
@@ -41,6 +43,7 @@ export function validateWFSInput(input: WFSPEPMInput) {
 export interface MultiLocationInput {
   locations: Array<{
     state: string;
+    zip?: string;
     classCodes: Array<{
       classCode: string;
       annualPayroll: number;
@@ -66,6 +69,9 @@ export interface MultiLocationResult {
       error?: string;
     }>;
     subtotal: number;
+    caTerritory?: number | null;
+    caTerritoryMultiplier?: number;
+    subtotalBeforeTerritory?: number;
   }>;
   totalGrossPremium: number;
   minimumPremiumApplied: boolean;
@@ -130,12 +136,24 @@ export async function calculateMultiLocationWC(input: MultiLocationInput): Promi
       }
     }
 
-    totalRaw += locSubtotal;
-    resultLocations.push({
+    const { multiplier: territoryMultiplier, territory } = getCATerritoryMultiplier(loc.state, loc.zip || "");
+    const subtotalBeforeTerritory = locSubtotal;
+    const adjustedSubtotal = locSubtotal * territoryMultiplier;
+    totalRaw += adjustedSubtotal;
+
+    const locResult: MultiLocationResult["locations"][0] = {
       state: loc.state,
       classCodes: ccResults,
-      subtotal: Math.round(locSubtotal * 100) / 100,
-    });
+      subtotal: Math.round(adjustedSubtotal * 100) / 100,
+    };
+
+    if (territory !== null) {
+      locResult.caTerritory = territory;
+      locResult.caTerritoryMultiplier = territoryMultiplier;
+      locResult.subtotalBeforeTerritory = Math.round(subtotalBeforeTerritory * 100) / 100;
+    }
+
+    resultLocations.push(locResult);
   }
 
   const minimumPremiumApplied = totalRaw < 500;
@@ -157,7 +175,7 @@ export async function calculateMultiLocationWC(input: MultiLocationInput): Promi
 }
 
 export async function calculateWCPremium(input: WCPremiumInput) {
-  const { state, classCode, annualPayroll, eMod, scheduleRating, isPEO } = input;
+  const { state, classCode, annualPayroll, eMod, scheduleRating, isPEO, zip } = input;
 
   const [rateRow] = await db
     .select()
@@ -173,8 +191,12 @@ export async function calculateWCPremium(input: WCPremiumInput) {
   const baseRate = parseFloat(rateRow.baseRate);
   const payrollPer100 = annualPayroll / 100;
   const rawPremium = payrollPer100 * baseRate * eMod * scheduleRating;
-  const minimumPremiumApplied = rawPremium < 500;
-  const grossPremium = minimumPremiumApplied ? 500 : rawPremium;
+
+  const { multiplier: territoryMultiplier, territory } = getCATerritoryMultiplier(state, zip || "");
+  const adjustedPremium = rawPremium * territoryMultiplier;
+
+  const minimumPremiumApplied = adjustedPremium < 500;
+  const grossPremium = minimumPremiumApplied ? 500 : adjustedPremium;
 
   const peoDiscount = isPEO ? grossPremium * 0.10 : 0;
   const finalPremium = grossPremium - peoDiscount;
@@ -188,6 +210,9 @@ export async function calculateWCPremium(input: WCPremiumInput) {
     },
     calculation: {
       payrollPer100,
+      basePremiumBeforeTerritory: Math.round(rawPremium * 100) / 100,
+      caTerritory: territory,
+      caTerritoryMultiplier: territoryMultiplier,
       grossPremium: Math.round(grossPremium * 100) / 100,
       minimumPremiumApplied,
       peoDiscountApplied: isPEO,

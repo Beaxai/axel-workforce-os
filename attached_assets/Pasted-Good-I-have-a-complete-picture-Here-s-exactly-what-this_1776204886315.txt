@@ -1,0 +1,113 @@
+Good — I have a complete picture. Here's exactly what this file is and the Replit prompt.
+What this file contains: A California territorial rating schedule with 12 territories mapped to zip code ranges. Each territory has a Benchmark multiplier that gets applied to the base WC premium for CA risks. For example, a Los Angeles zip code (900–918) adds a 1.25 multiplier, while San Diego (919–922) is 0.9.
+
+Paste this directly into Replit AI chat:
+
+AXEL WORKFORCE OS — Rating Engine Update: California Territorial Rating Multipliers
+
+CONTEXT
+The existing WC rating engine calculates premium using: (Payroll ÷ 100) × Class Code Rate × EMod × Schedule Rating. This update adds a California territorial rating multiplier as a final step in the calculation for CA risks only. For all other states, the territorial multiplier is 1.0 (no effect).
+
+WHAT THIS IS
+Benchmark Insurance Company uses 12 California territories mapped to zip code ranges. Each territory has a multiplier that adjusts the base WC premium. This multiplier is applied after all other rating factors.
+The complete territory table is:
+Zip Code RangeTerritoryMultiplier900–91811.25919–92220.90923–92431.05925–92641.00927–93151.20932–93861.10939–95170.90952–95381.0095490.90955101.00956–958110.95959–961121.00
+
+PART 1 — ADD A TERRITORY LOOKUP UTILITY
+Create a new file at server/utils/caTerritory.ts:
+ts// California Territorial Rating Schedule — Benchmark Insurance Company
+// Applies to CA risks only. All other states return multiplier of 1.0.
+
+interface TerritoryEntry {
+  zipStart: number;
+  zipEnd: number;
+  territory: number;
+  multiplier: number;
+}
+
+const CA_TERRITORIES: TerritoryEntry[] = [
+  { zipStart: 900, zipEnd: 918, territory: 1,  multiplier: 1.25 },
+  { zipStart: 919, zipEnd: 922, territory: 2,  multiplier: 0.90 },
+  { zipStart: 923, zipEnd: 924, territory: 3,  multiplier: 1.05 },
+  { zipStart: 925, zipEnd: 926, territory: 4,  multiplier: 1.00 },
+  { zipStart: 927, zipEnd: 931, territory: 5,  multiplier: 1.20 },
+  { zipStart: 932, zipEnd: 938, territory: 6,  multiplier: 1.10 },
+  { zipStart: 939, zipEnd: 951, territory: 7,  multiplier: 0.90 },
+  { zipStart: 952, zipEnd: 953, territory: 8,  multiplier: 1.00 },
+  { zipStart: 954, zipEnd: 954, territory: 9,  multiplier: 0.90 },
+  { zipStart: 955, zipEnd: 955, territory: 10, multiplier: 1.00 },
+  { zipStart: 956, zipEnd: 958, territory: 11, multiplier: 0.95 },
+  { zipStart: 959, zipEnd: 961, territory: 12, multiplier: 1.00 },
+];
+
+/**
+ * Returns the CA territorial multiplier for a given zip code.
+ * Matching is done on the first 3 digits of the zip code.
+ * Returns 1.0 for non-CA zips or unrecognized CA zips.
+ */
+export function getCATerritoryMultiplier(state: string, zip: string): {
+  multiplier: number;
+  territory: number | null;
+} {
+  if (state?.toUpperCase() !== 'CA') {
+    return { multiplier: 1.0, territory: null };
+  }
+
+  const zip3 = parseInt(String(zip || '').replace(/\D/g, '').substring(0, 3), 10);
+
+  if (isNaN(zip3)) {
+    return { multiplier: 1.0, territory: null };
+  }
+
+  const entry = CA_TERRITORIES.find(t => zip3 >= t.zipStart && zip3 <= t.zipEnd);
+
+  if (!entry) {
+    return { multiplier: 1.0, territory: null };
+  }
+
+  return { multiplier: entry.multiplier, territory: entry.territory };
+}
+
+PART 2 — WIRE INTO THE RATING ENGINE
+In the existing WC rating engine (likely server/routes/rate.ts or server/utils/ratingEngine.ts), import the territory utility and apply it to the final premium calculation for CA risks:
+tsimport { getCATerritoryMultiplier } from '../utils/caTerritory';
+
+// Inside the premium calculation, after computing base premium:
+// base_premium = (payroll / 100) * classCodeRate * emod * scheduleRating
+
+const { multiplier: territoryMultiplier, territory } = getCATerritoryMultiplier(state, zip);
+const final_premium = Math.max(base_premium * territoryMultiplier, 500); // minimum premium still applies
+
+// Add territory info to the rating_breakdown JSON that gets stored on the quote:
+rating_breakdown = {
+  ...existing_breakdown,
+  ca_territory: territory,
+  ca_territory_multiplier: territoryMultiplier,
+  base_premium_before_territory: base_premium,
+  final_premium,
+};
+Apply this to both the single-code /api/rate/wc endpoint and the multi-location /api/rate/wc/multi endpoint. For multi-location, apply the territory multiplier per location using that location's zip code.
+
+PART 3 — UPDATE THE PROPOSAL PANEL
+In the existing proposal panel UI (the screen that shows the calculated premium breakdown), add a territorial rating line item when the state is CA and the multiplier is not 1.0:
+// Show this line only when state = CA and territory multiplier ≠ 1.0
+CA Territory [X] Adjustment:   ×1.25
+Display it between the base premium line and the final premium total so the client and agent can see exactly how the territory affected their rate.
+
+PART 4 — ADD ZIP CODE FIELD TO THE QUOTE FORM
+The territory lookup requires a zip code. Confirm the quote form already collects a zip code for the primary location. If it does not, add a zip code field to the business information step (Step 1 of the quote flow). This field should be:
+
+Label: "Business ZIP code"
+Type: text input, max 10 characters
+Pass the zip value through to the rating engine call alongside state
+
+
+DONE WHEN:
+
+getCATerritoryMultiplier('CA', '90210') returns { multiplier: 1.25, territory: 1 }
+getCATerritoryMultiplier('TX', '77001') returns { multiplier: 1.0, territory: null }
+CA quotes show the territorial multiplier applied in the final premium
+Non-CA quotes are unaffected
+rating_breakdown JSON on saved quotes includes ca_territory and ca_territory_multiplier
+Proposal panel displays the territory adjustment line for CA risks where multiplier ≠ 1.0
+Multi-location quotes apply the correct territory multiplier per location zip code

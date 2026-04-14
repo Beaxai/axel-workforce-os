@@ -17,6 +17,9 @@ interface MultiLocationResult {
       error?: string;
     }>;
     subtotal: number;
+    caTerritory?: number | null;
+    caTerritoryMultiplier?: number;
+    subtotalBeforeTerritory?: number;
   }>;
   totalGrossPremium: number;
   minimumPremiumApplied: boolean;
@@ -47,6 +50,7 @@ export default function Step4Indication() {
         .filter((loc) => loc.state && loc.classCodes.some((cc) => cc.classCode))
         .map((loc) => ({
           state: loc.state,
+          zip: loc.zip || "",
           classCodes: loc.classCodes
             .filter((cc) => cc.classCode)
             .map((cc) => ({
@@ -268,10 +272,25 @@ export default function Step4Indication() {
                   </tr>
                 );
               })}
+              {ratingResult?.locations.filter((loc) => loc.caTerritory != null && loc.caTerritoryMultiplier !== 1.0).map((loc, i) => (
+                <tr key={`territory-${i}`} style={{ borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)"}` }}>
+                  <td colSpan={4} style={{ padding: "10px 14px", color: textSecondary, fontSize: 12 }}>
+                    CA Territory {loc.caTerritory} Adjustment ({loc.state})
+                  </td>
+                  <td style={{ padding: "10px 14px", color: textSecondary, fontSize: 12 }}>
+                    x{loc.caTerritoryMultiplier?.toFixed(2)}
+                  </td>
+                  <td style={{ padding: "10px 14px", color: textPrimary, fontWeight: 600, fontSize: 12 }}>
+                    {loc.caTerritoryMultiplier! > 1 ? "+" : ""}{loc.subtotalBeforeTerritory != null
+                      ? `$${Math.round(loc.subtotal - loc.subtotalBeforeTerritory).toLocaleString()}`
+                      : ""}
+                  </td>
+                </tr>
+              ))}
               <tr style={{ borderTop: `2px solid rgba(233,30,140,0.3)` }}>
                 <td colSpan={5} style={{ padding: "12px 14px", color: "#E91E8C", fontWeight: 700 }}>Total</td>
                 <td style={{ padding: "12px 14px", color: "#E91E8C", fontWeight: 700 }}>
-                  ${Math.round(rateBreakdown.reduce((sum, r) => sum + r.estPremium, 0)).toLocaleString()}
+                  ${ratingResult ? Math.round(ratingResult.totalGrossPremium).toLocaleString() : Math.round(rateBreakdown.reduce((sum, r) => sum + r.estPremium, 0)).toLocaleString()}
                 </td>
               </tr>
             </tbody>
