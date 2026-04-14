@@ -1,7 +1,7 @@
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { useQuoteFlowStore, type LocationBlock } from "@/lib/quote-flow-store";
 import {
-  FieldLabel, SelectInput, NumberInput,
+  FieldLabel, TextInput, SelectInput, NumberInput,
   CurrencyInput, AddButton, RemoveButton, US_STATES_OPTIONS,
 } from "@/components/quote-flow/FormFields";
 import ClassCodeSearch from "@/components/quote-flow/ClassCodeSearch";
@@ -115,13 +115,41 @@ export default function LocationCard({ location, index, canRemove, stateOptions,
       </div>
 
       <div style={{ padding: 20 }}>
-        <div style={{ marginBottom: 16, maxWidth: 240 }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr 120px 100px",
+            gap: 12,
+            marginBottom: 16,
+          }}
+        >
+          <FieldLabel label="Street Address">
+            <TextInput
+              value={loc.streetAddress || ""}
+              onChange={(v) => s.updateLocation(loc.id, { streetAddress: v })}
+              placeholder="123 Main St"
+            />
+          </FieldLabel>
+          <FieldLabel label="City">
+            <TextInput
+              value={loc.city || ""}
+              onChange={(v) => s.updateLocation(loc.id, { city: v })}
+              placeholder="City"
+            />
+          </FieldLabel>
           <FieldLabel label="State">
             <SelectInput
               value={loc.state}
               onChange={(v) => s.updateLocation(loc.id, { state: v })}
               options={stateOptions}
-              placeholder="Select state"
+              placeholder="State"
+            />
+          </FieldLabel>
+          <FieldLabel label="ZIP">
+            <TextInput
+              value={loc.zip || ""}
+              onChange={(v) => s.updateLocation(loc.id, { zip: v })}
+              placeholder="00000"
             />
           </FieldLabel>
         </div>

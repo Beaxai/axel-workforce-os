@@ -49,6 +49,7 @@ export default function WorkforceProfile() {
   const [aiError, setAiError] = useState("");
   const [codeGridSearch, setCodeGridSearch] = useState("");
   const [activeVertical, setActiveVertical] = useState<string>("All");
+  const [showCodeGrid, setShowCodeGrid] = useState(false);
   const [learnMoreEntry, setLearnMoreEntry] = useState<{ c: string; ico: string; n: string; p: string; d: string; v?: string } | null>(null);
 
   const locationKey = s.locations
@@ -249,27 +250,52 @@ export default function WorkforceProfile() {
           <h3 style={{ fontSize: 14, fontWeight: 600, color: textPrimary, margin: 0 }}>
             Locations & Class Codes
           </h3>
-          <button
-            type="button"
-            onClick={() => setAiOpen(!aiOpen)}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              padding: "6px 14px",
-              borderRadius: 20,
-              border: `1px solid ${isDark ? "rgba(233,30,140,0.25)" : "rgba(233,30,140,0.3)"}`,
-              background: aiOpen ? "rgba(233,30,140,0.12)" : "rgba(233,30,140,0.06)",
-              color: "#E91E8C",
-              fontSize: 12,
-              fontWeight: 600,
-              cursor: "pointer",
-              transition: "all 0.15s",
-            }}
-          >
-            <Sparkles style={{ width: 13, height: 13 }} />
-            AI Class Code Advisor
-          </button>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              type="button"
+              onClick={() => { setShowCodeGrid(!showCodeGrid); if (!showCodeGrid) { setCodeGridSearch(""); setActiveVertical("All"); } }}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "6px 14px",
+                borderRadius: 20,
+                border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`,
+                background: showCodeGrid
+                  ? (isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.06)")
+                  : (isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)"),
+                color: textSecondary,
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: "pointer",
+                transition: "all 0.15s",
+              }}
+            >
+              <Search style={{ width: 13, height: 13 }} />
+              Browse Codes
+            </button>
+            <button
+              type="button"
+              onClick={() => setAiOpen(!aiOpen)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "6px 14px",
+                borderRadius: 20,
+                border: `1px solid ${isDark ? "rgba(233,30,140,0.25)" : "rgba(233,30,140,0.3)"}`,
+                background: aiOpen ? "rgba(233,30,140,0.12)" : "rgba(233,30,140,0.06)",
+                color: "#E91E8C",
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: "pointer",
+                transition: "all 0.15s",
+              }}
+            >
+              <Sparkles style={{ width: 13, height: 13 }} />
+              AI Class Code Advisor
+            </button>
+          </div>
         </div>
 
         {aiOpen && (
@@ -458,167 +484,187 @@ export default function WorkforceProfile() {
         <AddButton label="Add Location" onClick={() => s.addLocation()} />
 
         {totalClassCodes > 0 && (
-          <div style={{ marginTop: 12, fontSize: 12, color: textMuted, marginBottom: 24 }}>
+          <div style={{ marginTop: 12, fontSize: 12, color: textMuted }}>
             {totalClassCodes} class code{totalClassCodes !== 1 ? "s" : ""} across {totalLocations} location{totalLocations !== 1 ? "s" : ""}
           </div>
         )}
-      </FormSection>
 
-      <FormSection
-        title="Browse and select class codes"
-        subtitle=""
-      >
-        <div style={{ position: "relative", marginBottom: 16 }}>
-          <Search style={{
-            position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)",
-            width: 16, height: 16, color: textMuted, pointerEvents: "none",
-          }} />
-          <input
-            type="text"
-            value={codeGridSearch}
-            onChange={(e) => setCodeGridSearch(e.target.value)}
-            placeholder="Search all codes..."
+        {showCodeGrid && (
+          <div
             style={{
-              width: "100%",
-              padding: "12px 16px 12px 40px",
-              borderRadius: 12,
+              marginTop: 24,
+              padding: 20,
+              borderRadius: 14,
               border: `1px solid ${borderColor}`,
-              background: isDark ? "rgba(0,0,0,0.3)" : "#fff",
-              color: textPrimary,
-              fontSize: 14,
-              outline: "none",
+              background: isDark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.01)",
             }}
-          />
-        </div>
-
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 20 }}>
-          {VERTICALS.filter((v) => v === "All" || verticalCounts[v] > 0).map((v) => (
-            <button
-              key={v}
-              type="button"
-              onClick={() => setActiveVertical(v)}
-              style={{
-                padding: "7px 16px",
-                borderRadius: 20,
-                border: `1px solid ${
-                  activeVertical === v
-                    ? (isDark ? "rgba(233,30,140,0.5)" : "rgba(233,30,140,0.4)")
-                    : (isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)")
-                }`,
-                background: activeVertical === v
-                  ? (isDark ? "rgba(233,30,140,0.15)" : "rgba(233,30,140,0.08)")
-                  : (isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)"),
-                color: activeVertical === v ? "#E91E8C" : textSecondary,
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: "pointer",
-                transition: "all 0.15s",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {v}
-            </button>
-          ))}
-        </div>
-
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(2, 1fr)",
-            gap: 12,
-            maxHeight: 520,
-            overflowY: "auto",
-            paddingRight: 4,
-          }}
-        >
-          {filteredRichEntries.map((entry) => (
-            <div
-              key={entry.c}
-              style={{
-                padding: "18px 20px",
-                borderRadius: 14,
-                border: `1px solid ${borderColor}`,
-                background: isDark ? "rgba(255,255,255,0.03)" : "#fff",
-                transition: "all 0.15s",
-                display: "flex",
-                flexDirection: "column",
-                gap: 6,
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = isDark ? "rgba(233,30,140,0.35)" : "rgba(233,30,140,0.25)";
-                e.currentTarget.style.background = isDark ? "rgba(233,30,140,0.04)" : "rgba(233,30,140,0.02)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = borderColor;
-                e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.03)" : "#fff";
-              }}
-            >
-              <div style={{ fontSize: 28, lineHeight: 1 }}>{entry.ico}</div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: "#E91E8C", lineHeight: 1.2 }}>{entry.c}</div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: textPrimary, lineHeight: 1.3 }}>
-                {entry.n} {entry.p !== entry.n ? `\u2014 ${entry.p.replace(entry.n, "").replace(/^[\s\-—]+/, "")}` : ""}
-              </div>
-              <div style={{
-                fontSize: 12,
-                color: textMuted,
-                lineHeight: 1.5,
-                display: "-webkit-box",
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: "vertical" as const,
-                overflow: "hidden",
-              }}>
-                {entry.d || entry.p}
-              </div>
-              <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
-                <button
-                  type="button"
-                  onClick={() => handleApplyRichCard(entry)}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 5,
-                    padding: "6px 14px",
-                    borderRadius: 8,
-                    border: `1px solid ${isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.15)"}`,
-                    background: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.03)",
-                    color: textPrimary,
-                    fontSize: 12,
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    transition: "all 0.15s",
-                  }}
-                >
-                  <Plus style={{ width: 12, height: 12 }} />
-                  Add
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setLearnMoreEntry(entry)}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 5,
-                    padding: "6px 14px",
-                    borderRadius: 8,
-                    border: `1px solid ${isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.15)"}`,
-                    background: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.03)",
-                    color: textPrimary,
-                    fontSize: 12,
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    transition: "all 0.15s",
-                  }}
-                >
-                  Learn more
-                </button>
-              </div>
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+              <span style={{ fontSize: 14, fontWeight: 600, color: textPrimary }}>
+                Browse and select class codes
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowCodeGrid(false)}
+                style={{ background: "none", border: "none", cursor: "pointer", padding: 2, color: textMuted, display: "flex" }}
+              >
+                <X style={{ width: 14, height: 14 }} />
+              </button>
             </div>
-          ))}
-        </div>
 
-        {filteredRichEntries.length === 0 && (
-          <div style={{ padding: 40, textAlign: "center", color: textMuted, fontSize: 14 }}>
-            No class codes match your search{activeVertical !== "All" ? ` in ${activeVertical}` : ""}
+            <div style={{ position: "relative", marginBottom: 14 }}>
+              <Search style={{
+                position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)",
+                width: 15, height: 15, color: textMuted, pointerEvents: "none",
+              }} />
+              <input
+                type="text"
+                value={codeGridSearch}
+                onChange={(e) => setCodeGridSearch(e.target.value)}
+                placeholder="Search all codes..."
+                style={{
+                  width: "100%",
+                  padding: "10px 16px 10px 38px",
+                  borderRadius: 10,
+                  border: `1px solid ${borderColor}`,
+                  background: isDark ? "rgba(0,0,0,0.3)" : "#fff",
+                  color: textPrimary,
+                  fontSize: 13,
+                  outline: "none",
+                }}
+              />
+            </div>
+
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 16 }}>
+              {VERTICALS.filter((v) => v === "All" || verticalCounts[v] > 0).map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => setActiveVertical(v)}
+                  style={{
+                    padding: "5px 14px",
+                    borderRadius: 20,
+                    border: `1px solid ${
+                      activeVertical === v
+                        ? (isDark ? "rgba(233,30,140,0.5)" : "rgba(233,30,140,0.4)")
+                        : (isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)")
+                    }`,
+                    background: activeVertical === v
+                      ? (isDark ? "rgba(233,30,140,0.15)" : "rgba(233,30,140,0.08)")
+                      : (isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)"),
+                    color: activeVertical === v ? "#E91E8C" : textSecondary,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    transition: "all 0.15s",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {v}
+                </button>
+              ))}
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(2, 1fr)",
+                gap: 10,
+                maxHeight: 480,
+                overflowY: "auto",
+                paddingRight: 4,
+              }}
+            >
+              {filteredRichEntries.map((entry) => (
+                <div
+                  key={entry.c}
+                  style={{
+                    padding: "16px 18px",
+                    borderRadius: 12,
+                    border: `1px solid ${borderColor}`,
+                    background: isDark ? "rgba(255,255,255,0.03)" : "#fff",
+                    transition: "all 0.15s",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 5,
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = isDark ? "rgba(233,30,140,0.35)" : "rgba(233,30,140,0.25)";
+                    e.currentTarget.style.background = isDark ? "rgba(233,30,140,0.04)" : "rgba(233,30,140,0.02)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = borderColor;
+                    e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.03)" : "#fff";
+                  }}
+                >
+                  <div style={{ fontSize: 24, lineHeight: 1 }}>{entry.ico}</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "#E91E8C", lineHeight: 1.2 }}>{entry.c}</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: textPrimary, lineHeight: 1.3 }}>
+                    {entry.n} {entry.p !== entry.n ? `\u2014 ${entry.p.replace(entry.n, "").replace(/^[\s\-—]+/, "")}` : ""}
+                  </div>
+                  <div style={{
+                    fontSize: 11,
+                    color: textMuted,
+                    lineHeight: 1.5,
+                    display: "-webkit-box",
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: "vertical" as const,
+                    overflow: "hidden",
+                  }}>
+                    {entry.d || entry.p}
+                  </div>
+                  <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                    <button
+                      type="button"
+                      onClick={() => handleApplyRichCard(entry)}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 5,
+                        padding: "5px 12px",
+                        borderRadius: 8,
+                        border: `1px solid ${isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.15)"}`,
+                        background: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.03)",
+                        color: textPrimary,
+                        fontSize: 11,
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        transition: "all 0.15s",
+                      }}
+                    >
+                      <Plus style={{ width: 11, height: 11 }} />
+                      Add
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setLearnMoreEntry(entry)}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 5,
+                        padding: "5px 12px",
+                        borderRadius: 8,
+                        border: `1px solid ${isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.15)"}`,
+                        background: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.03)",
+                        color: textPrimary,
+                        fontSize: 11,
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        transition: "all 0.15s",
+                      }}
+                    >
+                      Learn more
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {filteredRichEntries.length === 0 && (
+              <div style={{ padding: 32, textAlign: "center", color: textMuted, fontSize: 13 }}>
+                No class codes match your search{activeVertical !== "All" ? ` in ${activeVertical}` : ""}
+              </div>
+            )}
           </div>
         )}
       </FormSection>

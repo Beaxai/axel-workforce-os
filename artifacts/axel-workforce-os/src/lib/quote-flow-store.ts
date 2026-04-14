@@ -10,7 +10,10 @@ export interface LocationClassCode {
 
 export interface LocationBlock {
   id: string;
+  streetAddress: string;
+  city: string;
   state: string;
+  zip: string;
   classCodes: LocationClassCode[];
 }
 
@@ -233,7 +236,10 @@ const emptyClassCode = (): LocationClassCode => ({
 
 const emptyLocation = (): LocationBlock => ({
   id: generateId(),
+  streetAddress: "",
+  city: "",
   state: "",
+  zip: "",
   classCodes: [emptyClassCode()],
 });
 
