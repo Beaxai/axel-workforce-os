@@ -34,6 +34,8 @@ export default function WorkforceProfile() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiSuggestions, setAiSuggestions] = useState<AISuggestion[]>([]);
   const [aiError, setAiError] = useState("");
+  const [showCodeGrid, setShowCodeGrid] = useState(false);
+  const [codeGridSearch, setCodeGridSearch] = useState("");
 
   const locationKey = s.locations
     .map((l) => `${l.state}:${l.classCodes.map((c) => c.classCode).join(",")}`)
@@ -93,6 +95,40 @@ export default function WorkforceProfile() {
       setAiLoading(false);
     }
   }, [aiQuery, aiState]);
+
+  const richEntries = Object.values(RICH);
+  const filteredRichEntries = codeGridSearch
+    ? richEntries.filter(
+        (r) =>
+          r.c.includes(codeGridSearch) ||
+          r.n.toLowerCase().includes(codeGridSearch.toLowerCase()) ||
+          r.p.toLowerCase().includes(codeGridSearch.toLowerCase()),
+      )
+    : richEntries;
+
+  const handleApplyRichCard = (entry: typeof richEntries[0]) => {
+    if (s.locations.length === 0) return;
+    const targetLoc = s.locations[0];
+    const emptyIdx = targetLoc.classCodes.findIndex((cc) => !cc.classCode);
+    if (emptyIdx >= 0) {
+      s.updateClassCode(targetLoc.id, emptyIdx, {
+        classCode: entry.c,
+        description: entry.n,
+      });
+    } else {
+      s.addClassCode(targetLoc.id);
+      setTimeout(() => {
+        const store = useQuoteFlowStore.getState();
+        const loc = store.locations.find((l) => l.id === targetLoc.id);
+        if (loc) {
+          s.updateClassCode(targetLoc.id, loc.classCodes.length - 1, {
+            classCode: entry.c,
+            description: entry.n,
+          });
+        }
+      }, 50);
+    }
+  };
 
   const handleApplySuggestion = (suggestion: AISuggestion) => {
     if (s.locations.length === 0) return;
@@ -181,28 +217,156 @@ export default function WorkforceProfile() {
           <h3 style={{ fontSize: 14, fontWeight: 600, color: textPrimary, margin: 0 }}>
             Locations & Class Codes
           </h3>
-          <button
-            type="button"
-            onClick={() => setAiOpen(!aiOpen)}
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              type="button"
+              onClick={() => { setShowCodeGrid(!showCodeGrid); setCodeGridSearch(""); }}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "6px 14px",
+                borderRadius: 20,
+                border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`,
+                background: showCodeGrid
+                  ? (isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.06)")
+                  : (isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)"),
+                color: textSecondary,
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: "pointer",
+                transition: "all 0.15s",
+              }}
+            >
+              <Search style={{ width: 13, height: 13 }} />
+              Browse Codes
+            </button>
+            <button
+              type="button"
+              onClick={() => setAiOpen(!aiOpen)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "6px 14px",
+                borderRadius: 20,
+                border: `1px solid ${isDark ? "rgba(233,30,140,0.25)" : "rgba(233,30,140,0.3)"}`,
+                background: aiOpen ? "rgba(233,30,140,0.12)" : "rgba(233,30,140,0.06)",
+                color: "#E91E8C",
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: "pointer",
+                transition: "all 0.15s",
+              }}
+            >
+              <Sparkles style={{ width: 13, height: 13 }} />
+              AI Class Code Advisor
+            </button>
+          </div>
+        </div>
+
+        {showCodeGrid && (
+          <div
             style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              padding: "6px 14px",
-              borderRadius: 20,
-              border: `1px solid ${isDark ? "rgba(233,30,140,0.25)" : "rgba(233,30,140,0.3)"}`,
-              background: aiOpen ? "rgba(233,30,140,0.12)" : "rgba(233,30,140,0.06)",
-              color: "#E91E8C",
-              fontSize: 12,
-              fontWeight: 600,
-              cursor: "pointer",
-              transition: "all 0.15s",
+              marginBottom: 20,
+              padding: 16,
+              borderRadius: 14,
+              border: `1px solid ${borderColor}`,
+              background: isDark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.01)",
             }}
           >
-            <Sparkles style={{ width: 13, height: 13 }} />
-            AI Class Code Advisor
-          </button>
-        </div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: textPrimary }}>
+                Classification Codes ({filteredRichEntries.length})
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowCodeGrid(false)}
+                style={{ background: "none", border: "none", cursor: "pointer", padding: 2, color: textMuted, display: "flex" }}
+              >
+                <X style={{ width: 14, height: 14 }} />
+              </button>
+            </div>
+            <div style={{ position: "relative", marginBottom: 14 }}>
+              <Search style={{
+                position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)",
+                width: 14, height: 14, color: textMuted, pointerEvents: "none",
+              }} />
+              <input
+                type="text"
+                value={codeGridSearch}
+                onChange={(e) => setCodeGridSearch(e.target.value)}
+                placeholder="Filter by code or description..."
+                style={{
+                  width: "100%",
+                  padding: "8px 12px 8px 34px",
+                  borderRadius: 10,
+                  border: `1px solid ${borderColor}`,
+                  background: isDark ? "rgba(0,0,0,0.3)" : "#fff",
+                  color: textPrimary,
+                  fontSize: 13,
+                  outline: "none",
+                }}
+              />
+            </div>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(3, 1fr)",
+                gap: 8,
+                maxHeight: 360,
+                overflowY: "auto",
+                paddingRight: 4,
+              }}
+            >
+              {filteredRichEntries.map((entry) => (
+                <button
+                  key={entry.c}
+                  type="button"
+                  onClick={() => handleApplyRichCard(entry)}
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: 10,
+                    padding: "10px 12px",
+                    borderRadius: 10,
+                    border: `1px solid ${borderColor}`,
+                    background: isDark ? "rgba(255,255,255,0.03)" : "#fff",
+                    cursor: "pointer",
+                    textAlign: "left",
+                    transition: "all 0.15s",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = "rgba(233,30,140,0.4)";
+                    e.currentTarget.style.background = isDark ? "rgba(233,30,140,0.06)" : "rgba(233,30,140,0.03)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = borderColor;
+                    e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.03)" : "#fff";
+                  }}
+                >
+                  <span style={{ fontSize: 20, lineHeight: 1, flexShrink: 0, marginTop: 1 }}>{entry.ico}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: "#E91E8C" }}>{entry.c}</span>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: textPrimary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {entry.n}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 10, color: textMuted, lineHeight: 1.4, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as const, overflow: "hidden" }}>
+                      {entry.p}
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+            {filteredRichEntries.length === 0 && (
+              <div style={{ padding: 20, textAlign: "center", color: textMuted, fontSize: 13 }}>
+                No class codes match your filter
+              </div>
+            )}
+          </div>
+        )}
 
         {aiOpen && (
           <div
