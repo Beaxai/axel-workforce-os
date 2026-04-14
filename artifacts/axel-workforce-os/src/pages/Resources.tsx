@@ -2,9 +2,10 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { GlassCard, SectionHeader, PinkButton, GhostButton, AxelBadge } from "@/components/ui/axel-index";
-import { Search, Plus, X, FileText, Table, Video, Link as LinkIcon, Trash2 } from "lucide-react";
+import { Search, Plus, X, FileText, Table, Video, Link as LinkIcon, Trash2, BookOpen } from "lucide-react";
 import { useThemeStore } from "@/lib/theme-store";
 import { useAuthStore } from "@/lib/auth-store";
+import { useNavigate } from "react-router-dom";
 
 const CATEGORIES = ["All", "Guides", "Templates", "Forms", "Training", "Marketing"];
 const TYPE_ICONS: Record<string, any> = { doc: FileText, spreadsheet: Table, video: Video, link: LinkIcon };
@@ -18,6 +19,7 @@ export default function Resources() {
   const { theme } = useThemeStore();
   const { user } = useAuthStore();
   const isDark = theme === "dark";
+  const navigate = useNavigate();
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
@@ -87,6 +89,22 @@ export default function Resources() {
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px" }}>
+        <GlassCard>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
+            <BookOpen style={{ width: 20, height: 20, color: "#E91E8C", flexShrink: 0 }} />
+            <div>
+              <p style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, margin: 0 }}>Appetite Guide</p>
+              <AxelBadge label="Underwriting" color="light-violet" />
+            </div>
+          </div>
+          <p style={{ fontSize: "13px", color: textMuted, marginBottom: "14px", lineHeight: 1.5 }}>
+            Search class codes across all states with determination and base rate data.
+          </p>
+          <GhostButton onClick={() => navigate("/resources/appetite")} style={{ fontSize: "13px", padding: "6px 14px" }}>
+            Open Guide
+          </GhostButton>
+        </GlassCard>
+
         {filtered.map((r: any) => {
           const Icon = TYPE_ICONS[r.resourceType] || FileText;
           return (

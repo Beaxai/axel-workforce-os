@@ -26,3 +26,4 @@ export * from "./workforce";
 export * from "./submission";
 export * from "./proposals";
 export * from "./signatures";
+export * from "./appetite";

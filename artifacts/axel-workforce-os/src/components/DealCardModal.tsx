@@ -22,6 +22,7 @@ import {
   FileSignature,
 } from "lucide-react";
 import BindStatusPanel from "@/components/submission/BindStatusPanel";
+import { AppetiteBadge } from "@/components/AppetiteBadge";
 
 const STAGES = [
   { num: 1, key: "SUBMISSION_REVIEW", label: "Submission Review" },
@@ -148,6 +149,7 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
   const [taskForm, setTaskForm] = useState({ taskName: "", assignedTo: "", dueDate: "" });
   const [showMentions, setShowMentions] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>("activity");
+  const [appetiteData, setAppetiteData] = useState<Array<{ state: string; class_code: string; uw_determination: string; uw_considerations: string | null }>>([]);
 
   const textPrimary = isDark ? "#fff" : "#111";
   const textMuted = isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.45)";
@@ -227,6 +229,23 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
     }
   }, [dealId]);
 
+  const fetchAppetite = useCallback(async (state: string, classCode?: string) => {
+    if (!state) return;
+    try {
+      const codes = classCode ? [classCode] : [];
+      if (codes.length === 0) {
+        const res = await api.get<{ uwDetermination: string; uwConsiderations: string | null }>(`/appetite/${state}/0000`);
+        setAppetiteData([{ state, class_code: "0000", uw_determination: res.uwDetermination, uw_considerations: res.uwConsiderations }]);
+      } else {
+        const lookups = codes.map(c => ({ state, class_code: c }));
+        const res = await api.post<{ results: typeof appetiteData }>("/appetite/batch", { lookups });
+        setAppetiteData(res.results || []);
+      }
+    } catch {
+      setAppetiteData([]);
+    }
+  }, []);
+
   useEffect(() => {
     if (!isOpen || !dealId) return;
     setDeal(null);
@@ -240,6 +259,7 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
     setShowAddTask(false);
     setShowTemplates(false);
     setActiveTab("activity");
+    setAppetiteData([]);
     fetchDeal();
     fetchActivity();
     fetchTasks();
@@ -247,6 +267,14 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
     fetchQuote();
     fetchDocuments();
   }, [isOpen, dealId, fetchDeal, fetchActivity, fetchTasks, fetchEmail, fetchQuote, fetchDocuments]);
+
+  useEffect(() => {
+    if (deal?.state && quoteRecord?.classCode) {
+      fetchAppetite(deal.state, quoteRecord.classCode);
+    } else if (deal?.state) {
+      fetchAppetite(deal.state);
+    }
+  }, [deal?.state, quoteRecord?.classCode, fetchAppetite]);
 
   if (!isOpen) return null;
 
@@ -941,6 +969,41 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
                   </>
                 )}
               </div>
+            </GlassCard>
+
+            {/* APPETITE */}
+            <GlassCard padding="16px">
+              <h3 style={{ fontSize: "14px", fontWeight: 600, color: textPrimary, margin: "0 0 12px" }}>Underwriting Appetite</h3>
+              {appetiteData.length === 0 ? (
+                <p style={{ fontSize: "13px", color: textMuted, margin: 0 }}>
+                  {deal?.state ? "Loading appetite data..." : "Set a state to view appetite."}
+                </p>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  {appetiteData.map((a) => (
+                    <div
+                      key={`${a.state}:${a.class_code}`}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: "8px",
+                        padding: "8px 10px",
+                        background: inputBg,
+                        borderRadius: "8px",
+                      }}
+                    >
+                      <span style={{ fontSize: "12px", color: textMuted, fontFamily: "monospace" }}>
+                        {a.state} / {a.class_code}
+                      </span>
+                      <AppetiteBadge
+                        determination={a.uw_determination}
+                        considerations={a.uw_considerations}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
             </GlassCard>
 
             {/* DOCUMENTS */}

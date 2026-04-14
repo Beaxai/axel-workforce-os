@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { useQuoteFlowStore } from "@/lib/quote-flow-store";
 import {
@@ -5,6 +6,8 @@ import {
   CurrencyInput, AddButton, RemoveButton, US_STATES_OPTIONS,
 } from "@/components/quote-flow/FormFields";
 import ClassCodeSearch from "@/components/quote-flow/ClassCodeSearch";
+import { AppetiteBadge } from "@/components/AppetiteBadge";
+import { api } from "@/lib/api";
 
 function formatCurrency(n: number): string {
   return n ? n.toLocaleString() : "";
@@ -14,9 +17,38 @@ function parseCurrency(s: string): number {
   return Number(s.replace(/[^0-9]/g, "")) || 0;
 }
 
+interface AppetiteResult {
+  state: string;
+  class_code: string;
+  uw_determination: string;
+  uw_considerations: string | null;
+}
+
 export default function Step2ClassCodes() {
   const s = useQuoteFlowStore();
   const { isDark, textPrimary, textSecondary, textMuted, cardBg, borderColor } = useThemeColors();
+  const [appetiteMap, setAppetiteMap] = useState<Record<string, AppetiteResult>>({});
+
+  useEffect(() => {
+    const lookups: { state: string; class_code: string }[] = [];
+    for (const loc of s.locations) {
+      if (!loc.state) continue;
+      for (const cc of loc.classCodes) {
+        if (!cc.classCode) continue;
+        lookups.push({ state: loc.state, class_code: cc.classCode });
+      }
+    }
+    if (lookups.length === 0) { setAppetiteMap({}); return; }
+    api.post<{ results: AppetiteResult[] }>("/appetite/batch", { lookups })
+      .then((res) => {
+        const map: Record<string, AppetiteResult> = {};
+        for (const r of res.results) {
+          map[`${r.state}:${r.class_code}`] = r;
+        }
+        setAppetiteMap(map);
+      })
+      .catch(() => setAppetiteMap({}));
+  }, [s.locations.map(l => `${l.state}:${l.classCodes.map(c => c.classCode).join(",")}`).join("|")]);
 
   const stateOptions = s.statesOfOperation.length > 0
     ? s.statesOfOperation.map((st) => ({ value: st, label: st }))
@@ -59,63 +91,76 @@ export default function Step2ClassCodes() {
               </FieldLabel>
             </div>
 
-            {loc.classCodes.map((cc, ccIdx) => (
-              <div
-                key={ccIdx}
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 80px 80px 140px 36px",
-                  gap: 10,
-                  alignItems: "end",
-                  marginBottom: 10,
-                  padding: 12,
-                  borderRadius: 8,
-                  border: "1px solid rgba(233,30,140,0.15)",
-                  background: "rgba(233,30,140,0.02)",
-                }}
-              >
-                <FieldLabel label={ccIdx === 0 ? "Class Code (search by code or description)" : ""}>
-                  <ClassCodeSearch
-                    value={cc.classCode}
-                    description={cc.description}
-                    onChange={(code, desc) => {
-                      s.updateClassCode(loc.id, ccIdx, {
-                        classCode: code,
-                        description: desc,
-                      });
-                    }}
-                  />
-                </FieldLabel>
-                <FieldLabel label={ccIdx === 0 ? "FT" : ""}>
-                  <NumberInput
-                    value={cc.fullTimeEmployees ? String(cc.fullTimeEmployees) : ""}
-                    onChange={(v) => s.updateClassCode(loc.id, ccIdx, { fullTimeEmployees: Number(v) || 0 })}
-                    placeholder="0"
-                    min={0}
-                  />
-                </FieldLabel>
-                <FieldLabel label={ccIdx === 0 ? "PT" : ""}>
-                  <NumberInput
-                    value={cc.partTimeEmployees ? String(cc.partTimeEmployees) : ""}
-                    onChange={(v) => s.updateClassCode(loc.id, ccIdx, { partTimeEmployees: Number(v) || 0 })}
-                    placeholder="0"
-                    min={0}
-                  />
-                </FieldLabel>
-                <FieldLabel label={ccIdx === 0 ? "Annual Payroll" : ""}>
-                  <CurrencyInput
-                    value={cc.annualPayroll ? formatCurrency(cc.annualPayroll) : ""}
-                    onChange={(v) => s.updateClassCode(loc.id, ccIdx, { annualPayroll: parseCurrency(v) })}
-                    placeholder="0"
-                  />
-                </FieldLabel>
-                <div style={{ paddingBottom: 2 }}>
-                  {loc.classCodes.length > 1 && (
-                    <RemoveButton onClick={() => s.removeClassCode(loc.id, ccIdx)} />
-                  )}
+            {loc.classCodes.map((cc, ccIdx) => {
+              const appetiteKey = loc.state && cc.classCode ? `${loc.state}:${cc.classCode}` : "";
+              const appetite = appetiteKey ? appetiteMap[appetiteKey] : undefined;
+              return (
+                <div
+                  key={ccIdx}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 80px 80px 140px auto 36px",
+                    gap: 10,
+                    alignItems: "end",
+                    marginBottom: 10,
+                    padding: 12,
+                    borderRadius: 8,
+                    border: "1px solid rgba(233,30,140,0.15)",
+                    background: "rgba(233,30,140,0.02)",
+                  }}
+                >
+                  <FieldLabel label={ccIdx === 0 ? "Class Code (search by code or description)" : ""}>
+                    <ClassCodeSearch
+                      value={cc.classCode}
+                      description={cc.description}
+                      onChange={(code, desc) => {
+                        s.updateClassCode(loc.id, ccIdx, {
+                          classCode: code,
+                          description: desc,
+                        });
+                      }}
+                    />
+                  </FieldLabel>
+                  <FieldLabel label={ccIdx === 0 ? "FT" : ""}>
+                    <NumberInput
+                      value={cc.fullTimeEmployees ? String(cc.fullTimeEmployees) : ""}
+                      onChange={(v) => s.updateClassCode(loc.id, ccIdx, { fullTimeEmployees: Number(v) || 0 })}
+                      placeholder="0"
+                      min={0}
+                    />
+                  </FieldLabel>
+                  <FieldLabel label={ccIdx === 0 ? "PT" : ""}>
+                    <NumberInput
+                      value={cc.partTimeEmployees ? String(cc.partTimeEmployees) : ""}
+                      onChange={(v) => s.updateClassCode(loc.id, ccIdx, { partTimeEmployees: Number(v) || 0 })}
+                      placeholder="0"
+                      min={0}
+                    />
+                  </FieldLabel>
+                  <FieldLabel label={ccIdx === 0 ? "Annual Payroll" : ""}>
+                    <CurrencyInput
+                      value={cc.annualPayroll ? formatCurrency(cc.annualPayroll) : ""}
+                      onChange={(v) => s.updateClassCode(loc.id, ccIdx, { annualPayroll: parseCurrency(v) })}
+                      placeholder="0"
+                    />
+                  </FieldLabel>
+                  <div style={{ paddingBottom: 2, display: "flex", alignItems: "center" }}>
+                    {appetite && (
+                      <AppetiteBadge
+                        determination={appetite.uw_determination}
+                        considerations={appetite.uw_considerations}
+                        size="sm"
+                      />
+                    )}
+                  </div>
+                  <div style={{ paddingBottom: 2 }}>
+                    {loc.classCodes.length > 1 && (
+                      <RemoveButton onClick={() => s.removeClassCode(loc.id, ccIdx)} />
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
 
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12 }}>
               <AddButton label="Add Class Code" onClick={() => s.addClassCode(loc.id)} />

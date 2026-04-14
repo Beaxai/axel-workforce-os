@@ -56,6 +56,7 @@ const underwriterNav: NavItem[] = [
   { label: "Home", path: "/dashboard/underwriter", icon: LayoutDashboard },
   { label: "Pipeline", path: "/pipeline", icon: Handshake },
   { label: "Accounts", path: "/dashboard/underwriter/accounts", icon: Users },
+  { label: "Resources", path: "/resources", icon: BookOpen },
 ];
 
 const employerNav: NavItem[] = [

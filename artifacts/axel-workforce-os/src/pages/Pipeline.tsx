@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, type DragEvent } from "react";
+import { useState, useEffect, useCallback, useMemo, type DragEvent } from "react";
 import {
   SectionHeader,
   GlassCard,
@@ -113,6 +113,8 @@ export default function Pipeline() {
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
   const [saving, setSaving] = useState(false);
   const [viewMode, setViewMode] = useState<"kanban" | "list">("kanban");
+  const [appetiteFilter, setAppetiteFilter] = useState<string>("");
+  const [dealAppetiteMap, setDealAppetiteMap] = useState<Record<string, string>>({});
 
   const [form, setForm] = useState({
     businessName: "",
@@ -145,8 +147,32 @@ export default function Pipeline() {
     fetchDeals();
   }, [fetchDeals]);
 
+  useEffect(() => {
+    const uniqueStates = [...new Set(deals.map((d) => d.state).filter(Boolean))] as string[];
+    if (uniqueStates.length === 0) return;
+    const lookups = uniqueStates.map((s) => ({ state: s, class_code: "0000" }));
+    api.post<{ results: Array<{ state: string; class_code: string; uw_determination: string }> }>("/appetite/batch", { lookups })
+      .then((res) => {
+        const map: Record<string, string> = {};
+        for (const r of res.results) {
+          map[r.state] = r.uw_determination;
+        }
+        setDealAppetiteMap(map);
+      })
+      .catch(() => {});
+  }, [deals]);
+
+  const filteredDeals = useMemo(() => {
+    if (!appetiteFilter) return deals;
+    return deals.filter((d) => {
+      if (!d.state) return false;
+      const det = dealAppetiteMap[d.state];
+      return det === appetiteFilter;
+    });
+  }, [deals, appetiteFilter, dealAppetiteMap]);
+
   const dealsByStage = (stageKey: string) =>
-    deals.filter((d) => (d.stage || "SUBMISSION_REVIEW") === stageKey);
+    filteredDeals.filter((d) => (d.stage || "SUBMISSION_REVIEW") === stageKey);
 
   const totalDeals = deals.length;
   const totalWcPremium = deals.reduce((sum, d) => {
@@ -366,6 +392,40 @@ export default function Pipeline() {
         </div>
       </div>
 
+      <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", alignItems: "center", marginBottom: "12px", flexShrink: 0 }}>
+        <span style={{ fontSize: "12px", color: textMuted, marginRight: "4px" }}>Appetite:</span>
+        {["", "Acceptable", "Referral", "Conditional", "Ineligible"].map((det) => {
+          const label = det || "All";
+          const isActive = appetiteFilter === det;
+          const chipColors: Record<string, string> = {
+            Acceptable: "#22c55e",
+            Referral: "#f59e0b",
+            Conditional: "#3b82f6",
+            Ineligible: "#ef4444",
+          };
+          const chipColor = chipColors[det] || (isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.45)");
+          return (
+            <button
+              key={label}
+              onClick={() => setAppetiteFilter(det)}
+              style={{
+                padding: "4px 12px",
+                borderRadius: "6px",
+                border: isActive ? `1px solid ${chipColor}` : `1px solid ${borderSubtle}`,
+                cursor: "pointer",
+                fontSize: "12px",
+                fontWeight: 500,
+                background: isActive ? (det ? `${chipColor}20` : (isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)")) : "transparent",
+                color: isActive ? chipColor : textMuted,
+                transition: "all 0.15s",
+              }}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+
       {loading ? (
         <div style={{ color: textMuted, padding: "40px", textAlign: "center" }}>Loading pipeline…</div>
       ) : viewMode === "list" ? (
@@ -393,7 +453,7 @@ export default function Pipeline() {
                 </tr>
               </thead>
               <tbody>
-                {deals.map((deal) => {
+                {filteredDeals.map((deal) => {
                   const Icon = deal.vertical ? VERTICAL_ICONS[deal.vertical] : null;
                   const stageLabel = STAGES.find((s) => s.key === deal.stage)?.label || deal.stage || "—";
                   return (
@@ -437,7 +497,7 @@ export default function Pipeline() {
                     </tr>
                   );
                 })}
-                {deals.length === 0 && (
+                {filteredDeals.length === 0 && (
                   <tr>
                     <td colSpan={8} style={{ padding: "40px", textAlign: "center", color: textMuted }}>
                       No deals yet — click "New Deal" to create one.

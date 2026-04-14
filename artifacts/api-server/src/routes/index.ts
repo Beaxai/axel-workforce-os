@@ -54,6 +54,8 @@ import signaturesRouter from "./signatures";
 router.use("/signatures", signaturesRouter);
 import documentsRouter from "./documents";
 router.use("/documents", documentsRouter);
+import appetiteRouter from "./appetite";
+router.use("/appetite", appetiteRouter);
 router.use("/bind-packages", (req, res, next) => {
   req.url = "/bind-package" + req.url;
   documentsRouter(req, res, next);

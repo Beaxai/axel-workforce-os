@@ -45,6 +45,7 @@ import AgentRegister from "@/pages/register/AgentRegister";
 import AgentAgreement from "@/pages/register/AgentAgreement";
 import AgentOnboarding from "@/pages/register/AgentOnboarding";
 import Resources from "@/pages/Resources";
+import AppetiteGuide from "@/pages/resources/AppetiteGuide";
 import RateLookup from "@/pages/RateLookup";
 import SubmissionPage from "@/pages/SubmissionPage";
 import ProposalScreen from "@/pages/ProposalScreen";
@@ -243,12 +244,13 @@ function App() {
 
             <Route
               element={
-                <ProtectedRoute allowedRoles={["ADMIN", "CSA", "AGENT"]}>
+                <ProtectedRoute allowedRoles={["ADMIN", "CSA", "AGENT", "UNDERWRITER"]}>
                   <AppShell />
                 </ProtectedRoute>
               }
             >
               <Route path="/resources" element={<Resources />} />
+              <Route path="/resources/appetite" element={<AppetiteGuide />} />
             </Route>
 
             <Route element={<AppLayout />}>
