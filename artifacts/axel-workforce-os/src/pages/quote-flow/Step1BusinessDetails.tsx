@@ -19,6 +19,11 @@ const YEARS_OPTIONS = [
   { value: "10+", label: "10+ years" },
 ];
 
+const LOCATION_COUNT_OPTIONS = Array.from({ length: 20 }, (_, i) => ({
+  value: String(i + 1),
+  label: String(i + 1),
+}));
+
 export default function Step1BusinessDetails() {
   const s = useQuoteFlowStore();
 
@@ -45,6 +50,38 @@ export default function Step1BusinessDetails() {
             <SelectInput value={s.businessState} onChange={(v) => s.update({ businessState: v })} options={US_STATES_OPTIONS} placeholder="Primary state" />
           </FieldLabel>
         </FieldGrid>
+      </FormSection>
+
+      <FormSection title="Primary Location Address" subtitle="This will be used as your first location for the workforce profile.">
+        <FieldGrid columns={1}>
+          <FieldLabel label="Street Address" required>
+            <TextInput value={s.primaryStreetAddress} onChange={(v) => s.updatePrimaryAddress({ primaryStreetAddress: v })} placeholder="123 Main Street" />
+          </FieldLabel>
+        </FieldGrid>
+        <FieldGrid columns={3}>
+          <FieldLabel label="City" required>
+            <TextInput value={s.primaryCity} onChange={(v) => s.updatePrimaryAddress({ primaryCity: v })} placeholder="City" />
+          </FieldLabel>
+          <FieldLabel label="State" required>
+            <SelectInput value={s.primaryState} onChange={(v) => s.updatePrimaryAddress({ primaryState: v })} options={US_STATES_OPTIONS} placeholder="State" />
+          </FieldLabel>
+          <FieldLabel label="ZIP Code" required>
+            <TextInput value={s.primaryZip} onChange={(v) => s.updatePrimaryAddress({ primaryZip: v })} placeholder="ZIP" />
+          </FieldLabel>
+        </FieldGrid>
+
+        <div style={{ marginTop: 16 }}>
+          <FieldGrid columns={2}>
+            <FieldLabel label="How many locations?" required>
+              <SelectInput
+                value={s.locationCount}
+                onChange={(v) => s.setLocationCount(Number(v))}
+                options={LOCATION_COUNT_OPTIONS}
+                placeholder="Select..."
+              />
+            </FieldLabel>
+          </FieldGrid>
+        </div>
 
         <div style={{ marginTop: 16 }}>
           <FieldLabel label="States of Operation">

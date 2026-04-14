@@ -54,6 +54,11 @@ export interface QuoteFlowState {
   entityType: string;
   yearsInBusiness: string;
   businessState: string;
+  primaryStreetAddress: string;
+  primaryCity: string;
+  primaryState: string;
+  primaryZip: string;
+  locationCount: string;
   statesOfOperation: string[];
   contactName: string;
   contactEmail: string;
@@ -207,6 +212,8 @@ interface QuoteFlowActions {
   update: (fields: Partial<QuoteFlowState>) => void;
   setStep: (step: number) => void;
   setPhase: (phase: 1 | 2) => void;
+  updatePrimaryAddress: (fields: Partial<{ primaryStreetAddress: string; primaryCity: string; primaryState: string; primaryZip: string }>) => void;
+  setLocationCount: (count: number) => void;
   addLocation: () => void;
   removeLocation: (id: string) => void;
   updateLocation: (id: string, fields: Partial<LocationBlock>) => void;
@@ -254,6 +261,11 @@ const initialState: Omit<QuoteFlowState, keyof QuoteFlowActions> = {
   entityType: "",
   yearsInBusiness: "",
   businessState: "",
+  primaryStreetAddress: "",
+  primaryCity: "",
+  primaryState: "",
+  primaryZip: "",
+  locationCount: "1",
   statesOfOperation: [],
   contactName: "",
   contactEmail: "",
@@ -395,11 +407,45 @@ export const useQuoteFlowStore = create<QuoteFlowState & QuoteFlowActions>((set,
 
   setPhase: (phase) => set({ phase }),
 
+  updatePrimaryAddress: (fields) =>
+    set((s) => {
+      const updates: Partial<QuoteFlowState> = { ...fields };
+      const loc0 = s.locations[0];
+      if (loc0) {
+        const locUpdates: Partial<LocationBlock> = {};
+        if (fields.primaryStreetAddress !== undefined) locUpdates.streetAddress = fields.primaryStreetAddress;
+        if (fields.primaryCity !== undefined) locUpdates.city = fields.primaryCity;
+        if (fields.primaryState !== undefined) locUpdates.state = fields.primaryState;
+        if (fields.primaryZip !== undefined) locUpdates.zip = fields.primaryZip;
+        updates.locations = s.locations.map((l, i) => i === 0 ? { ...l, ...locUpdates } : l);
+      }
+      return updates;
+    }),
+
+  setLocationCount: (count) =>
+    set((s) => {
+      const clamped = Math.max(1, Math.min(count, 20));
+      const current = s.locations.length;
+      let locs = [...s.locations];
+      if (clamped > current) {
+        for (let i = current; i < clamped; i++) locs.push(emptyLocation());
+      } else if (clamped < current) {
+        locs = locs.slice(0, clamped);
+      }
+      return { locationCount: String(clamped), locations: locs };
+    }),
+
   addLocation: () =>
-    set((s) => ({ locations: [...s.locations, emptyLocation()] })),
+    set((s) => {
+      const newLocs = [...s.locations, emptyLocation()];
+      return { locations: newLocs, locationCount: String(newLocs.length) };
+    }),
 
   removeLocation: (id) =>
-    set((s) => ({ locations: s.locations.filter((l) => l.id !== id) })),
+    set((s) => {
+      const newLocs = s.locations.filter((l) => l.id !== id);
+      return { locations: newLocs, locationCount: String(newLocs.length) };
+    }),
 
   updateLocation: (id, fields) =>
     set((s) => ({
