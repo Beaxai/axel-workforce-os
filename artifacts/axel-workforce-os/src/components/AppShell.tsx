@@ -60,13 +60,13 @@ export default function AppShell() {
   };
 
   const bg = isDark ? "#060608" : "#f4f4f5";
-  const sidebarBg = isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)";
-  const borderColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)";
+  const sidebarBg = isDark ? "rgba(255,255,255,0.025)" : "rgba(0,0,0,0.02)";
+  const borderColor = isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.08)";
   const textPrimary = isDark ? "#fff" : "#111";
-  const textMuted = isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.45)";
-  const textSecondary = isDark ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.55)";
+  const textMuted = isDark ? "rgba(255,255,255,0.48)" : "rgba(0,0,0,0.45)";
+  const textSecondary = isDark ? "rgba(255,255,255,0.72)" : "rgba(0,0,0,0.55)";
   const hoverBg = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)";
-  const glassBg = isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)";
+  const glassBg = isDark ? "rgba(255,255,255,0.035)" : "rgba(0,0,0,0.03)";
   const dropdownBg = isDark ? "rgba(20,20,24,0.98)" : "rgba(255,255,255,0.98)";
 
   const isActive = (item: NavItem) =>
