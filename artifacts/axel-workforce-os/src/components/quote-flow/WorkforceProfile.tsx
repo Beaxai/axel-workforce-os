@@ -51,6 +51,27 @@ export default function WorkforceProfile() {
   const [activeVertical, setActiveVertical] = useState<string>("All");
   const [showCodeGrid, setShowCodeGrid] = useState(false);
   const [learnMoreEntry, setLearnMoreEntry] = useState<{ c: string; ico: string; n: string; p: string; d: string; v?: string } | null>(null);
+  const [validClassCodes, setValidClassCodes] = useState<Set<string> | null>(null);
+
+  const allLocationStates = useMemo(() => {
+    const states = new Set<string>();
+    for (const loc of s.locations) {
+      if (loc.state) states.add(loc.state);
+    }
+    return Array.from(states).sort().join(",");
+  }, [s.locations]);
+
+  useEffect(() => {
+    if (!allLocationStates) {
+      setValidClassCodes(null);
+      return;
+    }
+    const baseUrl = import.meta.env.VITE_API_URL || `${window.location.origin}/api`;
+    fetch(`${baseUrl}/wc-rates/class-codes/by-states?states=${encodeURIComponent(allLocationStates)}`)
+      .then((res) => res.json())
+      .then((codes: string[]) => setValidClassCodes(new Set(codes)))
+      .catch(() => setValidClassCodes(null));
+  }, [allLocationStates]);
 
   const locationKey = s.locations
     .map((l) => `${l.state}:${l.classCodes.map((c) => c.classCode).join(",")}`)
@@ -114,6 +135,9 @@ export default function WorkforceProfile() {
   const richEntries = Object.values(RICH);
   const filteredRichEntries = useMemo(() => {
     let entries = richEntries;
+    if (validClassCodes) {
+      entries = entries.filter((r) => validClassCodes.has(r.c));
+    }
     if (activeVertical !== "All") {
       entries = entries.filter((r) => r.v === activeVertical);
     }
@@ -127,7 +151,7 @@ export default function WorkforceProfile() {
       );
     }
     return entries;
-  }, [activeVertical, codeGridSearch]);
+  }, [activeVertical, codeGridSearch, validClassCodes]);
 
   const handleApplyRichCard = (entry: typeof richEntries[0]) => {
     if (s.locations.length === 0) return;
@@ -183,15 +207,20 @@ export default function WorkforceProfile() {
     { icon: DollarSign, label: "Total Payroll", value: `$${totalPayroll.toLocaleString()}` },
   ];
 
+  const stateFilteredEntries = useMemo(() => {
+    if (!validClassCodes) return richEntries;
+    return richEntries.filter((r) => validClassCodes.has(r.c));
+  }, [validClassCodes]);
+
   const verticalCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const v of VERTICALS) counts[v] = 0;
-    counts["All"] = richEntries.length;
-    for (const e of richEntries) {
+    counts["All"] = stateFilteredEntries.length;
+    for (const e of stateFilteredEntries) {
       if (e.v && counts[e.v] !== undefined) counts[e.v]++;
     }
     return counts;
-  }, []);
+  }, [stateFilteredEntries]);
 
   return (
     <div style={{ maxWidth: 960 }}>
@@ -642,7 +671,9 @@ export default function WorkforceProfile() {
 
             {filteredRichEntries.length === 0 && (
               <div style={{ padding: 32, textAlign: "center", color: textMuted, fontSize: 13 }}>
-                No class codes match your search{activeVertical !== "All" ? ` in ${activeVertical}` : ""}
+                {allLocationStates
+                  ? `No class codes match your search${activeVertical !== "All" ? ` in ${activeVertical}` : ""} for ${allLocationStates.replace(/,/g, ", ")}`
+                  : "Select a state on a location to see available class codes"}
               </div>
             )}
           </div>

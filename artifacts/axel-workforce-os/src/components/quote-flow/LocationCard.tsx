@@ -194,6 +194,7 @@ export default function LocationCard({ location, index, canRemove, stateOptions,
                   <ClassCodeSearch
                     value={cc.classCode}
                     description={cc.description}
+                    state={loc.state}
                     onChange={(code, desc) => {
                       s.updateClassCode(loc.id, ccIdx, { classCode: code, description: desc });
                     }}

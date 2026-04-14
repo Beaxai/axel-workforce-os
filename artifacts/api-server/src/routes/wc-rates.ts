@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, wcRatesTable } from "@workspace/db";
-import { eq, and, desc, ilike, sql, count, countDistinct } from "drizzle-orm";
+import { eq, and, desc, ilike, sql, count, countDistinct, inArray } from "drizzle-orm";
 
 const router: IRouter = Router();
 
@@ -26,6 +26,23 @@ router.get("/class-codes/search", async (req, res) => {
     .limit(50);
 
   res.json(rows);
+});
+
+router.get("/class-codes/by-states", async (req, res) => {
+  const { states } = req.query;
+  if (!states) return res.json([]);
+  const stateList = String(states).split(",").map((s) => s.trim().toUpperCase()).filter(Boolean);
+  if (stateList.length === 0) return res.json([]);
+
+  const rows = await db
+    .selectDistinctOn([wcRatesTable.classCode], {
+      classCode: wcRatesTable.classCode,
+    })
+    .from(wcRatesTable)
+    .where(inArray(wcRatesTable.state, stateList))
+    .orderBy(wcRatesTable.classCode);
+
+  res.json(rows.map((r) => r.classCode));
 });
 
 router.get("/stats", async (_req, res) => {

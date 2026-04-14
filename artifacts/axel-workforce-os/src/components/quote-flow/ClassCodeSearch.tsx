@@ -6,10 +6,11 @@ interface ClassCodeResult {
   description: string;
 }
 
-export default function ClassCodeSearch({ value, description, onChange }: {
+export default function ClassCodeSearch({ value, description, onChange, state }: {
   value: string;
   description: string;
   onChange: (classCode: string, description: string) => void;
+  state?: string;
 }) {
   const [query, setQuery] = useState(value ? `${value} - ${description}` : "");
   const [results, setResults] = useState<ClassCodeResult[]>([]);
@@ -40,7 +41,8 @@ export default function ClassCodeSearch({ value, description, onChange }: {
     setLoading(true);
     try {
       const baseUrl = import.meta.env.VITE_API_URL || `${window.location.origin}/api`;
-      const res = await fetch(`${baseUrl}/wc-rates/class-codes/search?q=${encodeURIComponent(term)}`);
+      const stateParam = state ? `&state=${encodeURIComponent(state)}` : "";
+      const res = await fetch(`${baseUrl}/wc-rates/class-codes/search?q=${encodeURIComponent(term)}${stateParam}`);
       if (res.ok) {
         const data = await res.json();
         setResults(data);
