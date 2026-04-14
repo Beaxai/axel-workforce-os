@@ -53,7 +53,7 @@ interface AppetiteRecord {
   uw_considerations: string | null;
 }
 
-const records: AppetiteRecord[] = rows
+const rawRecords: AppetiteRecord[] = rows
   .map((r) => ({
     state: String(r["State"] || "").trim().toUpperCase(),
     class_code: String(r["BaseCode"] || r["ClassCode"] || r["Class Code"] || "").trim(),
@@ -66,7 +66,13 @@ const records: AppetiteRecord[] = rows
   }))
   .filter((r) => r.state && r.class_code);
 
-console.log(`Records to upsert: ${records.length}`);
+const deduped = new Map<string, AppetiteRecord>();
+for (const r of rawRecords) {
+  deduped.set(`${r.state}:${r.class_code}`, r);
+}
+const records = Array.from(deduped.values());
+
+console.log(`Rows parsed: ${rawRecords.length}, Unique records: ${records.length}`);
 
 const pool = new pg.Pool({ connectionString: DATABASE_URL });
 
