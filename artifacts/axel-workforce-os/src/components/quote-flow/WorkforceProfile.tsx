@@ -469,30 +469,10 @@ export default function WorkforceProfile() {
           </div>
         )}
 
-        {s.locations.map((loc, idx) => (
-          <LocationCard
-            key={loc.id}
-            location={loc}
-            index={idx}
-            canRemove={s.locations.length > 1}
-            stateOptions={stateOptions}
-            appetiteMap={appetiteMap}
-            richMap={RICH}
-          />
-        ))}
-
-        <AddButton label="Add Location" onClick={() => s.addLocation()} />
-
-        {totalClassCodes > 0 && (
-          <div style={{ marginTop: 12, fontSize: 12, color: textMuted }}>
-            {totalClassCodes} class code{totalClassCodes !== 1 ? "s" : ""} across {totalLocations} location{totalLocations !== 1 ? "s" : ""}
-          </div>
-        )}
-
         {showCodeGrid && (
           <div
             style={{
-              marginTop: 24,
+              marginBottom: 20,
               padding: 20,
               borderRadius: 14,
               border: `1px solid ${borderColor}`,
@@ -665,6 +645,26 @@ export default function WorkforceProfile() {
                 No class codes match your search{activeVertical !== "All" ? ` in ${activeVertical}` : ""}
               </div>
             )}
+          </div>
+        )}
+
+        {s.locations.map((loc, idx) => (
+          <LocationCard
+            key={loc.id}
+            location={loc}
+            index={idx}
+            canRemove={s.locations.length > 1}
+            stateOptions={stateOptions}
+            appetiteMap={appetiteMap}
+            richMap={RICH}
+          />
+        ))}
+
+        <AddButton label="Add Location" onClick={() => s.addLocation()} />
+
+        {totalClassCodes > 0 && (
+          <div style={{ marginTop: 12, fontSize: 12, color: textMuted }}>
+            {totalClassCodes} class code{totalClassCodes !== 1 ? "s" : ""} across {totalLocations} location{totalLocations !== 1 ? "s" : ""}
           </div>
         )}
       </FormSection>
