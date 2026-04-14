@@ -38,6 +38,124 @@ export function validateWFSInput(input: WFSPEPMInput) {
   return errors;
 }
 
+export interface MultiLocationInput {
+  locations: Array<{
+    state: string;
+    classCodes: Array<{
+      classCode: string;
+      annualPayroll: number;
+      fullTimeEmployees: number;
+      partTimeEmployees: number;
+      description?: string;
+    }>;
+  }>;
+  eMod: number;
+  scheduleRating: number;
+  isPEO: boolean;
+}
+
+export interface MultiLocationResult {
+  locations: Array<{
+    state: string;
+    classCodes: Array<{
+      classCode: string;
+      description?: string;
+      annualPayroll: number;
+      baseRate: number;
+      premium: number;
+      error?: string;
+    }>;
+    subtotal: number;
+  }>;
+  totalGrossPremium: number;
+  minimumPremiumApplied: boolean;
+  peoDiscountAmount: number;
+  finalPremium: number;
+  eMod: number;
+  scheduleRating: number;
+  isPEO: boolean;
+  calculatedAt: string;
+}
+
+export async function calculateMultiLocationWC(input: MultiLocationInput): Promise<MultiLocationResult> {
+  const { locations, eMod, scheduleRating, isPEO } = input;
+  const resultLocations: MultiLocationResult["locations"] = [];
+  let totalRaw = 0;
+
+  for (const loc of locations) {
+    const ccResults: MultiLocationResult["locations"][0]["classCodes"] = [];
+    let locSubtotal = 0;
+
+    for (const cc of loc.classCodes) {
+      try {
+        const [rateRow] = await db
+          .select()
+          .from(wcRatesTable)
+          .where(and(eq(wcRatesTable.state, loc.state.toUpperCase()), eq(wcRatesTable.classCode, String(cc.classCode))))
+          .orderBy(desc(wcRatesTable.effectiveDate))
+          .limit(1);
+
+        if (!rateRow) {
+          ccResults.push({
+            classCode: cc.classCode,
+            description: cc.description,
+            annualPayroll: cc.annualPayroll,
+            baseRate: 0,
+            premium: 0,
+            error: `No rate found for ${loc.state} / ${cc.classCode}`,
+          });
+          continue;
+        }
+
+        const baseRate = parseFloat(rateRow.baseRate);
+        const premium = (cc.annualPayroll / 100) * baseRate * eMod * scheduleRating;
+        locSubtotal += premium;
+
+        ccResults.push({
+          classCode: cc.classCode,
+          description: cc.description,
+          annualPayroll: cc.annualPayroll,
+          baseRate,
+          premium: Math.round(premium * 100) / 100,
+        });
+      } catch {
+        ccResults.push({
+          classCode: cc.classCode,
+          description: cc.description,
+          annualPayroll: cc.annualPayroll,
+          baseRate: 0,
+          premium: 0,
+          error: `Rate lookup failed for ${loc.state} / ${cc.classCode}`,
+        });
+      }
+    }
+
+    totalRaw += locSubtotal;
+    resultLocations.push({
+      state: loc.state,
+      classCodes: ccResults,
+      subtotal: Math.round(locSubtotal * 100) / 100,
+    });
+  }
+
+  const minimumPremiumApplied = totalRaw < 500;
+  const grossPremium = minimumPremiumApplied ? 500 : totalRaw;
+  const peoDiscount = isPEO ? grossPremium * 0.10 : 0;
+  const finalPremium = grossPremium - peoDiscount;
+
+  return {
+    locations: resultLocations,
+    totalGrossPremium: Math.round(grossPremium * 100) / 100,
+    minimumPremiumApplied,
+    peoDiscountAmount: Math.round(peoDiscount * 100) / 100,
+    finalPremium: Math.round(finalPremium * 100) / 100,
+    eMod,
+    scheduleRating,
+    isPEO,
+    calculatedAt: new Date().toISOString(),
+  };
+}
+
 export async function calculateWCPremium(input: WCPremiumInput) {
   const { state, classCode, annualPayroll, eMod, scheduleRating, isPEO } = input;
 

@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useQuoteFlowStore } from "@/lib/quote-flow-store";
 import Step1BusinessDetails from "./Step1BusinessDetails";
-import Step2ClassCodes from "./Step2ClassCodes";
+import WorkforceProfile from "@/components/quote-flow/WorkforceProfile";
 import Step3ExperienceMod from "./Step3ExperienceMod";
 import Step4Indication from "./Step4Indication";
 import Phase2Transition from "./Phase2Transition";
@@ -87,7 +87,7 @@ export default function QuoteWizard() {
     if (store.phase === 1) {
       switch (store.currentStep) {
         case 1: return <Step1BusinessDetails />;
-        case 2: return <Step2ClassCodes />;
+        case 2: return <WorkforceProfile />;
         case 3: return <Step3ExperienceMod />;
         case 4: return <Step4Indication />;
         default: return <Step1BusinessDetails />;

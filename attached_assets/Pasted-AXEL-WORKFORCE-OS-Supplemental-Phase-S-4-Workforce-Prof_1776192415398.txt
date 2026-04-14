@@ -1,0 +1,160 @@
+AXEL WORKFORCE OS — Supplemental Phase S.4: Workforce Profile Widget Integration
+
+CONTEXT
+All prior phases (P1–P10, R.1–R.3, S.1–S.5) are complete. This phase integrates the Workforce Profile Widget into the existing quote flow. The widget replaces the current single-class-code input on the quote form with a multi-location, multi-class-code workforce profile screen that feeds structured payroll data into the rating engine.
+
+OBJECTIVE
+Insert the Workforce Profile Widget as a dedicated step in the quote flow between the business information screen and the premium calculation screen. The widget collects: locations, class codes per location, FT/PT employee counts, and annual payroll per code. On "Continue to rating" it passes a structured payload to the existing rating engine.
+
+PART 1 — CREATE THE COMPONENT FILE
+Create a new file at:
+client/src/components/quote/WorkforceProfile.tsx
+Use the existing design system: background #060608, accent #E91E8C, glassmorphism panels (rgba(255,255,255,0.05) bg, blur(12px), 1px solid rgba(255,255,255,0.08) border), Lucide React icons only, no external UI libraries, Inter font, pill-shaped buttons.
+The component accepts these props:
+tsxinterface WorkforceProfileProps {
+  prefillAddress?: {
+    street: string;
+    city: string;
+    state: string;
+    zip: string;
+  };
+  onContinue: (payload: WorkforcePayloadLocation[]) => void;
+  onBack: () => void;
+}
+
+interface WorkforcePayloadLocation {
+  address: string;
+  state: string;
+  codes: Array<{
+    code: string;
+    name: string;
+    ft: number;
+    pt: number;
+    annualPayroll: number;
+  }>;
+}
+The component manages:
+
+A list of location cards, first one pre-populated from prefillAddress
+Each location has: address fields (street, city, state, zip), a confirmed-codes table, a vertical tab bar, a scrollable code grid, and a manual code entry row
+A Learn More modal with phraseology, description, add-to-profile form, and AI Classification Advisor chat
+A summary bar at the top showing total locations, total codes, total payroll
+"Add location" button and "Continue to rating" / "Back" footer buttons
+
+
+PART 2 — RICH DATA
+Inside the component file, declare the RICH data constant as an empty object for now:
+tsconst RICH: Record<string, { c: string; ico: string; n: string; p: string; d: string }> = {};
+Leave it empty — it will be populated manually after Replit completes the build. Do not attempt to generate or fabricate class code data.
+
+PART 3 — VERTICALS LIST
+Include this exact verticals configuration in the component:
+tsconst VERTS: Record<string, string[] | null> = {
+  'All': null,
+  'Clerical / Office': ['8810','8742','8871'],
+  'Construction': ['42','1322','1330','3719','3724','3726','3737','5000','5020','5022','5027','5028','5029','5037','5040','5057','5102','5107','5108','5130','5140','5146','5160','5183','5184','5185','5188','5190','5193','5201','5205','5213','5221','5225','5403','5432','5437','5443','5445','5462','5470','5473','5474','5479','5480','5481','5482','5484','5485','5506','5507','5508','5536','5538','5542','5545','5547','5550','5551','5552','5553','5606','5610','5620','5645','5650','5651','5703','5709','6003','6005','6017','6018','6204','6217','6229','6235','6251','6252','6306','6316','6319','6325','6361','6364','6400','6701','7538','7601','7605','7855','8227','8810','9526','9527','9529','9531','9534','9539','9545','9549','9553'],
+  'Healthcare': ['8834','8832','8829','8835','8831','4692','4511','4611','4825'],
+  'Hospitality': ['9082','9083','9084','9079','9050','9058','9053','9054','9060','9061','8838'],
+  'Manufacturing': ['3507','3365','2797','2802','2121','2130','4360','3175','8017','8018','8810'],
+  'Transportation': ['7228','7229','7382','7198','8291','8385'],
+  'Cannabis': ['35','5','8017','6504','8018','2003','2004','927','2157','2163','2927','2041','4511','4611','4825','9424(1)','7198(1)','7198(2)','7721(2)','8045','8047','8832','8810'],
+  'Waste / Recycling': ['9403','3821','8500','9402'],
+};
+
+const US_STATES = 'AL,AK,AZ,AR,CA,CO,CT,DE,FL,GA,HI,ID,IL,IN,IA,KS,KY,LA,ME,MD,MA,MI,MN,MS,MO,MT,NE,NV,NH,NJ,NM,NY,NC,ND,OH,OK,OR,PA,RI,SC,SD,TN,TX,UT,VT,VA,WA,WV,WI,WY'.split(',');
+
+PART 4 — CREATE THE LOCATIONCARD SUB-COMPONENT
+Create a second file at:
+client/src/components/quote/LocationCard.tsx
+This handles the UI for a single location card including:
+
+Address fields (street, city, state dropdown, zip)
+Confirmed-codes table with columns: Code, Full-time, Part-time, Annual Payroll, Remove
+Pending-code cards (added but not yet confirmed) with FT/PT/payroll inputs and a Confirm button
+Vertical tab bar (All, Clerical/Office, Construction, Healthcare, Hospitality, Manufacturing, Transportation, Cannabis, Waste/Recycling)
+Search input that filters across all codes by code number or description
+Scrollable code grid showing cards with icon, code number, name, phraseology, "+ Add" button, and "Learn more" button
+Manual entry row at the bottom for entering a class code directly with payroll/FT/PT fields
+
+All props come from WorkforceProfile. Use the same design system constants.
+
+PART 5 — ADD THE BACKEND AI ROUTE
+Add to the Express backend at server/routes/ai.ts (or the existing routes index):
+tsimport Anthropic from '@anthropic-ai/sdk';
+
+router.post('/api/ai/classify', async (req, res) => {
+  const { code, name, phraseology, state, question, history } = req.body;
+  
+  const client = new Anthropic();
+  
+  const system = `You are a senior WC underwriting engineer and classification expert. 
+Code: ${code} — ${name}. 
+Phraseology: ${phraseology}. 
+State: ${state || 'not specified'}. 
+Answer in under 140 words. Plain text only.`;
+
+  const messages = [
+    ...(history || []).slice(-6).map((m: any) => ({ role: m.role, content: m.content })),
+    { role: 'user' as const, content: question },
+  ];
+
+  const response = await client.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 1000,
+    system,
+    messages,
+  });
+
+  res.json({ answer: response.content[0].type === 'text' ? response.content[0].text : 'Unable to answer.' });
+});
+ANTHROPIC_API_KEY is already set in Railway environment variables from prior phases.
+
+PART 6 — WIRE INTO THE QUOTE FLOW
+In the existing quote flow file (likely client/src/pages/marketplace/QuoteNew.tsx or similar), add a workforce step between business-info and calculate:
+tsximport WorkforceProfile, { WorkforcePayloadLocation } from '@/components/quote/WorkforceProfile';
+
+// Add 'workforce' to the step state machine between business-info and calculate
+// Step 1: Business info (existing)
+// Step 2: Workforce profile (NEW)
+// Step 3: Calculate & propose (existing)
+
+<WorkforceProfile
+  prefillAddress={businessInfo.address}
+  onContinue={(payload: WorkforcePayloadLocation[]) => {
+    setWorkforcePayload(payload);
+    goToStep('calculate');
+  }}
+  onBack={() => goToStep('business-info')}
+/>
+
+PART 7 — UPDATE THE RATING ENGINE
+Update the existing /api/rate/wc endpoint to accept the multi-location workforce payload as an optional field alongside the existing single-code fields:
+tsinterface RateWCRequest {
+  classCode?: string;
+  annualPayroll?: number;
+  workforcePayload?: WorkforcePayloadLocation[];
+  state?: string;
+  emod?: number;
+  scheduleRating?: number;
+}
+When workforcePayload is present: iterate over all locations and codes, call the existing rating logic per code, sum all premiums, apply EMod and schedule rating once to the total. Return a breakdown array alongside the existing total fields so the proposal panel can display per-code line items.
+
+PART 8 — STORE WORKFORCE PAYLOAD ON QUOTE RECORD
+Run in Supabase SQL editor:
+sqlALTER TABLE quotes ADD COLUMN IF NOT EXISTS workforce_profile jsonb;
+When a quote is saved, persist workforcePayload into this column alongside the existing fields.
+
+IMPORTANT NOTE FOR REPLIT
+The RICH constant in WorkforceProfile.tsx will be populated manually after this build is complete. Leave it as an empty object {}. The component should handle an empty RICH gracefully — show an empty code grid with a message "Class code data loading..." if RICH has no entries.
+
+DONE WHEN:
+
+WorkforceProfile component and LocationCard sub-component exist and compile without errors
+The quote flow has a workforce step between business-info and calculate
+Vertical tabs, search, add/remove codes, pending → confirm flow all work
+Learn More modal renders with phraseology, description, add form, and AI advisor
+AI advisor calls /api/ai/classify and returns answers
+Continue to rating passes the structured WorkforcePayloadLocation[] payload to the rating engine
+Rating engine accepts and processes the workforce payload
+workforce_profile column exists on the quotes table in Supabase
+Empty RICH state is handled gracefully

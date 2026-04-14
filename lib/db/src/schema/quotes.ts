@@ -35,6 +35,7 @@ export const quotesTable = pgTable("quotes", {
   wcRatingBreakdown: jsonb("wc_rating_breakdown"),
   wfsRatingBreakdown: jsonb("wfs_rating_breakdown"),
   ratedAt: timestamp("rated_at", { withTimezone: true }),
+  workforceProfile: jsonb("workforce_profile"),
 });
 
 export const insertQuoteSchema = createInsertSchema(quotesTable).omit({ id: true, createdAt: true });

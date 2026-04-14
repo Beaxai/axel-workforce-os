@@ -56,6 +56,8 @@ import documentsRouter from "./documents";
 router.use("/documents", documentsRouter);
 import appetiteRouter from "./appetite";
 router.use("/appetite", appetiteRouter);
+import aiRouter from "./ai";
+router.use("/ai", aiRouter);
 router.use("/bind-packages", (req, res, next) => {
   req.url = "/bind-package" + req.url;
   documentsRouter(req, res, next);
