@@ -8,6 +8,13 @@ interface HazometerProps {
   size?: number;
 }
 
+const NEON_GREEN = "#39ff14";
+const NEON_YELLOW = "#fff01f";
+const NEON_ORANGE = "#ff6e27";
+const NEON_RED = "#ff073a";
+const NEON_CRIMSON = "#cc0022";
+const FONT = "'Source Sans 3', var(--app-font-sans), system-ui, sans-serif";
+
 export default function Hazometer({ value, min = 0.50, max = 2.50, size = 260 }: HazometerProps) {
   const { isDark, textPrimary, textSecondary } = useThemeColors();
   const [animatedAngle, setAnimatedAngle] = useState(-135);
@@ -67,59 +74,86 @@ export default function Hazometer({ value, min = 0.50, max = 2.50, size = 260 }:
   const needleBaseR = polarToCart(needleAngle + 90, 5);
 
   const glowColor =
-    pct <= 0.33 ? "#22c55e" : pct <= 0.55 ? "#eab308" : pct <= 0.75 ? "#f97316" : "#ef4444";
+    pct <= 0.33 ? NEON_GREEN : pct <= 0.55 ? NEON_YELLOW : pct <= 0.75 ? NEON_ORANGE : NEON_RED;
 
   const ticks = [0.50, 0.75, 1.00, 1.25, 1.50, 1.75, 2.00, 2.25, 2.50];
 
   let ratingLabel = "Excellent";
-  let ratingColor = "#22c55e";
-  if (value > 2.00) { ratingLabel = "Severe"; ratingColor = "#991b1b"; }
-  else if (value > 1.50) { ratingLabel = "High Risk"; ratingColor = "#ef4444"; }
-  else if (value > 1.20) { ratingLabel = "Elevated"; ratingColor = "#f97316"; }
-  else if (value > 1.00) { ratingLabel = "Above Average"; ratingColor = "#eab308"; }
-  else if (value >= 0.95) { ratingLabel = "Average"; ratingColor = "#a3a3a3"; }
+  let ratingColor = NEON_GREEN;
+  if (value > 2.00) { ratingLabel = "Severe"; ratingColor = NEON_CRIMSON; }
+  else if (value > 1.50) { ratingLabel = "High Risk"; ratingColor = NEON_RED; }
+  else if (value > 1.20) { ratingLabel = "Elevated"; ratingColor = NEON_ORANGE; }
+  else if (value > 1.00) { ratingLabel = "Above Average"; ratingColor = NEON_YELLOW; }
+  else if (value >= 0.95) { ratingLabel = "Average"; ratingColor = isDark ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.45)"; }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", fontFamily: FONT }}>
       <svg width={size} height={size * 0.68} viewBox={`0 0 ${size} ${size * 0.68}`}>
         <defs>
-          <filter id="haz-glow">
-            <feGaussianBlur stdDeviation="4" result="blur" />
+          <filter id="haz-neon-glow">
+            <feGaussianBlur stdDeviation="6" result="blur" />
             <feMerge>
               <feMergeNode in="blur" />
               <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
-          <filter id="needle-shadow">
-            <feDropShadow dx="0" dy="1" stdDeviation="3" floodColor={glowColor} floodOpacity="0.5" />
+          <filter id="haz-arc-glow-green">
+            <feGaussianBlur stdDeviation="3" result="blur" />
+            <feFlood floodColor={NEON_GREEN} floodOpacity="0.35" result="color" />
+            <feComposite in="color" in2="blur" operator="in" result="shadow" />
+            <feMerge><feMergeNode in="shadow" /><feMergeNode in="SourceGraphic" /></feMerge>
           </filter>
-          <linearGradient id="green-grad" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#22c55e" />
-            <stop offset="100%" stopColor="#86efac" />
+          <filter id="haz-arc-glow-yellow">
+            <feGaussianBlur stdDeviation="3" result="blur" />
+            <feFlood floodColor={NEON_YELLOW} floodOpacity="0.3" result="color" />
+            <feComposite in="color" in2="blur" operator="in" result="shadow" />
+            <feMerge><feMergeNode in="shadow" /><feMergeNode in="SourceGraphic" /></feMerge>
+          </filter>
+          <filter id="haz-arc-glow-orange">
+            <feGaussianBlur stdDeviation="3" result="blur" />
+            <feFlood floodColor={NEON_ORANGE} floodOpacity="0.35" result="color" />
+            <feComposite in="color" in2="blur" operator="in" result="shadow" />
+            <feMerge><feMergeNode in="shadow" /><feMergeNode in="SourceGraphic" /></feMerge>
+          </filter>
+          <filter id="haz-arc-glow-red">
+            <feGaussianBlur stdDeviation="3" result="blur" />
+            <feFlood floodColor={NEON_RED} floodOpacity="0.4" result="color" />
+            <feComposite in="color" in2="blur" operator="in" result="shadow" />
+            <feMerge><feMergeNode in="shadow" /><feMergeNode in="SourceGraphic" /></feMerge>
+          </filter>
+          <filter id="needle-neon">
+            <feGaussianBlur stdDeviation="4" result="blur" />
+            <feFlood floodColor={glowColor} floodOpacity="0.7" result="color" />
+            <feComposite in="color" in2="blur" operator="in" result="shadow" />
+            <feMerge><feMergeNode in="shadow" /><feMergeNode in="SourceGraphic" /></feMerge>
+          </filter>
+          <linearGradient id="neon-green-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor={NEON_GREEN} />
+            <stop offset="100%" stopColor="#7dff6a" />
           </linearGradient>
-          <linearGradient id="yellow-grad" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#eab308" />
-            <stop offset="100%" stopColor="#fde047" />
+          <linearGradient id="neon-yellow-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor={NEON_YELLOW} />
+            <stop offset="100%" stopColor="#ffe566" />
           </linearGradient>
-          <linearGradient id="orange-grad" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#f97316" />
-            <stop offset="100%" stopColor="#fb923c" />
+          <linearGradient id="neon-orange-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor={NEON_ORANGE} />
+            <stop offset="100%" stopColor="#ff9a5c" />
           </linearGradient>
-          <linearGradient id="red-grad" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#ef4444" />
-            <stop offset="100%" stopColor="#dc2626" />
+          <linearGradient id="neon-red-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor={NEON_RED} />
+            <stop offset="100%" stopColor="#ff4d6a" />
           </linearGradient>
         </defs>
 
         <path
           d={arcPath(arcStart, arcEnd, outerR, innerR)}
-          fill={isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.06)"}
+          fill={isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.05)"}
         />
 
-        <path d={arcPath(arcStart, greenEnd, outerR, innerR)} fill="url(#green-grad)" opacity={0.85} />
-        <path d={arcPath(greenEnd, yellowEnd, outerR, innerR)} fill="url(#yellow-grad)" opacity={0.85} />
-        <path d={arcPath(yellowEnd, orangeEnd, outerR, innerR)} fill="url(#orange-grad)" opacity={0.85} />
-        <path d={arcPath(orangeEnd, arcEnd, outerR, innerR)} fill="url(#red-grad)" opacity={0.85} />
+        <path d={arcPath(arcStart, greenEnd, outerR, innerR)} fill="url(#neon-green-grad)" opacity={0.9} filter="url(#haz-arc-glow-green)" />
+        <path d={arcPath(greenEnd, yellowEnd, outerR, innerR)} fill="url(#neon-yellow-grad)" opacity={0.9} filter="url(#haz-arc-glow-yellow)" />
+        <path d={arcPath(yellowEnd, orangeEnd, outerR, innerR)} fill="url(#neon-orange-grad)" opacity={0.9} filter="url(#haz-arc-glow-orange)" />
+        <path d={arcPath(orangeEnd, arcEnd, outerR, innerR)} fill="url(#neon-red-grad)" opacity={0.9} filter="url(#haz-arc-glow-red)" />
 
         {ticks.map((tickVal) => {
           const tickPct = (tickVal - min) / (max - min);
@@ -131,14 +165,14 @@ export default function Hazometer({ value, min = 0.50, max = 2.50, size = 260 }:
             <g key={tickVal}>
               <line
                 x1={outer.x} y1={outer.y} x2={inner.x} y2={inner.y}
-                stroke={isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.25)"}
+                stroke={isDark ? "rgba(255,255,255,0.35)" : "rgba(0,0,0,0.25)"}
                 strokeWidth={1.5}
               />
               <text
                 x={labelPos.x} y={labelPos.y}
                 textAnchor="middle" dominantBaseline="middle"
-                fill={textSecondary} fontSize={10} fontWeight={500}
-                fontFamily="var(--app-font-sans)"
+                fill={textSecondary} fontSize={10} fontWeight={600}
+                fontFamily={FONT}
               >
                 {tickVal.toFixed(2)}
               </text>
@@ -149,16 +183,16 @@ export default function Hazometer({ value, min = 0.50, max = 2.50, size = 260 }:
         <polygon
           points={`${needleTip.x},${needleTip.y} ${needleBaseL.x},${needleBaseL.y} ${needleBaseR.x},${needleBaseR.y}`}
           fill={glowColor}
-          filter="url(#needle-shadow)"
+          filter="url(#needle-neon)"
         />
 
-        <circle cx={cx} cy={cy} r={10} fill={isDark ? "#1a1a26" : "#e4e4e7"} stroke={glowColor} strokeWidth={2.5} />
+        <circle cx={cx} cy={cy} r={10} fill={isDark ? "#0a0a12" : "#e4e4e7"} stroke={glowColor} strokeWidth={2.5} filter="url(#haz-neon-glow)" />
 
         <text
           x={cx} y={cy - 22}
           textAnchor="middle" dominantBaseline="middle"
           fill={textPrimary} fontSize={28} fontWeight={700}
-          fontFamily="var(--app-font-sans)"
+          fontFamily={FONT}
         >
           {value.toFixed(2)}
         </text>
@@ -168,10 +202,12 @@ export default function Hazometer({ value, min = 0.50, max = 2.50, size = 260 }:
         <span
           style={{
             fontSize: 13,
-            fontWeight: 600,
+            fontWeight: 700,
             color: ratingColor,
-            letterSpacing: 1,
+            letterSpacing: 1.5,
             textTransform: "uppercase",
+            fontFamily: FONT,
+            textShadow: isDark ? `0 0 8px ${ratingColor}40` : "none",
           }}
         >
           {ratingLabel}
