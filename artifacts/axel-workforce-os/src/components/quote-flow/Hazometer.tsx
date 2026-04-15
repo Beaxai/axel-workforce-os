@@ -8,7 +8,7 @@ interface HazometerProps {
   size?: number;
 }
 
-export default function Hazometer({ value, min = 0.50, max = 2.00, size = 260 }: HazometerProps) {
+export default function Hazometer({ value, min = 0.50, max = 2.50, size = 260 }: HazometerProps) {
   const { isDark, textPrimary, textSecondary } = useThemeColors();
   const [animatedAngle, setAnimatedAngle] = useState(-135);
   const rafRef = useRef<number>(0);
@@ -69,11 +69,12 @@ export default function Hazometer({ value, min = 0.50, max = 2.00, size = 260 }:
   const glowColor =
     pct <= 0.33 ? "#22c55e" : pct <= 0.55 ? "#eab308" : pct <= 0.75 ? "#f97316" : "#ef4444";
 
-  const ticks = [0.50, 0.75, 1.00, 1.25, 1.50, 1.75, 2.00];
+  const ticks = [0.50, 0.75, 1.00, 1.25, 1.50, 1.75, 2.00, 2.25, 2.50];
 
   let ratingLabel = "Excellent";
   let ratingColor = "#22c55e";
-  if (value > 1.50) { ratingLabel = "High Risk"; ratingColor = "#ef4444"; }
+  if (value > 2.00) { ratingLabel = "Severe"; ratingColor = "#991b1b"; }
+  else if (value > 1.50) { ratingLabel = "High Risk"; ratingColor = "#ef4444"; }
   else if (value > 1.20) { ratingLabel = "Elevated"; ratingColor = "#f97316"; }
   else if (value > 1.00) { ratingLabel = "Above Average"; ratingColor = "#eab308"; }
   else if (value >= 0.95) { ratingLabel = "Average"; ratingColor = "#a3a3a3"; }
