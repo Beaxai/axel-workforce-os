@@ -52,7 +52,7 @@ export default function P2Step4CannabisOps() {
   const { isDark, textPrimary, textSecondary, textMuted, cardBg, borderColor } = useThemeColors();
 
   return (
-    <div style={{ maxWidth: 800 }}>
+    <div style={{ maxWidth: 1080, margin: "0 auto" }}>
       <FormSection title="Cannabis Operations">
         <FieldGrid columns={2}>
           <FieldLabel label="Hours of Operation">

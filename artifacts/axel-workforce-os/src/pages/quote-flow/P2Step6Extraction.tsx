@@ -17,7 +17,7 @@ export default function P2Step6Extraction() {
   const s = useQuoteFlowStore();
 
   return (
-    <div style={{ maxWidth: 800 }}>
+    <div style={{ maxWidth: 1080, margin: "0 auto" }}>
       <FormSection title="Extraction Operations">
         <FieldLabel label="Extraction Methods">
           <MultiSelect values={s.extractionMethods} onChange={(v) => s.update({ extractionMethods: v })} options={EXTRACTION_METHODS} placeholder="Select methods" />

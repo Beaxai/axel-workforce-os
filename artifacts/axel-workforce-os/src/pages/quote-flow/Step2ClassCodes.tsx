@@ -60,7 +60,7 @@ export default function Step2ClassCodes() {
   const totalEmployees = s.getTotalEmployees();
 
   return (
-    <div style={{ maxWidth: 900 }}>
+    <div style={{ maxWidth: 1080, margin: "0 auto" }}>
       <FormSection title="Workforce & Payroll" subtitle="Add each class code, payroll, and employee count per location. Search by code number or description.">
         {s.locations.map((loc, locIdx) => (
           <div

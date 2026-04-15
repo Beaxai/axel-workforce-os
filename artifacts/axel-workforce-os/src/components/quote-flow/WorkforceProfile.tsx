@@ -238,7 +238,7 @@ export default function WorkforceProfile() {
   }, [stateFilteredEntries]);
 
   return (
-    <div style={{ maxWidth: 960 }}>
+    <div style={{ maxWidth: 1080, margin: "0 auto" }}>
       <FormSection
         title="Workforce Profile"
         subtitle="Define your workforce across locations. Add class codes, employee counts, and payroll for each location."

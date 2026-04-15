@@ -42,7 +42,7 @@ export default function P2Step3GeneralInfo() {
   };
 
   return (
-    <div style={{ maxWidth: 800 }}>
+    <div style={{ maxWidth: 1080, margin: "0 auto" }}>
       <FormSection title="General Underwriting Questions" subtitle="Answer Yes or No to each question">
         <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
           {QUESTIONS.map((question, i) => (

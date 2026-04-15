@@ -14,7 +14,7 @@ export default function P2Step2CoverageHistory() {
   const lossRatio = totalPremium > 0 ? ((totalClaims / totalPremium) * 100).toFixed(1) : "0.0";
 
   return (
-    <div style={{ maxWidth: 800 }}>
+    <div style={{ maxWidth: 1080, margin: "0 auto" }}>
       <FormSection title="Prior Coverage">
         <FieldGrid columns={2}>
           <FieldLabel label="Years of Prior WC Coverage">

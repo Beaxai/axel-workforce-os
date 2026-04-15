@@ -18,7 +18,7 @@ export default function Step3ExperienceMod() {
   const eModValue = parseFloat(s.experienceMod) || 1.0;
 
   return (
-    <div style={{ maxWidth: 800 }}>
+    <div style={{ maxWidth: 1080, margin: "0 auto" }}>
       <FormSection
         title="Experience Rating"
         subtitle="If you have an experience modifier, enter it here. If unknown or not applicable, select 1.00."
@@ -84,13 +84,13 @@ export default function Step3ExperienceMod() {
               flexShrink: 0,
               padding: "24px 20px 16px",
               borderRadius: 18,
-              background: isDark ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.6)",
-              border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.1)"}`,
-              backdropFilter: "blur(16px)",
-              WebkitBackdropFilter: "blur(16px)",
+              background: isDark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.6)",
+              border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)"}`,
+              backdropFilter: "blur(40px)",
+              WebkitBackdropFilter: "blur(40px)",
               boxShadow: isDark
-                ? "0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06)"
-                : "0 8px 32px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.8)",
+                ? "0 24px 80px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06)"
+                : "0 24px 80px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.8)",
             }}
           >
             <Hazometer value={eModValue} />

@@ -16,7 +16,7 @@ export default function P2Step7AutoExposure() {
   const { isDark, textPrimary, textSecondary, textMuted, cardBg, borderColor } = useThemeColors();
 
   return (
-    <div style={{ maxWidth: 800 }}>
+    <div style={{ maxWidth: 1080, margin: "0 auto" }}>
       <FormSection title="Driving & Delivery Exposure">
         <FieldGrid columns={2}>
           <FieldLabel label="Delivery Mileage %">

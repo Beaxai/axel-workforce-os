@@ -79,7 +79,7 @@ export default function P2StepLossHistory() {
   };
 
   return (
-    <div style={{ maxWidth: 720, margin: "0 auto" }}>
+    <div style={{ maxWidth: 1080, margin: "0 auto" }}>
       <h2 style={{ fontSize: 24, fontWeight: 700, color: textPrimary, margin: "0 0 6px" }}>
         Loss History
       </h2>

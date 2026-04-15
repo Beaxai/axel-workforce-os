@@ -20,11 +20,11 @@ export function FormSection({ title, subtitle, children }: {
 }) {
   return (
     <div style={{ marginBottom: 32 }}>
-      <h3 style={{ fontSize: 13, fontWeight: 600, color: "#fff", margin: 0, marginBottom: subtitle ? 4 : 16, fontFamily: "var(--app-font-heading)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+      <h3 style={{ fontSize: 20, fontWeight: 700, color: "#fff", margin: 0, marginBottom: subtitle ? 4 : 16 }}>
         {title}
       </h3>
       {subtitle && (
-        <p style={{ fontSize: 14, color: "#888", margin: 0, marginBottom: 16 }}>{subtitle}</p>
+        <p style={{ fontSize: 13, color: "#888", margin: 0, marginBottom: 16, fontFamily: "var(--app-font-heading)", textTransform: "uppercase", letterSpacing: "0.06em" }}>{subtitle}</p>
       )}
       {children}
     </div>

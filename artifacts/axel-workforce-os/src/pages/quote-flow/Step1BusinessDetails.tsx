@@ -28,7 +28,7 @@ export default function Step1BusinessDetails() {
   const s = useQuoteFlowStore();
 
   return (
-    <div style={{ maxWidth: 800 }}>
+    <div style={{ maxWidth: 1080, margin: "0 auto" }}>
       <FormSection title="Tell us about the business">
         <FieldGrid columns={2}>
           <FieldLabel label="Legal Business Name" required>
