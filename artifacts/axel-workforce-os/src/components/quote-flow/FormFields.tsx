@@ -24,7 +24,7 @@ export function FormSection({ title, subtitle, children }: {
         {title}
       </h3>
       {subtitle && (
-        <p style={{ fontSize: 13, color: "#888", margin: 0, marginBottom: 16, fontFamily: "var(--app-font-heading)", textTransform: "uppercase", letterSpacing: "0.06em" }}>{subtitle}</p>
+        <p style={{ fontSize: 14, color: "#888", margin: 0, marginBottom: 16, fontFamily: "var(--app-font-heading)", textTransform: "uppercase", letterSpacing: "0.06em" }}>{subtitle}</p>
       )}
       {children}
     </div>

@@ -79,7 +79,7 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div style={{ maxWidth: 1200 }}>
+    <div style={{ maxWidth: 1200, margin: "0 auto" }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 24 }}>
         <div>
           <h1 style={{ fontSize: 28, fontWeight: 700, color: textPrimary, margin: 0, marginBottom: 4 }}>Dashboard</h1>
@@ -103,7 +103,7 @@ export default function AdminDashboard() {
         {KPI_DATA.map((kpi) => (
           <GlassPanel key={kpi.label} style={{ borderBottom: "2px solid #7C3AED" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
-              <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: textMuted }}>
+              <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: textMuted, fontFamily: "var(--app-font-heading)" }}>
                 {kpi.label}
               </span>
               <div style={{ background: "rgba(124,58,237,0.2)", borderRadius: 8, padding: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -147,7 +147,7 @@ export default function AdminDashboard() {
               </ResponsiveContainer>
               <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", textAlign: "center" }}>
                 <div style={{ fontSize: 26, fontWeight: 700, color: textPrimary }}>4.2k</div>
-                <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: textMuted }}>
+                <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: textMuted, fontFamily: "var(--app-font-heading)" }}>
                   TOTAL POLICIES
                 </div>
               </div>
@@ -160,7 +160,7 @@ export default function AdminDashboard() {
             border: `1px solid ${borderColor}`, borderRadius: 10, padding: 16,
           }}>
             <div style={{ flex: 1 }}>
-              <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: textMuted, display: "block", marginBottom: 4 }}>
+              <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: textMuted, display: "block", marginBottom: 4, fontFamily: "var(--app-font-heading)" }}>
                 PRIMARY GROWTH
               </span>
               <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
@@ -170,7 +170,7 @@ export default function AdminDashboard() {
             </div>
             <div style={{ width: 1, background: borderColor }} />
             <div style={{ flex: 1 }}>
-              <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: textMuted, display: "block", marginBottom: 4 }}>
+              <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: textMuted, display: "block", marginBottom: 4, fontFamily: "var(--app-font-heading)" }}>
                 AVG. RETENTION
               </span>
               <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
@@ -183,7 +183,7 @@ export default function AdminDashboard() {
 
         <GlassPanel>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-            <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: textMuted }}>
+            <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: textMuted, fontFamily: "var(--app-font-heading)" }}>
               SECTOR PERFORMANCE DETAIL
             </span>
             <span style={{ fontSize: 12, color: "#7C3AED", cursor: "pointer", fontWeight: 500 }}>
@@ -223,7 +223,7 @@ export default function AdminDashboard() {
       <GlassPanel>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <span style={{ fontSize: 15, fontWeight: 600, color: textPrimary }}>Recent Implementation Pipelines</span>
-          <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: "#7C3AED", cursor: "pointer" }}>
+          <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: "#7C3AED", cursor: "pointer", fontFamily: "var(--app-font-heading)" }}>
             VIEW ALL PIPELINES
           </span>
         </div>
@@ -233,8 +233,8 @@ export default function AdminDashboard() {
             <tr>
               {["ACCOUNT NAME", "VERTICAL", "STATUS", "ESTIMATED REVENUE", "ACTIONS"].map((h) => (
                 <th key={h} style={{
-                  textAlign: "left", fontSize: 11, fontWeight: 600, letterSpacing: "0.04em",
-                  color: textMuted, padding: "0 8px 12px",
+                  textAlign: "left", fontSize: 11, fontWeight: 600, letterSpacing: "0.06em",
+                  color: textMuted, padding: "0 8px 12px", fontFamily: "var(--app-font-heading)",
                   borderBottom: `1px solid ${borderColor}`,
                 }}>{h}</th>
               ))}

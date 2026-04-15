@@ -113,7 +113,7 @@ export default function VerticalProgramOffering() {
   const Icon = vertical.icon;
 
   return (
-    <div style={{ maxWidth: 1200 }}>
+    <div style={{ maxWidth: 1200, margin: "0 auto" }}>
       <Link
         to="/marketplace"
         style={{

@@ -11,7 +11,7 @@ export default function Marketplace() {
   const { textPrimary, textMuted } = useThemeColors();
 
   return (
-    <div style={{ maxWidth: 1200 }}>
+    <div style={{ maxWidth: 1200, margin: "0 auto" }}>
       <div style={{ marginBottom: 32 }}>
         <p
           style={{
