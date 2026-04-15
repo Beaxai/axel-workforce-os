@@ -175,18 +175,40 @@ export function MultiSelect({ values, onChange, options, placeholder }: {
   placeholder?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
   const ref = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (ref.current && !ref.current.contains(e.target as Node)) { setOpen(false); setSearch(""); }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  useEffect(() => {
+    if (open && searchRef.current) searchRef.current.focus();
+  }, [open]);
+
   const toggle = (val: string) => {
     onChange(values.includes(val) ? values.filter((v) => v !== val) : [...values, val]);
+  };
+
+  const filtered = search.trim()
+    ? options.filter((o) =>
+        o.value.toLowerCase().startsWith(search.trim().toLowerCase()) ||
+        o.label.toLowerCase().includes(search.trim().toLowerCase())
+      )
+    : options;
+
+  const handleSearchKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && filtered.length === 1) {
+      e.preventDefault();
+      toggle(filtered[0].value);
+      setSearch("");
+    }
+    if (e.key === "Escape") { setOpen(false); setSearch(""); }
   };
 
   return (
@@ -246,16 +268,40 @@ export function MultiSelect({ values, onChange, options, placeholder }: {
             background: "#1a1a26",
             border: "1px solid rgba(255,255,255,0.1)",
             borderRadius: 10,
-            maxHeight: 240,
+            maxHeight: 300,
             overflowY: "auto",
             zIndex: 50,
           }}
         >
-          {options.map((o) => (
+          <div style={{ padding: "8px 10px", borderBottom: "1px solid rgba(255,255,255,0.06)", position: "sticky", top: 0, background: "#1a1a26", zIndex: 1 }}>
+            <input
+              ref={searchRef}
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={handleSearchKeyDown}
+              placeholder="Type abbreviation (e.g. CA)..."
+              style={{
+                width: "100%",
+                padding: "8px 10px",
+                borderRadius: 8,
+                border: "1px solid rgba(255,255,255,0.12)",
+                background: "rgba(255,255,255,0.05)",
+                color: "#fff",
+                fontSize: 13,
+                outline: "none",
+                fontFamily: "inherit",
+              }}
+            />
+          </div>
+          {filtered.length === 0 && (
+            <div style={{ padding: "12px 14px", color: "rgba(255,255,255,0.4)", fontSize: 13 }}>No states match "{search}"</div>
+          )}
+          {filtered.map((o) => (
             <button
               key={o.value}
               type="button"
-              onClick={() => toggle(o.value)}
+              onClick={() => { toggle(o.value); setSearch(""); }}
               style={{
                 width: "100%",
                 display: "flex",
@@ -278,7 +324,7 @@ export function MultiSelect({ values, onChange, options, placeholder }: {
               }}>
                 {values.includes(o.value) && <Check style={{ width: 12, height: 12, color: "#fff" }} />}
               </div>
-              {o.label}
+              <span><strong style={{ marginRight: 6 }}>{o.value}</strong>{STATE_NAMES[o.value] || ""}</span>
             </button>
           ))}
         </div>
@@ -450,10 +496,18 @@ export function ProgressBar({ current, total, label }: { current: number; total:
   );
 }
 
-export const US_STATES_OPTIONS = [
-  "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA",
-  "HI","ID","IL","IN","IA","KS","KY","LA","ME","MD",
-  "MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ",
-  "NM","NY","NC","ND","OH","OK","OR","PA","RI","SC",
-  "SD","TN","TX","UT","VT","VA","WA","WV","WI","WY",
-].map((s) => ({ value: s, label: s }));
+const STATE_NAMES: Record<string, string> = {
+  AL:"Alabama",AK:"Alaska",AZ:"Arizona",AR:"Arkansas",CA:"California",CO:"Colorado",
+  CT:"Connecticut",DE:"Delaware",FL:"Florida",GA:"Georgia",HI:"Hawaii",ID:"Idaho",
+  IL:"Illinois",IN:"Indiana",IA:"Iowa",KS:"Kansas",KY:"Kentucky",LA:"Louisiana",
+  ME:"Maine",MD:"Maryland",MA:"Massachusetts",MI:"Michigan",MN:"Minnesota",MS:"Mississippi",
+  MO:"Missouri",MT:"Montana",NE:"Nebraska",NV:"Nevada",NH:"New Hampshire",NJ:"New Jersey",
+  NM:"New Mexico",NY:"New York",NC:"North Carolina",ND:"North Dakota",OH:"Ohio",OK:"Oklahoma",
+  OR:"Oregon",PA:"Pennsylvania",RI:"Rhode Island",SC:"South Carolina",SD:"South Dakota",
+  TN:"Tennessee",TX:"Texas",UT:"Utah",VT:"Vermont",VA:"Virginia",WA:"Washington",
+  WV:"West Virginia",WI:"Wisconsin",WY:"Wyoming",
+};
+export const US_STATES_OPTIONS = Object.entries(STATE_NAMES).map(([abbr, name]) => ({
+  value: abbr,
+  label: `${abbr} — ${name}`,
+}));
