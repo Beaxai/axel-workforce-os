@@ -211,12 +211,6 @@ export default function WorkforceProfile() {
     }
   };
 
-  const summaryItems = [
-    { icon: MapPin, label: "Locations", value: totalLocations },
-    { icon: Users, label: "Employees", value: totalEmployees },
-    { icon: DollarSign, label: "Total Payroll", value: `$${totalPayroll.toLocaleString()}` },
-  ];
-
   const stateFilteredEntries = useMemo(() => {
     if (!validClassCodes) return richEntries;
     return richEntries.filter((r) => validClassCodes.has(r.c));
@@ -238,53 +232,6 @@ export default function WorkforceProfile() {
         title="Workforce Profile"
         subtitle="Define your workforce across locations. Add class codes, employee counts, and payroll for each location."
       >
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3, 1fr)",
-            gap: 12,
-            marginBottom: 24,
-          }}
-        >
-          {summaryItems.map((item) => (
-            <div
-              key={item.label}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-                padding: "14px 18px",
-                borderRadius: 12,
-                background: isDark ? "rgba(233,30,140,0.04)" : "rgba(233,30,140,0.03)",
-                border: `1px solid ${isDark ? "rgba(233,30,140,0.12)" : "rgba(233,30,140,0.1)"}`,
-              }}
-            >
-              <div
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 10,
-                  background: "rgba(233,30,140,0.1)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                }}
-              >
-                <item.icon style={{ width: 16, height: 16, color: "#E91E8C" }} />
-              </div>
-              <div>
-                <div style={{ fontSize: 11, color: textMuted, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 600 }}>
-                  {item.label}
-                </div>
-                <div style={{ fontSize: 20, fontWeight: 700, color: textPrimary, lineHeight: 1.2 }}>
-                  {item.value}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <h3 style={{ fontSize: 14, fontWeight: 600, color: textPrimary, margin: 0 }}>
             Locations & Class Codes
