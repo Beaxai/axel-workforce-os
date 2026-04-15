@@ -82,10 +82,15 @@ export default function Step3ExperienceMod() {
           <div
             style={{
               flexShrink: 0,
-              padding: "20px 16px 12px",
-              borderRadius: 16,
-              background: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)",
-              border: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.08)"}`,
+              padding: "24px 20px 16px",
+              borderRadius: 18,
+              background: isDark ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.6)",
+              border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.1)"}`,
+              backdropFilter: "blur(16px)",
+              WebkitBackdropFilter: "blur(16px)",
+              boxShadow: isDark
+                ? "0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06)"
+                : "0 8px 32px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.8)",
             }}
           >
             <Hazometer value={eModValue} />
