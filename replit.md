@@ -41,8 +41,9 @@ Authentication is managed via a Zustand store, supporting eight distinct party t
 The platform enforces a strict design system:
 - **Default Theme:** Dark mode.
 - **Accent Color:** `#E91E8C` (solid pink, no gradients).
-- **Glass Panels:** `rgba(255,255,255,0.05)` background with `backdrop-filter: blur(12px)` and subtle borders.
-- **Typography:** White primary, `rgba(255,255,255,0.5)` secondary in dark mode.
+- **Glassmorphism Modals:** Overlay uses `rgba(0,0,0,0.7)` with `backdrop-filter: blur(14px)`; popup windows use `rgba(18,18,24,0.82)` background with `backdrop-filter: blur(40px)`, `box-shadow: 0 24px 80px rgba(0,0,0,0.6)`, and `inset 0 1px 0 rgba(255,255,255,0.06)` highlight.
+- **Typography:** Open Sans (body/labels via `--app-font-sans`), Jost all-caps for section subheadings (`--app-font-heading`, `.font-heading` utility class). Base font-size: 15px.
+- **Layout:** Main content centered with `maxWidth: 1280px`, `margin: 0 auto`, padding `32px 40px`.
 - **Components:** A custom component library provides reusable UI elements adhering to the design system.
 
 **Layouts:**

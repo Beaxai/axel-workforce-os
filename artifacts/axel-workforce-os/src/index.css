@@ -337,3 +337,18 @@
     inset: -1px;
   }
 }
+
+html {
+  font-size: 15px;
+}
+
+body {
+  font-family: var(--app-font-sans);
+}
+
+.font-heading {
+  font-family: var(--app-font-heading);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+}

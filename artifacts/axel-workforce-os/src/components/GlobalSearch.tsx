@@ -61,16 +61,16 @@ export default function GlobalSearch({ onClose, onOpenDeal }: { onClose: () => v
       onClick={onClose}
       style={{
         position: "fixed", inset: 0, zIndex: 9999,
-        background: "rgba(0,0,0,0.8)", backdropFilter: "blur(8px)",
+        background: "rgba(0,0,0,0.7)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
         display: "flex", alignItems: "flex-start", justifyContent: "center", paddingTop: "80px",
       }}
     >
       <div onClick={(e) => e.stopPropagation()} style={{ width: "640px", maxHeight: "70vh", display: "flex", flexDirection: "column" }}>
         <div style={{
           display: "flex", alignItems: "center", gap: "12px", padding: "16px 20px",
-          background: isDark ? "rgba(20,20,24,0.95)" : "rgba(255,255,255,0.95)",
-          border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`,
-          borderRadius: "14px 14px 0 0", backdropFilter: "blur(12px)",
+          background: isDark ? "rgba(18,18,24,0.82)" : "rgba(255,255,255,0.78)",
+          border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)"}`,
+          borderRadius: "14px 14px 0 0", backdropFilter: "blur(40px)", WebkitBackdropFilter: "blur(40px)",
         }}>
           <Search style={{ width: 20, height: 20, color: textMuted, flexShrink: 0 }} />
           <input
@@ -87,9 +87,9 @@ export default function GlobalSearch({ onClose, onOpenDeal }: { onClose: () => v
 
         <div style={{
           flex: 1, overflowY: "auto", padding: "12px 20px 20px",
-          background: isDark ? "rgba(20,20,24,0.95)" : "rgba(255,255,255,0.95)",
-          border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`,
-          borderTop: "none", borderRadius: "0 0 14px 14px", backdropFilter: "blur(12px)",
+          background: isDark ? "rgba(18,18,24,0.82)" : "rgba(255,255,255,0.78)",
+          border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)"}`,
+          borderTop: "none", borderRadius: "0 0 14px 14px", backdropFilter: "blur(40px)", WebkitBackdropFilter: "blur(40px)",
         }}>
           {query && totalResults === 0 && !loading && (
             <p style={{ fontSize: "14px", color: textMuted, textAlign: "center", padding: "24px 0" }}>

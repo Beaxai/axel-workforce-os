@@ -517,8 +517,10 @@ export default function AppShell() {
           </div>
         </header>
 
-        <main style={{ flex: 1, overflow: "auto", padding: "24px" }}>
-          <Outlet />
+        <main style={{ flex: 1, overflow: "auto", padding: "32px 40px" }}>
+          <div style={{ maxWidth: 1280, margin: "0 auto", width: "100%" }}>
+            <Outlet />
+          </div>
         </main>
       </div>
       {searchOpen && <GlobalSearch onClose={() => setSearchOpen(false)} />}

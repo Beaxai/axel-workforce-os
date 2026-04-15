@@ -452,7 +452,8 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
         alignItems: "stretch",
         justifyContent: "center",
         background: "rgba(0,0,0,0.7)",
-        backdropFilter: "blur(6px)",
+        backdropFilter: "blur(14px)",
+        WebkitBackdropFilter: "blur(14px)",
         padding: "24px",
       }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
@@ -461,8 +462,12 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
         style={{
           width: "100%",
           maxWidth: "1200px",
-          background: isDark ? "rgba(14,14,18,0.98)" : "rgba(250,250,252,0.98)",
-          backdropFilter: "blur(12px)",
+          background: isDark ? "rgba(14,14,18,0.82)" : "rgba(250,250,252,0.78)",
+          backdropFilter: "blur(40px)",
+          WebkitBackdropFilter: "blur(40px)",
+          boxShadow: isDark
+            ? "0 24px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06)"
+            : "0 24px 80px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.8)",
           border: `1px solid ${borderSubtle}`,
           borderRadius: "16px",
           display: "flex",

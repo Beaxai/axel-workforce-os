@@ -13,7 +13,7 @@ const NEON_YELLOW = "#fff01f";
 const NEON_ORANGE = "#ff6e27";
 const NEON_RED = "#ff073a";
 const NEON_CRIMSON = "#cc0022";
-const FONT = "'Source Sans 3', var(--app-font-sans), system-ui, sans-serif";
+const FONT = "var(--app-font-sans), system-ui, sans-serif";
 
 export default function Hazometer({ value, min = 0.50, max = 2.50, size = 260 }: HazometerProps) {
   const { isDark, textPrimary, textSecondary } = useThemeColors();

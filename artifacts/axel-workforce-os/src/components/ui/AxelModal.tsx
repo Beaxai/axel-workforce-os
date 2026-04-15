@@ -24,8 +24,9 @@ export default function AxelModal({ isOpen, onClose, children, title }: AxelModa
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "rgba(0,0,0,0.6)",
-        backdropFilter: "blur(4px)",
+        background: "rgba(0,0,0,0.7)",
+        backdropFilter: "blur(12px)",
+        WebkitBackdropFilter: "blur(12px)",
       }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
@@ -33,9 +34,13 @@ export default function AxelModal({ isOpen, onClose, children, title }: AxelModa
     >
       <div
         style={{
-          background: isDark ? "rgba(20,20,24,0.95)" : "rgba(255,255,255,0.95)",
-          backdropFilter: "blur(12px)",
-          border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`,
+          background: isDark ? "rgba(18,18,24,0.82)" : "rgba(255,255,255,0.78)",
+          backdropFilter: "blur(40px)",
+          WebkitBackdropFilter: "blur(40px)",
+          border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)"}`,
+          boxShadow: isDark
+            ? "0 24px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06)"
+            : "0 24px 80px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.8)",
           borderRadius: "16px",
           padding: "24px",
           minWidth: "400px",

@@ -20,7 +20,7 @@ export function FormSection({ title, subtitle, children }: {
 }) {
   return (
     <div style={{ marginBottom: 32 }}>
-      <h3 style={{ fontSize: 18, fontWeight: 700, color: "#fff", margin: 0, marginBottom: subtitle ? 4 : 16 }}>
+      <h3 style={{ fontSize: 13, fontWeight: 600, color: "#fff", margin: 0, marginBottom: subtitle ? 4 : 16, fontFamily: "var(--app-font-heading)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
         {title}
       </h3>
       {subtitle && (
@@ -46,7 +46,7 @@ export function FieldLabel({ label, required, children }: {
 }) {
   return (
     <div>
-      <label style={{ display: "block", fontSize: 13, color: "#888", marginBottom: 6 }}>
+      <label style={{ display: "block", fontSize: 13, color: "#888", marginBottom: 6, fontFamily: "var(--app-font-sans)" }}>
         {label} {required && <span style={{ color: "#E91E8C" }}>*</span>}
       </label>
       {children}
