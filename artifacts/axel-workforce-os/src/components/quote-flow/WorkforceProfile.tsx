@@ -52,6 +52,7 @@ export default function WorkforceProfile() {
   const [showCodeGrid, setShowCodeGrid] = useState(false);
   const [learnMoreEntry, setLearnMoreEntry] = useState<{ c: string; ico: string; n: string; p: string; d: string; v?: string } | null>(null);
   const [validClassCodes, setValidClassCodes] = useState<Set<string> | null>(null);
+  const [targetLocationIdx, setTargetLocationIdx] = useState(0);
 
   const allLocationStates = useMemo(() => {
     const states = new Set<string>();
@@ -153,6 +154,18 @@ export default function WorkforceProfile() {
     return entries;
   }, [activeVertical, codeGridSearch, validClassCodes]);
 
+  const safeTargetIdx = Math.min(targetLocationIdx, s.locations.length - 1);
+  const targetLoc = s.locations[safeTargetIdx] || s.locations[0];
+
+  const addedCodesForTarget = useMemo(() => {
+    if (!targetLoc) return new Set<string>();
+    const codes = new Set<string>();
+    for (const cc of targetLoc.classCodes) {
+      if (cc.classCode) codes.add(cc.classCode);
+    }
+    return codes;
+  }, [targetLoc?.id, targetLoc?.classCodes]);
+
   const addedCodesSet = useMemo(() => {
     const codes = new Set<string>();
     for (const loc of s.locations) {
@@ -164,8 +177,7 @@ export default function WorkforceProfile() {
   }, [s.locations]);
 
   const handleApplyRichCard = (entry: typeof richEntries[0]) => {
-    if (s.locations.length === 0) return;
-    const targetLoc = s.locations[0];
+    if (!targetLoc) return;
     const emptyIdx = targetLoc.classCodes.findIndex((cc) => !cc.classCode);
     if (emptyIdx >= 0) {
       s.updateClassCode(targetLoc.id, emptyIdx, {
@@ -188,8 +200,7 @@ export default function WorkforceProfile() {
   };
 
   const handleApplySuggestion = (suggestion: AISuggestion) => {
-    if (s.locations.length === 0) return;
-    const targetLoc = s.locations[0];
+    if (!targetLoc) return;
     const emptyIdx = targetLoc.classCodes.findIndex((cc) => !cc.classCode);
     if (emptyIdx >= 0) {
       s.updateClassCode(targetLoc.id, emptyIdx, {
@@ -478,6 +489,34 @@ export default function WorkforceProfile() {
               </button>
             </div>
 
+            {s.locations.length > 1 && (
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: textMuted, whiteSpace: "nowrap" }}>Add to:</span>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {s.locations.map((loc, idx) => (
+                    <button
+                      key={loc.id}
+                      type="button"
+                      onClick={() => setTargetLocationIdx(idx)}
+                      style={{
+                        padding: "5px 14px",
+                        borderRadius: 8,
+                        border: `1px solid ${safeTargetIdx === idx ? "#E91E8C" : (isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)")}`,
+                        background: safeTargetIdx === idx ? "rgba(233,30,140,0.15)" : "transparent",
+                        color: safeTargetIdx === idx ? "#E91E8C" : textSecondary,
+                        fontSize: 12,
+                        fontWeight: safeTargetIdx === idx ? 700 : 500,
+                        cursor: "pointer",
+                        transition: "all 0.15s",
+                      }}
+                    >
+                      Location {idx + 1}{loc.state ? ` (${loc.state})` : ""}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div style={{ position: "relative", marginBottom: 14 }}>
               <Search style={{
                 position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)",
@@ -542,7 +581,7 @@ export default function WorkforceProfile() {
               }}
             >
               {filteredRichEntries.map((entry) => {
-                const isAdded = addedCodesSet.has(entry.c);
+                const isAdded = addedCodesForTarget.has(entry.c);
                 return (
                 <div
                   key={entry.c}
@@ -803,7 +842,7 @@ export default function WorkforceProfile() {
                 <strong style={{ color: textPrimary }}>Description:</strong> {learnMoreEntry.d}
               </div>
             )}
-            {addedCodesSet.has(learnMoreEntry.c) ? (
+            {addedCodesForTarget.has(learnMoreEntry.c) ? (
               <span
                 style={{
                   display: "flex",
@@ -843,7 +882,7 @@ export default function WorkforceProfile() {
                 }}
               >
                 <Plus style={{ width: 14, height: 14 }} />
-                Add to Location 1
+                Add to Location {safeTargetIdx + 1}
               </button>
             )}
           </div>
