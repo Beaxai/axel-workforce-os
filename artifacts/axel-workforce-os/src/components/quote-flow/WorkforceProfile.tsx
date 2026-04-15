@@ -477,8 +477,8 @@ export default function WorkforceProfile() {
             }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-              <span style={{ fontSize: 14, fontWeight: 600, color: textPrimary }}>
-                Browse and select class codes
+              <span style={{ fontSize: 13, fontWeight: 600, color: textPrimary, fontFamily: "var(--app-font-heading)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                Browse & Select Class Codes
               </span>
               <button
                 type="button"
@@ -491,7 +491,7 @@ export default function WorkforceProfile() {
 
             {s.locations.length > 1 && (
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-                <span style={{ fontSize: 12, fontWeight: 600, color: textMuted, whiteSpace: "nowrap" }}>Add to:</span>
+                <span style={{ fontSize: 11, fontWeight: 600, color: textMuted, whiteSpace: "nowrap", fontFamily: "var(--app-font-heading)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Add to:</span>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                   {s.locations.map((loc, idx) => (
                     <button
@@ -787,20 +787,23 @@ export default function WorkforceProfile() {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            background: "rgba(0,0,0,0.6)",
-            backdropFilter: "blur(4px)",
+            background: "rgba(0,0,0,0.5)",
           }}
           onClick={() => setLearnMoreEntry(null)}
         >
           <div
             style={{
-              background: isDark ? "#1a1a2e" : "#fff",
+              background: isDark ? "rgba(18,18,24,0.82)" : "rgba(255,255,255,0.78)",
+              backdropFilter: "blur(40px)",
+              WebkitBackdropFilter: "blur(40px)",
               borderRadius: 16,
               padding: 28,
               maxWidth: 480,
               width: "90%",
-              border: `1px solid ${borderColor}`,
-              boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+              border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)"}`,
+              boxShadow: isDark
+                ? "0 24px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06)"
+                : "0 24px 80px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.8)",
             }}
             onClick={(e) => e.stopPropagation()}
           >

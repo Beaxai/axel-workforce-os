@@ -210,7 +210,7 @@ function AddPartnerModal({ partnerType, onClose, onSubmit }: { partnerType: stri
   const toggleState = (st: string) => setSelectedStates((prev) => prev.includes(st) ? prev.filter((s) => s !== st) : [...prev, st]);
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.7)" }} onClick={onClose}>
+    <div style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.5)" }} onClick={onClose}>
       <div onClick={(e) => e.stopPropagation()} style={{ width: "520px", maxHeight: "85vh", overflowY: "auto", background: "rgba(18,18,24,0.82)", backdropFilter: "blur(40px)", WebkitBackdropFilter: "blur(40px)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "16px", padding: "32px", boxShadow: "0 24px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06)" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "24px" }}>
           <h2 style={{ fontSize: "20px", fontWeight: 600, color: "#fff", margin: 0 }}>Add {partnerType}</h2>

@@ -485,7 +485,7 @@ export function ProgressBar({ current, total, label }: { current: number; total:
         <div style={{ height: "100%", width: `${(current / total) * 100}%`, background: "#E91E8C", borderRadius: 2, transition: "width 0.3s" }} />
       </div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10 }}>
-        <span style={{ fontSize: 12, fontWeight: 700, color: "#E91E8C", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+        <span style={{ fontSize: 12, fontWeight: 700, color: "#E91E8C", textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: "var(--app-font-heading)" }}>
           {label}
         </span>
         <span style={{ fontSize: 13, color: "#666" }}>

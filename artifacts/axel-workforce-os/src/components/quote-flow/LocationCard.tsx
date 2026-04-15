@@ -87,7 +87,7 @@ export default function LocationCard({ location, index, canRemove, stateOptions,
           )}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <div style={{ display: "flex", gap: 16, fontSize: 12 }}>
+          <div style={{ display: "flex", gap: 16, fontSize: 13 }}>
             <span style={{ color: textSecondary }}>
               {locEmployees} <span style={{ color: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.4)" }}>employees</span>
             </span>
@@ -164,11 +164,11 @@ export default function LocationCard({ location, index, canRemove, stateOptions,
               marginBottom: 6,
             }}
           >
-            <span style={{ fontSize: 11, fontWeight: 600, color: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.4)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Class Code</span>
-            <span style={{ fontSize: 11, fontWeight: 600, color: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.4)", textTransform: "uppercase", letterSpacing: "0.04em" }}>FT</span>
-            <span style={{ fontSize: 11, fontWeight: 600, color: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.4)", textTransform: "uppercase", letterSpacing: "0.04em" }}>PT</span>
-            <span style={{ fontSize: 11, fontWeight: 600, color: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.4)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Annual Payroll</span>
-            <span style={{ fontSize: 11, fontWeight: 600, color: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.4)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Appetite</span>
+            <span style={{ fontSize: 11, fontWeight: 600, color: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.4)", textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: "var(--app-font-heading)" }}>Class Code</span>
+            <span style={{ fontSize: 11, fontWeight: 600, color: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.4)", textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: "var(--app-font-heading)" }}>FT</span>
+            <span style={{ fontSize: 11, fontWeight: 600, color: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.4)", textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: "var(--app-font-heading)" }}>PT</span>
+            <span style={{ fontSize: 11, fontWeight: 600, color: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.4)", textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: "var(--app-font-heading)" }}>Annual Payroll</span>
+            <span style={{ fontSize: 11, fontWeight: 600, color: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.4)", textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: "var(--app-font-heading)" }}>Appetite</span>
             <span />
           </div>
 

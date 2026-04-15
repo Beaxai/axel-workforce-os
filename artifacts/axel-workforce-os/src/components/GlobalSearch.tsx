@@ -61,7 +61,7 @@ export default function GlobalSearch({ onClose, onOpenDeal }: { onClose: () => v
       onClick={onClose}
       style={{
         position: "fixed", inset: 0, zIndex: 9999,
-        background: "rgba(0,0,0,0.7)",
+        background: "rgba(0,0,0,0.5)",
         display: "flex", alignItems: "flex-start", justifyContent: "center", paddingTop: "80px",
       }}
     >
