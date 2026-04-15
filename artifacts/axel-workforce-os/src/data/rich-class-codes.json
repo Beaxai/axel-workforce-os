@@ -13487,14 +13487,6 @@
     "d": "Commissary Work",
     "v": ""
   },
-  "9079": {
-    "c": "9079",
-    "ico": "🍽️",
-    "n": "Restaurant NOC",
-    "p": "Restaurant NOC",
-    "d": "WCIRB eliminated this classification effective 9/1/2024. CA accounts must reclassify: full-service restaurants to 9082, fast food to 9083, bars and taverns to 9084.",
-    "v": "Hospitality"
-  },
   "9080": {
     "c": "9080",
     "ico": "🍽️",
