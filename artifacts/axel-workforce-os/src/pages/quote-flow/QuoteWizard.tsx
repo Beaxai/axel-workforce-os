@@ -158,7 +158,7 @@ export default function QuoteWizard() {
             <div style={{ height: "100%", width: `${(progress.current / progress.total) * 100}%`, background: "#E91E8C", borderRadius: 2, transition: "width 0.3s" }} />
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: "#E91E8C", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: "#E91E8C", textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: "var(--app-font-heading)" }}>
               {progress.label}
             </span>
             <span style={{ fontSize: 13, color: textMuted }}>
