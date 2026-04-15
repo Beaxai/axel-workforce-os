@@ -45,9 +45,9 @@ const SECTOR_DATA = [
 ];
 
 const PIPELINE_DATA = [
-  { initials: "BC", name: "BuildCo Solutions", vertical: "Construction", status: "IN REVIEW", revenue: "$450,000", color: "#1E40AF" },
-  { initials: "GL", name: "Green Leaf Logistics", vertical: "Cannabis", status: "ACTIVE", revenue: "$1,200,000", color: "#065F46" },
-  { initials: "HN", name: "Horizon Nursing", vertical: "Healthcare", status: "PENDING", revenue: "$890,000", color: "#7C3AED" },
+  { initials: "TP", name: "Titan Pacific Contractors", vertical: "Construction", status: "IN REVIEW", revenue: "$450,000", color: "#1E40AF" },
+  { initials: "EC", name: "Emerald Coast Cultivation", vertical: "Cannabis", status: "ACTIVE", revenue: "$1,200,000", color: "#065F46" },
+  { initials: "PH", name: "Pinnacle Home Health", vertical: "Healthcare", status: "PENDING", revenue: "$890,000", color: "#7C3AED" },
 ];
 
 const STATUS_STYLES: Record<string, { color: string; bg: string }> = {
