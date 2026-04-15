@@ -737,6 +737,59 @@ export default function WorkforceProfile() {
             {totalClassCodes} class code{totalClassCodes !== 1 ? "s" : ""} across {totalLocations} location{totalLocations !== 1 ? "s" : ""}
           </div>
         )}
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr 1fr",
+            gap: 14,
+            marginTop: 24,
+            paddingTop: 20,
+            borderTop: `1px solid ${borderColor}`,
+          }}
+        >
+          {[
+            { icon: MapPin, label: "LOCATIONS", value: String(totalLocations) },
+            { icon: Users, label: "EMPLOYEES", value: String(totalEmployees) },
+            { icon: DollarSign, label: "TOTAL PAYROLL", value: `$${totalPayroll.toLocaleString()}` },
+          ].map((item) => (
+            <div
+              key={item.label}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                padding: "14px 18px",
+                borderRadius: 12,
+                border: `1px solid ${isDark ? "rgba(233,30,140,0.2)" : "rgba(233,30,140,0.15)"}`,
+                background: isDark ? "rgba(233,30,140,0.04)" : "rgba(233,30,140,0.02)",
+              }}
+            >
+              <div
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 10,
+                  background: "rgba(233,30,140,0.1)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                <item.icon style={{ width: 18, height: 18, color: "#E91E8C" }} />
+              </div>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: textMuted, letterSpacing: 0.5, marginBottom: 2 }}>
+                  {item.label}
+                </div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: textPrimary, lineHeight: 1.1 }}>
+                  {item.value}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </FormSection>
 
       {learnMoreEntry && (
