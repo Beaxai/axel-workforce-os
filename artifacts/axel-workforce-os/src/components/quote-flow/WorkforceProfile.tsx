@@ -4,7 +4,7 @@ import { useQuoteFlowStore } from "@/lib/quote-flow-store";
 import { FormSection, AddButton, US_STATES_OPTIONS } from "@/components/quote-flow/FormFields";
 import LocationCard from "@/components/quote-flow/LocationCard";
 import { api } from "@/lib/api";
-import { Users, DollarSign, MapPin, Sparkles, Loader2, X, Search, Plus, Info } from "lucide-react";
+import { Users, DollarSign, MapPin, Sparkles, Loader2, X, Search, Plus, Info, Check } from "lucide-react";
 import richData from "@/data/rich-class-codes.json";
 
 const RICH: Record<string, { c: string; ico: string; n: string; p: string; d: string; v?: string }> = richData as any;
@@ -152,6 +152,16 @@ export default function WorkforceProfile() {
     }
     return entries;
   }, [activeVertical, codeGridSearch, validClassCodes]);
+
+  const addedCodesSet = useMemo(() => {
+    const codes = new Set<string>();
+    for (const loc of s.locations) {
+      for (const cc of loc.classCodes) {
+        if (cc.classCode) codes.add(cc.classCode);
+      }
+    }
+    return codes;
+  }, [s.locations]);
 
   const handleApplyRichCard = (entry: typeof richEntries[0]) => {
     if (s.locations.length === 0) return;
@@ -584,26 +594,34 @@ export default function WorkforceProfile() {
                 paddingRight: 4,
               }}
             >
-              {filteredRichEntries.map((entry) => (
+              {filteredRichEntries.map((entry) => {
+                const isAdded = addedCodesSet.has(entry.c);
+                return (
                 <div
                   key={entry.c}
                   style={{
                     padding: "16px 18px",
                     borderRadius: 12,
-                    border: `1px solid ${borderColor}`,
-                    background: isDark ? "rgba(255,255,255,0.03)" : "#fff",
+                    border: `1px solid ${isAdded ? "rgba(233,30,140,0.4)" : borderColor}`,
+                    background: isAdded
+                      ? (isDark ? "rgba(233,30,140,0.08)" : "rgba(233,30,140,0.04)")
+                      : (isDark ? "rgba(255,255,255,0.03)" : "#fff"),
                     transition: "all 0.15s",
                     display: "flex",
                     flexDirection: "column",
                     gap: 5,
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = isDark ? "rgba(233,30,140,0.35)" : "rgba(233,30,140,0.25)";
-                    e.currentTarget.style.background = isDark ? "rgba(233,30,140,0.04)" : "rgba(233,30,140,0.02)";
+                    if (!isAdded) {
+                      e.currentTarget.style.borderColor = isDark ? "rgba(233,30,140,0.35)" : "rgba(233,30,140,0.25)";
+                      e.currentTarget.style.background = isDark ? "rgba(233,30,140,0.04)" : "rgba(233,30,140,0.02)";
+                    }
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = borderColor;
-                    e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.03)" : "#fff";
+                    if (!isAdded) {
+                      e.currentTarget.style.borderColor = borderColor;
+                      e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.03)" : "#fff";
+                    }
                   }}
                 >
                   <div style={{ fontSize: 24, lineHeight: 1 }}>{entry.ico}</div>
@@ -623,27 +641,47 @@ export default function WorkforceProfile() {
                     {entry.d || entry.p}
                   </div>
                   <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
-                    <button
-                      type="button"
-                      onClick={() => handleApplyRichCard(entry)}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 5,
-                        padding: "5px 12px",
-                        borderRadius: 8,
-                        border: `1px solid ${isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.15)"}`,
-                        background: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.03)",
-                        color: textPrimary,
-                        fontSize: 11,
-                        fontWeight: 600,
-                        cursor: "pointer",
-                        transition: "all 0.15s",
-                      }}
-                    >
-                      <Plus style={{ width: 11, height: 11 }} />
-                      Add
-                    </button>
+                    {isAdded ? (
+                      <span
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 5,
+                          padding: "5px 12px",
+                          borderRadius: 8,
+                          border: "1px solid rgba(233,30,140,0.3)",
+                          background: "rgba(233,30,140,0.12)",
+                          color: "#E91E8C",
+                          fontSize: 11,
+                          fontWeight: 700,
+                        }}
+                      >
+                        <Check style={{ width: 11, height: 11 }} />
+                        Added
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleApplyRichCard(entry)}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 5,
+                          padding: "5px 12px",
+                          borderRadius: 8,
+                          border: `1px solid ${isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.15)"}`,
+                          background: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.03)",
+                          color: textPrimary,
+                          fontSize: 11,
+                          fontWeight: 600,
+                          cursor: "pointer",
+                          transition: "all 0.15s",
+                        }}
+                      >
+                        <Plus style={{ width: 11, height: 11 }} />
+                        Add
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => setLearnMoreEntry(entry)}
@@ -666,7 +704,8 @@ export default function WorkforceProfile() {
                     </button>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
 
             {filteredRichEntries.length === 0 && (
@@ -764,29 +803,49 @@ export default function WorkforceProfile() {
                 <strong style={{ color: textPrimary }}>Description:</strong> {learnMoreEntry.d}
               </div>
             )}
-            <button
-              type="button"
-              onClick={() => {
-                handleApplyRichCard(learnMoreEntry);
-                setLearnMoreEntry(null);
-              }}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                padding: "10px 24px",
-                borderRadius: 10,
-                border: "none",
-                background: "#E91E8C",
-                color: "#fff",
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: "pointer",
-              }}
-            >
-              <Plus style={{ width: 14, height: 14 }} />
-              Add to Location 1
-            </button>
+            {addedCodesSet.has(learnMoreEntry.c) ? (
+              <span
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "10px 24px",
+                  borderRadius: 10,
+                  border: "1px solid rgba(233,30,140,0.3)",
+                  background: "rgba(233,30,140,0.12)",
+                  color: "#E91E8C",
+                  fontSize: 13,
+                  fontWeight: 700,
+                }}
+              >
+                <Check style={{ width: 14, height: 14 }} />
+                Added
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  handleApplyRichCard(learnMoreEntry);
+                  setLearnMoreEntry(null);
+                }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "10px 24px",
+                  borderRadius: 10,
+                  border: "none",
+                  background: "#E91E8C",
+                  color: "#fff",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                <Plus style={{ width: 14, height: 14 }} />
+                Add to Location 1
+              </button>
+            )}
           </div>
         </div>
       )}
