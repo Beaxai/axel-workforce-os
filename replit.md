@@ -70,6 +70,7 @@ The platform enforces a strict design system:
 - **Bind & Signature System (S.3):** HelloSign integration (stubbed) for e-signatures, webhook handling, UW file viewer, and status tracking for bind packages.
 - **Underwriting Appetite Engine (S.5):** Ingestion and determination system for underwriting appetite data, integrating badges and filters into deal cards, pipelines, and quote flows.
 - **Workforce Profile Widget (S.4):** Rich multi-location workforce profile widget replacing Step2ClassCodes in the quote wizard. Features summary cards (locations/employees/payroll), AI Class Code Advisor (Anthropic-powered), LocationCard components with inline appetite badges, and a multi-location rating engine endpoint (`POST /api/rate/wc/multi`). Profile data stored as JSONB in the `quotes.workforce_profile` column.
+- **Hazometer (ExMod Gauge):** Interactive SVG speedometer gauge on Step3 (Experience Rating) that visualizes the experience modification factor. Green/yellow/orange/red arc segments with an animated needle, rating labels (Excellent → High Risk), and smooth easing transitions. Component: `src/components/quote-flow/Hazometer.tsx`.
 
 ## External Dependencies
 
