@@ -62,8 +62,13 @@ export default function ClassCodeSearch({ value, description, onChange, state }:
   };
 
   const handleSelect = (item: ClassCodeResult) => {
-    onChange(item.classCode, item.description);
-    setQuery(`${item.classCode} - ${item.description}`);
+    // Normalize numeric codes by stripping leading zeros so "0035" -> "35"
+    // matches the canonical form stored in the WC rate sheet.
+    const normalizedCode = /^[0-9]+$/.test(item.classCode)
+      ? item.classCode.replace(/^0+/, "") || "0"
+      : item.classCode;
+    onChange(normalizedCode, item.description);
+    setQuery(`${normalizedCode} - ${item.description}`);
     setOpen(false);
   };
 

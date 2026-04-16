@@ -9,10 +9,21 @@ router.get("/class-codes/search", async (req, res) => {
   const searchTerm = String(q).trim();
   if (searchTerm.length < 1) return res.json([]);
 
+  // Normalize numeric search terms by stripping leading zeros so e.g.
+  // "0035" matches the canonical "35" stored in the rate sheet.
+  const isNumeric = /^[0-9]+$/.test(searchTerm);
+  const normalized = isNumeric ? searchTerm.replace(/^0+/, "") || "0" : searchTerm;
+
   const conditions = [];
-  conditions.push(
-    sql`(${wcRatesTable.classCode} ILIKE ${`%${searchTerm}%`} OR ${wcRatesTable.description} ILIKE ${`%${searchTerm}%`})`
-  );
+  if (isNumeric && normalized !== searchTerm) {
+    conditions.push(
+      sql`(${wcRatesTable.classCode} ILIKE ${`%${searchTerm}%`} OR ${wcRatesTable.classCode} = ${normalized} OR ${wcRatesTable.description} ILIKE ${`%${searchTerm}%`})`
+    );
+  } else {
+    conditions.push(
+      sql`(${wcRatesTable.classCode} ILIKE ${`%${searchTerm}%`} OR ${wcRatesTable.description} ILIKE ${`%${searchTerm}%`})`
+    );
+  }
   if (stateFilter) conditions.push(eq(wcRatesTable.state, String(stateFilter)));
 
   const rows = await db
