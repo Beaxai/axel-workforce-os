@@ -405,7 +405,17 @@ export const useQuoteFlowStore = create<QuoteFlowState & QuoteFlowActions>((set,
 
   setStep: (step) => set({ currentStep: step }),
 
-  setPhase: (phase) => set({ phase }),
+  setPhase: (phase) =>
+    set((s) => {
+      const updates: Partial<QuoteFlowState> = { phase };
+      if (phase === 2) {
+        if (!s.streetAddress && s.primaryStreetAddress) updates.streetAddress = s.primaryStreetAddress;
+        if (!s.city && s.primaryCity) updates.city = s.primaryCity;
+        if (!s.addressState && s.primaryState) updates.addressState = s.primaryState;
+        if (!s.zip && s.primaryZip) updates.zip = s.primaryZip;
+      }
+      return updates;
+    }),
 
   updatePrimaryAddress: (fields) =>
     set((s) => {
