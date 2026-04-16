@@ -106,7 +106,8 @@ export default function QuoteWizard() {
     store.currentStep === finalStepIndex || store.currentStep === confirmStepIndex
   );
 
-  const showNav = !isIndicationScreen && !isTransition && !isFinalOrConfirm;
+  const showContinue = !isIndicationScreen && !isTransition && !isFinalOrConfirm;
+  const showBack = true;
 
   const getProgressInfo = () => {
     if (store.phase === 1) {
@@ -172,36 +173,40 @@ export default function QuoteWizard() {
         {renderStep()}
       </div>
 
-      {showNav && (
+      {(showBack || showContinue) && (
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "24px 0", marginTop: 24 }}>
-          <button
-            type="button"
-            onClick={handleBack}
-            style={{
-              display: "flex", alignItems: "center", gap: 8, padding: "12px 24px", borderRadius: 24,
-              border: "none", background: btnBg, color: textPrimary, fontSize: 14,
-              fontWeight: 600, cursor: "pointer", height: 44, transition: "background 0.15s",
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = btnHoverBg)}
-            onMouseLeave={(e) => (e.currentTarget.style.background = btnBg)}
-          >
-            <ArrowLeft style={{ width: 16, height: 16 }} />
-            Back
-          </button>
-          <button
-            type="button"
-            onClick={handleNext}
-            style={{
-              display: "flex", alignItems: "center", gap: 8, padding: "12px 24px", borderRadius: 24,
-              border: "none", background: btnBg, color: textPrimary, fontSize: 14,
-              fontWeight: 600, cursor: "pointer", height: 44, transition: "background 0.15s",
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = btnHoverBg)}
-            onMouseLeave={(e) => (e.currentTarget.style.background = btnBg)}
-          >
-            Continue
-            <ArrowRight style={{ width: 16, height: 16 }} />
-          </button>
+          {showBack ? (
+            <button
+              type="button"
+              onClick={handleBack}
+              style={{
+                display: "flex", alignItems: "center", gap: 8, padding: "12px 24px", borderRadius: 24,
+                border: "none", background: btnBg, color: textPrimary, fontSize: 14,
+                fontWeight: 600, cursor: "pointer", height: 44, transition: "background 0.15s",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = btnHoverBg)}
+              onMouseLeave={(e) => (e.currentTarget.style.background = btnBg)}
+            >
+              <ArrowLeft style={{ width: 16, height: 16 }} />
+              Back
+            </button>
+          ) : <span />}
+          {showContinue && (
+            <button
+              type="button"
+              onClick={handleNext}
+              style={{
+                display: "flex", alignItems: "center", gap: 8, padding: "12px 24px", borderRadius: 24,
+                border: "none", background: btnBg, color: textPrimary, fontSize: 14,
+                fontWeight: 600, cursor: "pointer", height: 44, transition: "background 0.15s",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = btnHoverBg)}
+              onMouseLeave={(e) => (e.currentTarget.style.background = btnBg)}
+            >
+              Continue
+              <ArrowRight style={{ width: 16, height: 16 }} />
+            </button>
+          )}
         </div>
       )}
     </div>
