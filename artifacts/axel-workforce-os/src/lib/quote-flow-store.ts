@@ -114,6 +114,7 @@ export interface QuoteFlowState {
   generalQuestionsDetails: Record<string, string>;
 
   hoursOfOperation: string;
+  payrollFrequency: string;
   cannabisOperations: string[];
   consumedOnSite: string;
   consumptionMethods: string[];
@@ -298,6 +299,7 @@ const initialState: Omit<QuoteFlowState, keyof QuoteFlowActions> = {
   generalQuestions: {},
   generalQuestionsDetails: {},
   hoursOfOperation: "",
+  payrollFrequency: "",
   cannabisOperations: [],
   consumedOnSite: "",
   consumptionMethods: [],

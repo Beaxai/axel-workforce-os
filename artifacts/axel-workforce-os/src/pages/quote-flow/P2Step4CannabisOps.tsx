@@ -2,8 +2,14 @@ import { useThemeColors } from "@/lib/use-theme-colors";
 import { useQuoteFlowStore } from "@/lib/quote-flow-store";
 import {
   FormSection, FieldGrid, FieldLabel, TextInput, NumberInput,
-  MultiSelect, YesNoToggle, RadioGroup,
+  MultiSelect, YesNoToggle, RadioGroup, SelectInput,
 } from "@/components/quote-flow/FormFields";
+
+const PAYROLL_FREQUENCY_OPTIONS = [
+  { value: "Weekly", label: "Weekly (52 cycles/year)" },
+  { value: "BiWeekly", label: "Bi-Weekly (26 cycles/year)" },
+  { value: "Monthly", label: "Monthly (12 cycles/year)" },
+];
 
 const OPERATIONS_OPTIONS = [
   { value: "Dispensary", label: "Dispensary" },
@@ -60,6 +66,14 @@ export default function P2Step4CannabisOps() {
           </FieldLabel>
           <FieldLabel label="Max Employee Concentration Per Shift">
             <NumberInput value={s.maxConcentration} onChange={(v) => s.update({ maxConcentration: v })} placeholder="Number" />
+          </FieldLabel>
+          <FieldLabel label="Payroll Frequency" required>
+            <SelectInput
+              value={s.payrollFrequency}
+              onChange={(v) => s.update({ payrollFrequency: v })}
+              options={PAYROLL_FREQUENCY_OPTIONS}
+              placeholder="Select frequency"
+            />
           </FieldLabel>
         </FieldGrid>
 

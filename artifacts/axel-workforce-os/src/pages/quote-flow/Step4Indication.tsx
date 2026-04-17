@@ -168,6 +168,16 @@ export default function Step4Indication() {
     s.setStep(0);
   };
 
+  const PEO_BASE_RATE = 0.02;
+  const peoAnnual = Math.round(totalPayroll * PEO_BASE_RATE);
+  const peoEmployees = Math.max(totalEmployees, 1);
+  const peoFrequencies = [
+    { key: "Monthly", label: "Monthly", cycles: 12, unit: "PEPM" },
+    { key: "BiWeekly", label: "Bi-Weekly", cycles: 26, unit: "PEPC" },
+    { key: "Weekly", label: "Weekly", cycles: 52, unit: "PEPC" },
+  ] as const;
+  const selectedFreq = s.payrollFrequency;
+
   const highlights = [
     "Statutory workers' compensation coverage",
     "Employer's liability included",
@@ -303,6 +313,64 @@ export default function Step4Indication() {
         <p style={{ fontSize: 13, color: "#E91E8C", fontWeight: 600, margin: "0 0 24px" }}>
           Final Indicated Range: ${premiumLow.toLocaleString()} – ${premiumHigh.toLocaleString()}
         </p>
+
+        <div
+          style={{
+            padding: 20,
+            borderRadius: 12,
+            background: isDark ? "#13131f" : "#f8f8fc",
+            borderLeft: "3px solid #7C3AED",
+            marginBottom: 24,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+            <span style={{ fontSize: 12, color: textMuted, textTransform: "uppercase", letterSpacing: "0.05em", fontFamily: "var(--app-font-heading)" }}>
+              PEO Service Pricing
+            </span>
+            <span style={{ fontSize: 11, color: textMuted }}>
+              {(PEO_BASE_RATE * 100).toFixed(0)}% of annual payroll
+            </span>
+          </div>
+          <div style={{ fontSize: 24, fontWeight: 700, color: textPrimary, margin: "6px 0 4px" }}>
+            ${peoAnnual.toLocaleString()}
+            <span style={{ fontSize: 13, color: textMuted, fontWeight: 500, marginLeft: 8 }}>annual base</span>
+          </div>
+          <p style={{ fontSize: 12, color: textMuted, margin: "0 0 14px" }}>
+            Based on ${totalPayroll.toLocaleString()} payroll across {peoEmployees} employee{peoEmployees !== 1 ? "s" : ""}
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
+            {peoFrequencies.map((f) => {
+              const perCycle = peoAnnual / peoEmployees / f.cycles;
+              const isSelected = selectedFreq === f.key;
+              return (
+                <div
+                  key={f.key}
+                  style={{
+                    padding: "12px 14px",
+                    borderRadius: 10,
+                    background: isSelected ? "rgba(124,58,237,0.12)" : isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)",
+                    border: isSelected ? "1px solid rgba(124,58,237,0.4)" : `1px solid ${borderColor}`,
+                  }}
+                >
+                  <div style={{ fontSize: 10, color: isSelected ? "#A78BFA" : textMuted, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: "var(--app-font-heading)", marginBottom: 4 }}>
+                    {f.label}
+                  </div>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: textPrimary }}>
+                    ${perCycle.toFixed(0)}
+                  </div>
+                  <div style={{ fontSize: 10, color: textMuted, marginTop: 2 }}>
+                    {f.unit} • {f.cycles}/yr
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {!selectedFreq && (
+            <p style={{ fontSize: 11, color: "#FFB547", margin: "10px 0 0", fontStyle: "italic" }}>
+              Select a payroll frequency on the Operations step to highlight your billing cadence.
+            </p>
+          )}
+        </div>
 
         <p style={{ fontSize: 12, color: textMuted, fontStyle: "italic", lineHeight: 1.6 }}>
           This indication is based on the information provided and is not a guarantee of final pricing.
