@@ -6,3 +6,9 @@ id = "daBDfxZX_4Fnto5MW-8aG"
 uri = "file://attached_assets/generated_images/generated_image.png"
 type = "image"
 title = "generated_image"
+
+[[generated]]
+id = "U-uedLhcAkFO8IY2wOkn8"
+uri = "file://artifacts/axel-workforce-os/public/images/verticals/all-other.png"
+type = "image"
+title = "generated_image"

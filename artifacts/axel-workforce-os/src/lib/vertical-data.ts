@@ -322,7 +322,7 @@ export const VERTICALS: VerticalData[] = [
     slug: "all-other-industries",
     descriptor: "If it's not listed, we'll find a solution",
     icon: BarChart3,
-    image: "/images/verticals/all-other.jpg",
+    image: "/images/verticals/all-other.png",
     description:
       "Not every business fits neatly into a defined industry vertical, and that\u2019s perfectly fine. Axel\u2019s platform is built to serve employers across the full spectrum of American commerce\u2014from professional services and technology firms to agriculture, education, and beyond. If your industry isn\u2019t listed in our specialty verticals, our team will work to understand your operations, identify the right class codes, and connect you with carriers who can competitively price your workers\u2019 compensation coverage. No business is too niche or too complex for our network of carrier partners and PEO solutions.",
     wcDescription:

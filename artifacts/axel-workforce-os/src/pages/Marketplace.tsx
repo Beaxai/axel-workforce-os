@@ -17,12 +17,12 @@ export default function Marketplace() {
           style={{
             fontFamily: "var(--app-font-heading)",
             fontSize: 12,
-            fontWeight: 600,
-            letterSpacing: "0.08em",
+            fontWeight: 200,
+            letterSpacing: "0.28em",
             textTransform: "uppercase",
             color: "#E91E8C",
             margin: 0,
-            marginBottom: 8,
+            marginBottom: 10,
           }}
         >
           Marketplace
@@ -31,7 +31,7 @@ export default function Marketplace() {
           style={{
             fontFamily: "var(--app-font-heading)",
             fontSize: 36,
-            fontWeight: 600,
+            fontWeight: 300,
             letterSpacing: "0.02em",
             textTransform: "uppercase",
             color: textPrimary,
@@ -65,7 +65,7 @@ export default function Marketplace() {
               onMouseLeave={() => setHoveredSlug(null)}
               style={{
                 position: "relative",
-                aspectRatio: "1 / 1",
+                aspectRatio: "4 / 3",
                 borderRadius: 8,
                 border: "none",
                 overflow: "hidden",
@@ -108,20 +108,21 @@ export default function Marketplace() {
               <div
                 style={{
                   position: "absolute",
-                  top: 16,
-                  left: 16,
-                  right: 16,
+                  top: 18,
+                  left: 20,
+                  right: 20,
                   textAlign: "left",
                 }}
               >
                 <p
                   style={{
-                    fontSize: 15,
+                    fontSize: 22,
                     fontWeight: 700,
                     color: "#fff",
                     margin: 0,
-                    lineHeight: 1.3,
-                    textShadow: "0 1px 3px rgba(0,0,0,0.5)",
+                    lineHeight: 1.2,
+                    letterSpacing: "-0.01em",
+                    textShadow: "0 1px 4px rgba(0,0,0,0.55)",
                   }}
                 >
                   {v.name}

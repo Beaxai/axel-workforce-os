@@ -366,23 +366,23 @@ body {
   outline-color: #ff4ba6;
 }
 
-/* Responsive marketplace category grid — bigger tiles, thin gaps */
+/* Responsive marketplace category grid — bigger flexible tiles, thin gaps */
 .marketplace-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 6px;
 }
-@media (min-width: 1300px) {
+@media (min-width: 1100px) {
   .marketplace-grid {
     grid-template-columns: repeat(4, 1fr);
   }
 }
-@media (min-width: 1700px) {
+@media (min-width: 1500px) {
   .marketplace-grid {
     grid-template-columns: repeat(5, 1fr);
   }
 }
-@media (min-width: 2100px) {
+@media (min-width: 1900px) {
   .marketplace-grid {
     grid-template-columns: repeat(6, 1fr);
   }
