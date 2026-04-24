@@ -114,7 +114,7 @@
   --chart-5: 340 75% 55%;
 
   --app-font-sans: 'Inter', system-ui, sans-serif;
-  --app-font-heading: 'Jost', 'Inter', system-ui, sans-serif;
+  --app-font-heading: 'Jost', 'Open Sans', system-ui, sans-serif;
   --app-font-serif: Georgia, serif;
   --app-font-mono: Menlo, monospace;
   --radius: .5rem; /* 8px */
