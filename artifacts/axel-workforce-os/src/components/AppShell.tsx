@@ -397,7 +397,7 @@ export default function AppShell() {
                       width: "18px",
                       height: "18px",
                       flexShrink: 0,
-                      color: active ? (isDark ? "#fff" : accent) : textMuted,
+                      color: active ? (isDark ? "#fff" : "#111") : textMuted,
                       strokeWidth: 1.75,
                       position: "relative",
                       zIndex: 2,
