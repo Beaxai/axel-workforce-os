@@ -66,13 +66,13 @@ export default function Marketplace() {
               style={{
                 position: "relative",
                 aspectRatio: "1 / 1",
-                borderRadius: 6,
+                borderRadius: 8,
                 border: "none",
                 overflow: "hidden",
                 cursor: "pointer",
                 padding: 0,
-                background: "#1a1a26",
-                transition: "transform 0.2s",
+                background: "#0e0e14",
+                transition: "transform 0.25s ease",
                 transform: isHovered ? "scale(1.015)" : "scale(1)",
               }}
             >
@@ -86,10 +86,10 @@ export default function Marketplace() {
                   height: "100%",
                   objectFit: "cover",
                   filter: isHovered
-                    ? "brightness(0.95) saturate(1.05)"
-                    : "brightness(0.85) saturate(1)",
-                  transition: "filter 0.3s, transform 0.3s",
-                  transform: isHovered ? "scale(1.04)" : "scale(1)",
+                    ? "grayscale(0) brightness(0.9) saturate(1.05)"
+                    : "grayscale(1) brightness(0.55)",
+                  transition: "filter 0.4s ease, transform 0.5s ease",
+                  transform: isHovered ? "scale(1.05)" : "scale(1)",
                 }}
               />
 
@@ -97,8 +97,10 @@ export default function Marketplace() {
                 style={{
                   position: "absolute",
                   inset: 0,
-                  background:
-                    "linear-gradient(180deg, rgba(0,0,0,0) 45%, rgba(0,0,0,0.65) 100%)",
+                  background: isHovered
+                    ? "linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.05) 50%, rgba(0,0,0,0.55) 100%)"
+                    : "linear-gradient(180deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.7) 100%)",
+                  transition: "background 0.4s ease",
                   pointerEvents: "none",
                 }}
               />
@@ -106,7 +108,7 @@ export default function Marketplace() {
               <div
                 style={{
                   position: "absolute",
-                  bottom: 14,
+                  top: 16,
                   left: 16,
                   right: 16,
                   textAlign: "left",
@@ -114,15 +116,12 @@ export default function Marketplace() {
               >
                 <p
                   style={{
-                    fontFamily: "var(--app-font-heading)",
-                    fontSize: 14,
-                    fontWeight: 600,
-                    letterSpacing: "0.04em",
-                    textTransform: "uppercase",
+                    fontSize: 15,
+                    fontWeight: 700,
                     color: "#fff",
                     margin: 0,
-                    lineHeight: 1.2,
-                    textShadow: "0 1px 4px rgba(0,0,0,0.6)",
+                    lineHeight: 1.3,
+                    textShadow: "0 1px 3px rgba(0,0,0,0.5)",
                   }}
                 >
                   {v.name}

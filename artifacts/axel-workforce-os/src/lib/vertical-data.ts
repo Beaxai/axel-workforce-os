@@ -32,7 +32,7 @@ export const VERTICALS: VerticalData[] = [
     slug: "ambulances-emergency-transport",
     descriptor: "Coverage built for first responders on the move",
     icon: Siren,
-    image: "/images/verticals/ambulances.png",
+    image: "/images/verticals/ambulances.jpg",
     description:
       "The ambulance and emergency transport industry faces unique workers\u2019 compensation challenges. From EMTs and paramedics handling high-acuity patients to drivers navigating urgent response conditions, your workforce is exposed to physical strain, infectious disease, and vehicular risk every shift. Axel partners with carriers who understand NCCI class codes specific to emergency medical services, offering tailored programs that address the real exposures your team faces daily. Whether you operate a private ambulance fleet, municipal EMS contract, or non-emergency medical transport service, we build coverage that keeps your crews protected and your operations compliant.",
     wcDescription:
@@ -61,7 +61,7 @@ export const VERTICALS: VerticalData[] = [
     slug: "cannabis",
     descriptor: "Compliant coverage for a growing industry",
     icon: Cannabis,
-    image: "/images/verticals/cannabis.png",
+    image: "/images/verticals/cannabis.jpg",
     description:
       "The cannabis industry operates in a complex regulatory landscape where traditional insurance markets often refuse to participate. From cultivation and processing to retail dispensaries and distribution, cannabis businesses face unique exposures including plant-touching operations, compliance requirements, and rapidly evolving state regulations. Axel works with specialty carriers who understand the nuances of cannabis operations across all license types. We help you navigate the gap between federal and state law to secure legitimate workers\u2019 compensation coverage that protects your employees and keeps your business compliant.",
     wcDescription:
@@ -90,7 +90,7 @@ export const VERTICALS: VerticalData[] = [
     slug: "construction",
     descriptor: "Protect your crew from the ground up",
     icon: HardHat,
-    image: "/images/verticals/construction.png",
+    image: "/images/verticals/construction.jpg",
     description:
       "Construction remains one of the most hazardous industries in the United States, with workers facing falls, equipment accidents, and repetitive strain injuries on a daily basis. Workers\u2019 compensation costs in construction are among the highest of any sector, making it critical to partner with carriers who understand jobsite risk and can price coverage accurately. Axel specializes in connecting general contractors, subcontractors, and specialty trades with insurance programs that reflect the true nature of their operations. Our carrier partners offer experience-rated programs, wrap-up options, and loss control resources that help you manage risk and control premium costs over time.",
     wcDescription:
@@ -119,7 +119,7 @@ export const VERTICALS: VerticalData[] = [
     slug: "garbage-waste-management",
     descriptor: "Reliable coverage for essential services",
     icon: Trash2,
-    image: "/images/verticals/garbage-waste.png",
+    image: "/images/verticals/garbage-waste.jpg",
     description:
       "Waste management and sanitation workers face significant physical hazards every day, from heavy lifting and repetitive motion injuries to exposure to hazardous materials and traffic accidents during collection routes. The industry\u2019s high claim frequency and severity make it difficult to find affordable coverage in the standard market. Axel partners with carriers who specialize in waste hauling, recycling operations, and environmental services to deliver programs that properly classify your workforce and manage risk. We help waste management companies of all sizes\u2014from single-truck operators to multi-facility enterprises\u2014find coverage that keeps employees protected without breaking the budget.",
     wcDescription:
@@ -148,7 +148,7 @@ export const VERTICALS: VerticalData[] = [
     slug: "healthcare",
     descriptor: "Caring for those who care for others",
     icon: HeartPulse,
-    image: "/images/verticals/healthcare.png",
+    image: "/images/verticals/healthcare.jpg",
     description:
       "Healthcare workers face some of the highest injury rates in the American workforce. From patient handling injuries in hospitals and nursing facilities to needle sticks and workplace violence, the healthcare industry presents complex workers\u2019 compensation challenges that require specialized underwriting expertise. Axel connects healthcare organizations with carriers who understand the full spectrum of medical workplace risks. Whether you operate a home health agency, outpatient clinic, skilled nursing facility, or physician practice, we deliver programs that properly address your exposures while keeping premiums competitive through targeted loss control and claims management.",
     wcDescription:
@@ -177,7 +177,7 @@ export const VERTICALS: VerticalData[] = [
     slug: "high-experience-mod",
     descriptor: "Solutions when others say no",
     icon: TriangleAlert,
-    image: "/images/verticals/high-exp-mod.png",
+    image: "/images/verticals/high-exp-mod.jpg",
     description:
       "When your experience modification rate exceeds 1.0, finding affordable workers\u2019 compensation coverage becomes a significant challenge. Many standard carriers decline businesses with elevated loss histories, leaving employers struggling to maintain coverage and comply with state requirements. Axel specializes in connecting hard-to-place risks with carriers and programs designed specifically for accounts with challenging loss histories. We go beyond simply finding coverage\u2014we help you develop loss control strategies, implement safety programs, and build a path back to the standard market. Our approach combines specialty carrier access with hands-on risk management consulting to reduce your mod over time.",
     wcDescription:
@@ -206,7 +206,7 @@ export const VERTICALS: VerticalData[] = [
     slug: "hospitality",
     descriptor: "Coverage as welcoming as your service",
     icon: UtensilsCrossed,
-    image: "/images/verticals/hospitality.png",
+    image: "/images/verticals/hospitality.jpg",
     description:
       "The hospitality industry employs millions of workers across hotels, restaurants, bars, event venues, and catering operations. With high employee turnover, part-time workforces, and common injuries including slips, falls, burns, and repetitive motion, hospitality businesses need workers\u2019 compensation programs that can adapt to their dynamic operations. Axel works with carriers who specialize in hospitality risk, offering programs that account for seasonal staffing fluctuations, tip-based compensation structures, and multi-location operations. From a single restaurant to a hotel portfolio, we build coverage that protects your team and your bottom line.",
     wcDescription:
@@ -235,7 +235,7 @@ export const VERTICALS: VerticalData[] = [
     slug: "manufacturing",
     descriptor: "Engineered protection for your workforce",
     icon: Factory,
-    image: "/images/verticals/manufacturing.png",
+    image: "/images/verticals/manufacturing.jpg",
     description:
       "Manufacturing facilities present complex workers\u2019 compensation exposures ranging from heavy machinery accidents and repetitive motion injuries to chemical exposure and material handling risks. With multiple job classifications often operating under one roof, accurate class code assignment is critical to controlling premium costs. Axel partners with carriers experienced in manufacturing risk to deliver programs that properly classify your workforce, implement targeted safety protocols, and manage claims efficiently. Whether you operate a light assembly operation or a heavy industrial plant, we build coverage that reflects the true nature of your manufacturing processes.",
     wcDescription:
@@ -264,7 +264,7 @@ export const VERTICALS: VerticalData[] = [
     slug: "staffing",
     descriptor: "Temporary & contract workforce",
     icon: UsersRound,
-    image: "/images/verticals/staffing.png",
+    image: "/images/verticals/staffing.jpg",
     description:
       "Staffing agencies face unique workers\u2019 compensation challenges. You\u2019re placing employees at client worksites across multiple industries, often with limited control over workplace safety conditions. Class code complexity, employee turnover, and the dual-employer relationship create risk management issues that standard carriers frequently decline. Axel works with carriers who specialize in staffing industry risk, offering programs that handle multi-state, multi-classification payrolls and provide the flexibility to scale coverage as your placements grow. We understand the staffing business model and build coverage that supports your growth without exposing you to uncontrolled risk.",
     wcDescription:
@@ -293,7 +293,7 @@ export const VERTICALS: VerticalData[] = [
     slug: "transportation",
     descriptor: "Trucking, logistics, delivery",
     icon: Truck,
-    image: "/images/verticals/transportation.png",
+    image: "/images/verticals/transportation.jpg",
     description:
       "The transportation industry encompasses trucking, last-mile delivery, freight logistics, and passenger services\u2014all with significant workers\u2019 compensation exposures. Drivers face long hours, loading and unloading injuries, vehicular accidents, and repetitive strain. The combination of DOT compliance requirements, CDL workforce management, and interstate operations makes transportation one of the more complex industries to insure. Axel partners with carriers who specialize in motor carrier and logistics risk, offering programs that properly classify your drivers, dock workers, and dispatchers while providing loss control resources that address the real hazards of the road.",
     wcDescription:
@@ -322,7 +322,7 @@ export const VERTICALS: VerticalData[] = [
     slug: "all-other-industries",
     descriptor: "If it's not listed, we'll find a solution",
     icon: BarChart3,
-    image: "/images/verticals/all-other.png",
+    image: "/images/verticals/all-other.jpg",
     description:
       "Not every business fits neatly into a defined industry vertical, and that\u2019s perfectly fine. Axel\u2019s platform is built to serve employers across the full spectrum of American commerce\u2014from professional services and technology firms to agriculture, education, and beyond. If your industry isn\u2019t listed in our specialty verticals, our team will work to understand your operations, identify the right class codes, and connect you with carriers who can competitively price your workers\u2019 compensation coverage. No business is too niche or too complex for our network of carrier partners and PEO solutions.",
     wcDescription:
