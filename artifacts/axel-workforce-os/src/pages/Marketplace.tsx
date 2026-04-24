@@ -12,7 +12,7 @@ export default function Marketplace() {
 
   return (
     <div style={{ width: "100%" }}>
-      <div style={{ marginBottom: 32 }}>
+      <div style={{ marginBottom: 32, textAlign: "center" }}>
         <p
           style={{
             fontFamily: "var(--app-font-heading)",
@@ -65,7 +65,7 @@ export default function Marketplace() {
               onMouseLeave={() => setHoveredSlug(null)}
               style={{
                 position: "relative",
-                aspectRatio: "4 / 3",
+                aspectRatio: "1 / 1",
                 borderRadius: 8,
                 border: "none",
                 overflow: "hidden",
@@ -85,11 +85,18 @@ export default function Marketplace() {
                   width: "100%",
                   height: "100%",
                   objectFit: "cover",
+                  objectPosition: v.slug === "all-other-industries" ? "center 60%" : "center",
                   filter: isHovered
                     ? "grayscale(0) brightness(0.9) saturate(1.05)"
                     : "grayscale(1) brightness(0.55)",
                   transition: "filter 0.4s ease, transform 0.5s ease",
-                  transform: isHovered ? "scale(1.05)" : "scale(1)",
+                  transform: isHovered
+                    ? v.slug === "all-other-industries"
+                      ? "scale(1.4)"
+                      : "scale(1.05)"
+                    : v.slug === "all-other-industries"
+                      ? "scale(1.3)"
+                      : "scale(1)",
                 }}
               />
 

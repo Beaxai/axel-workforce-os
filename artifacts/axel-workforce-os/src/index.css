@@ -366,25 +366,15 @@ body {
   outline-color: #ff4ba6;
 }
 
-/* Responsive marketplace category grid — bigger flexible tiles, thin gaps */
+/* Responsive marketplace category grid — large tiles that fill the page */
 .marketplace-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
+  gap: 8px;
 }
 @media (min-width: 1100px) {
   .marketplace-grid {
     grid-template-columns: repeat(4, 1fr);
-  }
-}
-@media (min-width: 1500px) {
-  .marketplace-grid {
-    grid-template-columns: repeat(5, 1fr);
-  }
-}
-@media (min-width: 1900px) {
-  .marketplace-grid {
-    grid-template-columns: repeat(6, 1fr);
   }
 }
 @media (max-width: 760px) {
