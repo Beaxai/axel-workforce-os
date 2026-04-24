@@ -32,7 +32,8 @@ export default function Marketplace() {
             fontFamily: "var(--app-font-heading)",
             fontSize: 36,
             fontWeight: 600,
-            letterSpacing: "-0.01em",
+            letterSpacing: "0.02em",
+            textTransform: "uppercase",
             color: textPrimary,
             margin: 0,
             marginBottom: 8,
@@ -65,14 +66,14 @@ export default function Marketplace() {
               style={{
                 position: "relative",
                 aspectRatio: "1 / 1",
-                borderRadius: 10,
+                borderRadius: 6,
                 border: "none",
                 overflow: "hidden",
                 cursor: "pointer",
                 padding: 0,
                 background: "#1a1a26",
                 transition: "transform 0.2s",
-                transform: isHovered ? "scale(1.02)" : "scale(1)",
+                transform: isHovered ? "scale(1.015)" : "scale(1)",
               }}
             >
               <img
@@ -84,14 +85,11 @@ export default function Marketplace() {
                   width: "100%",
                   height: "100%",
                   objectFit: "cover",
-                  filter: "brightness(0.55) grayscale(0.3)",
+                  filter: isHovered
+                    ? "brightness(0.95) saturate(1.05)"
+                    : "brightness(0.85) saturate(1)",
                   transition: "filter 0.3s, transform 0.3s",
-                  ...(isHovered
-                    ? {
-                        filter: "brightness(0.7) grayscale(0)",
-                        transform: "scale(1.05)",
-                      }
-                    : {}),
+                  transform: isHovered ? "scale(1.04)" : "scale(1)",
                 }}
               />
 
@@ -100,28 +98,31 @@ export default function Marketplace() {
                   position: "absolute",
                   inset: 0,
                   background:
-                    "linear-gradient(180deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.15) 50%, rgba(0,0,0,0.5) 100%)",
+                    "linear-gradient(180deg, rgba(0,0,0,0) 45%, rgba(0,0,0,0.65) 100%)",
+                  pointerEvents: "none",
                 }}
               />
 
               <div
                 style={{
                   position: "absolute",
-                  top: 20,
-                  left: 20,
-                  right: 20,
+                  bottom: 14,
+                  left: 16,
+                  right: 16,
                   textAlign: "left",
                 }}
               >
                 <p
                   style={{
-                    fontSize: 20,
-                    fontWeight: 700,
+                    fontFamily: "var(--app-font-heading)",
+                    fontSize: 14,
+                    fontWeight: 600,
+                    letterSpacing: "0.04em",
+                    textTransform: "uppercase",
                     color: "#fff",
                     margin: 0,
-                    lineHeight: 1.25,
-                    letterSpacing: "-0.01em",
-                    textShadow: "0 1px 3px rgba(0,0,0,0.5)",
+                    lineHeight: 1.2,
+                    textShadow: "0 1px 4px rgba(0,0,0,0.6)",
                   }}
                 >
                   {v.name}
