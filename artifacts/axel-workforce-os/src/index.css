@@ -113,8 +113,8 @@
   --chart-4: 280 65% 60%;
   --chart-5: 340 75% 55%;
 
-  --app-font-sans: 'Open Sans', system-ui, sans-serif;
-  --app-font-heading: 'Jost', 'Open Sans', system-ui, sans-serif;
+  --app-font-sans: 'Inter', system-ui, sans-serif;
+  --app-font-heading: 'Jost', 'Inter', system-ui, sans-serif;
   --app-font-serif: Georgia, serif;
   --app-font-mono: Menlo, monospace;
   --radius: .5rem; /* 8px */
@@ -344,6 +344,7 @@ html {
 
 body {
   font-family: var(--app-font-sans);
+  letter-spacing: -0.005em;
 }
 
 .font-heading {
@@ -351,4 +352,16 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.06em;
   font-weight: 600;
+}
+
+/* Visible keyboard focus for refreshed sidebar controls */
+.axel-sidebar-control:focus {
+  outline: none;
+}
+.axel-sidebar-control:focus-visible {
+  outline: 2px solid #E91E8C;
+  outline-offset: 2px;
+}
+.dark .axel-sidebar-control:focus-visible {
+  outline-color: #ff4ba6;
 }

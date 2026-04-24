@@ -78,7 +78,7 @@ export default function AppShell() {
     <div style={{ display: "flex", height: "100vh", background: bg, overflow: "hidden" }}>
       <aside
         style={{
-          width: collapsed ? "64px" : "240px",
+          width: collapsed ? "64px" : "280px",
           display: "flex",
           flexDirection: "column",
           flexShrink: 0,
@@ -87,28 +87,45 @@ export default function AppShell() {
           borderRight: `1px solid ${borderColor}`,
         }}
       >
+        {/* Brand row */}
         <div
           style={{
-            height: "56px",
+            height: "64px",
             display: "flex",
             alignItems: "center",
             justifyContent: collapsed ? "center" : "space-between",
-            padding: "0 12px",
-            borderBottom: `1px solid ${borderColor}`,
+            padding: collapsed ? "0" : "0 16px",
+            flexShrink: 0,
           }}
         >
           {collapsed ? (
-            <img
-              src={`${import.meta.env.BASE_URL || "/"}images/axel-icon-color.png`}
-              alt="Axel"
-              style={{
-                height: "28px",
-                width: "28px",
-                objectFit: "contain",
-                cursor: "pointer",
-              }}
+            <button
               onClick={() => setCollapsed(false)}
-            />
+              aria-label="Expand sidebar"
+              className="axel-sidebar-control"
+              style={{
+                width: "32px",
+                height: "32px",
+                padding: 0,
+                border: "none",
+                background: "transparent",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                borderRadius: "8px",
+              }}
+            >
+              <img
+                src={`${import.meta.env.BASE_URL || "/"}images/axel-icon-color.png`}
+                alt="Axel"
+                style={{
+                  height: "28px",
+                  width: "28px",
+                  objectFit: "contain",
+                }}
+              />
+            </button>
           ) : (
             <>
               <img
@@ -123,57 +140,201 @@ export default function AppShell() {
               />
               <button
                 onClick={() => setCollapsed(true)}
+                aria-label="Collapse sidebar"
+                className="axel-sidebar-control"
                 style={{
-                  padding: "6px",
-                  borderRadius: "6px",
-                  border: "none",
+                  width: "28px",
+                  height: "28px",
+                  borderRadius: "8px",
+                  border: `1px solid ${borderColor}`,
                   background: "transparent",
                   color: textMuted,
                   cursor: "pointer",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
+                  flexShrink: 0,
                 }}
                 onMouseEnter={(e) => (e.currentTarget.style.background = hoverBg)}
                 onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                title="Collapse sidebar"
               >
-                <ChevronLeft style={{ width: "16px", height: "16px" }} />
+                <ChevronLeft style={{ width: "14px", height: "14px" }} />
               </button>
             </>
           )}
         </div>
 
+        {/* Workspace switcher pill */}
+        {!collapsed && (
+          <div style={{ position: "relative", padding: "0 12px 12px 12px" }}>
+            <button
+              onClick={() => setRoleSwitcherOpen(!roleSwitcherOpen)}
+              aria-label="Switch workspace / role"
+              aria-expanded={roleSwitcherOpen}
+              className="axel-sidebar-control"
+              style={{
+                width: "100%",
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                padding: "8px 10px 8px 8px",
+                borderRadius: "12px",
+                fontSize: "13px",
+                fontWeight: 500,
+                background: glassBg,
+                border: `1px solid ${borderColor}`,
+                color: textPrimary,
+                cursor: "pointer",
+                transition: "background 0.15s",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = hoverBg)}
+              onMouseLeave={(e) => (e.currentTarget.style.background = glassBg)}
+            >
+              <div
+                style={{
+                  width: "28px",
+                  height: "28px",
+                  borderRadius: "8px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "13px",
+                  fontWeight: 700,
+                  background: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)",
+                  border: `1px solid ${borderColor}`,
+                  color: textPrimary,
+                  flexShrink: 0,
+                }}
+              >
+                A
+              </div>
+              <span
+                style={{
+                  flex: 1,
+                  textAlign: "left",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {ROLE_LABELS[user.role]}
+              </span>
+              <ChevronDown
+                style={{
+                  width: "14px",
+                  height: "14px",
+                  color: textMuted,
+                  flexShrink: 0,
+                }}
+              />
+            </button>
+
+            {roleSwitcherOpen && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: "100%",
+                  left: "12px",
+                  right: "12px",
+                  marginTop: "4px",
+                  borderRadius: "10px",
+                  padding: "4px",
+                  zIndex: 50,
+                  background: dropdownBg,
+                  border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)"}`,
+                  backdropFilter: "blur(12px)",
+                  boxShadow: "0 8px 24px rgba(0,0,0,0.25)",
+                }}
+              >
+                {ALL_ROLES.map((role) => (
+                  <button
+                    key={role}
+                    onClick={() => handleSwitchRole(role)}
+                    className="axel-sidebar-control"
+                    style={{
+                      width: "100%",
+                      textAlign: "left",
+                      padding: "8px 10px",
+                      fontSize: "12px",
+                      fontWeight: 500,
+                      border: "none",
+                      borderRadius: "6px",
+                      cursor: "pointer",
+                      color: role === user.role ? (role === "ADMIN" ? "#7C3AED" : "#E91E8C") : textSecondary,
+                      background:
+                        role === user.role
+                          ? role === "ADMIN"
+                            ? "rgba(124,58,237,0.10)"
+                            : "rgba(233,30,140,0.10)"
+                          : "transparent",
+                      transition: "background 0.1s",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (role !== user.role) e.currentTarget.style.background = hoverBg;
+                    }}
+                    onMouseLeave={(e) => {
+                      if (role !== user.role) e.currentTarget.style.background = "transparent";
+                    }}
+                  >
+                    {ROLE_LABELS[role]}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Nav items */}
         <nav
           style={{
             flex: 1,
-            padding: "8px",
+            padding: collapsed ? "8px" : "0 12px 12px 12px",
             overflowY: "auto",
             display: "flex",
             flexDirection: "column",
-            gap: "2px",
+            gap: "6px",
           }}
         >
           {navItems.map((item) => {
             const active = isActive(item);
             const locked = item.locked;
+            const isAdmin = user.role === "ADMIN";
+            const accent = isAdmin ? "#7C3AED" : "#E91E8C";
+            const accentRgb = isAdmin ? "124,58,237" : "233,30,140";
+            const activeGradient = isDark
+              ? `linear-gradient(90deg, rgba(${accentRgb},0.04) 0%, rgba(${accentRgb},0.55) 100%)`
+              : `linear-gradient(90deg, rgba(${accentRgb},0.08) 0%, rgba(${accentRgb},0.35) 100%)`;
+            const activeShadow = `0 0 0 1px rgba(${accentRgb},0.25), 0 8px 24px -8px rgba(${accentRgb},0.45)`;
             return (
               <Link
                 key={item.path}
                 to={locked ? "#" : item.path}
                 onClick={(e) => locked && e.preventDefault()}
+                aria-current={active ? "page" : undefined}
+                className="axel-sidebar-control"
                 style={{
                   display: "flex",
                   alignItems: "center",
                   gap: "12px",
-                  padding: collapsed ? "8px" : "8px 12px",
-                  borderRadius: "8px",
-                  fontSize: "14px",
+                  padding: collapsed ? "10px" : "10px 14px",
+                  borderRadius: "12px",
+                  fontSize: "15px",
                   fontWeight: 500,
                   textDecoration: "none",
-                  transition: "background 0.15s",
-                  background: active ? "rgba(233,30,140,0.15)" : "transparent",
-                  color: locked ? textMuted : active ? "#E91E8C" : textSecondary,
-                  borderLeft: active ? "3px solid #E91E8C" : "3px solid transparent",
+                  transition: "background 0.15s, box-shadow 0.15s",
+                  background: active ? activeGradient : "transparent",
+                  color: locked
+                    ? textMuted
+                    : active
+                      ? isDark
+                        ? "#fff"
+                        : "#111"
+                      : textSecondary,
+                  border: active
+                    ? `1px solid rgba(255,255,255,${isDark ? 0.06 : 0.0})`
+                    : "1px solid transparent",
+                  boxShadow: active ? activeShadow : "none",
                   opacity: locked ? 0.5 : 1,
                   cursor: locked ? "not-allowed" : "pointer",
                   justifyContent: collapsed ? "center" : "flex-start",
@@ -189,19 +350,21 @@ export default function AppShell() {
                 {locked ? (
                   <Lock
                     style={{
-                      width: "16px",
-                      height: "16px",
+                      width: "18px",
+                      height: "18px",
                       flexShrink: 0,
                       color: textMuted,
+                      strokeWidth: 1.75,
                     }}
                   />
                 ) : (
                   <item.icon
                     style={{
-                      width: "16px",
-                      height: "16px",
+                      width: "18px",
+                      height: "18px",
                       flexShrink: 0,
-                      color: active ? "#E91E8C" : textMuted,
+                      color: active ? (isDark ? "#fff" : accent) : textMuted,
+                      strokeWidth: 1.75,
                     }}
                   />
                 )}
@@ -211,89 +374,22 @@ export default function AppShell() {
           })}
         </nav>
 
+        {/* Footer — Sign Out only */}
         <div style={{ padding: "12px", borderTop: `1px solid ${borderColor}` }}>
-          {!collapsed && (
-            <div style={{ position: "relative", marginBottom: "8px" }}>
-              <button
-                onClick={() => setRoleSwitcherOpen(!roleSwitcherOpen)}
-                style={{
-                  width: "100%",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  padding: "8px 12px",
-                  borderRadius: "8px",
-                  fontSize: "12px",
-                  fontWeight: 500,
-                  background: glassBg,
-                  border: `1px solid ${borderColor}`,
-                  color: textSecondary,
-                  cursor: "pointer",
-                }}
-              >
-                <span>{ROLE_LABELS[user.role]}</span>
-                <ChevronDown style={{ width: "12px", height: "12px" }} />
-              </button>
-
-              {roleSwitcherOpen && (
-                <div
-                  style={{
-                    position: "absolute",
-                    bottom: "100%",
-                    left: 0,
-                    width: "100%",
-                    marginBottom: "4px",
-                    borderRadius: "8px",
-                    padding: "4px 0",
-                    zIndex: 50,
-                    background: dropdownBg,
-                    border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)"}`,
-                    backdropFilter: "blur(12px)",
-                  }}
-                >
-                  {ALL_ROLES.map((role) => (
-                    <button
-                      key={role}
-                      onClick={() => handleSwitchRole(role)}
-                      style={{
-                        width: "100%",
-                        textAlign: "left",
-                        padding: "6px 12px",
-                        fontSize: "12px",
-                        border: "none",
-                        cursor: "pointer",
-                        color: role === user.role ? "#E91E8C" : textSecondary,
-                        background: role === user.role ? "rgba(233,30,140,0.1)" : "transparent",
-                        transition: "background 0.1s",
-                      }}
-                      onMouseEnter={(e) =>
-                        (e.currentTarget.style.background =
-                          role === user.role ? "rgba(233,30,140,0.15)" : hoverBg)
-                      }
-                      onMouseLeave={(e) =>
-                        (e.currentTarget.style.background =
-                          role === user.role ? "rgba(233,30,140,0.1)" : "transparent")
-                      }
-                    >
-                      {ROLE_LABELS[role]}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
           <button
             onClick={handleLogout}
+            aria-label="Sign out"
+            className="axel-sidebar-control"
             style={{
               display: "flex",
               alignItems: "center",
-              gap: "8px",
-              padding: "8px 12px",
-              borderRadius: "8px",
+              gap: "12px",
+              padding: collapsed ? "10px" : "10px 14px",
+              borderRadius: "12px",
               fontSize: "14px",
+              fontWeight: 500,
               width: "100%",
-              border: "none",
+              border: "1px solid transparent",
               background: "transparent",
               color: textMuted,
               cursor: "pointer",
@@ -303,7 +399,7 @@ export default function AppShell() {
             onMouseEnter={(e) => (e.currentTarget.style.background = hoverBg)}
             onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
           >
-            <LogOut style={{ width: "16px", height: "16px" }} />
+            <LogOut style={{ width: "18px", height: "18px", strokeWidth: 1.75 }} />
             {!collapsed && <span>Sign Out</span>}
           </button>
         </div>
