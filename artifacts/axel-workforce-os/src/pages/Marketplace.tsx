@@ -11,10 +11,11 @@ export default function Marketplace() {
   const { textPrimary, textMuted } = useThemeColors();
 
   return (
-    <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+    <div style={{ width: "100%" }}>
       <div style={{ marginBottom: 32 }}>
         <p
           style={{
+            fontFamily: "var(--app-font-heading)",
             fontSize: 12,
             fontWeight: 600,
             letterSpacing: "0.08em",
@@ -28,8 +29,10 @@ export default function Marketplace() {
         </p>
         <h1
           style={{
-            fontSize: 28,
-            fontWeight: 700,
+            fontFamily: "var(--app-font-heading)",
+            fontSize: 36,
+            fontWeight: 600,
+            letterSpacing: "-0.01em",
             color: textPrimary,
             margin: 0,
             marginBottom: 8,
@@ -49,13 +52,7 @@ export default function Marketplace() {
         </p>
       </div>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(5, 1fr)",
-          gap: 6,
-        }}
-      >
+      <div className="marketplace-grid">
         {VERTICALS.map((v) => {
           const isHovered = hoveredSlug === v.slug;
           return (
@@ -68,7 +65,7 @@ export default function Marketplace() {
               style={{
                 position: "relative",
                 aspectRatio: "1 / 1",
-                borderRadius: 8,
+                borderRadius: 10,
                 border: "none",
                 overflow: "hidden",
                 cursor: "pointer",
@@ -110,19 +107,20 @@ export default function Marketplace() {
               <div
                 style={{
                   position: "absolute",
-                  top: 16,
-                  left: 16,
-                  right: 16,
+                  top: 20,
+                  left: 20,
+                  right: 20,
                   textAlign: "left",
                 }}
               >
                 <p
                   style={{
-                    fontSize: 15,
+                    fontSize: 20,
                     fontWeight: 700,
                     color: "#fff",
                     margin: 0,
-                    lineHeight: 1.3,
+                    lineHeight: 1.25,
+                    letterSpacing: "-0.01em",
                     textShadow: "0 1px 3px rgba(0,0,0,0.5)",
                   }}
                 >

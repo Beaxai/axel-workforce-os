@@ -302,10 +302,14 @@ export default function AppShell() {
             const isAdmin = user.role === "ADMIN";
             const accent = isAdmin ? "#7C3AED" : "#E91E8C";
             const accentRgb = isAdmin ? "124,58,237" : "233,30,140";
-            const activeGradient = isDark
-              ? `linear-gradient(90deg, rgba(${accentRgb},0.04) 0%, rgba(${accentRgb},0.55) 100%)`
-              : `linear-gradient(90deg, rgba(${accentRgb},0.08) 0%, rgba(${accentRgb},0.35) 100%)`;
-            const activeShadow = `0 0 0 1px rgba(${accentRgb},0.25), 0 8px 24px -8px rgba(${accentRgb},0.45)`;
+            const edgeGradient = isAdmin
+              ? "linear-gradient(180deg, #7C3AED 0%, #1E1147 100%)"
+              : "linear-gradient(180deg, #E91E8C 0%, #2D1A5C 100%)";
+            const glowGradient = `linear-gradient(270deg, rgba(${accentRgb},0.45) 0%, rgba(${accentRgb},0) 55%)`;
+            const activePillBg = isDark ? "#15151c" : "rgba(0,0,0,0.04)";
+            const activeBoxShadow = isDark
+              ? "inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -1px 0 rgba(0,0,0,0.4), 0 6px 16px -8px rgba(0,0,0,0.5)"
+              : "inset 0 1px 0 rgba(255,255,255,0.6), inset 0 -1px 0 rgba(0,0,0,0.08), 0 6px 16px -8px rgba(0,0,0,0.18)";
             return (
               <Link
                 key={item.path}
@@ -314,6 +318,7 @@ export default function AppShell() {
                 aria-current={active ? "page" : undefined}
                 className="axel-sidebar-control"
                 style={{
+                  position: "relative",
                   display: "flex",
                   alignItems: "center",
                   gap: "12px",
@@ -323,7 +328,7 @@ export default function AppShell() {
                   fontWeight: 500,
                   textDecoration: "none",
                   transition: "background 0.15s, box-shadow 0.15s",
-                  background: active ? activeGradient : "transparent",
+                  background: active ? activePillBg : "transparent",
                   color: locked
                     ? textMuted
                     : active
@@ -331,10 +336,9 @@ export default function AppShell() {
                         ? "#fff"
                         : "#111"
                       : textSecondary,
-                  border: active
-                    ? `1px solid rgba(255,255,255,${isDark ? 0.06 : 0.0})`
-                    : "1px solid transparent",
-                  boxShadow: active ? activeShadow : "none",
+                  border: "1px solid transparent",
+                  boxShadow: active ? activeBoxShadow : "none",
+                  overflow: "hidden",
                   opacity: locked ? 0.5 : 1,
                   cursor: locked ? "not-allowed" : "pointer",
                   justifyContent: collapsed ? "center" : "flex-start",
@@ -347,6 +351,34 @@ export default function AppShell() {
                 }}
                 title={collapsed ? item.label : undefined}
               >
+                {/* Active state: glow + right-edge accent bar */}
+                {active && !collapsed && (
+                  <>
+                    <span
+                      aria-hidden
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        background: glowGradient,
+                        pointerEvents: "none",
+                        zIndex: 0,
+                      }}
+                    />
+                    <span
+                      aria-hidden
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        bottom: 0,
+                        right: 0,
+                        width: "3px",
+                        background: edgeGradient,
+                        pointerEvents: "none",
+                        zIndex: 1,
+                      }}
+                    />
+                  </>
+                )}
                 {locked ? (
                   <Lock
                     style={{
@@ -355,6 +387,8 @@ export default function AppShell() {
                       flexShrink: 0,
                       color: textMuted,
                       strokeWidth: 1.75,
+                      position: "relative",
+                      zIndex: 2,
                     }}
                   />
                 ) : (
@@ -365,10 +399,14 @@ export default function AppShell() {
                       flexShrink: 0,
                       color: active ? (isDark ? "#fff" : accent) : textMuted,
                       strokeWidth: 1.75,
+                      position: "relative",
+                      zIndex: 2,
                     }}
                   />
                 )}
-                {!collapsed && <span>{item.label}</span>}
+                {!collapsed && (
+                  <span style={{ position: "relative", zIndex: 2 }}>{item.label}</span>
+                )}
               </Link>
             );
           })}
