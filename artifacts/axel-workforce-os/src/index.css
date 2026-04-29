@@ -366,24 +366,42 @@ body {
   outline-color: #ff4ba6;
 }
 
-/* Responsive marketplace category grid — large tiles that fill the page */
+/* Responsive marketplace category grid — fills viewport height, no scroll on desktop */
 .marketplace-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(4, 1fr);
   gap: 8px;
+  flex: 1;
+  min-height: 0;
 }
 @media (min-width: 1100px) {
   .marketplace-grid {
     grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: repeat(3, 1fr);
   }
 }
 @media (max-width: 760px) {
   .marketplace-grid {
     grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: none;
+    grid-auto-rows: minmax(180px, 1fr);
+    flex: none;
   }
 }
 @media (max-width: 460px) {
   .marketplace-grid {
     grid-template-columns: 1fr;
+    grid-template-rows: none;
+    grid-auto-rows: minmax(180px, 1fr);
+    flex: none;
+  }
+}
+/* Short viewports: allow scroll instead of crushing tiles */
+@media (max-height: 700px) {
+  .marketplace-grid {
+    grid-template-rows: none;
+    grid-auto-rows: minmax(160px, 1fr);
+    flex: none;
   }
 }

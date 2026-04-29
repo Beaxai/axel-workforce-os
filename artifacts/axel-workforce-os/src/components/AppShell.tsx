@@ -653,7 +653,15 @@ export default function AppShell() {
 
         <main style={{ flex: 1, overflow: "auto", padding: "32px 40px" }}>
           {location.pathname === "/marketplace" ? (
-            <div style={{ width: "100%" }}>
+            <div
+              style={{
+                width: "100%",
+                height: "100%",
+                display: "flex",
+                flexDirection: "column",
+                minHeight: 0,
+              }}
+            >
               <Outlet />
             </div>
           ) : (

@@ -11,8 +11,22 @@ export default function Marketplace() {
   const { textPrimary, textMuted } = useThemeColors();
 
   return (
-    <div style={{ width: "100%" }}>
-      <div style={{ marginBottom: 32, textAlign: "center" }}>
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        minHeight: 0,
+      }}
+    >
+      <div
+        style={{
+          marginBottom: 20,
+          textAlign: "center",
+          flexShrink: 0,
+        }}
+      >
         <p
           style={{
             fontFamily: "var(--app-font-heading)",
@@ -22,7 +36,7 @@ export default function Marketplace() {
             textTransform: "uppercase",
             color: "#E91E8C",
             margin: 0,
-            marginBottom: 10,
+            marginBottom: 8,
           }}
         >
           Marketplace
@@ -30,20 +44,20 @@ export default function Marketplace() {
         <h1
           style={{
             fontFamily: "var(--app-font-heading)",
-            fontSize: 36,
+            fontSize: 32,
             fontWeight: 300,
             letterSpacing: "0.02em",
             textTransform: "uppercase",
             color: textPrimary,
             margin: 0,
-            marginBottom: 8,
+            marginBottom: 6,
           }}
         >
           Solutions for businesses in every sector
         </h1>
         <p
           style={{
-            fontSize: 15,
+            fontSize: 14,
             color: textMuted,
             margin: 0,
           }}
@@ -65,7 +79,9 @@ export default function Marketplace() {
               onMouseLeave={() => setHoveredSlug(null)}
               style={{
                 position: "relative",
-                aspectRatio: "1 / 1",
+                width: "100%",
+                height: "100%",
+                minHeight: 0,
                 borderRadius: 8,
                 border: "none",
                 overflow: "hidden",
