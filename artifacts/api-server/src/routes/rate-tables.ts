@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db, rateTablesTable, pepmRatesTable, insertRateTableSchema } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
+import { clearClassifyCache } from "../lib/aiClassifyCache.js";
 
 const router: IRouter = Router();
 
@@ -22,6 +23,7 @@ router.post("/", async (req, res) => {
   const parsed = insertRateTableSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues });
   const [row] = await db.insert(rateTablesTable).values(parsed.data).returning();
+  clearClassifyCache();
   res.status(201).json(row);
 });
 

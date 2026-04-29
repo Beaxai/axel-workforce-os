@@ -1,5 +1,10 @@
 import { Router, type IRouter } from "express";
 import Anthropic from "@anthropic-ai/sdk";
+import {
+  getCachedSuggestions,
+  setCachedSuggestions,
+  type ClassCodeSuggestion,
+} from "../lib/aiClassifyCache.js";
 
 const router: IRouter = Router();
 
@@ -24,6 +29,11 @@ router.post("/classify", async (req, res) => {
   }
 
   const sanitizedState = typeof state === "string" ? state.trim().toUpperCase().slice(0, 2) : "";
+
+  const cached = getCachedSuggestions(sanitizedDesc, sanitizedState);
+  if (cached) {
+    return res.json({ success: true, data: cached, cached: true });
+  }
 
   try {
     const client = getClient();
@@ -57,7 +67,7 @@ Return ONLY the JSON array, no other text.`;
     }
 
     const parsed = JSON.parse(jsonMatch[0]);
-    const suggestions = Array.isArray(parsed)
+    const suggestions: ClassCodeSuggestion[] = Array.isArray(parsed)
       ? parsed.slice(0, 5).map((s: any) => ({
           classCode: String(s.classCode || "").slice(0, 10),
           description: String(s.description || "").slice(0, 200),
@@ -66,9 +76,13 @@ Return ONLY the JSON array, no other text.`;
         }))
       : [];
 
-    res.json({ success: true, data: suggestions });
+    if (suggestions.length > 0) {
+      setCachedSuggestions(sanitizedDesc, sanitizedState, suggestions);
+    }
+
+    res.json({ success: true, data: suggestions, cached: false });
   } catch (err: any) {
-    console.error("AI classify error:", err.message);
+    req.log.error({ err }, "AI classify error");
     res.status(500).json({ success: false, error: "AI classification failed" });
   }
 });
