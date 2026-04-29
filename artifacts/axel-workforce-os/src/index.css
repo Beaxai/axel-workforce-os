@@ -397,9 +397,10 @@ body {
     flex: none;
   }
 }
-/* Short viewports: allow scroll instead of crushing tiles */
+/* Short viewports: drop to 3 cols and allow scroll instead of crushing tiles */
 @media (max-height: 700px) {
   .marketplace-grid {
+    grid-template-columns: repeat(3, 1fr);
     grid-template-rows: none;
     grid-auto-rows: minmax(160px, 1fr);
     flex: none;
