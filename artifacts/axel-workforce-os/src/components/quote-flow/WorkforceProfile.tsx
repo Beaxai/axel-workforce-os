@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { useQuoteFlowStore } from "@/lib/quote-flow-store";
-import { FormSection, AddButton, US_STATES_OPTIONS } from "@/components/quote-flow/FormFields";
+import { FormSection, US_STATES_OPTIONS } from "@/components/quote-flow/FormFields";
 import LocationCard from "@/components/quote-flow/LocationCard";
 import { api } from "@/lib/api";
 import { Users, DollarSign, MapPin, Sparkles, Loader2, X, Search, Plus, Info, Check } from "lucide-react";
@@ -704,19 +704,133 @@ export default function WorkforceProfile() {
           </div>
         )}
 
-        {s.locations.map((loc, idx) => (
-          <LocationCard
-            key={loc.id}
-            location={loc}
-            index={idx}
-            canRemove={s.locations.length > 1}
-            stateOptions={stateOptions}
-            appetiteMap={appetiteMap}
-            richMap={RICH}
-          />
-        ))}
-
-        <AddButton label="Add Location" onClick={() => s.addLocation()} />
+        <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
+          <div style={{ flex: "0 0 220px", display: "flex", flexDirection: "column", gap: 6 }}>
+            <div style={{
+              fontSize: 11,
+              fontWeight: 700,
+              color: textMuted,
+              textTransform: "uppercase",
+              letterSpacing: "0.06em",
+              fontFamily: "var(--app-font-heading)",
+              padding: "0 4px 6px",
+            }}>
+              Locations
+            </div>
+            {s.locations.map((loc, idx) => {
+              const isActive = safeTargetIdx === idx;
+              const locPayroll = loc.classCodes.reduce((sum, cc) => sum + (cc.annualPayroll || 0), 0);
+              const locEmployees = loc.classCodes.reduce(
+                (sum, cc) => sum + (cc.fullTimeEmployees || 0) + (cc.partTimeEmployees || 0),
+                0,
+              );
+              const ccCount = loc.classCodes.filter((cc) => cc.classCode).length;
+              return (
+                <button
+                  key={loc.id}
+                  type="button"
+                  onClick={() => setTargetLocationIdx(idx)}
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "flex-start",
+                    gap: 4,
+                    padding: "12px 14px",
+                    borderRadius: 12,
+                    border: `1px solid ${isActive ? "rgba(233,30,140,0.5)" : borderColor}`,
+                    background: isActive
+                      ? (isDark ? "rgba(233,30,140,0.10)" : "rgba(233,30,140,0.06)")
+                      : (isDark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.01)"),
+                    color: isActive ? "#E91E8C" : textPrimary,
+                    cursor: "pointer",
+                    textAlign: "left",
+                    transition: "all 0.15s",
+                    borderLeft: isActive ? "3px solid #E91E8C" : `1px solid ${borderColor}`,
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isActive) {
+                      e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.02)";
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isActive) {
+                      e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.01)";
+                    }
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+                    <span style={{ fontSize: 13, fontWeight: 700 }}>
+                      Location {idx + 1}
+                    </span>
+                    {loc.state && (
+                      <span style={{
+                        fontSize: 10,
+                        fontWeight: 700,
+                        color: isActive ? "#E91E8C" : textMuted,
+                        background: isActive ? "rgba(233,30,140,0.15)" : (isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)"),
+                        padding: "2px 7px",
+                        borderRadius: 8,
+                        letterSpacing: "0.04em",
+                      }}>
+                        {loc.state}
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: 11, color: textMuted, lineHeight: 1.4 }}>
+                    {ccCount} code{ccCount !== 1 ? "s" : ""} · {locEmployees} emp
+                  </div>
+                  <div style={{ fontSize: 11, color: textMuted, lineHeight: 1.4 }}>
+                    ${locPayroll.toLocaleString()} payroll
+                  </div>
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => {
+                s.addLocation();
+                setTimeout(() => {
+                  const next = useQuoteFlowStore.getState().locations.length - 1;
+                  setTargetLocationIdx(next);
+                }, 0);
+              }}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6,
+                marginTop: 4,
+                padding: "10px 14px",
+                borderRadius: 12,
+                border: `1px dashed ${isDark ? "rgba(233,30,140,0.4)" : "rgba(233,30,140,0.35)"}`,
+                background: "transparent",
+                color: "#E91E8C",
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: "pointer",
+                transition: "all 0.15s",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(233,30,140,0.06)")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+            >
+              <Plus style={{ width: 12, height: 12 }} />
+              Add Location
+            </button>
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {targetLoc && (
+              <LocationCard
+                key={targetLoc.id}
+                location={targetLoc}
+                index={safeTargetIdx}
+                canRemove={s.locations.length > 1}
+                stateOptions={stateOptions}
+                appetiteMap={appetiteMap}
+                richMap={RICH}
+              />
+            )}
+          </div>
+        </div>
 
         {totalClassCodes > 0 && (
           <div style={{ marginTop: 12, fontSize: 12, color: textMuted }}>
