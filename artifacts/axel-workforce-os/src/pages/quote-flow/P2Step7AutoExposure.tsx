@@ -2,14 +2,27 @@ import { useThemeColors } from "@/lib/use-theme-colors";
 import { useQuoteFlowStore } from "@/lib/quote-flow-store";
 import {
   FormSection, FieldGrid, FieldLabel, TextInput, NumberInput,
-  YesNoToggle, RadioGroup, MultiSelect,
+  YesNoToggle,
 } from "@/components/quote-flow/FormFields";
 
-const DELIVERY_TYPES = [
-  { value: "Retail", label: "Retail" },
-  { value: "Wholesale", label: "Wholesale" },
-  { value: "Direct to customer", label: "Direct to customer" },
-];
+function Checkbox({ checked, onChange, label, color }: { checked: boolean; onChange: () => void; label: string; color: string }) {
+  return (
+    <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+      <div
+        onClick={onChange}
+        style={{
+          width: 18, height: 18, borderRadius: 4,
+          border: checked ? "none" : "2px solid rgba(255,255,255,0.2)",
+          background: checked ? "#E91E8C" : "transparent",
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}
+      >
+        {checked && <span style={{ color, fontSize: 12, fontWeight: 700 }}>✓</span>}
+      </div>
+      <span style={{ fontSize: 13, color: "#ccc" }}>{label}</span>
+    </label>
+  );
+}
 
 export default function P2Step7AutoExposure() {
   const s = useQuoteFlowStore();
@@ -18,18 +31,82 @@ export default function P2Step7AutoExposure() {
   return (
     <div style={{ maxWidth: 1080, margin: "0 auto" }}>
       <FormSection title="Driving & Delivery Exposure">
-        <FieldGrid columns={2}>
-          <FieldLabel label="Delivery Mileage %">
-            <RadioGroup value={s.deliveryMileagePct} onChange={(v) => s.update({ deliveryMileagePct: v })} options={["<50", "50-100", "100+", "N/A"]} />
+        <div>
+          <FieldLabel label="Driving or delivery mileage % of each (please enter % of driving exposure)">
+            <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "flex-end" }}>
+              <FieldLabel label="<50">
+                <NumberInput
+                  value={s.drivingMileagePctLt50}
+                  onChange={(v) => s.update({ drivingMileagePctLt50: v })}
+                  placeholder="%"
+                  disabled={s.drivingMileageNa}
+                  style={{ maxWidth: 100 }}
+                />
+              </FieldLabel>
+              <FieldLabel label="50-100">
+                <NumberInput
+                  value={s.drivingMileagePct50to100}
+                  onChange={(v) => s.update({ drivingMileagePct50to100: v })}
+                  placeholder="%"
+                  disabled={s.drivingMileageNa}
+                  style={{ maxWidth: 100 }}
+                />
+              </FieldLabel>
+              <FieldLabel label="100+">
+                <NumberInput
+                  value={s.drivingMileagePct100plus}
+                  onChange={(v) => s.update({ drivingMileagePct100plus: v })}
+                  placeholder="%"
+                  disabled={s.drivingMileageNa}
+                  style={{ maxWidth: 100 }}
+                />
+              </FieldLabel>
+              <div style={{ paddingBottom: 8 }}>
+                <Checkbox
+                  checked={s.drivingMileageNa}
+                  onChange={() => s.update({ drivingMileageNa: !s.drivingMileageNa })}
+                  label="N/A"
+                  color={textPrimary}
+                />
+              </div>
+            </div>
           </FieldLabel>
-          <FieldLabel label="Maximum Delivery Mileage">
-            <NumberInput value={s.maxDeliveryMileage} onChange={(v) => s.update({ maxDeliveryMileage: v })} placeholder="Miles" />
-          </FieldLabel>
-        </FieldGrid>
+        </div>
 
         <div style={{ marginTop: 16 }}>
-          <FieldLabel label="Delivery Type %">
-            <MultiSelect values={s.deliveryTypes} onChange={(v) => s.update({ deliveryTypes: v })} options={DELIVERY_TYPES} placeholder="Select types" />
+          <FieldLabel label="Maximum driving or delivery mileage">
+            <NumberInput value={s.maxDeliveryMileage} onChange={(v) => s.update({ maxDeliveryMileage: v })} placeholder="Miles" />
+          </FieldLabel>
+        </div>
+
+        <div style={{ marginTop: 16 }}>
+          <FieldLabel label="Delivery type % of each">
+            <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+              <FieldLabel label="Retail">
+                <NumberInput
+                  value={s.deliveryRetailPct}
+                  onChange={(v) => s.update({ deliveryRetailPct: v })}
+                  placeholder="%"
+                  style={{ maxWidth: 100 }}
+                />
+              </FieldLabel>
+              <FieldLabel label="Wholesale">
+                <NumberInput
+                  value={s.deliveryWholesalePct}
+                  onChange={(v) => s.update({ deliveryWholesalePct: v })}
+                  placeholder="%"
+                  style={{ maxWidth: 100 }}
+                />
+              </FieldLabel>
+              <FieldLabel label="Direct to Customer">
+                <NumberInput
+                  value={s.deliveryDirectPct}
+                  onChange={(v) => s.update({ deliveryDirectPct: v })}
+                  placeholder="%"
+                  style={{ maxWidth: 140 }}
+                />
+              </FieldLabel>
+            </div>
           </FieldLabel>
         </div>
 
@@ -73,27 +150,67 @@ export default function P2Step7AutoExposure() {
         </div>
 
         <div style={{ marginTop: 16 }}>
-          <h4 style={{ fontSize: 14, fontWeight: 600, color: textPrimary, margin: "0 0 12px" }}>Average Distance Per Day</h4>
-          <FieldGrid columns={2}>
-            <FieldLabel label="Min (miles)">
-              <NumberInput value={s.avgDistanceMin} onChange={(v) => s.update({ avgDistanceMin: v })} placeholder="Min" />
+          <h4 style={{ fontSize: 14, fontWeight: 600, color: textPrimary, margin: "0 0 12px" }}>Average distance driven per day (# miles)</h4>
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "flex-end" }}>
+            <FieldLabel label="Min">
+              <NumberInput
+                value={s.avgDistanceMin}
+                onChange={(v) => s.update({ avgDistanceMin: v })}
+                placeholder="Min"
+                disabled={s.avgDistanceNa}
+                style={{ maxWidth: 120 }}
+              />
             </FieldLabel>
-            <FieldLabel label="Max (miles)">
-              <NumberInput value={s.avgDistanceMax} onChange={(v) => s.update({ avgDistanceMax: v })} placeholder="Max" />
+            <FieldLabel label="Max">
+              <NumberInput
+                value={s.avgDistanceMax}
+                onChange={(v) => s.update({ avgDistanceMax: v })}
+                placeholder="Max"
+                disabled={s.avgDistanceNa}
+                style={{ maxWidth: 120 }}
+              />
             </FieldLabel>
-          </FieldGrid>
+            <div style={{ paddingBottom: 8 }}>
+              <Checkbox
+                checked={s.avgDistanceNa}
+                onChange={() => s.update({ avgDistanceNa: !s.avgDistanceNa })}
+                label="N/A"
+                color={textPrimary}
+              />
+            </div>
+          </div>
         </div>
 
         <div style={{ marginTop: 16 }}>
-          <h4 style={{ fontSize: 14, fontWeight: 600, color: textPrimary, margin: "0 0 12px" }}>Average # Deliveries Per Day</h4>
-          <FieldGrid columns={2}>
+          <h4 style={{ fontSize: 14, fontWeight: 600, color: textPrimary, margin: "0 0 12px" }}>Average # of deliveries per day</h4>
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "flex-end" }}>
             <FieldLabel label="Min">
-              <NumberInput value={s.avgDeliveriesMin} onChange={(v) => s.update({ avgDeliveriesMin: v })} placeholder="Min" />
+              <NumberInput
+                value={s.avgDeliveriesMin}
+                onChange={(v) => s.update({ avgDeliveriesMin: v })}
+                placeholder="Min"
+                disabled={s.avgDeliveriesNa}
+                style={{ maxWidth: 120 }}
+              />
             </FieldLabel>
             <FieldLabel label="Max">
-              <NumberInput value={s.avgDeliveriesMax} onChange={(v) => s.update({ avgDeliveriesMax: v })} placeholder="Max" />
+              <NumberInput
+                value={s.avgDeliveriesMax}
+                onChange={(v) => s.update({ avgDeliveriesMax: v })}
+                placeholder="Max"
+                disabled={s.avgDeliveriesNa}
+                style={{ maxWidth: 120 }}
+              />
             </FieldLabel>
-          </FieldGrid>
+            <div style={{ paddingBottom: 8 }}>
+              <Checkbox
+                checked={s.avgDeliveriesNa}
+                onChange={() => s.update({ avgDeliveriesNa: !s.avgDeliveriesNa })}
+                label="N/A"
+                color={textPrimary}
+              />
+            </div>
+          </div>
         </div>
 
         <div style={{ marginTop: 16 }}>

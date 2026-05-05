@@ -54,13 +54,14 @@ export function FieldLabel({ label, required, children }: {
   );
 }
 
-export function TextInput({ value, onChange, placeholder, type = "text", error, style }: {
+export function TextInput({ value, onChange, placeholder, type = "text", error, style, disabled }: {
   value: string;
   onChange: (val: string) => void;
   placeholder?: string;
   type?: string;
   error?: string;
   style?: React.CSSProperties;
+  disabled?: boolean;
 }) {
   return (
     <div>
@@ -69,12 +70,15 @@ export function TextInput({ value, onChange, placeholder, type = "text", error, 
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
+        disabled={disabled}
         style={{
           ...inputBase,
           borderColor: error ? "#ef4444" : "rgba(255,255,255,0.08)",
+          opacity: disabled ? 0.5 : 1,
+          cursor: disabled ? "not-allowed" : "text",
           ...style,
         }}
-        onFocus={(e) => (e.currentTarget.style.borderColor = "#E91E8C")}
+        onFocus={(e) => { if (!disabled) e.currentTarget.style.borderColor = "#E91E8C"; }}
         onBlur={(e) => (e.currentTarget.style.borderColor = error ? "#ef4444" : "rgba(255,255,255,0.08)")}
       />
       {error && <p style={{ fontSize: 12, color: "#ef4444", margin: "4px 0 0" }}>{error}</p>}
@@ -108,13 +112,15 @@ export function CurrencyInput({ value, onChange, placeholder, error }: {
   );
 }
 
-export function NumberInput({ value, onChange, placeholder, error, min, max }: {
+export function NumberInput({ value, onChange, placeholder, error, min, max, style, disabled }: {
   value: string;
   onChange: (val: string) => void;
   placeholder?: string;
   error?: string;
   min?: number;
   max?: number;
+  style?: React.CSSProperties;
+  disabled?: boolean;
 }) {
   return (
     <div>
@@ -126,8 +132,15 @@ export function NumberInput({ value, onChange, placeholder, error, min, max }: {
         min={min}
         max={max}
         step="any"
-        style={{ ...inputBase, borderColor: error ? "#ef4444" : "rgba(255,255,255,0.08)" }}
-        onFocus={(e) => (e.currentTarget.style.borderColor = "#E91E8C")}
+        disabled={disabled}
+        style={{
+          ...inputBase,
+          borderColor: error ? "#ef4444" : "rgba(255,255,255,0.08)",
+          opacity: disabled ? 0.5 : 1,
+          cursor: disabled ? "not-allowed" : "text",
+          ...style,
+        }}
+        onFocus={(e) => { if (!disabled) e.currentTarget.style.borderColor = "#E91E8C"; }}
         onBlur={(e) => (e.currentTarget.style.borderColor = error ? "#ef4444" : "rgba(255,255,255,0.08)")}
       />
       {error && <p style={{ fontSize: 12, color: "#ef4444", margin: "4px 0 0" }}>{error}</p>}

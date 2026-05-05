@@ -228,9 +228,14 @@ export interface QuoteFlowState {
   flowMeters: string;
   historicalPremiums: HistoricalPremium[];
 
-  deliveryMileagePct: string;
+  drivingMileagePctLt50: string;
+  drivingMileagePct50to100: string;
+  drivingMileagePct100plus: string;
+  drivingMileageNa: boolean;
   maxDeliveryMileage: string;
-  deliveryTypes: string[];
+  deliveryRetailPct: string;
+  deliveryWholesalePct: string;
+  deliveryDirectPct: string;
   gpsEquipped: string;
   allDrivers2565: string;
   driversOver65: string;
@@ -240,8 +245,10 @@ export interface QuoteFlowState {
   overnightFrequency: string;
   avgDistanceMin: string;
   avgDistanceMax: string;
+  avgDistanceNa: boolean;
   avgDeliveriesMin: string;
   avgDeliveriesMax: string;
+  avgDeliveriesNa: boolean;
   outOfStateTransport: string;
   driversTraining: string;
   cdlsRequired: string;
@@ -422,9 +429,14 @@ const initialState: Omit<QuoteFlowState, keyof QuoteFlowActions> = {
     { label: "Current Year", year: "", payroll: 0, premium: 0, subCosts: 0 },
     { label: "Projected Next 12 Months", year: "", payroll: 0, premium: 0, subCosts: 0 },
   ],
-  deliveryMileagePct: "",
+  drivingMileagePctLt50: "",
+  drivingMileagePct50to100: "",
+  drivingMileagePct100plus: "",
+  drivingMileageNa: false,
   maxDeliveryMileage: "",
-  deliveryTypes: [],
+  deliveryRetailPct: "",
+  deliveryWholesalePct: "",
+  deliveryDirectPct: "",
   gpsEquipped: "",
   allDrivers2565: "",
   driversOver65: "",
@@ -434,8 +446,10 @@ const initialState: Omit<QuoteFlowState, keyof QuoteFlowActions> = {
   overnightFrequency: "",
   avgDistanceMin: "",
   avgDistanceMax: "",
+  avgDistanceNa: false,
   avgDeliveriesMin: "",
   avgDeliveriesMax: "",
+  avgDeliveriesNa: false,
   outOfStateTransport: "",
   driversTraining: "",
   cdlsRequired: "",

@@ -150,9 +150,14 @@ export interface QuoteFlowSubset {
     premium?: number;
     subCosts?: number;
   }>;
-  deliveryMileagePct?: string;
+  drivingMileagePctLt50?: string;
+  drivingMileagePct50to100?: string;
+  drivingMileagePct100plus?: string;
+  drivingMileageNa?: boolean;
   maxDeliveryMileage?: string;
-  deliveryTypes?: string[];
+  deliveryRetailPct?: string;
+  deliveryWholesalePct?: string;
+  deliveryDirectPct?: string;
   gpsEquipped?: string;
   allDrivers2565?: string;
   driversOver65?: string;
@@ -162,8 +167,10 @@ export interface QuoteFlowSubset {
   overnightFrequency?: string;
   avgDistanceMin?: string;
   avgDistanceMax?: string;
+  avgDistanceNa?: boolean;
   avgDeliveriesMin?: string;
   avgDeliveriesMax?: string;
+  avgDeliveriesNa?: boolean;
   outOfStateTransport?: string;
   driversTraining?: string;
   cdlsRequired?: string;
@@ -509,15 +516,17 @@ export function fromQuoteFlow(s: QuoteFlowSubset): CannabisApplicationAnswers {
       subCosts: num(h.subCosts),
     })),
 
-    drivingDeliveryExposure: ynNorm(s.deliveryMileagePct ? "yes" : ""),
-    drivingMileagePctLt50: s.deliveryMileagePct === "<50" ? "100" : "",
-    drivingMileagePct50to100: s.deliveryMileagePct === "50-100" ? "100" : "",
-    drivingMileagePct100plus: s.deliveryMileagePct === "100+" ? "100" : "",
-    drivingMileageNa: s.deliveryMileagePct === "N/A",
+    drivingDeliveryExposure: ynNorm(
+      (s.drivingMileagePctLt50 || s.drivingMileagePct50to100 || s.drivingMileagePct100plus || s.drivingMileageNa) ? "yes" : ""
+    ),
+    drivingMileagePctLt50: s.drivingMileagePctLt50 || "",
+    drivingMileagePct50to100: s.drivingMileagePct50to100 || "",
+    drivingMileagePct100plus: s.drivingMileagePct100plus || "",
+    drivingMileageNa: !!s.drivingMileageNa,
     maxDeliveryMileage: s.maxDeliveryMileage || "",
-    deliveryRetailPct: has(s.deliveryTypes, "retail") ? "100" : "",
-    deliveryWholesalePct: has(s.deliveryTypes, "wholesale") ? "100" : "",
-    deliveryDirectPct: has(s.deliveryTypes, "direct to customer") || has(s.deliveryTypes, "direct_to_customer") ? "100" : "",
+    deliveryRetailPct: s.deliveryRetailPct || "",
+    deliveryWholesalePct: s.deliveryWholesalePct || "",
+    deliveryDirectPct: s.deliveryDirectPct || "",
     vehiclesGpsEquipped: ynNorm(s.gpsEquipped),
     driversAge25to65: ynNorm(s.allDrivers2565),
     driversOver65Count: s.driversOver65 || "",
@@ -537,10 +546,10 @@ export function fromQuoteFlow(s: QuoteFlowSubset): CannabisApplicationAnswers {
     overnightTravelFrequency: s.overnightFrequency || "",
     avgDistancePerDayMin: s.avgDistanceMin || "",
     avgDistancePerDayMax: s.avgDistanceMax || "",
-    avgDistanceNa: false,
+    avgDistanceNa: !!s.avgDistanceNa,
     avgDeliveriesPerDayMin: s.avgDeliveriesMin || "",
     avgDeliveriesPerDayMax: s.avgDeliveriesMax || "",
-    avgDeliveriesNa: false,
+    avgDeliveriesNa: !!s.avgDeliveriesNa,
     outOfStateTransportStates: s.outOfStateTransport || "",
 
     signatoryName: s.contactName || "",
