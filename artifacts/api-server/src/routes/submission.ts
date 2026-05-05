@@ -9,6 +9,7 @@ import {
   dealDocumentsTable,
   dealsTable,
   activityLogTable,
+  quotesTable,
 } from "@workspace/db";
 import { eq, and, desc, asc } from "drizzle-orm";
 import { cannabisApplicationAnswersSchema } from "@workspace/cannabis-application";
@@ -182,6 +183,7 @@ router.post("/submit-for-approval", async (req, res) => {
     fein, entityType, contactName, contactEmail, contactPhone,
     lossHistoryCount,
     cannabisApplicationAnswers,
+    wcRatingBreakdown, workforceProfile,
   } = req.body;
 
   // Validate cannabis application answers if supplied. The schema is permissive
@@ -221,6 +223,27 @@ router.post("/submit-for-approval", async (req, res) => {
       estimatedPremium: premiumHigh ? String(premiumHigh) : null,
     })
     .returning();
+
+  if (wcRatingBreakdown && workforceProfile) {
+    const finalPremium = Number(wcRatingBreakdown.finalPremium ?? 0);
+    await db.insert(quotesTable).values({
+      dealId: deal.id,
+      status: "SUBMITTED",
+      state: businessState || workforceProfile.locations?.[0]?.state || null,
+      annualPayroll: totalPayroll != null ? String(totalPayroll) : null,
+      headcount: totalEmployees ?? null,
+      eMod: experienceMod ? String(experienceMod) : "1.0",
+      scheduleRating: workforceProfile.scheduleRating != null ? String(workforceProfile.scheduleRating) : "1.0",
+      isPeo: !!workforceProfile.isPEO,
+      wcPremium: String(finalPremium),
+      wcFinalPremium: String(finalPremium),
+      wcIndicationMin: premiumLow != null ? String(premiumLow) : null,
+      wcIndicationMax: premiumHigh != null ? String(premiumHigh) : null,
+      wcRatingBreakdown,
+      workforceProfile,
+      ratedAt: new Date(),
+    });
+  }
 
   const docRecords: Array<{
     dealId: string;

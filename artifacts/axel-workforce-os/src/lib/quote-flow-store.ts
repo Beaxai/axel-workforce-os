@@ -42,6 +42,49 @@ export interface HistoricalPremium {
   subCosts: number;
 }
 
+export interface MultiLocationResult {
+  locations: Array<{
+    state: string;
+    classCodes: Array<{
+      classCode: string;
+      description?: string;
+      annualPayroll: number;
+      baseRate: number;
+      premium: number;
+      error?: string;
+    }>;
+    subtotal: number;
+    caTerritory?: number | null;
+    caTerritoryMultiplier?: number;
+    subtotalBeforeTerritory?: number;
+  }>;
+  totalGrossPremium: number;
+  minimumPremiumApplied: boolean;
+  peoDiscountAmount: number;
+  finalPremium: number;
+  eMod: number;
+  scheduleRating: number;
+  isPEO: boolean;
+  calculatedAt: string;
+}
+
+export interface WorkforceProfilePayload {
+  locations: Array<{
+    state: string;
+    zip: string;
+    classCodes: Array<{
+      classCode: string;
+      annualPayroll: number;
+      fullTimeEmployees: number;
+      partTimeEmployees: number;
+      description: string;
+    }>;
+  }>;
+  eMod: number;
+  scheduleRating: number;
+  isPEO: boolean;
+}
+
 export interface QuoteFlowState {
   phase: 1 | 2;
   currentStep: number;
@@ -86,6 +129,8 @@ export interface QuoteFlowState {
     totalEmployees: number;
     modifier: number;
     calculatedAt: string;
+    wcRatingBreakdown: MultiLocationResult;
+    workforceProfile: WorkforceProfilePayload;
   } | null;
 
   website: string;

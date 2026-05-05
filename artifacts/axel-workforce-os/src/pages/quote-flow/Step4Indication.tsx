@@ -1,35 +1,9 @@
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuoteFlowStore } from "@/lib/quote-flow-store";
+import { useQuoteFlowStore, type MultiLocationResult, type WorkforceProfilePayload } from "@/lib/quote-flow-store";
 import { api } from "@/lib/api";
 import { Check, Clock, Shield, Cannabis, Loader2, AlertTriangle } from "lucide-react";
-
-interface MultiLocationResult {
-  locations: Array<{
-    state: string;
-    classCodes: Array<{
-      classCode: string;
-      description?: string;
-      annualPayroll: number;
-      baseRate: number;
-      premium: number;
-      error?: string;
-    }>;
-    subtotal: number;
-    caTerritory?: number | null;
-    caTerritoryMultiplier?: number;
-    subtotalBeforeTerritory?: number;
-  }>;
-  totalGrossPremium: number;
-  minimumPremiumApplied: boolean;
-  peoDiscountAmount: number;
-  finalPremium: number;
-  eMod: number;
-  scheduleRating: number;
-  isPEO: boolean;
-  calculatedAt: string;
-}
 
 export default function Step4Indication() {
   const s = useQuoteFlowStore();
@@ -46,7 +20,7 @@ export default function Step4Indication() {
       setLoading(true);
       setRatingError("");
 
-      const locationsPayload = s.locations
+      const locationsPayload: WorkforceProfilePayload["locations"] = s.locations
         .filter((loc) => loc.state && loc.classCodes.some((cc) => cc.classCode))
         .map((loc) => ({
           state: loc.state,
@@ -62,6 +36,13 @@ export default function Step4Indication() {
             })),
         }));
 
+      const workforceProfile: WorkforceProfilePayload = {
+        locations: locationsPayload,
+        eMod: modifier,
+        scheduleRating: 1.0,
+        isPEO: false,
+      };
+
       if (locationsPayload.length === 0) {
         setRatingError("No valid locations with class codes to rate.");
         setLoading(false);
@@ -69,12 +50,7 @@ export default function Step4Indication() {
       }
 
       try {
-        const res = await api.post<{ success: boolean; data: MultiLocationResult; error?: string }>("/rate/wc/multi", {
-          locations: locationsPayload,
-          eMod: modifier,
-          scheduleRating: 1.0,
-          isPEO: false,
-        });
+        const res = await api.post<{ success: boolean; data: MultiLocationResult; error?: string }>("/rate/wc/multi", workforceProfile);
 
         if (!res.success) {
           setRatingError(res.error || "Rating calculation failed.");
@@ -123,6 +99,8 @@ export default function Step4Indication() {
             totalEmployees,
             modifier,
             calculatedAt: res.data.calculatedAt,
+            wcRatingBreakdown: res.data,
+            workforceProfile,
           },
         });
       } catch (err: any) {

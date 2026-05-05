@@ -12,6 +12,8 @@ export default function ConfirmationScreen() {
     ? `DL-${s.submittedDealId.slice(0, 8).toUpperCase()}`
     : `DL-${Date.now().toString(36).toUpperCase().slice(-6)}`;
 
+  const wcRatingBreakdown = s.indicationData?.wcRatingBreakdown || null;
+
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "70vh", textAlign: "center" }}>
       <div
@@ -36,10 +38,45 @@ export default function ConfirmationScreen() {
       <p style={{ fontSize: 16, color: "#888", margin: "0 0 8px" }}>
         Deal #{dealNumber} has been submitted for underwriting review.
       </p>
-      <p style={{ fontSize: 14, color: "#666", margin: "0 0 32px", maxWidth: 420, lineHeight: 1.6 }}>
+      <p style={{ fontSize: 14, color: "#666", margin: "0 0 24px", maxWidth: 420, lineHeight: 1.6 }}>
         You'll receive a notification when your proposal is ready.
         Estimated turnaround: 2-3 business days.
       </p>
+
+      {wcRatingBreakdown && (
+        <div style={{
+          background: isDark ? "#13131f" : "#f8f8fc",
+          borderRadius: 12,
+          padding: 16,
+          maxWidth: 420,
+          width: "100%",
+          textAlign: "left",
+          marginBottom: 24,
+          border: `1px solid ${borderColor}`,
+        }}>
+          <div style={{ fontSize: 11, color: textMuted, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>
+            Quote Snapshot
+          </div>
+          {wcRatingBreakdown.locations.map((loc, i) => (
+            <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", fontSize: 13 }}>
+              <span style={{ color: textSecondary }}>Loc {i + 1} — {loc.state}</span>
+              <span style={{ color: textPrimary, fontWeight: 500 }}>${Math.round(loc.subtotal).toLocaleString()}</span>
+            </div>
+          ))}
+          <div style={{
+            display: "flex",
+            justifyContent: "space-between",
+            padding: "10px 0 2px",
+            marginTop: 6,
+            borderTop: "1px solid rgba(233,30,140,0.3)",
+            fontSize: 14,
+            fontWeight: 700,
+          }}>
+            <span style={{ color: "#E91E8C" }}>Final Premium</span>
+            <span style={{ color: "#E91E8C" }}>${Math.round(wcRatingBreakdown.finalPremium).toLocaleString()}</span>
+          </div>
+        </div>
+      )}
 
       <div style={{ display: "flex", gap: 12 }}>
         <button
