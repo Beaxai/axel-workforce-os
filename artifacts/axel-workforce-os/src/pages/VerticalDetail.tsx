@@ -1,11 +1,92 @@
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { Shield, Users, Check, ArrowLeft } from "lucide-react";
+import {
+  Shield,
+  Users,
+  Check,
+  ArrowLeft,
+  DollarSign,
+  ShieldCheck,
+  AlertTriangle,
+  Monitor,
+  HeartPulse,
+  Scale,
+  Heart,
+} from "lucide-react";
 import { getVerticalBySlug } from "@/lib/vertical-data";
 
 const BASE = import.meta.env.BASE_URL || "/";
 
 const ACCENT = "#E91E8C";
+
+const PEO_SERVICES = [
+  {
+    icon: DollarSign,
+    title: "Payroll",
+    items: [
+      "Full Service Payroll Platform",
+      "Automated Payroll Processing",
+      "Direct Deposits",
+      "All Inclusive Payroll Tax Filing",
+    ],
+  },
+  {
+    icon: ShieldCheck,
+    title: "HR & Compliance",
+    items: [
+      "State and Federal Compliance",
+      "EEOC Claims Management",
+      "Employee Handbook",
+      "Regulatory Guidance",
+    ],
+  },
+  {
+    icon: AlertTriangle,
+    title: "Risk Management",
+    items: [
+      "Injury & Illness Prevention Programs",
+      "Safety Manuals",
+      "Employer & Employee Safety Training",
+      "Facility Inspections",
+    ],
+  },
+  {
+    icon: Monitor,
+    title: "HR Platform Technology",
+    items: [
+      "Unified Platform",
+      "Electronic Onboarding",
+      "Time & Attendance",
+      "Employee Self Service Portal",
+    ],
+  },
+  {
+    icon: HeartPulse,
+    title: "Workers' Compensation",
+    items: [
+      "Medical Benefits",
+      "Disability Benefits",
+      "Vocational Rehabilitation",
+      "Return to Work Program",
+      "Superior Claims Handling",
+    ],
+  },
+  {
+    icon: Scale,
+    title: "EPLI Insurance",
+    items: ["Sexual Harassment", "Wrongful Termination", "Discrimination"],
+  },
+  {
+    icon: Heart,
+    title: "Rich Benefits",
+    items: [
+      "Major Medical, Dental & Vision",
+      "Employee Wellness",
+      "Telemedicine",
+      "401(k) Retirement Planning",
+    ],
+  },
+];
 
 export default function VerticalDetail() {
   const { slug } = useParams<{ slug: string }>();
@@ -205,7 +286,183 @@ export default function VerticalDetail() {
           borderColor={borderColor}
         />
       </div>
+
+      <ProgramOfferingSection
+        verticalName={vertical.name}
+        isDark={isDark}
+        textPrimary={textPrimary}
+        textSecondary={textSecondary}
+        textMuted={textMuted}
+        cardBg={cardBg}
+        borderColor={borderColor}
+      />
     </div>
+  );
+}
+
+function ProgramOfferingSection({
+  verticalName,
+  isDark,
+  textPrimary,
+  textSecondary,
+  textMuted,
+  cardBg,
+  borderColor,
+}: {
+  verticalName: string;
+  isDark: boolean;
+  textPrimary: string;
+  textSecondary: string;
+  textMuted: string;
+  cardBg: string;
+  borderColor: string;
+}) {
+  const iconBg = isDark ? "rgba(233,30,140,0.10)" : "rgba(233,30,140,0.08)";
+  const bulletColor = ACCENT;
+
+  return (
+    <section style={{ marginTop: 56 }}>
+      <div style={{ marginBottom: 24 }}>
+        <p
+          style={{
+            fontFamily: "var(--app-font-heading)",
+            fontSize: 11,
+            fontWeight: 200,
+            letterSpacing: "0.28em",
+            textTransform: "uppercase",
+            color: ACCENT,
+            margin: 0,
+            marginBottom: 8,
+          }}
+        >
+          What's included in a PEO?
+        </p>
+        <h2
+          style={{
+            fontFamily: "var(--app-font-heading)",
+            fontSize: 24,
+            fontWeight: 300,
+            letterSpacing: "0.04em",
+            textTransform: "uppercase",
+            color: textPrimary,
+            margin: 0,
+            marginBottom: 10,
+            lineHeight: 1.2,
+          }}
+        >
+          Program Offering
+        </h2>
+        <p
+          style={{
+            fontSize: 14,
+            color: textMuted,
+            margin: 0,
+            maxWidth: 720,
+            lineHeight: 1.6,
+          }}
+        >
+          Everything your {verticalName.toLowerCase()} operation needs, bundled
+          under one roof.
+        </p>
+      </div>
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
+          gap: 16,
+        }}
+      >
+        {PEO_SERVICES.map((svc) => {
+          const Icon = svc.icon;
+          return (
+            <div
+              key={svc.title}
+              style={{
+                background: cardBg,
+                border: `1px solid ${borderColor}`,
+                borderRadius: 12,
+                padding: 22,
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                  marginBottom: 16,
+                }}
+              >
+                <div
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 9,
+                    background: iconBg,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}
+                >
+                  <Icon style={{ width: 18, height: 18, color: ACCENT }} />
+                </div>
+                <h3
+                  style={{
+                    fontFamily: "var(--app-font-heading)",
+                    fontSize: 13,
+                    fontWeight: 400,
+                    letterSpacing: "0.14em",
+                    textTransform: "uppercase",
+                    color: textPrimary,
+                    margin: 0,
+                    lineHeight: 1.2,
+                  }}
+                >
+                  {svc.title}
+                </h3>
+              </div>
+              <ul
+                style={{
+                  margin: 0,
+                  padding: 0,
+                  listStyle: "none",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 9,
+                }}
+              >
+                {svc.items.map((item) => (
+                  <li
+                    key={item}
+                    style={{
+                      fontSize: 13,
+                      color: textSecondary,
+                      paddingLeft: 14,
+                      position: "relative",
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    <span
+                      style={{
+                        position: "absolute",
+                        left: 0,
+                        top: 7,
+                        width: 5,
+                        height: 5,
+                        borderRadius: 999,
+                        background: bulletColor,
+                      }}
+                    />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
