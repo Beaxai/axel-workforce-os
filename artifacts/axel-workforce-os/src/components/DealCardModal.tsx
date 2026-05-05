@@ -9,6 +9,7 @@ import { useThemeStore } from "@/lib/theme-store";
 import { api } from "@/lib/api";
 import { useNavigate } from "react-router-dom";
 import ProposalPanel from "@/components/ProposalPanel";
+import MultiLocationRatingPanel from "@/components/MultiLocationRatingPanel";
 import {
   X,
   Copy,
@@ -115,6 +116,7 @@ interface QuoteRecord {
   dealId: string;
   wcRatingBreakdown: any;
   wfsRatingBreakdown: any;
+  workforceProfile?: any;
   ratedAt: string;
   classCode?: string;
   state?: string;
@@ -122,6 +124,10 @@ interface QuoteRecord {
   headcount?: number;
   eMod?: string;
   scheduleRating?: string;
+  isPeo?: boolean;
+  wcIndicationMin?: string | null;
+  wcIndicationMax?: string | null;
+  wcFinalPremium?: string | null;
 }
 
 interface DealCardModalProps {
@@ -874,14 +880,49 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
             {activeTab === "quote" && (
               <div>
                 {quoteRecord && quoteRecord.wcRatingBreakdown ? (
-                  <ProposalPanel
-                    businessName={deal?.businessName || ""}
-                    quoteType={deal?.productType === "PEO" ? "PEO+WC" : "WC Only"}
-                    wcBreakdown={quoteRecord.wcRatingBreakdown?.data || quoteRecord.wcRatingBreakdown}
-                    wfsBreakdown={quoteRecord.wfsRatingBreakdown?.data || quoteRecord.wfsRatingBreakdown}
-                    readOnly
-                    ratedAt={quoteRecord.ratedAt}
-                  />
+                  (() => {
+                    const wcBreakdown =
+                      quoteRecord.wcRatingBreakdown?.data || quoteRecord.wcRatingBreakdown;
+                    const isMultiLocation = Array.isArray(wcBreakdown?.locations);
+                    if (isMultiLocation) {
+                      return (
+                        <MultiLocationRatingPanel
+                          businessName={deal?.businessName || ""}
+                          wcBreakdown={wcBreakdown}
+                          workforceProfile={quoteRecord.workforceProfile || null}
+                          indicationLow={
+                            quoteRecord.wcIndicationMin != null
+                              ? Number(quoteRecord.wcIndicationMin)
+                              : null
+                          }
+                          indicationHigh={
+                            quoteRecord.wcIndicationMax != null
+                              ? Number(quoteRecord.wcIndicationMax)
+                              : null
+                          }
+                          finalPremiumFallback={
+                            quoteRecord.wcFinalPremium != null
+                              ? Number(quoteRecord.wcFinalPremium)
+                              : null
+                          }
+                          ratedAt={quoteRecord.ratedAt}
+                        />
+                      );
+                    }
+                    return (
+                      <ProposalPanel
+                        businessName={deal?.businessName || ""}
+                        quoteType={deal?.productType === "PEO" ? "PEO+WC" : "WC Only"}
+                        wcBreakdown={wcBreakdown}
+                        wfsBreakdown={
+                          quoteRecord.wfsRatingBreakdown?.data ||
+                          quoteRecord.wfsRatingBreakdown
+                        }
+                        readOnly
+                        ratedAt={quoteRecord.ratedAt}
+                      />
+                    );
+                  })()
                 ) : (
                   <div style={{ padding: "40px 20px", textAlign: "center" }}>
                     <Calculator style={{ width: "40px", height: "40px", color: textMuted, marginBottom: "12px" }} />
