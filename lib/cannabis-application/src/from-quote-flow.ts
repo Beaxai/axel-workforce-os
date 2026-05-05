@@ -150,6 +150,7 @@ export interface QuoteFlowSubset {
     premium?: number;
     subCosts?: number;
   }>;
+  drivingDeliveryExposureFlag?: string;
   drivingMileagePctLt50?: string;
   drivingMileagePct50to100?: string;
   drivingMileagePct100plus?: string;
@@ -516,9 +517,11 @@ export function fromQuoteFlow(s: QuoteFlowSubset): CannabisApplicationAnswers {
       subCosts: num(h.subCosts),
     })),
 
-    drivingDeliveryExposure: ynNorm(
-      (s.drivingMileagePctLt50 || s.drivingMileagePct50to100 || s.drivingMileagePct100plus || s.drivingMileageNa) ? "yes" : ""
-    ),
+    drivingDeliveryExposure: s.drivingDeliveryExposureFlag
+      ? ynNorm(s.drivingDeliveryExposureFlag)
+      : ynNorm(
+          (s.drivingMileagePctLt50 || s.drivingMileagePct50to100 || s.drivingMileagePct100plus || s.drivingMileageNa) ? "yes" : ""
+        ),
     drivingMileagePctLt50: s.drivingMileagePctLt50 || "",
     drivingMileagePct50to100: s.drivingMileagePct50to100 || "",
     drivingMileagePct100plus: s.drivingMileagePct100plus || "",

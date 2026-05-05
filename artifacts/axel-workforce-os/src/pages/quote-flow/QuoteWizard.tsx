@@ -44,7 +44,9 @@ export default function QuoteWizard() {
   if (!store.vertical) return null;
 
   const hasExtraction = store.cannabisOperations.includes("Extraction");
-  const hasDelivery = store.cannabisOperations.includes("Delivery");
+  const hasDelivery =
+    store.drivingDeliveryExposureFlag === "Yes" ||
+    (store.drivingDeliveryExposureFlag !== "No" && store.cannabisOperations.includes("Delivery"));
 
   const getPhase2Steps = () => {
     const steps: { key: string; label: string }[] = [

@@ -228,6 +228,7 @@ export interface QuoteFlowState {
   flowMeters: string;
   historicalPremiums: HistoricalPremium[];
 
+  drivingDeliveryExposureFlag: string;
   drivingMileagePctLt50: string;
   drivingMileagePct50to100: string;
   drivingMileagePct100plus: string;
@@ -429,6 +430,7 @@ const initialState: Omit<QuoteFlowState, keyof QuoteFlowActions> = {
     { label: "Current Year", year: "", payroll: 0, premium: 0, subCosts: 0 },
     { label: "Projected Next 12 Months", year: "", payroll: 0, premium: 0, subCosts: 0 },
   ],
+  drivingDeliveryExposureFlag: "",
   drivingMileagePctLt50: "",
   drivingMileagePct50to100: "",
   drivingMileagePct100plus: "",
