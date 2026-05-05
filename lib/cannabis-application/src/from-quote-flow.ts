@@ -101,6 +101,7 @@ export interface QuoteFlowSubset {
   accidentInvestigations?: string;
   msdsProgram?: string;
   chemicalsUsed?: string;
+  chemicalsNotApplicable?: boolean;
   respiratoryProgram?: string;
   buildingVentilated?: string;
   liftingExposures?: string;
@@ -131,6 +132,7 @@ export interface QuoteFlowSubset {
    */
   payrollFrequency?: string;
   extractionMethods?: string[];
+  extractionMethodsOther?: string;
   extractionProcess?: string;
   thirdPartyMaintenance?: string;
   extractionSegregated?: string;
@@ -425,7 +427,7 @@ export function fromQuoteFlow(s: QuoteFlowSubset): CannabisApplicationAnswers {
     accidentInvestigations: ynNorm(s.accidentInvestigations),
     msdsProgram: ynNorm(s.msdsProgram),
     chemicalsUsed: s.chemicalsUsed || "",
-    chemicalsNotApplicable: false,
+    chemicalsNotApplicable: !!s.chemicalsNotApplicable,
     respiratoryProgram: ynNorm(s.respiratoryProgram),
     buildingProperlyVentilated: ynNorm(s.buildingVentilated),
     liftingExposure: lookup(LIFTING_MAP, s.liftingExposures),
@@ -487,7 +489,7 @@ export function fromQuoteFlow(s: QuoteFlowSubset): CannabisApplicationAnswers {
     extractionIsopropyl: has(s.extractionMethods, "isopropyl"),
     extractionEthanol: has(s.extractionMethods, "ethanol"),
     extractionWater: has(s.extractionMethods, "water"),
-    extractionOther: "",
+    extractionOther: s.extractionMethodsOther || "",
     extractionProcessDescription: s.extractionProcess || "",
     extractionThirdPartyMaintenance: ynNaNorm(s.thirdPartyMaintenance),
     extractionSegregated: ynNaNorm(s.extractionSegregated),

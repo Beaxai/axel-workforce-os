@@ -82,6 +82,9 @@ export default function P2Step4CannabisOps() {
           <FieldLabel label="Operations Include">
             <MultiSelect values={s.cannabisOperations} onChange={(v) => s.update({ cannabisOperations: v })} options={OPERATIONS_OPTIONS} placeholder="Select operations" />
           </FieldLabel>
+          <p style={{ marginTop: 6, fontSize: 12, color: textMuted }}>
+            Selecting <strong>Extraction</strong> or <strong>Delivery</strong> adds a dedicated questionnaire step to the wizard.
+          </p>
         </div>
 
         <div style={{ marginTop: 16, display: "flex", gap: 32, alignItems: "start" }}>

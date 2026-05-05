@@ -22,6 +22,17 @@ export default function P2Step6Extraction() {
         <FieldLabel label="Extraction Methods">
           <MultiSelect values={s.extractionMethods} onChange={(v) => s.update({ extractionMethods: v })} options={EXTRACTION_METHODS} placeholder="Select methods" />
         </FieldLabel>
+        {s.extractionMethods.includes("Other") && (
+          <div style={{ marginTop: 12 }}>
+            <FieldLabel label="Other extraction method (describe)">
+              <TextInput
+                value={s.extractionMethodsOther}
+                onChange={(v) => s.update({ extractionMethodsOther: v })}
+                placeholder="e.g., Rosin press, ice water hash"
+              />
+            </FieldLabel>
+          </div>
+        )}
 
         <div style={{ marginTop: 16 }}>
           <FieldLabel label="Describe Extraction Process">

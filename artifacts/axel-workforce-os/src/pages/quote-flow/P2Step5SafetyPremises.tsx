@@ -84,9 +84,28 @@ export default function P2Step5SafetyPremises() {
         </div>
 
         <div style={{ marginTop: 16 }}>
-          <FieldLabel label="Chemicals used — list (or N/A)">
-            <TextInput value={s.chemicalsUsed} onChange={(v) => s.update({ chemicalsUsed: v })} placeholder="List chemicals or N/A" />
+          <FieldLabel label="Chemicals used — list">
+            <TextInput
+              value={s.chemicalsUsed}
+              onChange={(v) => s.update({ chemicalsUsed: v })}
+              placeholder="List chemicals"
+              disabled={s.chemicalsNotApplicable}
+            />
           </FieldLabel>
+          <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, cursor: "pointer" }}>
+            <div
+              onClick={() => s.update({ chemicalsNotApplicable: !s.chemicalsNotApplicable })}
+              style={{
+                width: 18, height: 18, borderRadius: 4,
+                border: s.chemicalsNotApplicable ? "none" : "2px solid rgba(255,255,255,0.2)",
+                background: s.chemicalsNotApplicable ? "#E91E8C" : "transparent",
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}
+            >
+              {s.chemicalsNotApplicable && <span style={{ color: textPrimary, fontSize: 12, fontWeight: 700 }}>✓</span>}
+            </div>
+            <span style={{ fontSize: 13, color: "#ccc" }}>Not applicable / no chemicals used</span>
+          </label>
         </div>
       </FormSection>
 

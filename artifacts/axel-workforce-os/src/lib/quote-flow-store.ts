@@ -191,6 +191,7 @@ export interface QuoteFlowState {
   accidentInvestigations: string;
   msdsProgram: string;
   chemicalsUsed: string;
+  chemicalsNotApplicable: boolean;
   respiratoryProgram: string;
   buildingVentilated: string;
   liftingExposures: string;
@@ -214,6 +215,7 @@ export interface QuoteFlowState {
   outsideSecurityAdditionalInsured: boolean;
 
   extractionMethods: string[];
+  extractionMethodsOther: string;
   extractionProcess: string;
   thirdPartyMaintenance: string;
   extractionSegregated: string;
@@ -378,6 +380,7 @@ const initialState: Omit<QuoteFlowState, keyof QuoteFlowActions> = {
   accidentInvestigations: "",
   msdsProgram: "",
   chemicalsUsed: "",
+  chemicalsNotApplicable: false,
   respiratoryProgram: "",
   buildingVentilated: "",
   liftingExposures: "",
@@ -400,6 +403,7 @@ const initialState: Omit<QuoteFlowState, keyof QuoteFlowActions> = {
   outsideSecurityCois: false,
   outsideSecurityAdditionalInsured: false,
   extractionMethods: [],
+  extractionMethodsOther: "",
   extractionProcess: "",
   thirdPartyMaintenance: "",
   extractionSegregated: "",
