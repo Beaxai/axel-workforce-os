@@ -6,6 +6,7 @@
   "scripts": {
     "hello": "tsx ./src/hello.ts",
     "ingest-appetite": "tsx ./src/ingest-appetite.ts",
+    "seed-full-spectrum": "tsx ./src/seed-full-spectrum.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {
