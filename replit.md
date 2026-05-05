@@ -28,6 +28,20 @@ The project is structured as a pnpm workspace monorepo, utilizing TypeScript.
 **Project Structure:**
 The monorepo contains `api-server` (Express backend) and `axel-workforce-os` (React frontend), along with shared libraries for API specifications, generated API clients, Zod schemas, and Drizzle ORM configurations.
 
+**Cannabis WC Application (`@workspace/cannabis-application`):**
+A canonical schema (Zod) capturing every question on the Axel Cannabis WC 2026 PDF, plus AcroForm field-name mappings to the ACORD 130 and Trean Cannabis Supplemental templates in `Server/data/`. Storage is stateless — only the canonical answers JSON lives in `submission_answers.answers`; filled PDFs are generated on demand by the api-server using `pdf-lib`.
+
+API endpoints:
+- `POST /api/submission/submit-for-approval` — accepts `cannabisApplicationAnswers`, validates with the lib's Zod schema, persists, and registers three `deal_documents` rows (axel_cannabis_application, acord_130, trean_cannabis_supp) pointing at the streaming routes below.
+- `GET /api/submission/applications/:dealId` — returns the parsed answers + PDF link metadata.
+- `GET /api/submission/applications/:dealId/axel-cannabis-application.pdf` — streams the Axel Cannabis WC Application 2026 source PDF (currently unfilled — the source template's 481 AcroForm fields are auto-named "Text Field N" and require per-field coordinate analysis to map; tracked as a follow-up).
+- `GET /api/submission/applications/:dealId/acord-130.pdf` — streams the filled ACORD 130.
+- `GET /api/submission/applications/:dealId/trean-supp.pdf` — streams the filled Trean Cannabis Supp.
+
+UI surfaces:
+- `FinalSubmission.tsx` (quote flow) builds the canonical payload with `fromQuoteFlow()` from the quote-flow Zustand store and POSTs it.
+- `DealCardModal.tsx` (pipeline) renders a "WC Application" section with PDF download buttons + a section-grouped answer summary, gated on whether the application data exists for that deal.
+
 **Database Schema:**
 The PostgreSQL database consists of 29 tables covering Core, Deals/Pipeline, Policies/AMS, CRM, Email, Implementation, Partners/Network, Resources, Agent Registration, Rate Tables, Workforce, and Onboarding.
 

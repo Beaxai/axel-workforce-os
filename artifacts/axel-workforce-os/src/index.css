@@ -406,3 +406,10 @@ body {
     flex: none;
   }
 }
+
+/* Per-vertical detail page coverage cards */
+@media (max-width: 760px) {
+  .vertical-detail-cards {
+    grid-template-columns: 1fr !important;
+  }
+}

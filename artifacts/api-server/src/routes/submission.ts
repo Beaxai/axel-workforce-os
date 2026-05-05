@@ -11,6 +11,8 @@ import {
   activityLogTable,
 } from "@workspace/db";
 import { eq, and, desc, asc } from "drizzle-orm";
+import { cannabisApplicationAnswersSchema } from "@workspace/cannabis-application";
+import { fillAcord130, fillTreanSupp, fillAxelCannabisApplication } from "../services/applicationPdfService";
 
 const router: IRouter = Router();
 
@@ -179,7 +181,23 @@ router.post("/submit-for-approval", async (req, res) => {
     premiumLow, premiumHigh, statesOfOperation,
     fein, entityType, contactName, contactEmail, contactPhone,
     lossHistoryCount,
+    cannabisApplicationAnswers,
   } = req.body;
+
+  // Validate cannabis application answers if supplied. The schema is permissive
+  // (every field has a default) so partial drafts pass; we only reject malformed
+  // shapes (e.g. wrong types).
+  let parsedCannabisAnswers: ReturnType<typeof cannabisApplicationAnswersSchema.parse> | null = null;
+  if (cannabisApplicationAnswers) {
+    const parseResult = cannabisApplicationAnswersSchema.safeParse(cannabisApplicationAnswers);
+    if (!parseResult.success) {
+      return res.status(400).json({
+        error: "Invalid cannabisApplicationAnswers",
+        issues: parseResult.error.issues,
+      });
+    }
+    parsedCannabisAnswers = parseResult.data;
+  }
 
   const referenceCode = `DL-${Date.now().toString(36).toUpperCase()}`;
 
@@ -204,7 +222,12 @@ router.post("/submit-for-approval", async (req, res) => {
     })
     .returning();
 
-  const docRecords = [
+  const docRecords: Array<{
+    dealId: string;
+    name: string;
+    documentType: string;
+    metadata: Record<string, unknown>;
+  }> = [
     {
       dealId: deal.id,
       name: `${businessName || "Business"} — WC Application Summary`,
@@ -250,6 +273,48 @@ router.post("/submit-for-approval", async (req, res) => {
     });
   }
 
+  // If we received canonical cannabis WC application answers, persist them
+  // (stateless: only JSON; PDFs are streamed on-demand from /applications/:dealId/*.pdf)
+  // and register two extra deal_documents rows pointing at those endpoints.
+  if (parsedCannabisAnswers) {
+    await db.insert(submissionAnswersTable).values({
+      dealId: deal.id,
+      answers: parsedCannabisAnswers,
+      status: "submitted",
+      submittedAt: new Date(),
+    });
+
+    docRecords.push(
+      {
+        dealId: deal.id,
+        name: "Axel Cannabis WC Application 2026",
+        documentType: "axel_cannabis_application",
+        metadata: {
+          generatedBy: "system",
+          downloadPath: `/api/submission/applications/${deal.id}/axel-cannabis-application.pdf`,
+        },
+      },
+      {
+        dealId: deal.id,
+        name: "ACORD 130 — Workers' Compensation Application",
+        documentType: "acord_130",
+        metadata: {
+          generatedBy: "system",
+          downloadPath: `/api/submission/applications/${deal.id}/acord-130.pdf`,
+        },
+      },
+      {
+        dealId: deal.id,
+        name: "Trean Cannabis Supplemental Application",
+        documentType: "trean_cannabis_supp",
+        metadata: {
+          generatedBy: "system",
+          downloadPath: `/api/submission/applications/${deal.id}/trean-supp.pdf`,
+        },
+      },
+    );
+  }
+
   await db.insert(dealDocumentsTable).values(docRecords);
 
   await db.insert(activityLogTable).values({
@@ -258,15 +323,105 @@ router.post("/submit-for-approval", async (req, res) => {
     entityId: deal.id,
     eventType: "submission_submitted",
     description: `Application submitted for underwriting review. ${docRecords.length} documents generated.`,
-    metadata: { document_count: docRecords.length, loss_history_included: lossHistoryCount > 0 },
+    metadata: {
+      document_count: docRecords.length,
+      loss_history_included: lossHistoryCount > 0,
+      cannabis_application_persisted: !!parsedCannabisAnswers,
+    },
   });
 
   res.json({
     success: true,
     dealId: deal.id,
     documentCount: docRecords.length,
+    cannabisApplicationPersisted: !!parsedCannabisAnswers,
     message: "Submission received. Documents generated and attached to deal.",
   });
+});
+
+/** Return the canonical cannabis application answers + PDF download links for a deal. */
+router.get("/applications/:dealId", async (req, res) => {
+  const { dealId } = req.params;
+  const [row] = await db
+    .select()
+    .from(submissionAnswersTable)
+    .where(eq(submissionAnswersTable.dealId, dealId))
+    .orderBy(desc(submissionAnswersTable.createdAt))
+    .limit(1);
+  if (!row) return res.status(404).json({ error: "No submission answers found for deal" });
+  const parsed = cannabisApplicationAnswersSchema.safeParse(row.answers ?? {});
+  res.json({
+    dealId,
+    submissionId: row.id,
+    answers: parsed.success ? parsed.data : row.answers,
+    status: row.status,
+    submittedAt: row.submittedAt,
+    pdfs: [
+      { documentType: "axel_cannabis_application", label: "Axel Cannabis WC Application 2026", path: `/api/submission/applications/${dealId}/axel-cannabis-application.pdf` },
+      { documentType: "acord_130", label: "ACORD 130", path: `/api/submission/applications/${dealId}/acord-130.pdf` },
+      { documentType: "trean_cannabis_supp", label: "Trean Cannabis Supp", path: `/api/submission/applications/${dealId}/trean-supp.pdf` },
+    ],
+  });
+});
+
+router.get("/applications/:dealId/axel-cannabis-application.pdf", async (req, res) => {
+  const { dealId } = req.params;
+  const [row] = await db
+    .select()
+    .from(submissionAnswersTable)
+    .where(eq(submissionAnswersTable.dealId, dealId))
+    .orderBy(desc(submissionAnswersTable.createdAt))
+    .limit(1);
+  if (!row) return res.status(404).json({ error: "No submission answers found for deal" });
+  try {
+    const pdfBytes = await fillAxelCannabisApplication(row.answers ?? {});
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `inline; filename="axel-cannabis-application-${dealId}.pdf"`);
+    res.send(Buffer.from(pdfBytes));
+  } catch (err) {
+    req.log.error({ err, dealId }, "fillAxelCannabisApplication failed");
+    res.status(500).json({ error: "Failed to generate Axel Cannabis WC Application PDF" });
+  }
+});
+
+router.get("/applications/:dealId/acord-130.pdf", async (req, res) => {
+  const { dealId } = req.params;
+  const [row] = await db
+    .select()
+    .from(submissionAnswersTable)
+    .where(eq(submissionAnswersTable.dealId, dealId))
+    .orderBy(desc(submissionAnswersTable.createdAt))
+    .limit(1);
+  if (!row) return res.status(404).json({ error: "No submission answers found for deal" });
+  try {
+    const pdfBytes = await fillAcord130(row.answers ?? {});
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `inline; filename="acord-130-${dealId}.pdf"`);
+    res.send(Buffer.from(pdfBytes));
+  } catch (err) {
+    req.log.error({ err, dealId }, "fillAcord130 failed");
+    res.status(500).json({ error: "Failed to generate ACORD 130 PDF" });
+  }
+});
+
+router.get("/applications/:dealId/trean-supp.pdf", async (req, res) => {
+  const { dealId } = req.params;
+  const [row] = await db
+    .select()
+    .from(submissionAnswersTable)
+    .where(eq(submissionAnswersTable.dealId, dealId))
+    .orderBy(desc(submissionAnswersTable.createdAt))
+    .limit(1);
+  if (!row) return res.status(404).json({ error: "No submission answers found for deal" });
+  try {
+    const pdfBytes = await fillTreanSupp(row.answers ?? {});
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `inline; filename="trean-cannabis-supp-${dealId}.pdf"`);
+    res.send(Buffer.from(pdfBytes));
+  } catch (err) {
+    req.log.error({ err, dealId }, "fillTreanSupp failed");
+    res.status(500).json({ error: "Failed to generate Trean Cannabis Supp PDF" });
+  }
 });
 
 router.get("/deal-documents/:dealId", async (req, res) => {

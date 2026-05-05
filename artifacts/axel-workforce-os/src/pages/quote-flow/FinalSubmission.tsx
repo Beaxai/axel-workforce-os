@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useQuoteFlowStore } from "@/lib/quote-flow-store";
 import { api } from "@/lib/api";
 import { CheckCircle, Loader2 } from "lucide-react";
+import { fromQuoteFlow } from "@workspace/cannabis-application";
 
 export default function FinalSubmission() {
   const s = useQuoteFlowStore();
@@ -20,6 +21,13 @@ export default function FinalSubmission() {
   const handleSubmit = async () => {
     setSubmitting(true);
     setError("");
+
+    // Build canonical Cannabis WC application payload from the quote-flow store.
+    // The server validates this with `cannabisApplicationAnswersSchema` and
+    // can stream filled ACORD 130 / Trean Cannabis Supp PDFs from it.
+    const cannabisApplicationAnswers = fromQuoteFlow(
+      s as unknown as Parameters<typeof fromQuoteFlow>[0],
+    );
 
     try {
       const result = await api.post<{ success: boolean; dealId: string }>("/submission/submit-for-approval", {
@@ -39,6 +47,7 @@ export default function FinalSubmission() {
         contactEmail: s.contactEmail,
         contactPhone: s.contactPhone,
         lossHistoryCount: s.lossHistoryFiles.length,
+        cannabisApplicationAnswers,
       });
 
       s.update({ submittedDealId: result.dealId });

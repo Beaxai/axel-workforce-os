@@ -23,6 +23,17 @@ import {
 } from "lucide-react";
 import BindStatusPanel from "@/components/submission/BindStatusPanel";
 import { AppetiteBadge } from "@/components/AppetiteBadge";
+import { sections as cannabisAppSections } from "@workspace/cannabis-application";
+
+type CannabisAppPdfLink = { documentType: string; label: string; path: string };
+type CannabisAppData = {
+  dealId: string;
+  submissionId: string;
+  answers: Record<string, unknown>;
+  status?: string | null;
+  submittedAt?: string | null;
+  pdfs: CannabisAppPdfLink[];
+};
 
 const STAGES = [
   { num: 1, key: "SUBMISSION_REVIEW", label: "Submission Review" },
@@ -150,6 +161,8 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
   const [showMentions, setShowMentions] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>("activity");
   const [appetiteData, setAppetiteData] = useState<Array<{ state: string; class_code: string; uw_determination: string; uw_considerations: string | null }>>([]);
+  const [cannabisApp, setCannabisApp] = useState<CannabisAppData | null>(null);
+  const [showAllAppFields, setShowAllAppFields] = useState(false);
 
   const textPrimary = isDark ? "#fff" : "#111";
   const textMuted = isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.45)";
@@ -229,6 +242,15 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
     }
   }, [dealId]);
 
+  const fetchCannabisApp = useCallback(async () => {
+    try {
+      const res = await api.get<CannabisAppData>(`/submission/applications/${dealId}`);
+      setCannabisApp(res);
+    } catch {
+      setCannabisApp(null);
+    }
+  }, [dealId]);
+
   const fetchAppetite = useCallback(async (state: string, classCode?: string) => {
     if (!state) return;
     try {
@@ -260,13 +282,16 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
     setShowTemplates(false);
     setActiveTab("activity");
     setAppetiteData([]);
+    setCannabisApp(null);
+    setShowAllAppFields(false);
     fetchDeal();
     fetchActivity();
     fetchTasks();
     fetchEmail();
     fetchQuote();
     fetchDocuments();
-  }, [isOpen, dealId, fetchDeal, fetchActivity, fetchTasks, fetchEmail, fetchQuote, fetchDocuments]);
+    fetchCannabisApp();
+  }, [isOpen, dealId, fetchDeal, fetchActivity, fetchTasks, fetchEmail, fetchQuote, fetchDocuments, fetchCannabisApp]);
 
   useEffect(() => {
     if (deal?.state && quoteRecord?.classCode) {
@@ -1008,6 +1033,121 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
                 </div>
               )}
             </GlassCard>
+
+            {/* WC APPLICATION (cannabis canonical answers + filled PDFs) */}
+            {cannabisApp && (() => {
+              const apiBase = import.meta.env.BASE_URL.replace(/\/$/, "");
+              const answers = cannabisApp.answers || {};
+              const fmt = (key: string, kind: string): string => {
+                const v = (answers as Record<string, unknown>)[key];
+                if (v === undefined || v === null || v === "") return "—";
+                if (kind === "yn" || kind === "ynna") {
+                  const s = String(v).toLowerCase();
+                  if (s === "yes") return "Yes";
+                  if (s === "no") return "No";
+                  if (s === "na") return "N/A";
+                  return String(v);
+                }
+                if (kind === "checkbox") return v ? "Yes" : "No";
+                if (Array.isArray(v)) return v.length === 0 ? "—" : v.join(", ");
+                if (typeof v === "object") return JSON.stringify(v);
+                return String(v);
+              };
+              return (
+                <GlassCard padding="16px">
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px" }}>
+                    <h3 style={{ fontSize: "14px", fontWeight: 600, color: textPrimary, margin: 0 }}>
+                      WC Application
+                    </h3>
+                    <Badge label="Cannabis" color="pink" />
+                  </div>
+                  {/* PDF download buttons */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "16px" }}>
+                    {cannabisApp.pdfs.map((pdf) => (
+                      <a
+                        key={pdf.documentType}
+                        href={`${apiBase}${pdf.path}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "10px",
+                          padding: "10px 12px",
+                          background: inputBg,
+                          borderRadius: "8px",
+                          border: `1px solid ${borderSubtle}`,
+                          textDecoration: "none",
+                          color: textPrimary,
+                          transition: "border-color 0.15s, background 0.15s",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.borderColor = "rgba(233,30,140,0.4)";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.borderColor = borderSubtle;
+                        }}
+                      >
+                        <FileText style={{ width: "16px", height: "16px", color: "#E91E8C", flexShrink: 0 }} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{ fontSize: "12px", fontWeight: 600, color: textPrimary, margin: 0 }}>
+                            {pdf.label}
+                          </p>
+                          <p style={{ fontSize: "11px", color: textMuted, margin: 0 }}>
+                            Download filled PDF
+                          </p>
+                        </div>
+                      </a>
+                    ))}
+                  </div>
+                  {/* Section-grouped answer summary */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                    {(showAllAppFields ? cannabisAppSections : cannabisAppSections.slice(0, 2)).map((sec) => (
+                      <div key={sec.id}>
+                        <p style={{ fontSize: "11px", fontWeight: 600, color: textMuted, textTransform: "uppercase", letterSpacing: "0.5px", margin: "0 0 6px" }}>
+                          {sec.title}
+                        </p>
+                        <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                          {sec.fields
+                            .filter((f) => {
+                              const v = (answers as Record<string, unknown>)[f.key];
+                              return v !== undefined && v !== null && v !== "" && !(Array.isArray(v) && v.length === 0);
+                            })
+                            .map((f) => (
+                              <div
+                                key={f.key}
+                                style={{ display: "flex", justifyContent: "space-between", gap: "12px", fontSize: "12px", padding: "3px 0" }}
+                              >
+                                <span style={{ color: textMuted, flexShrink: 0 }}>{f.label}</span>
+                                <span style={{ color: textPrimary, textAlign: "right", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                  {fmt(f.key, f.kind)}
+                                </span>
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowAllAppFields((v) => !v)}
+                    style={{
+                      marginTop: "12px",
+                      width: "100%",
+                      padding: "8px",
+                      background: "transparent",
+                      border: `1px solid ${borderSubtle}`,
+                      borderRadius: "8px",
+                      color: textMuted,
+                      fontSize: "12px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {showAllAppFields ? "Show less" : `Show all ${cannabisAppSections.length} sections`}
+                  </button>
+                </GlassCard>
+            );
+            })()}
 
             {/* DOCUMENTS */}
             <GlassCard padding="16px">
