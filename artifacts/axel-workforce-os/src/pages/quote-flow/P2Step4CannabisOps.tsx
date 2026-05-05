@@ -95,7 +95,7 @@ export default function P2Step4CannabisOps() {
             />
           </FieldLabel>
           <p style={{ marginTop: 6, fontSize: 12, color: textMuted }}>
-            Answering <strong>Yes</strong> adds the Auto Exposure questionnaire step. Answering <strong>No</strong> skips it even if Delivery is selected above.
+            Answering <strong>Yes</strong> adds the Auto Exposure questionnaire step. If <strong>Delivery</strong> is selected above, the Auto Exposure step is always required regardless of this answer.
           </p>
         </div>
 
