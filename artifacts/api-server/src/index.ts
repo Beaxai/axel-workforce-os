@@ -1,5 +1,25 @@
 import app from "./app";
+import { purgeExpiredClassifyCache } from "./lib/aiClassifyCache";
 import { logger } from "./lib/logger";
+
+const CLASSIFY_CACHE_SWEEP_INTERVAL_MS = 60 * 60 * 1000;
+
+function startClassifyCacheSweeper(): void {
+  const sweep = async (): Promise<void> => {
+    try {
+      await purgeExpiredClassifyCache();
+      logger.debug("Purged expired ai_classify_cache rows");
+    } catch (err) {
+      logger.error({ err }, "Failed to purge expired ai_classify_cache rows");
+    }
+  };
+
+  void sweep();
+  const timer = setInterval(() => {
+    void sweep();
+  }, CLASSIFY_CACHE_SWEEP_INTERVAL_MS);
+  timer.unref();
+}
 
 const rawPort = process.env["PORT"];
 
@@ -22,4 +42,5 @@ app.listen(port, (err) => {
   }
 
   logger.info({ port }, "Server listening");
+  startClassifyCacheSweeper();
 });
