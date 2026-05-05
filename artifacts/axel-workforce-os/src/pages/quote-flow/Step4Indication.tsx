@@ -1,5 +1,5 @@
 import { useThemeColors } from "@/lib/use-theme-colors";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuoteFlowStore, type MultiLocationResult, type WorkforceProfilePayload } from "@/lib/quote-flow-store";
 import { api } from "@/lib/api";
@@ -15,7 +15,32 @@ export default function Step4Indication() {
 
   const modifier = s.hasExperienceMod === "Yes" ? parseFloat(s.experienceMod) || 1.0 : 1.0;
 
+  const ratingInputKey = useMemo(
+    () =>
+      JSON.stringify({
+        locations: s.locations.map((loc) => ({
+          state: loc.state,
+          zip: loc.zip,
+          classCodes: loc.classCodes.map((cc) => ({
+            classCode: cc.classCode,
+            annualPayroll: cc.annualPayroll,
+            fullTimeEmployees: cc.fullTimeEmployees,
+            partTimeEmployees: cc.partTimeEmployees,
+            description: cc.description,
+          })),
+        })),
+        hasExperienceMod: s.hasExperienceMod,
+        experienceMod: s.experienceMod,
+      }),
+    [s.locations, s.hasExperienceMod, s.experienceMod],
+  );
+
+  const storeRef = useRef(s);
+  storeRef.current = s;
+
   useEffect(() => {
+    let cancelled = false;
+    const s = storeRef.current;
     async function fetchRates() {
       setLoading(true);
       setRatingError("");
@@ -44,13 +69,17 @@ export default function Step4Indication() {
       };
 
       if (locationsPayload.length === 0) {
+        if (cancelled) return;
         setRatingError("No valid locations with class codes to rate.");
+        setRatingResult(null);
         setLoading(false);
         return;
       }
 
       try {
         const res = await api.post<{ success: boolean; data: MultiLocationResult; error?: string }>("/rate/wc/multi", workforceProfile);
+
+        if (cancelled) return;
 
         if (!res.success) {
           setRatingError(res.error || "Rating calculation failed.");
@@ -104,14 +133,19 @@ export default function Step4Indication() {
           },
         });
       } catch (err: any) {
+        if (cancelled) return;
         setRatingError(err?.message || "Could not connect to rating engine.");
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
 
     fetchRates();
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ratingInputKey]);
 
   if (loading) {
     return (
