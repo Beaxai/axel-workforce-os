@@ -23,7 +23,11 @@ router.post("/", async (req, res) => {
   const parsed = insertRateTableSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues });
   const [row] = await db.insert(rateTablesTable).values(parsed.data).returning();
-  clearClassifyCache();
+  try {
+    await clearClassifyCache();
+  } catch (err) {
+    req.log.warn({ err }, "Failed to clear AI classify cache");
+  }
   res.status(201).json(row);
 });
 

@@ -30,9 +30,13 @@ router.post("/classify", async (req, res) => {
 
   const sanitizedState = typeof state === "string" ? state.trim().toUpperCase().slice(0, 2) : "";
 
-  const cached = getCachedSuggestions(sanitizedDesc, sanitizedState);
-  if (cached) {
-    return res.json({ success: true, data: cached, cached: true });
+  try {
+    const cached = await getCachedSuggestions(sanitizedDesc, sanitizedState);
+    if (cached) {
+      return res.json({ success: true, data: cached, cached: true });
+    }
+  } catch (err) {
+    req.log.warn({ err }, "AI classify cache lookup failed");
   }
 
   try {
@@ -77,7 +81,11 @@ Return ONLY the JSON array, no other text.`;
       : [];
 
     if (suggestions.length > 0) {
-      setCachedSuggestions(sanitizedDesc, sanitizedState, suggestions);
+      try {
+        await setCachedSuggestions(sanitizedDesc, sanitizedState, suggestions);
+      } catch (err) {
+        req.log.warn({ err }, "AI classify cache write failed");
+      }
     }
 
     res.json({ success: true, data: suggestions, cached: false });

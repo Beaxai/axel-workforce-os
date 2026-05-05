@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { db, aiClassifyCacheTable } from "@workspace/db";
+import { eq, lte, sql } from "drizzle-orm";
 
 export interface ClassCodeSuggestion {
   classCode: string;
@@ -7,15 +9,8 @@ export interface ClassCodeSuggestion {
   reasoning: string;
 }
 
-interface CacheEntry {
-  expiresAt: number;
-  suggestions: ClassCodeSuggestion[];
-}
-
 const DEFAULT_TTL_MS = 24 * 60 * 60 * 1000;
-const MAX_ENTRIES = 500;
 
-const store = new Map<string, CacheEntry>();
 let ttlMs = DEFAULT_TTL_MS;
 
 function makeKey(description: string, state: string): string {
@@ -23,52 +18,65 @@ function makeKey(description: string, state: string): string {
   return createHash("sha256").update(normalized).digest("hex");
 }
 
-function evictIfNeeded() {
-  if (store.size <= MAX_ENTRIES) return;
-  const overflow = store.size - MAX_ENTRIES;
-  let removed = 0;
-  for (const key of store.keys()) {
-    if (removed >= overflow) break;
-    store.delete(key);
-    removed += 1;
-  }
-}
-
-export function getCachedSuggestions(
+export async function getCachedSuggestions(
   description: string,
   state: string,
-): ClassCodeSuggestion[] | undefined {
+): Promise<ClassCodeSuggestion[] | undefined> {
   const key = makeKey(description, state);
-  const entry = store.get(key);
+  const rows = await db
+    .select()
+    .from(aiClassifyCacheTable)
+    .where(eq(aiClassifyCacheTable.key, key))
+    .limit(1);
+  const entry = rows[0];
   if (!entry) return undefined;
-  if (entry.expiresAt <= Date.now()) {
-    store.delete(key);
+  if (entry.expiresAt.getTime() <= Date.now()) {
+    await db.delete(aiClassifyCacheTable).where(eq(aiClassifyCacheTable.key, key));
     return undefined;
   }
-  store.delete(key);
-  store.set(key, entry);
-  return entry.suggestions;
+  return entry.suggestions as ClassCodeSuggestion[];
 }
 
-export function setCachedSuggestions(
+export async function setCachedSuggestions(
   description: string,
   state: string,
   suggestions: ClassCodeSuggestion[],
-): void {
+): Promise<void> {
   const key = makeKey(description, state);
-  store.set(key, {
-    expiresAt: Date.now() + ttlMs,
-    suggestions,
-  });
-  evictIfNeeded();
+  const expiresAt = new Date(Date.now() + ttlMs);
+  await db
+    .insert(aiClassifyCacheTable)
+    .values({
+      key,
+      description: description.slice(0, 4000),
+      state: state.slice(0, 8),
+      suggestions: suggestions as unknown as object,
+      expiresAt,
+    })
+    .onConflictDoUpdate({
+      target: aiClassifyCacheTable.key,
+      set: {
+        suggestions: suggestions as unknown as object,
+        expiresAt,
+      },
+    });
 }
 
-export function clearClassifyCache(): void {
-  store.clear();
+export async function clearClassifyCache(): Promise<void> {
+  await db.delete(aiClassifyCacheTable);
 }
 
-export function getClassifyCacheSize(): number {
-  return store.size;
+export async function getClassifyCacheSize(): Promise<number> {
+  const [row] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(aiClassifyCacheTable);
+  return row?.count ?? 0;
+}
+
+export async function purgeExpiredClassifyCache(): Promise<void> {
+  await db
+    .delete(aiClassifyCacheTable)
+    .where(lte(aiClassifyCacheTable.expiresAt, new Date()));
 }
 
 export function setClassifyCacheTtlMs(ms: number): void {
