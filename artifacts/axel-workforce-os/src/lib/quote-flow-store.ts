@@ -169,10 +169,13 @@ export interface QuoteFlowState {
   seasonalEmployees: string;
   volunteers: string;
   paymentMethods: string[];
+  paymentMethodsOther: string;
   benefitsOffered: string[];
+  benefitsOfferedOther: string;
   groupHealth: string;
   groupHealthPct: string;
   preHireChecks: string[];
+  preHireChecksOther: string;
   returnToWork: string;
   subcontractorsUsed: string;
   subcontractorPct: string;
@@ -354,10 +357,13 @@ const initialState: Omit<QuoteFlowState, keyof QuoteFlowActions> = {
   seasonalEmployees: "",
   volunteers: "",
   paymentMethods: [],
+  paymentMethodsOther: "",
   benefitsOffered: [],
+  benefitsOfferedOther: "",
   groupHealth: "",
   groupHealthPct: "",
   preHireChecks: [],
+  preHireChecksOther: "",
   returnToWork: "",
   subcontractorsUsed: "",
   subcontractorPct: "",

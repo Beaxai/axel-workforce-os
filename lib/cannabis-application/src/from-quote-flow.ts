@@ -80,10 +80,13 @@ export interface QuoteFlowSubset {
   seasonalEmployees?: string;
   volunteers?: string;
   paymentMethods?: string[];
+  paymentMethodsOther?: string;
   benefitsOffered?: string[];
+  benefitsOfferedOther?: string;
   groupHealth?: string;
   groupHealthPct?: string;
   preHireChecks?: string[];
+  preHireChecksOther?: string;
   returnToWork?: string;
   subcontractorsUsed?: string;
   subcontractorPct?: string;
@@ -386,24 +389,27 @@ export function fromQuoteFlow(s: QuoteFlowSubset): CannabisApplicationAnswers {
     paidHourly: has(s.paymentMethods, "hourly"),
     paidCommission: has(s.paymentMethods, "commission"),
     paidSalary: has(s.paymentMethods, "salary"),
-    paidOther: (s.paymentMethods || []).find((m) => !["hourly", "commission", "salary"].includes(m.toLowerCase())) || "",
+    paidOther:
+      s.paymentMethodsOther ||
+      (s.paymentMethods || []).find((m) => !["hourly", "commission", "salary", "other"].includes(m.toLowerCase())) ||
+      "",
     benefitsPaidSick: has(s.benefitsOffered, "paid sick time") || has(s.benefitsOffered, "paid_sick_time"),
     benefitsPaidVacation: has(s.benefitsOffered, "paid vacation") || has(s.benefitsOffered, "paid_vacation"),
     benefits401k: has(s.benefitsOffered, "401k"),
     benefitsRetirement: has(s.benefitsOffered, "retirement"),
-    benefitsOther: "",
+    benefitsOther: s.benefitsOfferedOther || "",
     groupHealthCoverage: ynNorm(s.groupHealth),
     groupHealthEmployerPct: s.groupHealthPct || "",
     preHireWrittenApp: has(s.preHireChecks, "written application") || has(s.preHireChecks, "written_application"),
-    preHireMvr: has(s.preHireChecks, "pre-hire mvr checks") || has(s.preHireChecks, "pre_hire_mvr"),
+    preHireMvr: has(s.preHireChecks, "pre-hire mvr") || has(s.preHireChecks, "pre-hire mvr checks") || has(s.preHireChecks, "pre_hire_mvr"),
     preHireRandomDrug: has(s.preHireChecks, "random drug testing") || has(s.preHireChecks, "random_drug"),
     preHirePhysicals: has(s.preHireChecks, "physicals"),
     preHireCriminal: has(s.preHireChecks, "criminal back") || has(s.preHireChecks, "criminal background"),
     preHireDrugTesting: has(s.preHireChecks, "pre-hire drug testing") || has(s.preHireChecks, "pre_hire_drug"),
     preHireReferences: has(s.preHireChecks, "reference checks"),
-    preHireAnnualMvr: has(s.preHireChecks, "annual mvr checks") || has(s.preHireChecks, "annual_mvr"),
+    preHireAnnualMvr: has(s.preHireChecks, "annual mvr") || has(s.preHireChecks, "annual mvr checks") || has(s.preHireChecks, "annual_mvr"),
     preHirePostAccident: has(s.preHireChecks, "post accident") || has(s.preHireChecks, "post_accident"),
-    preHireOther: "",
+    preHireOther: s.preHireChecksOther || "",
     returnToWork: lookup(RTW_MAP, s.returnToWork),
     subcontractorsUsed: ynNorm(s.subcontractorsUsed),
     subcontractorPayrollPct: s.subcontractorPct || "",

@@ -51,6 +51,7 @@ const PREHIRE_OPTIONS = [
   { value: "Reference Checks", label: "Reference Checks" },
   { value: "Annual MVR", label: "Annual MVR" },
   { value: "Post Accident", label: "Post Accident" },
+  { value: "Other", label: "Other" },
 ];
 
 export default function P2Step4CannabisOps() {
@@ -119,12 +120,34 @@ export default function P2Step4CannabisOps() {
           <FieldLabel label="How are employees paid?">
             <MultiSelect values={s.paymentMethods} onChange={(v) => s.update({ paymentMethods: v })} options={PAYMENT_METHODS} placeholder="Select payment methods" />
           </FieldLabel>
+          {s.paymentMethods.includes("Other") && (
+            <div style={{ marginTop: 12 }}>
+              <FieldLabel label="Other payment method (describe)">
+                <TextInput
+                  value={s.paymentMethodsOther}
+                  onChange={(v) => s.update({ paymentMethodsOther: v })}
+                  placeholder="e.g., Tips, piecework, profit-sharing"
+                />
+              </FieldLabel>
+            </div>
+          )}
         </div>
 
         <div style={{ marginTop: 16 }}>
           <FieldLabel label="Benefits Offered">
             <MultiSelect values={s.benefitsOffered} onChange={(v) => s.update({ benefitsOffered: v })} options={BENEFITS_OPTIONS} placeholder="Select benefits" />
           </FieldLabel>
+          {s.benefitsOffered.includes("Other") && (
+            <div style={{ marginTop: 12 }}>
+              <FieldLabel label="Other benefits (describe)">
+                <TextInput
+                  value={s.benefitsOfferedOther}
+                  onChange={(v) => s.update({ benefitsOfferedOther: v })}
+                  placeholder="e.g., Tuition reimbursement, gym membership"
+                />
+              </FieldLabel>
+            </div>
+          )}
         </div>
 
         <div style={{ marginTop: 16, display: "flex", gap: 32, alignItems: "start" }}>
@@ -143,6 +166,17 @@ export default function P2Step4CannabisOps() {
         <FieldLabel label="Pre-hire checks">
           <MultiSelect values={s.preHireChecks} onChange={(v) => s.update({ preHireChecks: v })} options={PREHIRE_OPTIONS} placeholder="Select checks" />
         </FieldLabel>
+        {s.preHireChecks.includes("Other") && (
+          <div style={{ marginTop: 12 }}>
+            <FieldLabel label="Other pre-hire check (describe)">
+              <TextInput
+                value={s.preHireChecksOther}
+                onChange={(v) => s.update({ preHireChecksOther: v })}
+                placeholder="e.g., Social media screening, credit check"
+              />
+            </FieldLabel>
+          </div>
+        )}
 
         <div style={{ marginTop: 16 }}>
           <FieldLabel label="Return-to-Work available">
