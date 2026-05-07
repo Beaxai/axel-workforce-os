@@ -71,10 +71,17 @@ export default function Marketplace() {
         {VERTICALS.map((v) => {
           const isHovered = hoveredSlug === v.slug;
           return (
-            <button
+            <div
               key={v.slug}
-              type="button"
+              role="button"
+              tabIndex={0}
               onClick={() => navigate(`/marketplace/${v.slug}`)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  navigate(`/marketplace/${v.slug}`);
+                }
+              }}
               onMouseEnter={() => setHoveredSlug(v.slug)}
               onMouseLeave={() => setHoveredSlug(null)}
               style={{
@@ -156,7 +163,36 @@ export default function Marketplace() {
                   {v.name}
                 </p>
               </div>
-            </button>
+
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate("/marketplace/quote/service-type", { state: { vertical: v.name } });
+                }}
+                style={{
+                  position: "absolute",
+                  bottom: 16,
+                  left: 20,
+                  right: 20,
+                  padding: "10px 14px",
+                  borderRadius: 8,
+                  border: "1px solid rgba(255,255,255,0.18)",
+                  background: isHovered ? "#E91E8C" : "rgba(0,0,0,0.45)",
+                  backdropFilter: "blur(8px)",
+                  WebkitBackdropFilter: "blur(8px)",
+                  color: "#fff",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  letterSpacing: "0.02em",
+                  cursor: "pointer",
+                  transition: "background 0.25s ease, border-color 0.25s ease",
+                  boxShadow: isHovered ? "0 6px 18px rgba(233,30,140,0.35)" : "none",
+                }}
+              >
+                Start Submission →
+              </button>
+            </div>
           );
         })}
       </div>
