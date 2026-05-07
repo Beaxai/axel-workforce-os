@@ -5,8 +5,11 @@ import {
   calculateWCPremium,
   calculateWFSPEPM,
   calculateMultiLocationWC,
+  calculateASOPEPM,
   validateWCInput,
   validateWFSInput,
+  validateASOInput,
+  ASO_BASE_PEPM_RATE,
 } from "../utils/ratingEngine";
 
 const router: IRouter = Router();
@@ -140,6 +143,83 @@ router.post("/wfs", async (req, res) => {
     }
 
     res.json({ success: true, data: breakdown });
+  } catch (err: any) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+router.post("/aso", async (req, res) => {
+  const {
+    headcount,
+    state,
+    effectiveDate,
+    totalPayroll,
+    workforceProfile,
+    wcReference,
+    dealId,
+  } = req.body as {
+    headcount: number;
+    state?: string;
+    effectiveDate?: string;
+    totalPayroll?: number;
+    workforceProfile?: unknown;
+    wcReference?: {
+      classCodes?: unknown;
+      currentCarrier?: string;
+      policyExpiration?: string;
+      emod?: number;
+      currentAnnualPremium?: string;
+    };
+    dealId?: string;
+  };
+
+  const errors = validateASOInput({ headcount });
+  if (errors.length > 0) return res.status(400).json({ success: false, error: errors.join("; ") });
+
+  try {
+    const breakdown = calculateASOPEPM({ headcount });
+
+    const ratingBreakdown = {
+      product_type: "ASO",
+      aso_base_pepm_rate: ASO_BASE_PEPM_RATE,
+      headcount,
+      pepm: breakdown.result.pepm,
+      monthly_aso_fee: breakdown.result.monthlyAsoFee,
+      annual_aso_fee: breakdown.result.annualAsoFee,
+      total_payroll: totalPayroll ?? null,
+      effective_date: effectiveDate ?? null,
+      state: state ?? null,
+      wc_reference: {
+        class_codes: wcReference?.classCodes ?? [],
+        current_carrier: wcReference?.currentCarrier ?? null,
+        policy_expiration: wcReference?.policyExpiration ?? null,
+        emod: wcReference?.emod ?? null,
+        current_annual_premium: wcReference?.currentAnnualPremium ?? null,
+      },
+    };
+
+    if (dealId) {
+      const existing = await db.select().from(quotesTable).where(eq(quotesTable.dealId, dealId)).limit(1);
+      const payload = {
+        state: state ?? null,
+        headcount,
+        annualPayroll: totalPayroll != null ? String(totalPayroll) : null,
+        wcPremium: null,
+        monthlyWfsFee: String(breakdown.result.monthlyAsoFee),
+        pepm: String(breakdown.result.pepm),
+        isPeo: false,
+        ratingBreakdown,
+        workforceProfile: workforceProfile ?? null,
+        ratedAt: new Date(),
+      };
+      if (existing.length > 0) {
+        await db.update(quotesTable).set(payload).where(eq(quotesTable.dealId, dealId));
+      } else {
+        await db.insert(quotesTable).values({ dealId, ...payload });
+      }
+    }
+
+    res.json({ success: true, data: { ...breakdown, ratingBreakdown } });
   } catch (err: any) {
     res.status(400).json({ success: false, error: err.message });
   }

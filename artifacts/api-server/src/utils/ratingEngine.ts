@@ -17,6 +17,45 @@ export interface WFSPEPMInput {
   headcount: number;
 }
 
+export const ASO_BASE_PEPM_RATE = 50.0;
+
+export interface ASOPEPMInput {
+  headcount: number;
+}
+
+export interface ASOPEPMBreakdown {
+  input: ASOPEPMInput;
+  result: {
+    pepm: number;
+    monthlyAsoFee: number;
+    annualAsoFee: number;
+  };
+  asoBasePepmRate: number;
+}
+
+export function validateASOInput(input: ASOPEPMInput): string[] {
+  const errors: string[] = [];
+  if (!input.headcount || !Number.isInteger(input.headcount) || input.headcount <= 0) {
+    errors.push("headcount must be a positive integer greater than 0");
+  }
+  return errors;
+}
+
+export function calculateASOPEPM(input: ASOPEPMInput): ASOPEPMBreakdown {
+  const pepm = ASO_BASE_PEPM_RATE;
+  const monthlyAsoFee = round2(pepm * input.headcount);
+  const annualAsoFee = round2(monthlyAsoFee * 12);
+  return {
+    input,
+    result: { pepm, monthlyAsoFee, annualAsoFee },
+    asoBasePepmRate: ASO_BASE_PEPM_RATE,
+  };
+}
+
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
 const VALID_STATES = [
   "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD",
   "MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC",

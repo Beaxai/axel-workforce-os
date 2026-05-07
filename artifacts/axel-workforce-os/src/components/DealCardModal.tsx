@@ -524,8 +524,8 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
                 {deal?.vertical && <span style={{ fontSize: "13px", color: textMuted }}>{deal.vertical}</span>}
                 {deal?.productType && (
                   <Badge
-                    label={deal.productType === "PEO" ? "PEO" : "WC"}
-                    color={deal.productType === "PEO" ? "#E91E8C" : "#1E6BE9"}
+                    label={deal.productType === "PEO" ? "PEO" : deal.productType === "ASO" ? "ASO" : "WC"}
+                    color={deal.productType === "PEO" ? "#E91E8C" : deal.productType === "ASO" ? "#7C3AED" : "#1E6BE9"}
                   />
                 )}
               </div>
@@ -1027,13 +1027,38 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
                   <>
                     <DetailRow label="Business Name" value={deal?.businessName} isDark={isDark} />
                     <DetailRow label="Vertical" value={deal?.vertical} isDark={isDark} />
-                    <DetailRow label="Quote Type" value={deal?.productType === "PEO" ? "PEO+WC" : "WC Only"} isDark={isDark} />
+                    <DetailRow
+                      label="Quote Type"
+                      value={
+                        deal?.productType === "PEO"
+                          ? "PEO+WC"
+                          : deal?.productType === "ASO"
+                            ? "ASO Only"
+                            : "WC Only"
+                      }
+                      isDark={isDark}
+                    />
                     <DetailRow label="State" value={deal?.state} isDark={isDark} />
                     <DetailRow label="Annual Payroll" value={deal?.annualPayroll ? formatCurrency(deal.annualPayroll) : "—"} isDark={isDark} />
                     <DetailRow label="Headcount" value={deal?.employeeCountFt ? String(deal.employeeCountFt) : "—"} isDark={isDark} />
-                    <DetailRow label="WC Premium" value={formatCurrency(deal?.wcPremium)} isDark={isDark} />
-                    {deal?.productType === "PEO" && (
-                      <DetailRow label="WFS PEPM" value={formatCurrency(deal?.wfsPepmRate)} isDark={isDark} />
+                    {deal?.productType === "ASO" ? (
+                      <>
+                        <DetailRow label="Administrative Services" value="$50.00 PEPM" isDark={isDark} />
+                        {deal?.employeeCountFt && (
+                          <DetailRow
+                            label="Monthly ASO Fee"
+                            value={`$${(Number(deal.employeeCountFt) * 50).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                            isDark={isDark}
+                          />
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <DetailRow label="WC Premium" value={formatCurrency(deal?.wcPremium)} isDark={isDark} />
+                        {deal?.productType === "PEO" && (
+                          <DetailRow label="WFS PEPM" value={formatCurrency(deal?.wfsPepmRate)} isDark={isDark} />
+                        )}
+                      </>
                     )}
                   </>
                 )}

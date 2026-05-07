@@ -12,6 +12,7 @@ import {
   HeartPulse,
   Scale,
   Heart,
+  ClipboardList,
 } from "lucide-react";
 import { getVerticalBySlug } from "@/lib/vertical-data";
 
@@ -116,6 +117,21 @@ export default function VerticalDetail() {
       state: { vertical: vertical.name },
     });
   };
+
+  const handleStartAsoQuote = () => {
+    navigate("/marketplace/quote/aso", {
+      state: { vertical: vertical.name },
+    });
+  };
+
+  const ASO_FEATURES = [
+    "Full-service payroll & tax filing",
+    "HR administration & compliance",
+    "Benefits administration",
+    "Time & attendance",
+    "Employee handbook & policies",
+    "You keep your own WC policy",
+  ];
 
   return (
     <div style={{ width: "100%" }}>
@@ -255,7 +271,7 @@ export default function VerticalDetail() {
         className="vertical-detail-cards"
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(2, 1fr)",
+          gridTemplateColumns: "repeat(3, 1fr)",
           gap: 20,
         }}
       >
@@ -265,6 +281,7 @@ export default function VerticalDetail() {
           description={vertical.wcDescription}
           features={vertical.wcFeatures}
           onStart={handleStartSubmission}
+          ctaLabel="Start Submission"
           isDark={isDark}
           textPrimary={textPrimary}
           textSecondary={textSecondary}
@@ -278,6 +295,22 @@ export default function VerticalDetail() {
           description={vertical.peoDescription}
           features={vertical.peoFeatures}
           onStart={handleStartSubmission}
+          ctaLabel="Start Submission"
+          isDark={isDark}
+          textPrimary={textPrimary}
+          textSecondary={textSecondary}
+          textMuted={textMuted}
+          cardBg={cardBg}
+          borderColor={borderColor}
+        />
+        <CoverageCard
+          title="Administrative Services (ASO)"
+          badge="ASO"
+          icon={<ClipboardList style={{ width: 22, height: 22, color: ACCENT }} />}
+          description="Keep full employer control while outsourcing HR, payroll, benefits admin, and compliance. No co-employment required."
+          features={ASO_FEATURES}
+          onStart={handleStartAsoQuote}
+          ctaLabel="Get ASO Quote"
           isDark={isDark}
           textPrimary={textPrimary}
           textSecondary={textSecondary}
@@ -472,6 +505,8 @@ function CoverageCard({
   description,
   features,
   onStart,
+  ctaLabel,
+  badge,
   isDark,
   textPrimary,
   textSecondary,
@@ -484,6 +519,8 @@ function CoverageCard({
   description: string;
   features: string[];
   onStart: () => void;
+  ctaLabel?: string;
+  badge?: string;
   isDark: boolean;
   textPrimary: string;
   textSecondary: string;
@@ -526,7 +563,7 @@ function CoverageCard({
         >
           {icon}
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1 }}>
           <p
             style={{
               fontFamily: "var(--app-font-heading)",
@@ -555,6 +592,24 @@ function CoverageCard({
             {title}
           </h3>
         </div>
+        {badge && (
+          <span
+            style={{
+              alignSelf: "flex-start",
+              fontFamily: "var(--app-font-heading)",
+              fontSize: 10,
+              fontWeight: 600,
+              letterSpacing: "0.18em",
+              textTransform: "uppercase",
+              padding: "4px 10px",
+              borderRadius: 999,
+              background: ACCENT,
+              color: "#fff",
+            }}
+          >
+            {badge}
+          </span>
+        )}
       </div>
 
       <p
@@ -635,7 +690,7 @@ function CoverageCard({
           e.currentTarget.style.background = ACCENT;
         }}
       >
-        Start Submission
+        {ctaLabel || "Start Submission"}
       </button>
       <p
         style={{
