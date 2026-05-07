@@ -101,7 +101,12 @@ export default function Marketplace() {
                   width: "100%",
                   height: "100%",
                   objectFit: "cover",
-                  objectPosition: v.slug === "all-other-industries" ? "center 60%" : "center",
+                  objectPosition:
+                    v.slug === "all-other-industries"
+                      ? "center 60%"
+                      : v.slug === "cannabis"
+                        ? "center top"
+                        : "center",
                   filter: isHovered
                     ? "grayscale(0) brightness(0.9) saturate(1.05)"
                     : "grayscale(1) brightness(0.55)",
