@@ -1,0 +1,148 @@
+ASO Product: Marketplace Card + Rating Engine Integration
+CONTEXT
+We are adding a new product type to Axel Workforce OS: ASO (Administrative Services Organization). ASO is distinct from PEO in that there is no co-employment relationship — the client remains the sole employer of record. ASO sells software + administrative support (payroll, HR, benefits, compliance). The client keeps their own WC policy — Axel collects WC exposure data for underwriting reference but does not quote or price WC through the ASO path.
+Key distinctions:
+
+PEO = co-employment + bundled WC + workforce infrastructure
+ASO = admin support only, client keeps full employer responsibility and their own WC policy
+ASO quotes = PEPM only — no WC premium line item
+ASO rating basis = $50.00 PEPM flat rate
+WC exposure data is collected on the ASO quote form for underwriting reference only
+
+
+PART 1 — MARKETPLACE MODULE
+File: wherever Marketplace product cards are rendered (likely client/src/pages/Marketplace.tsx or similar)
+Add a new product card for ASO following the exact same glassmorphism card pattern used for WC Only and PEO cards.
+ASO Card Spec:
+
+Title: Administrative Services (ASO)
+Subtitle: HR administration, payroll, and compliance support — you remain the employer of record
+Icon: Lucide ClipboardList or Building2 (whichever reads more clearly as "admin/back-office")
+Badge/Tag: ASO — solid pill using #E91E8C accent, same pattern as other product type badges
+CTA Button: "Get ASO Quote" → routes to ASO quote flow (Part 2)
+Card body copy: "Keep full employer control while outsourcing HR, payroll, benefits admin, and compliance. No co-employment required."
+Design: Match existing card dimensions, glassmorphism panel style (rgba(255,255,255,0.05) bg, blur(12px), 1px solid rgba(255,255,255,0.08) border), no gradients
+
+Product type enum update: Add 'ASO' to the product type enum/constants wherever 'WC_ONLY' and 'PEO' are defined.
+
+PART 2 — RATING ENGINE: ASO QUOTE FLOW
+ASO pricing model: flat $50.00 PEPM — no WC component priced or displayed.
+Quote Form Fields
+Section 1 — Administrative Info:
+
+Company name
+State (dropdown)
+Effective date
+Number of employees (headcount)
+Total annual payroll (total_payroll) — collected for WC reference, not used in PEPM calculation
+
+Section 2 — Workers' Compensation Info:
+Label this section: "Workers' Compensation Info (for underwriting reference)"
+Helper note directly under section header: "Your WC policy remains in your company's name. This information is collected for our underwriting team's reference only."
+Fields:
+
+Class code(s) — use the same class code selector used in the WC/PEO flows
+Payroll per class code (if split payroll applies)
+Current WC carrier (text field)
+Current WC policy expiration date (date field)
+Experience modification factor / EMod (numeric field, default value 1.0)
+Current WC annual premium (text field — what they are paying today)
+
+None of the WC fields feed the PEPM calculation. They are collected for storage only.
+
+ASO PEPM Formula
+pepm = 50.00  (flat rate — no payroll-based calculation)
+monthly_aso_fee = pepm × headcount
+annual_aso_fee = monthly_aso_fee × 12
+
+The $50.00 PEPM rate should be stored as a named constant: ASO_BASE_PEPM_RATE = 50.00
+Do not hardcode 50 inline — reference the constant so the rate can be updated in one place
+Display as a single line item: Administrative Services $50.00 PEPM
+No WC premium line under any circumstance
+No minimum premium logic
+No EMod, schedule rating, or payroll multiplier applied to the PEPM
+
+
+Quote Results Display
+Follow the same results card pattern used for PEO quotes. Show:
+
+Administrative Services: $50.00 PEPM
+Monthly Total: $X,XXX.00 (headcount × $50.00)
+Annual Total: $XX,XXX.00 (monthly × 12)
+
+No WC line item rendered.
+
+Quote Record
+Insert into the existing quotes table:
+
+product_type = 'ASO'
+wc_premium = null
+monthly_fee = monthly_aso_fee
+pepm = 50.00
+rating_breakdown = full JSON (see below)
+
+rating_breakdown JSON structure:
+json{
+  "product_type": "ASO",
+  "aso_base_pepm_rate": 50.00,
+  "headcount": <number>,
+  "pepm": 50.00,
+  "monthly_aso_fee": <number>,
+  "annual_aso_fee": <number>,
+  "total_payroll": <number>,
+  "effective_date": "<date>",
+  "state": "<string>",
+  "wc_reference": {
+    "class_codes": [...],
+    "current_carrier": "<string>",
+    "policy_expiration": "<date>",
+    "emod": <number>,
+    "current_annual_premium": "<string>"
+  }
+}
+
+PART 3 — DEAL CARD / PIPELINE
+When a deal is created from an ASO quote:
+
+product_type on the deal record = 'ASO'
+Deal card premium display: show Administrative Services $50.00 PEPM only — no WC premium line
+Pipeline behavior: identical to PEO deals — same 10 stages, same kanban card layout
+
+
+PART 4 — IMPLEMENTATION TRACKER
+No new tracker needed. When an ASO deal reaches Stage 9 (Bound):
+
+Trigger the existing PEO/ASO Onboarding tracker
+Label it "ASO Onboarding" (not "PEO Onboarding") when product_type === 'ASO'
+All phases and timeline remain identical to the PEO tracker
+Update the tracker trigger logic to handle both product_type === 'PEO' and product_type === 'ASO'
+
+
+PART 5 — "MY PROGRAM" CLIENT MODULE
+When a client with product_type === 'ASO' views their My Program module:
+
+Display "Administrative Services (ASO)" as the program type label
+Do not render any WC policy section
+All other module behavior unchanged
+
+
+DEPENDENCIES
+
+Requires existing PEO quote flow as the reference pattern for form structure and results display
+product_type enum must be updated in DB and frontend constants before any ASO record can be created
+Store ASO_BASE_PEPM_RATE = 50.00 as a named constant in the rating engine constants file — same location as other rating constants
+No new DB tables required — all ASO data fits existing quotes, deals, and implementation_trackers tables
+
+
+ACCEPTANCE CRITERIA
+
+ ASO card visible in Marketplace with correct copy, icon, badge, and CTA
+ "Get ASO Quote" routes to quote form with both admin and WC reference sections
+ WC fields are clearly labeled as reference only and do not affect PEPM calculation
+ Quote calculates at flat $50.00 PEPM regardless of payroll inputs
+ Monthly Total = headcount × $50.00; Annual Total = Monthly × 12
+ Quote saves to quotes table with product_type = 'ASO', wc_premium = null, pepm = 50.00, and correct rating_breakdown JSON including wc_reference object
+ ASO_BASE_PEPM_RATE constant defined and referenced — not hardcoded inline
+ Deal created from ASO quote shows Administrative Services $50.00 PEPM only — no WC premium rendered anywhere
+ ASO deal at Stage 9 triggers PEO/ASO onboarding tracker labeled "ASO Onboarding"
+ My Program module displays correct label for ASO clients with no WC policy section
