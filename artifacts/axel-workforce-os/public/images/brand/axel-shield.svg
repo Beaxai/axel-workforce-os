@@ -9,8 +9,6 @@
       <stop offset="1" stop-color="#7C3AED"/>
     </linearGradient>
   </defs>
-
-  <!-- Angular geometric shield -->
   <path
     d="M32 4 L56 12 L56 32 C56 46 46 55 32 60 C18 55 8 46 8 32 L8 12 Z"
     fill="url(#axelShieldFill)"
@@ -25,16 +23,5 @@
     stroke-width="0.7"
     stroke-opacity="0.35"
     stroke-linejoin="round"
-  />
-
-  <!-- Axel "A": chevron with open bottom (no crossbar) -->
-  <path
-    fill="#FFFFFF"
-    d="M19 46 L32 19 L45 46 L38.2 46 L32 32 L25.8 46 Z"
-  />
-  <!-- Small accent triangle at bottom-right -->
-  <path
-    fill="#FFFFFF"
-    d="M40 40 L46 46 L40 46 Z"
   />
 </svg>

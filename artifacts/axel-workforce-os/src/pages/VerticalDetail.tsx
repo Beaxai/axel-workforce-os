@@ -279,11 +279,40 @@ export default function VerticalDetail() {
         <CoverageCard
           title="WorkShield (Workers' Comp)"
           icon={
-            <img
-              src={`${BASE}images/brand/axel-shield.svg`}
-              alt="WorkShield"
-              style={{ width: 32, height: 32, objectFit: "contain" }}
-            />
+            <div
+              style={{
+                position: "relative",
+                width: 32,
+                height: 32,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <img
+                src={`${BASE}images/brand/axel-shield.svg`}
+                alt=""
+                aria-hidden="true"
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "contain",
+                }}
+              />
+              <img
+                src={`${BASE}images/brand/axel-a-mark.png`}
+                alt="WorkShield"
+                style={{
+                  position: "relative",
+                  width: 14,
+                  height: 14,
+                  objectFit: "contain",
+                  marginTop: 1,
+                }}
+              />
+            </div>
           }
           description={vertical.wcDescription}
           features={vertical.wcFeatures}
