@@ -280,7 +280,7 @@ export default function VerticalDetail() {
           title="WorkShield (Workers' Comp)"
           icon={
             <img
-              src={`${BASE}images/brand/axel-shield.png`}
+              src={`${BASE}images/brand/axel-shield.svg`}
               alt="WorkShield"
               style={{ width: 32, height: 32, objectFit: "contain" }}
             />
