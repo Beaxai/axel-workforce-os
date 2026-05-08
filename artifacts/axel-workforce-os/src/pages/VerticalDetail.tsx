@@ -329,6 +329,7 @@ export default function VerticalDetail() {
         <CoverageCard
           title="Workforce Solution (PEO)"
           subtitle="Premier Workforce Solution Program"
+          eyebrow="Solution"
           icon={
             <div
               style={{
@@ -366,6 +367,7 @@ export default function VerticalDetail() {
         <CoverageCard
           title="WorkPlus OS (ASO)"
           badge="ASO"
+          eyebrow="Solution"
           icon={
             <div
               style={{
@@ -590,6 +592,7 @@ function CoverageCard({
   ctaLabel,
   badge,
   subtitle,
+  eyebrow,
   isDark,
   textPrimary,
   textSecondary,
@@ -605,6 +608,7 @@ function CoverageCard({
   ctaLabel?: string;
   badge?: string;
   subtitle?: string;
+  eyebrow?: string;
   isDark: boolean;
   textPrimary: string;
   textSecondary: string;
@@ -659,7 +663,7 @@ function CoverageCard({
               margin: 0,
             }}
           >
-            Coverage
+            {eyebrow || "Coverage"}
           </p>
           <h3
             style={{
