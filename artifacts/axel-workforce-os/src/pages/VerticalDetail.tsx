@@ -126,6 +126,7 @@ export default function VerticalDetail() {
   };
 
   const ASO_FEATURES = [
+    "Superior HR management platform",
     "Full-service payroll & tax filing",
     "HR administration & compliance",
     "Benefits administration",
@@ -369,7 +370,6 @@ export default function VerticalDetail() {
           subtitle="Elite Workforce Management Program"
           badge="ASO"
           eyebrow="Program"
-          featuresHeading="Superior HR management platform"
           icon={
             <div
               style={{
