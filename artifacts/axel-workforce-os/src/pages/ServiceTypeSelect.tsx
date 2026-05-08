@@ -196,43 +196,6 @@ export default function ServiceTypeSelect() {
             borderColor={borderColor}
           />
           <CoverageCard
-            title="Workforce Solution (PEO)"
-            subtitle="Premier Workforce Solution Program"
-            eyebrow="Program"
-            icon={
-              <div
-                style={{
-                  position: "relative",
-                  width: 70,
-                  height: 70,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <img
-                  src={`${BASE}images/brand/axel-peo-icon.png`}
-                  alt="Workforce Solution"
-                  style={{
-                    width: 85,
-                    height: 85,
-                    objectFit: "contain",
-                    marginTop: 10,
-                  }}
-                />
-              </div>
-            }
-            features={PEO_FEATURES}
-            onStart={() => startWizard("PEO")}
-            ctaLabel="Start Submission"
-            isDark={isDark}
-            textPrimary={textPrimary}
-            textSecondary={textSecondary}
-            textMuted={textMuted}
-            cardBg={cardBg}
-            borderColor={borderColor}
-          />
-          <CoverageCard
             title="WorkPlus OS (ASO)"
             subtitle="Elite Workforce Management Program"
             badge="ASO"
@@ -263,6 +226,43 @@ export default function ServiceTypeSelect() {
             features={ASO_FEATURES}
             onStart={startAsoQuote}
             ctaLabel="Get ASO Quote"
+            isDark={isDark}
+            textPrimary={textPrimary}
+            textSecondary={textSecondary}
+            textMuted={textMuted}
+            cardBg={cardBg}
+            borderColor={borderColor}
+          />
+          <CoverageCard
+            title="Workforce Solution (PEO)"
+            subtitle="Premier Workforce Solution Program"
+            eyebrow="Program"
+            icon={
+              <div
+                style={{
+                  position: "relative",
+                  width: 70,
+                  height: 70,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <img
+                  src={`${BASE}images/brand/axel-peo-icon.png`}
+                  alt="Workforce Solution"
+                  style={{
+                    width: 85,
+                    height: 85,
+                    objectFit: "contain",
+                    marginTop: 10,
+                  }}
+                />
+              </div>
+            }
+            features={PEO_FEATURES}
+            onStart={() => startWizard("PEO")}
+            ctaLabel="Start Submission"
             isDark={isDark}
             textPrimary={textPrimary}
             textSecondary={textSecondary}
