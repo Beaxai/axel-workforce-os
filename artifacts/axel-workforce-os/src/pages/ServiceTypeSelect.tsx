@@ -1,74 +1,71 @@
-import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Shield, Users, Check, ChevronRight, Clock, ArrowLeft, ArrowRight } from "lucide-react";
+import { Check, ArrowLeft } from "lucide-react";
 import { useThemeColors } from "@/lib/use-theme-colors";
+
+const ACCENT = "#E91E8C";
+const BASE = import.meta.env.BASE_URL;
 
 const WC_FEATURES = [
   "Competitive premium rates",
-  "Pay-as-you-go options available",
-  "Claims management support",
-  "Experience mod analysis",
-  "Multiple carrier options",
-  "Fast turnaround on quotes",
+  "Pay-as-you-go billing available",
+  "Dedicated claims management",
 ];
 
 const PEO_FEATURES = [
-  "Workers\u2019 comp included",
-  "Payroll processing & tax filing",
-  "Health, dental & vision benefits",
-  "HR compliance & support",
-  "Risk management services",
-  "Single point of contact",
+  "Workers\u2019 comp bundled with payroll and HR administration",
+  "Access to Fortune 500-level employee benefits",
+  "Dedicated HR compliance support and handbook creation",
+  "Streamlined onboarding and offboarding processes",
+  "Risk management and safety program implementation",
+  "Single point of contact for all workforce needs",
 ];
 
-type CoverageType = "WC" | "PEO";
+const ASO_FEATURES = [
+  "Superior HR management platform",
+  "Full-service payroll & tax filing",
+  "HR administration & compliance",
+  "Benefits administration",
+  "Time & attendance",
+  "Employee handbook & policies",
+  "You keep your own WC policy",
+];
+
+const totalSteps = 19;
 
 export default function ServiceTypeSelect() {
   const location = useLocation();
   const navigate = useNavigate();
   const { vertical } = (location.state as { vertical?: string }) || {};
-  const { isDark, textPrimary, textMuted, borderColor, hoverBg } = useThemeColors();
-
-  const [selected, setSelected] = useState<Set<CoverageType>>(new Set(["WC", "PEO"]));
+  const {
+    isDark,
+    textPrimary,
+    textSecondary,
+    textMuted,
+    cardBg,
+    borderColor,
+  } = useThemeColors();
 
   if (!vertical) {
     navigate("/marketplace", { replace: true });
     return null;
   }
 
-  const totalSteps = selected.has("WC") && selected.has("PEO") ? 19 : selected.has("PEO") ? 6 : 5;
-
-  const toggleCard = (type: CoverageType) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(type)) {
-        if (next.size > 1) next.delete(type);
-      } else {
-        next.add(type);
-      }
-      return next;
-    });
-  };
-
-  const handleContinue = () => {
-    if (selected.size === 0) return;
-    const quoteType = selected.has("WC") && selected.has("PEO") ? "PEO+WC" : selected.has("PEO") ? "PEO" : "WC";
+  const startWizard = (coverageType: "WC" | "PEO") => {
     navigate("/marketplace/quote/wizard", {
-      state: { vertical, coverageType: quoteType },
+      state: { vertical, coverageType },
     });
   };
 
-  const handleBack = () => {
-    navigate("/marketplace");
+  const startAsoQuote = () => {
+    navigate("/marketplace/quote/aso", {
+      state: { vertical },
+    });
   };
+
+  const handleBack = () => navigate("/marketplace");
 
   const btnBg = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)";
   const btnHoverBg = isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)";
-  const cardBgColor = isDark ? "#13131f" : "#f8f8fa";
-  const cardBorderDefault = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.1)";
-  const checkBorder = isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.15)";
-  const featureBorder = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)";
-  const iconBg = isDark ? "#2d1f3d" : "rgba(124,58,237,0.12)";
 
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "calc(100vh - 56px)" }}>
@@ -83,7 +80,7 @@ export default function ServiceTypeSelect() {
           style={{
             height: "100%",
             width: `${(2 / totalSteps) * 100}%`,
-            background: "#E91E8C",
+            background: ACCENT,
             transition: "width 0.3s",
             borderRadius: 2,
           }}
@@ -96,14 +93,14 @@ export default function ServiceTypeSelect() {
           justifyContent: "space-between",
           alignItems: "center",
           padding: "10px 0 0 0",
-          marginBottom: 40,
+          marginBottom: 32,
         }}
       >
         <span
           style={{
             fontSize: 12,
             fontWeight: 700,
-            color: "#E91E8C",
+            color: ACCENT,
             textTransform: "uppercase",
             letterSpacing: "0.05em",
           }}
@@ -115,7 +112,7 @@ export default function ServiceTypeSelect() {
         </span>
       </div>
 
-      <div style={{ maxWidth: 900, margin: "0 auto", width: "100%", flex: 1 }}>
+      <div style={{ width: "100%", flex: 1 }}>
         <h1
           style={{
             fontSize: 32,
@@ -133,52 +130,145 @@ export default function ServiceTypeSelect() {
             fontSize: 16,
             color: textMuted,
             margin: 0,
-            marginTop: 16,
+            marginTop: 12,
+            marginBottom: 32,
             textAlign: "center",
           }}
         >
-          Select one or both options to get pricing
+          Choose the program that best fits their needs.
         </p>
 
         <div
+          className="vertical-detail-cards"
           style={{
             display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: 24,
-            marginTop: 40,
+            gridTemplateColumns: "repeat(3, 1fr)",
+            gap: 20,
           }}
         >
-          <SelectionCard
-            icon={<Shield style={{ width: 28, height: 28, color: isDark ? "#fff" : "#7C3AED" }} />}
-            title="Standalone Workers' Compensation"
-            subtitle="Traditional WC policy with competitive rates"
+          <CoverageCard
+            title="WorkShield (Workers' Comp)"
+            subtitle="Traditional Workers' Compensation policy"
+            icon={
+              <div
+                style={{
+                  position: "relative",
+                  width: 56,
+                  height: 56,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <img
+                  src={`${BASE}images/brand/axel-shield.svg`}
+                  alt=""
+                  aria-hidden="true"
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "contain",
+                  }}
+                />
+                <img
+                  src={`${BASE}images/brand/axel-a-mark.png`}
+                  alt="WorkShield"
+                  style={{
+                    position: "relative",
+                    width: 26,
+                    height: 26,
+                    objectFit: "contain",
+                    marginTop: 2,
+                  }}
+                />
+              </div>
+            }
             features={WC_FEATURES}
-            turnaround="Instant Price Indication!"
-            isSelected={selected.has("WC")}
-            onToggle={() => toggleCard("WC")}
+            onStart={() => startWizard("WC")}
+            ctaLabel="Start Submission"
+            isDark={isDark}
             textPrimary={textPrimary}
+            textSecondary={textSecondary}
             textMuted={textMuted}
-            cardBg={cardBgColor}
-            cardBorderDefault={cardBorderDefault}
-            checkBorder={checkBorder}
-            featureBorder={featureBorder}
-            iconBg={iconBg}
+            cardBg={cardBg}
+            borderColor={borderColor}
           />
-          <SelectionCard
-            icon={<Users style={{ width: 28, height: 28, color: isDark ? "#fff" : "#7C3AED" }} />}
-            title="Comprehensive Workforce Solution (PEO)"
-            subtitle="Full-service HR, payroll, benefits & WC bundled"
+          <CoverageCard
+            title="Workforce Solution (PEO)"
+            subtitle="Premier Workforce Solution Program"
+            eyebrow="Program"
+            icon={
+              <div
+                style={{
+                  position: "relative",
+                  width: 56,
+                  height: 56,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <img
+                  src={`${BASE}images/brand/axel-peo-icon.png`}
+                  alt="Workforce Solution"
+                  style={{
+                    width: 68,
+                    height: 68,
+                    objectFit: "contain",
+                    marginTop: 8,
+                  }}
+                />
+              </div>
+            }
             features={PEO_FEATURES}
-            turnaround="Est. 3-5 business days for indication"
-            isSelected={selected.has("PEO")}
-            onToggle={() => toggleCard("PEO")}
+            onStart={() => startWizard("PEO")}
+            ctaLabel="Start Submission"
+            isDark={isDark}
             textPrimary={textPrimary}
+            textSecondary={textSecondary}
             textMuted={textMuted}
-            cardBg={cardBgColor}
-            cardBorderDefault={cardBorderDefault}
-            checkBorder={checkBorder}
-            featureBorder={featureBorder}
-            iconBg={iconBg}
+            cardBg={cardBg}
+            borderColor={borderColor}
+          />
+          <CoverageCard
+            title="WorkPlus OS (ASO)"
+            subtitle="Elite Workforce Management Program"
+            badge="ASO"
+            eyebrow="Program"
+            icon={
+              <div
+                style={{
+                  position: "relative",
+                  width: 56,
+                  height: 56,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <img
+                  src={`${BASE}images/brand/axel-aso-icon.svg`}
+                  alt="WorkPlus OS"
+                  style={{
+                    width: 68,
+                    height: 68,
+                    objectFit: "contain",
+                    marginTop: 8,
+                  }}
+                />
+              </div>
+            }
+            features={ASO_FEATURES}
+            onStart={startAsoQuote}
+            ctaLabel="Get ASO Quote"
+            isDark={isDark}
+            textPrimary={textPrimary}
+            textSecondary={textSecondary}
+            textMuted={textMuted}
+            cardBg={cardBg}
+            borderColor={borderColor}
           />
         </div>
       </div>
@@ -186,7 +276,7 @@ export default function ServiceTypeSelect() {
       <div
         style={{
           display: "flex",
-          justifyContent: "space-between",
+          justifyContent: "flex-start",
           alignItems: "center",
           padding: "24px 0",
           marginTop: 40,
@@ -216,101 +306,68 @@ export default function ServiceTypeSelect() {
           <ArrowLeft style={{ width: 16, height: 16 }} />
           Back
         </button>
-        <button
-          type="button"
-          onClick={handleContinue}
-          disabled={selected.size === 0}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            padding: "12px 24px",
-            borderRadius: 24,
-            border: "none",
-            background: selected.size > 0 ? btnBg : (isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)"),
-            color: selected.size > 0 ? textPrimary : textMuted,
-            fontSize: 14,
-            fontWeight: 600,
-            cursor: selected.size > 0 ? "pointer" : "not-allowed",
-            height: 44,
-            transition: "background 0.15s",
-          }}
-          onMouseEnter={(e) => {
-            if (selected.size > 0) e.currentTarget.style.background = btnHoverBg;
-          }}
-          onMouseLeave={(e) => {
-            if (selected.size > 0) e.currentTarget.style.background = btnBg;
-          }}
-        >
-          Continue
-          <ArrowRight style={{ width: 16, height: 16 }} />
-        </button>
       </div>
     </div>
   );
 }
 
-function SelectionCard({
-  icon,
+function CoverageCard({
   title,
-  subtitle,
+  icon,
   features,
-  turnaround,
-  isSelected,
-  onToggle,
+  onStart,
+  ctaLabel,
+  badge,
+  subtitle,
+  eyebrow,
+  isDark,
   textPrimary,
+  textSecondary,
   textMuted,
   cardBg,
-  cardBorderDefault,
-  checkBorder,
-  featureBorder,
-  iconBg,
+  borderColor,
 }: {
-  icon: React.ReactNode;
   title: string;
-  subtitle: string;
+  icon: React.ReactNode;
   features: string[];
-  turnaround: string;
-  isSelected: boolean;
-  onToggle: () => void;
+  onStart: () => void;
+  ctaLabel?: string;
+  badge?: string;
+  subtitle?: string;
+  eyebrow?: string;
+  isDark: boolean;
   textPrimary: string;
+  textSecondary: string;
   textMuted: string;
   cardBg: string;
-  cardBorderDefault: string;
-  checkBorder: string;
-  featureBorder: string;
-  iconBg: string;
+  borderColor: string;
 }) {
+  const iconBg = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)";
+
   return (
-    <button
-      type="button"
-      onClick={onToggle}
+    <div
       style={{
         background: cardBg,
-        borderRadius: 16,
-        border: isSelected ? "2px solid #E91E8C" : `2px solid ${cardBorderDefault}`,
-        padding: 32,
-        cursor: "pointer",
-        textAlign: "left",
+        borderRadius: 12,
+        border: `1px solid ${borderColor}`,
+        padding: 28,
         display: "flex",
         flexDirection: "column",
-        transition: "border-color 0.15s",
       }}
     >
       <div
         style={{
           display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          width: "100%",
-          marginBottom: 16,
+          alignItems: "center",
+          gap: 14,
+          marginBottom: 14,
         }}
       >
         <div
           style={{
-            width: 56,
-            height: 56,
-            borderRadius: 14,
+            width: 40,
+            height: 40,
+            borderRadius: 10,
             background: iconBg,
             display: "flex",
             alignItems: "center",
@@ -320,50 +377,74 @@ function SelectionCard({
         >
           {icon}
         </div>
-        <div
-          style={{
-            width: 32,
-            height: 32,
-            borderRadius: 16,
-            background: isSelected ? "#E91E8C" : "transparent",
-            border: isSelected ? "none" : `2px solid ${checkBorder}`,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            transition: "background 0.15s, border 0.15s",
-            flexShrink: 0,
-          }}
-        >
-          {isSelected && <Check style={{ width: 18, height: 18, color: "#fff" }} />}
+        <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1 }}>
+          <p
+            style={{
+              fontFamily: "var(--app-font-heading)",
+              fontSize: 10,
+              fontWeight: 200,
+              letterSpacing: "0.28em",
+              textTransform: "uppercase",
+              color: ACCENT,
+              margin: 0,
+            }}
+          >
+            {eyebrow || "Coverage"}
+          </p>
+          <h3
+            style={{
+              fontFamily: "var(--app-font-heading)",
+              fontSize: 18,
+              fontWeight: 400,
+              letterSpacing: "0.02em",
+              textTransform: "uppercase",
+              color: textPrimary,
+              margin: 0,
+              lineHeight: 1.2,
+            }}
+          >
+            {title}
+          </h3>
+          {subtitle && (
+            <p
+              style={{
+                fontSize: 12,
+                color: textMuted,
+                margin: 0,
+                marginTop: 2,
+                lineHeight: 1.4,
+              }}
+            >
+              {subtitle}
+            </p>
+          )}
         </div>
+        {badge && (
+          <span
+            style={{
+              alignSelf: "flex-start",
+              fontFamily: "var(--app-font-heading)",
+              fontSize: 10,
+              fontWeight: 600,
+              letterSpacing: "0.18em",
+              textTransform: "uppercase",
+              padding: "4px 10px",
+              borderRadius: 999,
+              background: ACCENT,
+              color: "#fff",
+            }}
+          >
+            {badge}
+          </span>
+        )}
       </div>
-      <h3
-        style={{
-          fontSize: 22,
-          fontWeight: 700,
-          color: textPrimary,
-          margin: 0,
-          lineHeight: 1.3,
-        }}
-      >
-        {title}
-      </h3>
-      <p
-        style={{
-          fontSize: 14,
-          color: textMuted,
-          margin: 0,
-          marginTop: 8,
-        }}
-      >
-        {subtitle}
-      </p>
+
       <div
         style={{
           display: "flex",
           flexDirection: "column",
-          gap: 8,
-          marginTop: 32,
+          gap: 10,
+          marginBottom: 28,
           flex: 1,
         }}
       >
@@ -372,37 +453,72 @@ function SelectionCard({
             key={f}
             style={{
               display: "flex",
-              alignItems: "center",
+              alignItems: "flex-start",
               gap: 10,
             }}
           >
-            <ChevronRight
+            <Check
               style={{
                 width: 16,
                 height: 16,
-                color: "#E91E8C",
+                color: ACCENT,
                 flexShrink: 0,
+                marginTop: 2,
               }}
             />
-            <span style={{ fontSize: 15, color: textPrimary, lineHeight: 1.4 }}>
+            <span
+              style={{
+                fontSize: 13,
+                color: textSecondary,
+                lineHeight: 1.55,
+              }}
+            >
               {f}
             </span>
           </div>
         ))}
       </div>
-      <div
+
+      <button
+        type="button"
+        onClick={onStart}
         style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          marginTop: 28,
-          paddingTop: 20,
-          borderTop: `1px solid ${featureBorder}`,
+          width: "100%",
+          padding: "14px 24px",
+          borderRadius: 10,
+          border: "none",
+          background: ACCENT,
+          color: "#fff",
+          fontFamily: "var(--app-font-heading)",
+          fontSize: 13,
+          fontWeight: 400,
+          letterSpacing: "0.18em",
+          textTransform: "uppercase",
+          cursor: "pointer",
+          transition: "background 0.15s, transform 0.15s",
+          height: 52,
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = "#c91879";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = ACCENT;
         }}
       >
-        <Clock style={{ width: 14, height: 14, color: "#E91E8C", flexShrink: 0 }} />
-        <span style={{ fontSize: 13, color: "#E91E8C" }}>{turnaround}</span>
-      </div>
-    </button>
+        {ctaLabel || "Start Submission"}
+      </button>
+      <p
+        style={{
+          fontSize: 11,
+          color: textMuted,
+          margin: 0,
+          marginTop: 10,
+          textAlign: "center",
+          letterSpacing: "0.04em",
+        }}
+      >
+        Takes about 3 minutes
+      </p>
+    </div>
   );
 }
