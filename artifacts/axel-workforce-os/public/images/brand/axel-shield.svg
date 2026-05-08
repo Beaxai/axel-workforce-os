@@ -9,7 +9,8 @@
       <stop offset="1" stop-color="#7C3AED"/>
     </linearGradient>
   </defs>
-  <!-- Angular geometric shield: flat top, faceted shoulders, sharp point -->
+
+  <!-- Angular geometric shield -->
   <path
     d="M32 4 L56 12 L56 32 C56 46 46 55 32 60 C18 55 8 46 8 32 L8 12 Z"
     fill="url(#axelShieldFill)"
@@ -17,7 +18,6 @@
     stroke-width="2.5"
     stroke-linejoin="round"
   />
-  <!-- Inner accent line -->
   <path
     d="M32 10 L51 16 L51 32 C51 43 43 51 32 55 C21 51 13 43 13 32 L13 16 Z"
     fill="none"
@@ -26,13 +26,11 @@
     stroke-opacity="0.35"
     stroke-linejoin="round"
   />
-  <!-- Axel "A" with diagonal slash cutout, centered -->
-  <g transform="translate(32 36)">
-    <!-- Left leg -->
-    <path d="M-9 14 L-1.6 -10 L1.6 -10 L9 14 L4.6 14 L-1 -3.5 L-4.6 14 Z" fill="#FFFFFF"/>
-    <!-- Crossbar -->
-    <rect x="-5.2" y="4" width="10.4" height="2.8" fill="#FFFFFF"/>
-    <!-- Diagonal slash accent -->
-    <path d="M-7 13 L7 -7" stroke="#E91E8C" stroke-width="1.6" stroke-linecap="round" opacity="0.95"/>
-  </g>
+
+  <!-- Axel "A": apex at (32,22), bottoms at y=44. Notch on bottom of left leg. Hole above crossbar. -->
+  <path
+    fill="#FFFFFF"
+    fill-rule="evenodd"
+    d="M22 44 L30.5 22 L33.5 22 L42 44 L37.5 44 L36 39.5 L28 39.5 L26.5 44 L25.2 44 L23.5 41.4 L22 44 Z M32 27 L35.2 38 L28.8 38 Z"
+  />
 </svg>
