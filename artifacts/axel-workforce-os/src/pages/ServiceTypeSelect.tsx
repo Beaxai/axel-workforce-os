@@ -147,7 +147,7 @@ export default function ServiceTypeSelect() {
           }}
         >
           <CoverageCard
-            title={"WorkShield\n(Workers' Comp)"}
+            title="WorkShield"
             subtitle="Traditional Workers' Compensation policy"
             icon={
               <div
