@@ -43,7 +43,6 @@ export const VERTICALS: VerticalData[] = [
       "Competitive premium rates",
       "Pay-as-you-go billing available",
       "Dedicated claims management",
-      "Safety and loss control consulting included",
     ],
     peoFeatures: [
       "Workers\u2019 comp bundled with payroll and HR administration",
