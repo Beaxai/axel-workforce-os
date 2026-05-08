@@ -42,7 +42,7 @@ export const VERTICALS: VerticalData[] = [
     wcFeatures: [
       "Competitive premium rates",
       "Pay-as-you-go billing available",
-      "Dedicated claims management and return-to-work programs",
+      "Dedicated claims management",
       "Safety and loss control consulting included",
     ],
     peoFeatures: [
