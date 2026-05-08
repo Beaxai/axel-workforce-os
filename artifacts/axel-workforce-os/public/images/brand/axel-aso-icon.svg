@@ -8,17 +8,18 @@
   </defs>
   <rect x="0" y="0" width="64" height="64" rx="12" fill="url(#asoBg)"/>
 
-  <g stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" fill="none">
-    <!-- Top-right curved arrow -->
-    <path d="M16 26 A18 18 0 0 1 44 18"/>
-    <path d="M38 14 L44 18 L42 24"/>
+  <!-- Pink person silhouette: head -->
+  <circle cx="26" cy="22" r="7" fill="#E91E8C"/>
+  <!-- Pink person silhouette: shoulders/torso -->
+  <path
+    d="M12 50 C12 39 18 33 26 33 C34 33 40 39 40 50 L40 54 L12 54 Z"
+    fill="#E91E8C"
+  />
 
-    <!-- Bottom-left curved arrow (mirrored) -->
-    <path d="M48 38 A18 18 0 0 1 20 46"/>
-    <path d="M26 50 L20 46 L22 40"/>
-
-    <!-- Single person centered -->
-    <circle cx="32" cy="30" r="3.6"/>
-    <path d="M26 42 C26 38 28.7 36 32 36 C35.3 36 38 38 38 42"/>
+  <!-- Orange "+" badge bottom-right -->
+  <circle cx="46" cy="46" r="8" fill="#F59E0B"/>
+  <g stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round">
+    <line x1="46" y1="42" x2="46" y2="50"/>
+    <line x1="42" y1="46" x2="50" y2="46"/>
   </g>
 </svg>
