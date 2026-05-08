@@ -45,7 +45,6 @@ export const VERTICALS: VerticalData[] = [
       "Dedicated claims management and return-to-work programs",
       "Safety and loss control consulting included",
       "Certificate of insurance management",
-      "Annual audit support and guidance",
     ],
     peoFeatures: [
       "Workers\u2019 comp bundled with payroll and HR administration",
