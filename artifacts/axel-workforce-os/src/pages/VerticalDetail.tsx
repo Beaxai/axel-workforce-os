@@ -13,6 +13,7 @@ import {
   Scale,
   Heart,
   ClipboardList,
+  UsersRound,
 } from "lucide-react";
 import { getVerticalBySlug } from "@/lib/vertical-data";
 
@@ -304,9 +305,9 @@ export default function VerticalDetail() {
           borderColor={borderColor}
         />
         <CoverageCard
-          title="Administrative Services (ASO)"
+          title="WorkPlus OS (ASO)"
           badge="ASO"
-          icon={<ClipboardList style={{ width: 22, height: 22, color: ACCENT }} />}
+          icon={<UsersRound style={{ width: 22, height: 22, color: ACCENT }} />}
           description="Keep full employer control while outsourcing HR, payroll, benefits admin, and compliance. No co-employment required."
           features={ASO_FEATURES}
           onStart={handleStartAsoQuote}
