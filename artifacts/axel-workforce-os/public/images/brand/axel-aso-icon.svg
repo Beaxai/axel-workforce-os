@@ -8,17 +8,17 @@
   </defs>
   <rect x="0" y="0" width="64" height="64" rx="12" fill="url(#asoBg)"/>
 
+  <!-- Outer ring -->
+  <circle cx="32" cy="32" r="20" stroke="#FFFFFF" stroke-width="2" fill="none"/>
+
   <g stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none">
-    <!-- Left person -->
-    <circle cx="16" cy="26" r="4.2"/>
-    <path d="M9 44 C9 37.5 12 34 16 34 C20 34 23 37.5 23 44"/>
-
-    <!-- Right person -->
-    <circle cx="48" cy="26" r="4.2"/>
-    <path d="M41 44 C41 37.5 44 34 48 34 C52 34 55 37.5 55 44"/>
-
-    <!-- Center person (slightly larger, in front) -->
-    <circle cx="32" cy="22" r="5.2"/>
-    <path d="M22 50 C22 41.5 26 37 32 37 C38 37 42 41.5 42 50"/>
+    <!-- Back-left person head -->
+    <circle cx="22" cy="26" r="3.2"/>
+    <!-- Back-right person head -->
+    <circle cx="42" cy="26" r="3.2"/>
+    <!-- Front center person head (larger) -->
+    <circle cx="32" cy="28" r="4.2"/>
+    <!-- Front center person shoulders -->
+    <path d="M24 42 C24 36 27.6 33 32 33 C36.4 33 40 36 40 42"/>
   </g>
 </svg>
