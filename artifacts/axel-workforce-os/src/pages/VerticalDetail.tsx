@@ -282,8 +282,8 @@ export default function VerticalDetail() {
             <div
               style={{
                 position: "relative",
-                width: 32,
-                height: 32,
+                width: 56,
+                height: 56,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -306,10 +306,10 @@ export default function VerticalDetail() {
                 alt="WorkShield"
                 style={{
                   position: "relative",
-                  width: 14,
-                  height: 14,
+                  width: 26,
+                  height: 26,
                   objectFit: "contain",
-                  marginTop: 1,
+                  marginTop: 2,
                 }}
               />
             </div>
