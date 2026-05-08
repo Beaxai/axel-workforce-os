@@ -329,40 +329,11 @@ export default function VerticalDetail() {
         <CoverageCard
           title="Workforce Solution (PEO)"
           icon={
-            <div
-              style={{
-                position: "relative",
-                width: 56,
-                height: 56,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <img
-                src={`${BASE}images/brand/axel-peo-shield.svg`}
-                alt=""
-                aria-hidden="true"
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "contain",
-                }}
-              />
-              <img
-                src={`${BASE}images/brand/axel-a-mark.png`}
-                alt="Workforce Solution"
-                style={{
-                  position: "relative",
-                  width: 12,
-                  height: 12,
-                  objectFit: "contain",
-                  marginTop: 1,
-                }}
-              />
-            </div>
+            <img
+              src={`${BASE}images/brand/axel-peo-icon.png`}
+              alt="Workforce Solution"
+              style={{ width: 56, height: 56, objectFit: "contain" }}
+            />
           }
           description={vertical.peoDescription}
           features={vertical.peoFeatures}
