@@ -8,17 +8,17 @@
   </defs>
   <rect x="0" y="0" width="64" height="64" rx="12" fill="url(#asoBg)"/>
 
-  <g stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none">
-    <!-- Top arrow arc (clockwise, ends on the right) -->
-    <path d="M14 28 A18 18 0 0 1 46 22"/>
-    <polyline points="40,18 46,22 44,28"/>
+  <g stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <!-- Top-right curved arrow -->
+    <path d="M16 26 A18 18 0 0 1 44 18"/>
+    <path d="M38 14 L44 18 L42 24"/>
 
-    <!-- Bottom arrow arc (clockwise, ends on the left) -->
-    <path d="M50 36 A18 18 0 0 1 18 42"/>
-    <polyline points="24,46 18,42 20,36"/>
+    <!-- Bottom-left curved arrow (mirrored) -->
+    <path d="M48 38 A18 18 0 0 1 20 46"/>
+    <path d="M26 50 L20 46 L22 40"/>
 
-    <!-- Single person in middle: head + shoulders -->
-    <circle cx="32" cy="29" r="4"/>
-    <path d="M25 42 C25 37 28 34.5 32 34.5 C36 34.5 39 37 39 42"/>
+    <!-- Single person centered -->
+    <circle cx="32" cy="30" r="3.6"/>
+    <path d="M26 42 C26 38 28.7 36 32 36 C35.3 36 38 38 38 42"/>
   </g>
 </svg>
