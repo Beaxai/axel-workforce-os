@@ -143,7 +143,7 @@ export default function ServiceTypeSelect() {
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(3, 1fr)",
-            gap: 20,
+            gap: 25,
           }}
         >
           <CoverageCard
@@ -153,8 +153,8 @@ export default function ServiceTypeSelect() {
               <div
                 style={{
                   position: "relative",
-                  width: 56,
-                  height: 56,
+                  width: 70,
+                  height: 70,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -177,8 +177,8 @@ export default function ServiceTypeSelect() {
                   alt="WorkShield"
                   style={{
                     position: "relative",
-                    width: 26,
-                    height: 26,
+                    width: 32,
+                    height: 32,
                     objectFit: "contain",
                     marginTop: 2,
                   }}
@@ -203,8 +203,8 @@ export default function ServiceTypeSelect() {
               <div
                 style={{
                   position: "relative",
-                  width: 56,
-                  height: 56,
+                  width: 70,
+                  height: 70,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -214,10 +214,10 @@ export default function ServiceTypeSelect() {
                   src={`${BASE}images/brand/axel-peo-icon.png`}
                   alt="Workforce Solution"
                   style={{
-                    width: 68,
-                    height: 68,
+                    width: 85,
+                    height: 85,
                     objectFit: "contain",
-                    marginTop: 8,
+                    marginTop: 10,
                   }}
                 />
               </div>
@@ -241,8 +241,8 @@ export default function ServiceTypeSelect() {
               <div
                 style={{
                   position: "relative",
-                  width: 56,
-                  height: 56,
+                  width: 70,
+                  height: 70,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -252,10 +252,10 @@ export default function ServiceTypeSelect() {
                   src={`${BASE}images/brand/axel-aso-icon.svg`}
                   alt="WorkPlus OS"
                   style={{
-                    width: 68,
-                    height: 68,
+                    width: 85,
+                    height: 85,
                     objectFit: "contain",
-                    marginTop: 8,
+                    marginTop: 10,
                   }}
                 />
               </div>
@@ -348,9 +348,9 @@ function CoverageCard({
     <div
       style={{
         background: cardBg,
-        borderRadius: 12,
+        borderRadius: 15,
         border: `1px solid ${borderColor}`,
-        padding: 28,
+        padding: 35,
         display: "flex",
         flexDirection: "column",
       }}
@@ -359,15 +359,15 @@ function CoverageCard({
         style={{
           display: "flex",
           alignItems: "center",
-          gap: 14,
-          marginBottom: 14,
+          gap: 18,
+          marginBottom: 18,
         }}
       >
         <div
           style={{
-            width: 40,
-            height: 40,
-            borderRadius: 10,
+            width: 50,
+            height: 50,
+            borderRadius: 12,
             background: iconBg,
             display: "flex",
             alignItems: "center",
@@ -377,11 +377,11 @@ function CoverageCard({
         >
           {icon}
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 5, flex: 1 }}>
           <p
             style={{
               fontFamily: "var(--app-font-heading)",
-              fontSize: 10,
+              fontSize: 12,
               fontWeight: 200,
               letterSpacing: "0.28em",
               textTransform: "uppercase",
@@ -394,7 +394,7 @@ function CoverageCard({
           <h3
             style={{
               fontFamily: "var(--app-font-heading)",
-              fontSize: 18,
+              fontSize: 22,
               fontWeight: 400,
               letterSpacing: "0.02em",
               textTransform: "uppercase",
@@ -408,10 +408,10 @@ function CoverageCard({
           {subtitle && (
             <p
               style={{
-                fontSize: 12,
+                fontSize: 15,
                 color: textMuted,
                 margin: 0,
-                marginTop: 2,
+                marginTop: 3,
                 lineHeight: 1.4,
               }}
             >
@@ -424,11 +424,11 @@ function CoverageCard({
             style={{
               alignSelf: "flex-start",
               fontFamily: "var(--app-font-heading)",
-              fontSize: 10,
+              fontSize: 12,
               fontWeight: 600,
               letterSpacing: "0.18em",
               textTransform: "uppercase",
-              padding: "4px 10px",
+              padding: "5px 12px",
               borderRadius: 999,
               background: ACCENT,
               color: "#fff",
@@ -443,8 +443,8 @@ function CoverageCard({
         style={{
           display: "flex",
           flexDirection: "column",
-          gap: 10,
-          marginBottom: 28,
+          gap: 12,
+          marginBottom: 35,
           flex: 1,
         }}
       >
@@ -454,13 +454,13 @@ function CoverageCard({
             style={{
               display: "flex",
               alignItems: "flex-start",
-              gap: 10,
+              gap: 12,
             }}
           >
             <Check
               style={{
-                width: 16,
-                height: 16,
+                width: 20,
+                height: 20,
                 color: ACCENT,
                 flexShrink: 0,
                 marginTop: 2,
@@ -468,7 +468,7 @@ function CoverageCard({
             />
             <span
               style={{
-                fontSize: 13,
+                fontSize: 16,
                 color: textSecondary,
                 lineHeight: 1.55,
               }}
@@ -484,19 +484,19 @@ function CoverageCard({
         onClick={onStart}
         style={{
           width: "100%",
-          padding: "14px 24px",
-          borderRadius: 10,
+          padding: "18px 30px",
+          borderRadius: 12,
           border: "none",
           background: ACCENT,
           color: "#fff",
           fontFamily: "var(--app-font-heading)",
-          fontSize: 13,
+          fontSize: 16,
           fontWeight: 400,
           letterSpacing: "0.18em",
           textTransform: "uppercase",
           cursor: "pointer",
           transition: "background 0.15s, transform 0.15s",
-          height: 52,
+          height: 65,
         }}
         onMouseEnter={(e) => {
           e.currentTarget.style.background = "#c91879";
@@ -509,10 +509,10 @@ function CoverageCard({
       </button>
       <p
         style={{
-          fontSize: 11,
+          fontSize: 14,
           color: textMuted,
           margin: 0,
-          marginTop: 10,
+          marginTop: 12,
           textAlign: "center",
           letterSpacing: "0.04em",
         }}
