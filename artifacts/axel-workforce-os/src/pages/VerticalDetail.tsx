@@ -379,24 +379,12 @@ export default function VerticalDetail() {
             >
               <img
                 src={`${BASE}images/brand/axel-aso-icon.svg`}
-                alt=""
-                aria-hidden="true"
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "contain",
-                }}
-              />
-              <img
-                src={`${BASE}images/brand/axel-a-mark.png`}
                 alt="WorkPlus OS"
                 style={{
-                  position: "relative",
-                  width: 18,
-                  height: 18,
+                  width: 68,
+                  height: 68,
                   objectFit: "contain",
+                  marginTop: 8,
                 }}
               />
             </div>
