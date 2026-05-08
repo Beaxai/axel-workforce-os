@@ -277,7 +277,7 @@ export default function VerticalDetail() {
         }}
       >
         <CoverageCard
-          title="Workers' Compensation"
+          title="WorkShield (Workers' Comp)"
           icon={<Shield style={{ width: 22, height: 22, color: ACCENT }} />}
           description={vertical.wcDescription}
           features={vertical.wcFeatures}
