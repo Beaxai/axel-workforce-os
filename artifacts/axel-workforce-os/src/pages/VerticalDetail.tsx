@@ -369,6 +369,7 @@ export default function VerticalDetail() {
           subtitle="Elite Workforce Management Program"
           badge="ASO"
           eyebrow="Program"
+          featuresHeading="Superior HR management platform"
           icon={
             <div
               style={{
@@ -594,6 +595,7 @@ function CoverageCard({
   badge,
   subtitle,
   eyebrow,
+  featuresHeading,
   isDark,
   textPrimary,
   textSecondary,
@@ -610,6 +612,7 @@ function CoverageCard({
   badge?: string;
   subtitle?: string;
   eyebrow?: string;
+  featuresHeading?: string;
   isDark: boolean;
   textPrimary: string;
   textSecondary: string;
@@ -723,6 +726,20 @@ function CoverageCard({
           flex: 1,
         }}
       >
+        {featuresHeading && (
+          <p
+            style={{
+              fontSize: 13,
+              fontWeight: 600,
+              color: textPrimary,
+              margin: 0,
+              marginBottom: 4,
+              lineHeight: 1.4,
+            }}
+          >
+            {featuresHeading}
+          </p>
+        )}
         {features.map((f) => (
           <div
             key={f}
