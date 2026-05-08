@@ -41,7 +41,7 @@ export const VERTICALS: VerticalData[] = [
       "A comprehensive Professional Employer Organization solution for ambulances & emergency transport businesses. Bundle workers\u2019 comp with HR, payroll, and benefits administration under one roof to reduce costs and administrative burden.",
     wcFeatures: [
       "Competitive premium rates for emergency medical class codes",
-      "Pay-as-you-go billing tied to actual payroll",
+      "Pay-as-you-go billing available",
       "Dedicated claims management and return-to-work programs",
       "Safety and loss control consulting included",
     ],
