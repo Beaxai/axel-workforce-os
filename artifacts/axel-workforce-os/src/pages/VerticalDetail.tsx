@@ -278,7 +278,13 @@ export default function VerticalDetail() {
       >
         <CoverageCard
           title="WorkShield (Workers' Comp)"
-          icon={<Shield style={{ width: 22, height: 22, color: ACCENT }} />}
+          icon={
+            <img
+              src={`${BASE}images/brand/axel-shield.png`}
+              alt="WorkShield"
+              style={{ width: 32, height: 32, objectFit: "contain" }}
+            />
+          }
           description={vertical.wcDescription}
           features={vertical.wcFeatures}
           onStart={handleStartSubmission}
