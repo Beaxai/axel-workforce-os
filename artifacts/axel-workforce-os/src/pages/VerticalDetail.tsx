@@ -341,26 +341,13 @@ export default function VerticalDetail() {
               }}
             >
               <img
-                src={`${BASE}images/brand/axel-shield-peo.svg`}
-                alt=""
-                aria-hidden="true"
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "contain",
-                }}
-              />
-              <img
-                src={`${BASE}images/brand/axel-a-mark.png`}
+                src={`${BASE}images/brand/axel-peo-icon.png`}
                 alt="Workforce Solution"
                 style={{
-                  position: "relative",
-                  width: 14,
-                  height: 14,
+                  width: 68,
+                  height: 68,
                   objectFit: "contain",
-                  marginTop: 2,
+                  marginTop: 8,
                 }}
               />
             </div>
@@ -391,7 +378,7 @@ export default function VerticalDetail() {
               }}
             >
               <img
-                src={`${BASE}images/brand/axel-shield-aso.svg`}
+                src={`${BASE}images/brand/axel-aso-icon.svg`}
                 alt=""
                 aria-hidden="true"
                 style={{
