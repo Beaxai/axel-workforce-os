@@ -329,7 +329,7 @@ export default function VerticalDetail() {
         <CoverageCard
           title="Workforce Solution (PEO)"
           subtitle="Premier Workforce Solution Program"
-          eyebrow="Solution"
+          eyebrow="Program"
           icon={
             <div
               style={{
@@ -367,7 +367,7 @@ export default function VerticalDetail() {
         <CoverageCard
           title="WorkPlus OS (ASO)"
           badge="ASO"
-          eyebrow="Solution"
+          eyebrow="Program"
           icon={
             <div
               style={{
