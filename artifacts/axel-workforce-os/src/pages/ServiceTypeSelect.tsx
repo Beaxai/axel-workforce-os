@@ -198,7 +198,6 @@ export default function ServiceTypeSelect() {
           <CoverageCard
             title="WorkPlus OS (ASO)"
             subtitle="Elite Workforce Management Program"
-            badge="ASO"
             eyebrow="Program"
             icon={
               <div
