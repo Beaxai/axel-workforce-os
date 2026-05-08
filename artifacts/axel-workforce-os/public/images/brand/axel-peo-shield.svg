@@ -1,48 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
-  <defs>
-    <linearGradient id="peoShieldFill" x1="32" y1="4" x2="32" y2="60" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#1A1A24"/>
-      <stop offset="1" stop-color="#0E0E14"/>
-    </linearGradient>
-    <linearGradient id="peoShieldEdge" x1="32" y1="4" x2="32" y2="60" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#E91E8C"/>
-      <stop offset="1" stop-color="#7C3AED"/>
-    </linearGradient>
-  </defs>
-
-  <!-- Same shield frame as WorkShield -->
-  <path
-    d="M32 4 L56 12 L56 32 C56 46 46 55 32 60 C18 55 8 46 8 32 L8 12 Z"
-    fill="url(#peoShieldFill)"
-    stroke="url(#peoShieldEdge)"
-    stroke-width="2.5"
-    stroke-linejoin="round"
-  />
-  <path
-    d="M32 10 L51 16 L51 32 C51 43 43 51 32 55 C21 51 13 43 13 32 L13 16 Z"
-    fill="none"
-    stroke="#E91E8C"
-    stroke-width="0.7"
-    stroke-opacity="0.35"
-    stroke-linejoin="round"
-  />
-
-  <!-- Hexagonal network of 6 nodes around center, connected by lines -->
-  <g stroke="#FFFFFF" stroke-width="0.9" stroke-opacity="0.85" fill="none" stroke-linecap="round">
-    <!-- Hexagon edges -->
-    <line x1="32" y1="20" x2="44" y2="27" />
-    <line x1="44" y1="27" x2="44" y2="39" />
-    <line x1="44" y1="39" x2="32" y2="46" />
-    <line x1="32" y1="46" x2="20" y2="39" />
-    <line x1="20" y1="39" x2="20" y2="27" />
-    <line x1="20" y1="27" x2="32" y2="20" />
+  <g stroke="#FFFFFF" stroke-width="1.4" stroke-opacity="0.95" fill="none" stroke-linecap="round">
+    <line x1="32" y1="10" x2="52" y2="22" />
+    <line x1="52" y1="22" x2="52" y2="42" />
+    <line x1="52" y1="42" x2="32" y2="54" />
+    <line x1="32" y1="54" x2="12" y2="42" />
+    <line x1="12" y1="42" x2="12" y2="22" />
+    <line x1="12" y1="22" x2="32" y2="10" />
   </g>
   <g fill="#FFFFFF">
-    <circle cx="32" cy="20" r="2.6" />
-    <circle cx="44" cy="27" r="2.6" />
-    <circle cx="44" cy="39" r="2.6" />
-    <circle cx="32" cy="46" r="2.6" />
-    <circle cx="20" cy="39" r="2.6" />
-    <circle cx="20" cy="27" r="2.6" />
+    <circle cx="32" cy="10" r="4" />
+    <circle cx="52" cy="22" r="4" />
+    <circle cx="52" cy="42" r="4" />
+    <circle cx="32" cy="54" r="4" />
+    <circle cx="12" cy="42" r="4" />
+    <circle cx="12" cy="22" r="4" />
   </g>
 </svg>
