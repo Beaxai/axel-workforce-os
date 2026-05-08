@@ -8,23 +8,17 @@
   </defs>
   <rect x="0" y="0" width="64" height="64" rx="12" fill="url(#asoBg)"/>
 
-  <!-- Left person -->
-  <circle cx="16" cy="24" r="4.2" fill="#FFFFFF"/>
-  <path d="M8 42 C8 35.5 11.6 32.5 16 32.5 C20.4 32.5 24 35.5 24 42 L24 44 L8 44 Z"
-        fill="#FFFFFF"/>
+  <g stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <!-- Left person -->
+    <circle cx="16" cy="26" r="4.2"/>
+    <path d="M9 44 C9 37.5 12 34 16 34 C20 34 23 37.5 23 44"/>
 
-  <!-- Right person -->
-  <circle cx="48" cy="24" r="4.2" fill="#FFFFFF"/>
-  <path d="M40 42 C40 35.5 43.6 32.5 48 32.5 C52.4 32.5 56 35.5 56 42 L56 44 L40 44 Z"
-        fill="#FFFFFF"/>
+    <!-- Right person -->
+    <circle cx="48" cy="26" r="4.2"/>
+    <path d="M41 44 C41 37.5 44 34 48 34 C52 34 55 37.5 55 44"/>
 
-  <!-- Center person (slightly larger, in front) -->
-  <circle cx="32" cy="20" r="5.2" fill="#FFFFFF"/>
-  <path d="M21.5 46 C21.5 37.5 26 33.5 32 33.5 C38 33.5 42.5 37.5 42.5 46 L42.5 50 L21.5 50 Z"
-        fill="#FFFFFF"/>
-
-  <!-- Axel A monogram (small, bottom-right corner accent) -->
-  <g transform="translate(46,46)" fill="#FFFFFF">
-    <path d="M0 12 L5 0 L10 12 L7.6 12 L6.6 9.4 L3.4 9.4 L2.4 12 Z M4 7.4 L6 7.4 L5 4.6 Z"/>
+    <!-- Center person (slightly larger, in front) -->
+    <circle cx="32" cy="22" r="5.2"/>
+    <path d="M22 50 C22 41.5 26 37 32 37 C38 37 42 41.5 42 50"/>
   </g>
 </svg>
