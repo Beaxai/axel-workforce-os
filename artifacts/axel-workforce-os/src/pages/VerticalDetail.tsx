@@ -366,6 +366,7 @@ export default function VerticalDetail() {
         />
         <CoverageCard
           title="WorkPlus OS (ASO)"
+          subtitle="Elite Workforce Management Program"
           badge="ASO"
           eyebrow="Program"
           icon={
