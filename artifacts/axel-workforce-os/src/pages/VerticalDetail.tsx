@@ -328,6 +328,7 @@ export default function VerticalDetail() {
         />
         <CoverageCard
           title="Workforce Solution (PEO)"
+          subtitle="Premier Workforce Solution Program"
           icon={
             <div
               style={{
