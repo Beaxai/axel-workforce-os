@@ -278,6 +278,7 @@ export default function VerticalDetail() {
       >
         <CoverageCard
           title="WorkShield (Workers' Comp)"
+          subtitle="Traditional Workers' Compensation policy"
           icon={
             <div
               style={{
@@ -543,6 +544,7 @@ function CoverageCard({
   onStart,
   ctaLabel,
   badge,
+  subtitle,
   isDark,
   textPrimary,
   textSecondary,
@@ -557,6 +559,7 @@ function CoverageCard({
   onStart: () => void;
   ctaLabel?: string;
   badge?: string;
+  subtitle?: string;
   isDark: boolean;
   textPrimary: string;
   textSecondary: string;
@@ -627,6 +630,19 @@ function CoverageCard({
           >
             {title}
           </h3>
+          {subtitle && (
+            <p
+              style={{
+                fontSize: 12,
+                color: textMuted,
+                margin: 0,
+                marginTop: 2,
+                lineHeight: 1.4,
+              }}
+            >
+              {subtitle}
+            </p>
+          )}
         </div>
         {badge && (
           <span
