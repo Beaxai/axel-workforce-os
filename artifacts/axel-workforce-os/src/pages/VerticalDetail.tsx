@@ -648,18 +648,6 @@ function CoverageCard({
         )}
       </div>
 
-      <p
-        style={{
-          fontSize: 14,
-          color: textSecondary,
-          lineHeight: 1.65,
-          margin: 0,
-          marginBottom: 22,
-        }}
-      >
-        {description}
-      </p>
-
       <div
         style={{
           display: "flex",
