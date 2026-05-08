@@ -366,7 +366,41 @@ export default function VerticalDetail() {
         <CoverageCard
           title="WorkPlus OS (ASO)"
           badge="ASO"
-          icon={<UsersRound style={{ width: 22, height: 22, color: ACCENT }} />}
+          icon={
+            <div
+              style={{
+                position: "relative",
+                width: 56,
+                height: 56,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <img
+                src={`${BASE}images/brand/axel-aso-icon.svg`}
+                alt=""
+                aria-hidden="true"
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "contain",
+                }}
+              />
+              <img
+                src={`${BASE}images/brand/axel-a-mark.png`}
+                alt="WorkPlus OS"
+                style={{
+                  position: "relative",
+                  width: 18,
+                  height: 18,
+                  objectFit: "contain",
+                }}
+              />
+            </div>
+          }
           description="Keep full employer control while outsourcing HR, payroll, benefits admin, and compliance. No co-employment required."
           features={ASO_FEATURES}
           onStart={handleStartAsoQuote}
