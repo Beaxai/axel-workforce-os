@@ -11,45 +11,10 @@ export default function P2Step1Applicant() {
 
   return (
     <div style={{ maxWidth: 1080, margin: "0 auto" }}>
-      <FormSection title="Confirm Business Details">
+      <FormSection title="Additional Details">
         <FieldGrid columns={2}>
-          <FieldLabel label="Legal Business Name" required>
-            <TextInput value={s.businessName} onChange={(v) => s.update({ businessName: v })} />
-          </FieldLabel>
-          <FieldLabel label="DBA">
-            <TextInput value={s.dba} onChange={(v) => s.update({ dba: v })} />
-          </FieldLabel>
-          <FieldLabel label="FEIN / Tax ID" required>
-            <TextInput value={s.fein} onChange={(v) => s.update({ fein: v })} />
-          </FieldLabel>
-          <FieldLabel label="Entity Type">
-            <TextInput value={s.entityType} onChange={(v) => s.update({ entityType: v })} />
-          </FieldLabel>
-          <FieldLabel label="Years in Business">
-            <TextInput value={s.yearsInBusiness} onChange={(v) => s.update({ yearsInBusiness: v })} />
-          </FieldLabel>
           <FieldLabel label="Website">
             <TextInput value={s.website} onChange={(v) => s.update({ website: v })} placeholder="https://" />
-          </FieldLabel>
-        </FieldGrid>
-      </FormSection>
-
-      <FormSection title="Business Address">
-        <FieldGrid columns={2}>
-          <FieldLabel label="Street Address" required>
-            <TextInput value={s.streetAddress} onChange={(v) => s.update({ streetAddress: v })} placeholder="Street address" />
-          </FieldLabel>
-          <FieldLabel label="Suite / Unit">
-            <TextInput value={s.suite} onChange={(v) => s.update({ suite: v })} placeholder="Suite #" />
-          </FieldLabel>
-          <FieldLabel label="City" required>
-            <TextInput value={s.city} onChange={(v) => s.update({ city: v })} placeholder="City" />
-          </FieldLabel>
-          <FieldLabel label="State" required>
-            <SelectInput value={s.addressState} onChange={(v) => s.update({ addressState: v })} options={US_STATES_OPTIONS} placeholder="Select state" />
-          </FieldLabel>
-          <FieldLabel label="Zip Code" required>
-            <TextInput value={s.zip} onChange={(v) => s.update({ zip: v })} placeholder="Zip" />
           </FieldLabel>
         </FieldGrid>
       </FormSection>
