@@ -4,7 +4,7 @@ import { useQuoteFlowStore } from "@/lib/quote-flow-store";
 import Step1BusinessDetails from "./Step1BusinessDetails";
 import WorkforceProfile from "@/components/quote-flow/WorkforceProfile";
 import Step3ExperienceMod from "./Step3ExperienceMod";
-import Step3_5ApplicantGeneral from "./Step3_5ApplicantGeneral";
+import P2Step3GeneralInfo from "./P2Step3GeneralInfo";
 import Step4Indication from "./Step4Indication";
 import Phase2Transition from "./Phase2Transition";
 import P2Step4CannabisOps from "./P2Step4CannabisOps";
@@ -86,7 +86,7 @@ export default function QuoteWizard() {
         case 1: return <Step1BusinessDetails />;
         case 2: return <WorkforceProfile />;
         case 3: return <Step3ExperienceMod />;
-        case 4: return <Step3_5ApplicantGeneral />;
+        case 4: return <P2Step3GeneralInfo />;
         case 5: return <Step4Indication />;
         default: return <Step1BusinessDetails />;
       }
@@ -109,7 +109,7 @@ export default function QuoteWizard() {
 
   const getProgressInfo = () => {
     if (store.phase === 1) {
-      const labels = ["Business Details", "Class Codes & Payroll", "Experience Rating", "Applicant & General Info", "Indication Ready"];
+      const labels = ["Business Details", "Class Codes & Payroll", "Experience Rating", "General Information", "Indication Ready"];
       return { current: store.currentStep, total: phase1Total, label: labels[store.currentStep - 1] || "" };
     }
     const step = store.currentStep;
