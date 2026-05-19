@@ -173,11 +173,6 @@ export default function P2Step5SafetyPremises() {
           </FieldLabel>
         </div>
 
-        <div style={{ marginTop: 16 }}>
-          <FieldLabel label="COVID-19 Safety Measures">
-            <TextArea value={s.covidMeasures} onChange={(v) => s.update({ covidMeasures: v })} placeholder="Describe measures taken" />
-          </FieldLabel>
-        </div>
       </FormSection>
 
       <FormSection title="PPE & Security">
