@@ -105,9 +105,6 @@ export default function ServiceTypeSelect() {
         >
           Service Type
         </span>
-        <span style={{ fontSize: 13, color: textMuted }}>
-          Step 2 of {totalSteps}
-        </span>
       </div>
 
       <div style={{ width: "100%", flex: 1 }}>
