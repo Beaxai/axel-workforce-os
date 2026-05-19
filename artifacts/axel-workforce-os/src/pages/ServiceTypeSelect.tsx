@@ -222,7 +222,7 @@ export default function ServiceTypeSelect() {
             }
             features={ASO_FEATURES}
             onStart={startAsoQuote}
-            ctaLabel="Get ASO Quote"
+            ctaLabel="Start Submission"
             isDark={isDark}
             textPrimary={textPrimary}
             textSecondary={textSecondary}
