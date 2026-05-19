@@ -233,6 +233,7 @@ export default function Step4Indication() {
         <p style={{ fontSize: 14, color: textSecondary, margin: "0 0 4px" }}>{s.businessName}</p>
         <p style={{ fontSize: 13, color: textMuted, margin: "0 0 24px" }}>{today}</p>
 
+        {!isAso && (
         <div
           style={{
             padding: 24,
@@ -262,8 +263,9 @@ export default function Step4Indication() {
             </p>
           )}
         </div>
+        )}
 
-        {hasRateErrors && (
+        {!isAso && hasRateErrors && (
           <div
             style={{
               padding: "12px 16px",
@@ -283,6 +285,7 @@ export default function Step4Indication() {
           </div>
         )}
 
+        {!isAso && (
         <div style={{ borderRadius: 12, background: isDark ? "#13131f" : "#f8f8fc", overflow: "hidden", marginBottom: 16 }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead>
@@ -335,13 +338,112 @@ export default function Step4Indication() {
             </tbody>
           </table>
         </div>
+        )}
 
-        <p style={{ fontSize: 13, color: textMuted, margin: "0 0 8px" }}>
-          Experience Modifier Applied: <strong style={{ color: textPrimary }}>{modifier.toFixed(2)}</strong>
-        </p>
-        <p style={{ fontSize: 13, color: "#E91E8C", fontWeight: 600, margin: "0 0 24px" }}>
-          Final Indicated Range: ${premiumLow.toLocaleString()} – ${premiumHigh.toLocaleString()}
-        </p>
+        {!isAso && (
+          <>
+            <p style={{ fontSize: 13, color: textMuted, margin: "0 0 8px" }}>
+              Experience Modifier Applied: <strong style={{ color: textPrimary }}>{modifier.toFixed(2)}</strong>
+            </p>
+            <p style={{ fontSize: 13, color: "#E91E8C", fontWeight: 600, margin: "0 0 24px" }}>
+              Final Indicated Range: ${premiumLow.toLocaleString()} – ${premiumHigh.toLocaleString()}
+            </p>
+          </>
+        )}
+
+        {isAso && (() => {
+          const asoPepm = 50;
+          const asoEmployees = Math.max(totalEmployees, 1);
+          const asoAnnual = asoPepm * asoEmployees * 12;
+          const asoLow = Math.round(asoAnnual * 0.95);
+          const asoHigh = Math.round(asoAnnual * 1.1);
+          const asoFrequencies = [
+            { key: "Monthly", label: "Monthly", cycles: 12, unit: "PEPM" },
+            { key: "BiWeekly", label: "Bi-Weekly", cycles: 26, unit: "PEPC" },
+            { key: "Weekly", label: "Weekly", cycles: 52, unit: "PEPC" },
+          ] as const;
+          return (
+            <>
+              <div
+                style={{
+                  padding: 24,
+                  borderRadius: 12,
+                  background: isDark ? "#13131f" : "#f8f8fc",
+                  borderLeft: "3px solid #E91E8C",
+                  marginBottom: 24,
+                }}
+              >
+                <span style={{ fontSize: 12, color: textMuted, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                  Estimated Annual ASO Service Fee
+                </span>
+                <div style={{ fontSize: 36, fontWeight: 700, color: textPrimary, margin: "8px 0" }}>
+                  ${asoLow.toLocaleString()} – ${asoHigh.toLocaleString()}
+                </div>
+                <p style={{ fontSize: 13, color: textMuted, margin: 0 }}>
+                  Based on {asoEmployees} employee{asoEmployees !== 1 ? "s" : ""} at ${asoPepm}/employee/month
+                </p>
+              </div>
+
+              <div
+                style={{
+                  padding: 20,
+                  borderRadius: 12,
+                  background: isDark ? "#13131f" : "#f8f8fc",
+                  borderLeft: "3px solid #E91E8C",
+                  marginBottom: 24,
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+                  <span style={{ fontSize: 12, color: textMuted, textTransform: "uppercase", letterSpacing: "0.05em", fontFamily: "var(--app-font-heading)" }}>
+                    ASO Service Pricing
+                  </span>
+                  <span style={{ fontSize: 11, color: textMuted }}>
+                    ${asoPepm} per employee per month
+                  </span>
+                </div>
+                <div style={{ fontSize: 24, fontWeight: 700, color: textPrimary, margin: "6px 0 4px" }}>
+                  ${asoAnnual.toLocaleString()}
+                  <span style={{ fontSize: 13, color: textMuted, fontWeight: 500, marginLeft: 8 }}>annual base</span>
+                </div>
+                <p style={{ fontSize: 12, color: textMuted, margin: "0 0 14px" }}>
+                  {asoEmployees} employee{asoEmployees !== 1 ? "s" : ""} • billed via your chosen payroll cadence
+                </p>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
+                  {asoFrequencies.map((f) => {
+                    const perCycle = asoAnnual / asoEmployees / f.cycles;
+                    const isSelected = selectedFreq === f.key;
+                    return (
+                      <div
+                        key={f.key}
+                        style={{
+                          padding: "12px 14px",
+                          borderRadius: 10,
+                          background: isSelected ? "rgba(233,30,140,0.12)" : isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)",
+                          border: isSelected ? "1px solid rgba(233,30,140,0.4)" : `1px solid ${borderColor}`,
+                        }}
+                      >
+                        <div style={{ fontSize: 10, color: isSelected ? "#E91E8C" : textMuted, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: "var(--app-font-heading)", marginBottom: 4 }}>
+                          {f.label}
+                        </div>
+                        <div style={{ fontSize: 18, fontWeight: 700, color: textPrimary }}>
+                          ${perCycle.toFixed(0)}
+                        </div>
+                        <div style={{ fontSize: 10, color: textMuted, marginTop: 2 }}>
+                          {f.unit} • {f.cycles}/yr
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                {!selectedFreq && (
+                  <p style={{ fontSize: 11, color: "#FFB547", margin: "10px 0 0", fontStyle: "italic" }}>
+                    Select a payroll frequency on the Operations step to highlight your billing cadence.
+                  </p>
+                )}
+              </div>
+            </>
+          );
+        })()}
 
         {isPeo && (
         <div
