@@ -4,10 +4,9 @@ import { useQuoteFlowStore } from "@/lib/quote-flow-store";
 import Step1BusinessDetails from "./Step1BusinessDetails";
 import WorkforceProfile from "@/components/quote-flow/WorkforceProfile";
 import Step3ExperienceMod from "./Step3ExperienceMod";
+import Step3_5ApplicantGeneral from "./Step3_5ApplicantGeneral";
 import Step4Indication from "./Step4Indication";
 import Phase2Transition from "./Phase2Transition";
-import P2Step1Applicant from "./P2Step1Applicant";
-import P2Step3GeneralInfo from "./P2Step3GeneralInfo";
 import P2Step4CannabisOps from "./P2Step4CannabisOps";
 import P2Step5SafetyPremises from "./P2Step5SafetyPremises";
 import P2Step6Extraction from "./P2Step6Extraction";
@@ -51,8 +50,6 @@ export default function QuoteWizard() {
   const getPhase2Steps = () => {
     const steps: { key: string; label: string }[] = [
       { key: "p2-transition", label: "Transition" },
-      { key: "p2-applicant", label: "Applicant Details" },
-      { key: "p2-general", label: "General Information" },
       { key: "p2-cannabis", label: "Cannabis Operations" },
       { key: "p2-safety", label: "Safety & Premises" },
     ];
@@ -64,14 +61,12 @@ export default function QuoteWizard() {
     return steps;
   };
 
-  const phase1Total = 4;
+  const phase1Total = 5;
   const phase2Steps = getPhase2Steps();
 
   const getPhase2ComponentList = () => {
     const components: React.ReactNode[] = [
       <Phase2Transition key="transition" />,
-      <P2Step1Applicant key="applicant" />,
-      <P2Step3GeneralInfo key="general" />,
       <P2Step4CannabisOps key="cannabis" />,
       <P2Step5SafetyPremises key="safety" />,
     ];
@@ -91,18 +86,19 @@ export default function QuoteWizard() {
         case 1: return <Step1BusinessDetails />;
         case 2: return <WorkforceProfile />;
         case 3: return <Step3ExperienceMod />;
-        case 4: return <Step4Indication />;
+        case 4: return <Step3_5ApplicantGeneral />;
+        case 5: return <Step4Indication />;
         default: return <Step1BusinessDetails />;
       }
     } else {
-      return phase2Components[store.currentStep] || <P2Step1Applicant />;
+      return phase2Components[store.currentStep] || <P2Step4CannabisOps />;
     }
   };
 
   const finalStepIndex = phase2Components.length - 2;
   const confirmStepIndex = phase2Components.length - 1;
 
-  const isIndicationScreen = store.phase === 1 && store.currentStep === 4;
+  const isIndicationScreen = store.phase === 1 && store.currentStep === 5;
   const isTransition = store.phase === 2 && store.currentStep === 0;
   const isFinalOrConfirm = store.phase === 2 && (
     store.currentStep === finalStepIndex || store.currentStep === confirmStepIndex
@@ -113,13 +109,13 @@ export default function QuoteWizard() {
 
   const getProgressInfo = () => {
     if (store.phase === 1) {
-      const labels = ["Business Details", "Class Codes & Payroll", "Experience Rating", "Indication Ready"];
+      const labels = ["Business Details", "Class Codes & Payroll", "Experience Rating", "Applicant & General Info", "Indication Ready"];
       return { current: store.currentStep, total: phase1Total, label: labels[store.currentStep - 1] || "" };
     }
     const step = store.currentStep;
     if (step === 0) return { current: 0, total: 1, label: "Transition" };
     const totalP2 = phase2Components.length - 2;
-    const labels = ["Applicant Details", "General Information", "Cannabis Operations", "Safety & Premises"];
+    const labels = ["Cannabis Operations", "Safety & Premises"];
     if (hasExtraction) labels.push("Extraction");
     if (hasDelivery) labels.push("Auto Exposure");
     labels.push("Loss History");
@@ -131,7 +127,7 @@ export default function QuoteWizard() {
 
   const handleNext = () => {
     if (store.phase === 1) {
-      if (store.currentStep < 4) store.setStep(store.currentStep + 1);
+      if (store.currentStep < 5) store.setStep(store.currentStep + 1);
     } else {
       store.setStep(store.currentStep + 1);
     }
@@ -143,7 +139,7 @@ export default function QuoteWizard() {
       else navigate("/marketplace/quote/service-type", { state: { vertical: store.vertical } });
     } else {
       if (store.currentStep > 1) store.setStep(store.currentStep - 1);
-      else { store.setPhase(1); store.setStep(4); }
+      else { store.setPhase(1); store.setStep(5); }
     }
   };
 
