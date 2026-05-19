@@ -181,6 +181,7 @@ export default function Step4Indication() {
   };
 
   const isAso = s.coverageType === "ASO";
+  const isPeo = s.coverageType === "PEO";
   const handlePurchaseAso = () => {
     navigate("/marketplace");
   };
@@ -342,7 +343,7 @@ export default function Step4Indication() {
           Final Indicated Range: ${premiumLow.toLocaleString()} – ${premiumHigh.toLocaleString()}
         </p>
 
-        {!isAso && (
+        {isPeo && (
         <div
           style={{
             padding: 20,
