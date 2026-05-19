@@ -91,6 +91,45 @@ export default function Step1BusinessDetails() {
             <MultiSelect values={s.statesOfOperation} onChange={(v) => s.update({ statesOfOperation: v })} options={US_STATES_OPTIONS} placeholder="Select operating states" />
           </FieldLabel>
         </div>
+
+        <div style={{ marginTop: 28, paddingTop: 20, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+          <h4 style={{ fontSize: 14, fontWeight: 700, color: "#ccc", margin: 0, marginBottom: 12, fontFamily: "var(--app-font-heading)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+            Mailing Address
+          </h4>
+          <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", marginBottom: 16 }}>
+            <div
+              style={{
+                width: 20, height: 20, borderRadius: 4,
+                border: s.mailingAddressSame ? "none" : "2px solid rgba(255,255,255,0.2)",
+                background: s.mailingAddressSame ? "#E91E8C" : "transparent",
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}
+              onClick={() => s.update({ mailingAddressSame: !s.mailingAddressSame })}
+            >
+              {s.mailingAddressSame && <span style={{ color: textPrimary, fontSize: 14, fontWeight: 700 }}>✓</span>}
+            </div>
+            <span style={{ fontSize: 14, color: "#ccc" }}>Same as business address</span>
+          </label>
+          {!s.mailingAddressSame && (
+            <FieldGrid columns={2}>
+              <FieldLabel label="Street">
+                <TextInput value={s.mailingStreet} onChange={(v) => s.update({ mailingStreet: v })} />
+              </FieldLabel>
+              <FieldLabel label="Suite">
+                <TextInput value={s.mailingSuite} onChange={(v) => s.update({ mailingSuite: v })} />
+              </FieldLabel>
+              <FieldLabel label="City">
+                <TextInput value={s.mailingCity} onChange={(v) => s.update({ mailingCity: v })} />
+              </FieldLabel>
+              <FieldLabel label="State">
+                <SelectInput value={s.mailingState} onChange={(v) => s.update({ mailingState: v })} options={US_STATES_OPTIONS} placeholder="Select state" />
+              </FieldLabel>
+              <FieldLabel label="Zip">
+                <TextInput value={s.mailingZip} onChange={(v) => s.update({ mailingZip: v })} />
+              </FieldLabel>
+            </FieldGrid>
+          )}
+        </div>
       </FormSection>
 
       <FormSection title="Primary Contact">
@@ -108,42 +147,6 @@ export default function Step1BusinessDetails() {
             <TextInput value={s.website} onChange={(v) => s.update({ website: v })} placeholder="https://" />
           </FieldLabel>
         </FieldGrid>
-      </FormSection>
-
-      <FormSection title="Mailing Address">
-        <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", marginBottom: 16 }}>
-          <div
-            style={{
-              width: 20, height: 20, borderRadius: 4,
-              border: s.mailingAddressSame ? "none" : "2px solid rgba(255,255,255,0.2)",
-              background: s.mailingAddressSame ? "#E91E8C" : "transparent",
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}
-            onClick={() => s.update({ mailingAddressSame: !s.mailingAddressSame })}
-          >
-            {s.mailingAddressSame && <span style={{ color: textPrimary, fontSize: 14, fontWeight: 700 }}>✓</span>}
-          </div>
-          <span style={{ fontSize: 14, color: "#ccc" }}>Same as business address</span>
-        </label>
-        {!s.mailingAddressSame && (
-          <FieldGrid columns={2}>
-            <FieldLabel label="Street">
-              <TextInput value={s.mailingStreet} onChange={(v) => s.update({ mailingStreet: v })} />
-            </FieldLabel>
-            <FieldLabel label="Suite">
-              <TextInput value={s.mailingSuite} onChange={(v) => s.update({ mailingSuite: v })} />
-            </FieldLabel>
-            <FieldLabel label="City">
-              <TextInput value={s.mailingCity} onChange={(v) => s.update({ mailingCity: v })} />
-            </FieldLabel>
-            <FieldLabel label="State">
-              <SelectInput value={s.mailingState} onChange={(v) => s.update({ mailingState: v })} options={US_STATES_OPTIONS} placeholder="Select state" />
-            </FieldLabel>
-            <FieldLabel label="Zip">
-              <TextInput value={s.mailingZip} onChange={(v) => s.update({ mailingZip: v })} />
-            </FieldLabel>
-          </FieldGrid>
-        )}
       </FormSection>
 
       <FormSection title="Owners & Officers">
