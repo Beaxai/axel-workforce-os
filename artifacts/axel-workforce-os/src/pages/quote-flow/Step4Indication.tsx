@@ -180,6 +180,11 @@ export default function Step4Indication() {
     s.setStep(0);
   };
 
+  const isAso = s.coverageType === "ASO";
+  const handlePurchaseAso = () => {
+    navigate("/marketplace");
+  };
+
   const PEO_BASE_RATE = 0.02;
   const peoAnnual = Math.round(totalPayroll * PEO_BASE_RATE);
   const peoEmployees = Math.max(totalEmployees, 1);
@@ -190,16 +195,27 @@ export default function Step4Indication() {
   ] as const;
   const selectedFreq = s.payrollFrequency;
 
-  const highlights = [
-    "Statutory workers' compensation coverage",
-    "Employer's liability included",
-    "Pay-as-you-go billing available",
-    "Cannabis-specialized carrier",
-    "Multi-state coverage available",
-    "Dedicated claims management",
-    "Return-to-work program support",
-    "Certificate of insurance management",
-  ];
+  const highlights = isAso
+    ? [
+        "Full-service payroll & tax filing",
+        "HR administration & compliance",
+        "Benefits administration",
+        "Time & attendance tracking",
+        "Employee handbook & policies",
+        "Onboarding & offboarding support",
+        "Multi-state compliance coverage",
+        "You keep your own WC policy",
+      ]
+    : [
+        "Statutory workers' compensation coverage",
+        "Employer's liability included",
+        "Pay-as-you-go billing available",
+        "Cannabis-specialized carrier",
+        "Multi-state coverage available",
+        "Dedicated claims management",
+        "Return-to-work program support",
+        "Certificate of insurance management",
+      ];
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: 32, alignItems: "start" }}>
@@ -207,7 +223,7 @@ export default function Step4Indication() {
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
           <Cannabis style={{ width: 22, height: 22, color: "#E91E8C" }} />
           <h2 style={{ fontSize: 20, fontWeight: 700, color: textPrimary, margin: 0 }}>
-            Cannabis — Workers' Compensation
+            {isAso ? "Cannabis — WorkPlus OS (ASO)" : "Cannabis — Workers' Compensation"}
           </h2>
         </div>
         <p style={{ fontSize: 13, color: textMuted, margin: "2px 0 4px" }}>
@@ -326,6 +342,7 @@ export default function Step4Indication() {
           Final Indicated Range: ${premiumLow.toLocaleString()} – ${premiumHigh.toLocaleString()}
         </p>
 
+        {!isAso && (
         <div
           style={{
             padding: 20,
@@ -383,11 +400,12 @@ export default function Step4Indication() {
             </p>
           )}
         </div>
+        )}
 
         <p style={{ fontSize: 12, color: textMuted, fontStyle: "italic", lineHeight: 1.6 }}>
-          This indication is based on the information provided and is not a guarantee of final pricing.
-          Actual premium is subject to full underwriting review, carrier approval, and final audit.
-          Rates shown are based on current filed carrier rates.
+          {isAso
+            ? "This indication is based on the information provided. Final ASO service pricing is confirmed at checkout based on your selected billing cadence and employee headcount."
+            : "This indication is based on the information provided and is not a guarantee of final pricing. Actual premium is subject to full underwriting review, carrier approval, and final audit. Rates shown are based on current filed carrier rates."}
         </p>
       </div>
 
@@ -404,24 +422,28 @@ export default function Step4Indication() {
           </div>
         </div>
 
-        <div style={{ padding: 16, borderRadius: 12, background: isDark ? "#13131f" : "#f8f8fc", marginBottom: 16 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <Shield style={{ width: 18, height: 18, color: "#E91E8C" }} />
-            <div>
-              <p style={{ fontSize: 14, color: textPrimary, margin: 0, fontWeight: 600 }}>Benchmark Insurance</p>
-              <p style={{ fontSize: 12, color: textMuted, margin: 0 }}>Admitted carrier — Cannabis specialist</p>
+        {!isAso && (
+          <div style={{ padding: 16, borderRadius: 12, background: isDark ? "#13131f" : "#f8f8fc", marginBottom: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <Shield style={{ width: 18, height: 18, color: "#E91E8C" }} />
+              <div>
+                <p style={{ fontSize: 14, color: textPrimary, margin: 0, fontWeight: 600 }}>Benchmark Insurance</p>
+                <p style={{ fontSize: 12, color: textMuted, margin: 0 }}>Admitted carrier — Cannabis specialist</p>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 16px", borderRadius: 10, marginBottom: 24 }}>
           <Clock style={{ width: 16, height: 16, color: textMuted }} />
-          <span style={{ fontSize: 13, color: textMuted }}>Est. 2-3 business days for approved proposal</span>
+          <span style={{ fontSize: 13, color: textMuted }}>
+            {isAso ? "Activate instantly — no underwriting required" : "Est. 2-3 business days for approved proposal"}
+          </span>
         </div>
 
         <button
           type="button"
-          onClick={handleRequestProposal}
+          onClick={isAso ? handlePurchaseAso : handleRequestProposal}
           style={{
             width: "100%",
             padding: "18px 24px",
@@ -439,7 +461,7 @@ export default function Step4Indication() {
           onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.9")}
           onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
         >
-          Request Proposal
+          {isAso ? "Purchase WorkPlus OS" : "Request Proposal"}
         </button>
 
         <button

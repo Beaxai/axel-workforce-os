@@ -120,8 +120,8 @@ export default function VerticalDetail() {
   };
 
   const handleStartAsoQuote = () => {
-    navigate("/marketplace/quote/aso", {
-      state: { vertical: vertical.name },
+    navigate("/marketplace/quote/wizard", {
+      state: { vertical: vertical.name, coverageType: "ASO" },
     });
   };
 

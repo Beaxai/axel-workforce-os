@@ -50,16 +50,14 @@ export default function ServiceTypeSelect() {
     return null;
   }
 
-  const startWizard = (coverageType: "WC" | "PEO") => {
+  const startWizard = (coverageType: "WC" | "PEO" | "ASO") => {
     navigate("/marketplace/quote/wizard", {
       state: { vertical, coverageType },
     });
   };
 
   const startAsoQuote = () => {
-    navigate("/marketplace/quote/aso", {
-      state: { vertical },
-    });
+    startWizard("ASO");
   };
 
   const handleBack = () => navigate("/marketplace");
