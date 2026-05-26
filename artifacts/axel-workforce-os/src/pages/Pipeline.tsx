@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/axel-index";
 import { useThemeStore } from "@/lib/theme-store";
 import { api } from "@/lib/api";
-import DealCardModal from "@/components/DealCardModal";
+import { openDealCard } from "@/components/DealCardModal";
 import { PLACEHOLDER_USERS } from "@/lib/users";
 import { VERTICAL_ICONS } from "@/lib/vertical-icons";
 import {
@@ -137,7 +137,6 @@ export default function Pipeline() {
   const [showNewDeal, setShowNewDeal] = useState(false);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOverStage, setDragOverStage] = useState<string | null>(null);
-  const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
   const [saving, setSaving] = useState(false);
   const [viewMode, setViewMode] = useState<"kanban" | "list">("kanban");
   const [appetiteFilter, setAppetiteFilter] = useState<string>("");
@@ -172,6 +171,12 @@ export default function Pipeline() {
 
   useEffect(() => {
     fetchDeals();
+  }, [fetchDeals]);
+
+  useEffect(() => {
+    const handler = () => { fetchDeals(); };
+    window.addEventListener("deal-updated", handler);
+    return () => window.removeEventListener("deal-updated", handler);
   }, [fetchDeals]);
 
   useEffect(() => {
@@ -499,7 +504,7 @@ export default function Pipeline() {
                   return (
                     <tr
                       key={deal.id}
-                      onClick={() => setSelectedDeal(deal)}
+                      onClick={() => openDealCard(deal.id)}
                       style={{ cursor: "pointer", transition: "background 0.12s" }}
                       onMouseEnter={(e) => { e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)"; }}
                       onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
@@ -590,7 +595,7 @@ export default function Pipeline() {
                         draggable
                         onDragStart={(e) => handleDragStart(e, deal.id)}
                         onDragEnd={handleDragEnd}
-                        onClick={() => setSelectedDeal(deal)}
+                        onClick={() => openDealCard(deal.id)}
                         style={{
                           background: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.02)",
                           border: `1px solid ${borderSubtle}`,
@@ -801,12 +806,6 @@ export default function Pipeline() {
         </div>
       </Modal>
 
-      <DealCardModal
-        dealId={selectedDeal?.id || ""}
-        isOpen={!!selectedDeal}
-        onClose={() => setSelectedDeal(null)}
-        onDealUpdated={fetchDeals}
-      />
     </div>
   );
 }

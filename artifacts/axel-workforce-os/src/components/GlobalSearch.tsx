@@ -4,6 +4,7 @@ import { api } from "@/lib/api";
 import { GlassCard, AxelBadge } from "@/components/ui/axel-index";
 import { Search, X } from "lucide-react";
 import { useThemeStore } from "@/lib/theme-store";
+import { openDealCard } from "@/components/DealCardModal";
 
 interface SearchResults {
   deals: any[];
@@ -12,7 +13,7 @@ interface SearchResults {
   resources: any[];
 }
 
-export default function GlobalSearch({ onClose, onOpenDeal }: { onClose: () => void; onOpenDeal?: (id: string) => void }) {
+export default function GlobalSearch({ onClose }: { onClose: () => void }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResults>({ deals: [], accounts: [], partners: [], resources: [] });
   const [loading, setLoading] = useState(false);
@@ -107,7 +108,7 @@ export default function GlobalSearch({ onClose, onOpenDeal }: { onClose: () => v
                   badge={d.stage?.replace(/_/g, " ")}
                   badgeColor="blue"
                   isDark={isDark}
-                  onClick={() => { onClose(); onOpenDeal?.(d.id); }}
+                  onClick={() => { onClose(); openDealCard(d.id); }}
                 />
               ))}
             </Section>

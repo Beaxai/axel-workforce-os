@@ -55,6 +55,7 @@ import ClientOnboarding from "@/pages/ClientOnboarding";
 import Welcome from "@/pages/Welcome";
 import NotFound from "@/pages/not-found";
 import { useAuthStore } from "@/lib/auth-store";
+import { GlobalDealCardHost } from "@/components/DealCardModal";
 
 const queryClient = new QueryClient();
 
@@ -272,6 +273,7 @@ function App() {
 
             <Route path="*" element={<NotFound />} />
           </Routes>
+          <GlobalDealCardHost />
         </BrowserRouter>
         <Toaster />
       </TooltipProvider>

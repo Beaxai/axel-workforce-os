@@ -7,7 +7,7 @@ import {
   Badge,
   SectionHeader,
 } from "@/components/ui/axel-index";
-import DealCardModal from "@/components/DealCardModal";
+import { openDealCard } from "@/components/DealCardModal";
 import { useThemeStore } from "@/lib/theme-store";
 import { api } from "@/lib/api";
 import { ArrowLeft, Clock, User } from "lucide-react";
@@ -80,7 +80,6 @@ export default function AccountDetail() {
   const [activity, setActivity] = useState<ActivityEntry[]>([]);
   const [editMode, setEditMode] = useState(false);
   const [editForm, setEditForm] = useState({ businessName: "", vertical: "", state: "", annualPayroll: "", headcount: "", primaryContact: "", contactEmail: "", contactPhone: "", notes: "", accountStatus: "Prospect" });
-  const [selectedDealId, setSelectedDealId] = useState<string | null>(null);
   const [noteText, setNoteText] = useState("");
 
   const textPrimary = isDark ? "#fff" : "#111";
@@ -142,6 +141,12 @@ export default function AccountDetail() {
     fetchPolicies();
     fetchActivity();
   }, [fetchAccount, fetchDeals, fetchPolicies, fetchActivity]);
+
+  useEffect(() => {
+    const handler = () => { fetchDeals(); fetchActivity(); };
+    window.addEventListener("deal-updated", handler);
+    return () => window.removeEventListener("deal-updated", handler);
+  }, [fetchDeals, fetchActivity]);
 
   const handleSave = async () => {
     if (!id) return;
@@ -226,7 +231,7 @@ export default function AccountDetail() {
               {deals.map((d) => (
                 <div
                   key={d.id}
-                  onClick={() => setSelectedDealId(d.id)}
+                  onClick={() => openDealCard(d.id)}
                   style={{
                     padding: "10px 14px",
                     background: inputBg,
@@ -349,12 +354,6 @@ export default function AccountDetail() {
         </div>
       </div>
 
-      <DealCardModal
-        dealId={selectedDealId || ""}
-        isOpen={!!selectedDealId}
-        onClose={() => setSelectedDealId(null)}
-        onDealUpdated={fetchDeals}
-      />
     </div>
   );
 }

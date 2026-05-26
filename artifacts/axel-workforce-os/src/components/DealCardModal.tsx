@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import {
   GlassCard,
   PinkButton,
@@ -344,6 +345,9 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
     setAppetiteData([]);
     setCannabisApp(null);
     setShowAllAppFields(false);
+    setTaskForm({ taskName: "", assignedTo: "", dueDate: "" });
+    setShowMentions(false);
+    setCopied(false);
     fetchDeal();
     fetchActivity();
     fetchTasks();
@@ -362,6 +366,8 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
   }, [deal?.state, quoteRecord?.classCode, fetchAppetite]);
 
   if (!isOpen) return null;
+  const renderModal = (children: React.ReactNode) =>
+    typeof document !== "undefined" ? createPortal(children, document.body) : children;
 
   const currentStage = STAGES.find((s) => s.key === deal?.stage) || STAGES[0];
   const nextStage = STAGES.find((s) => s.num === currentStage.num + 1);
@@ -380,6 +386,7 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
       fetchDeal();
       fetchActivity();
       onDealUpdated?.();
+      window.dispatchEvent(new CustomEvent("deal-updated", { detail: { dealId } }));
     } catch (err) {
       console.error("Failed to advance stage:", err);
     }
@@ -501,6 +508,7 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
       setEditMode(false);
       fetchDeal();
       onDealUpdated?.();
+      window.dispatchEvent(new CustomEvent("deal-updated", { detail: { dealId } }));
     } catch (err) {
       console.error("Failed to save edits:", err);
     }
@@ -568,7 +576,7 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
     { key: "bind", label: "Bind", icon: FileSignature },
   ];
 
-  return (
+  return renderModal(
     <div
       style={{
         position: "fixed",
@@ -1726,6 +1734,26 @@ function ProposalTabInline({ dealId }: { dealId: string }) {
 }
 
 export function openDealCard(dealId: string): void {
+  if (typeof window === "undefined") return;
   const event = new CustomEvent("open-deal-card", { detail: { dealId } });
   window.dispatchEvent(event);
+}
+
+export function GlobalDealCardHost() {
+  const [dealId, setDealId] = useState<string | null>(null);
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.dealId) setDealId(detail.dealId);
+    };
+    window.addEventListener("open-deal-card", handler);
+    return () => window.removeEventListener("open-deal-card", handler);
+  }, []);
+  return (
+    <DealCardModal
+      dealId={dealId || ""}
+      isOpen={!!dealId}
+      onClose={() => setDealId(null)}
+    />
+  );
 }
