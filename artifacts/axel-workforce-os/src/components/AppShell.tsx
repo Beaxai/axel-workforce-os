@@ -652,7 +652,7 @@ export default function AppShell() {
         </header>
 
         <main style={{ flex: 1, overflow: "auto", padding: "32px 40px" }}>
-          {location.pathname === "/marketplace" ? (
+          {(location.pathname === "/marketplace" || location.pathname === "/pipeline") ? (
             <div
               style={{
                 width: "100%",

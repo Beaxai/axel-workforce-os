@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, type DragEvent } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, type DragEvent, type ReactNode } from "react";
 import {
   SectionHeader,
   GlassCard,
@@ -89,6 +89,58 @@ const PLACEHOLDER_USERS = [
   { id: "u4", name: "Priya Patel" },
 ];
 
+const CARDS_PER_PAGE = 10;
+
+interface LazyColumnBodyProps {
+  children: ReactNode;
+  hasMore: boolean;
+  onLoadMore: () => void;
+  isDropTarget: boolean;
+  isDark: boolean;
+}
+
+function LazyColumnBody({ children, hasMore, onLoadMore, isDropTarget, isDark }: LazyColumnBodyProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const onLoadMoreRef = useRef(onLoadMore);
+  onLoadMoreRef.current = onLoadMore;
+
+  useEffect(() => {
+    if (!hasMore) return;
+    const scrollEl = scrollRef.current;
+    const sentinelEl = sentinelRef.current;
+    if (!scrollEl || !sentinelEl) return;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) onLoadMoreRef.current();
+      },
+      { root: scrollEl, rootMargin: "200px 0px" }
+    );
+    obs.observe(sentinelEl);
+    return () => obs.disconnect();
+  }, [hasMore]);
+
+  return (
+    <div
+      ref={scrollRef}
+      style={{
+        flex: 1,
+        overflowY: "auto",
+        minHeight: "200px",
+        padding: "8px",
+        background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)",
+        backdropFilter: "blur(12px)",
+        border: `1px solid ${isDropTarget ? "rgba(233,30,140,0.4)" : isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`,
+        borderRadius: "12px",
+        transition: "border-color 0.15s",
+      }}
+    >
+      {children}
+      {hasMore && <div ref={sentinelRef} style={{ height: "1px" }} />}
+    </div>
+  );
+}
+
 function formatCurrency(val: string | number | undefined | null): string {
   if (!val) return "$0";
   const n = typeof val === "string" ? parseFloat(val) : val;
@@ -173,6 +225,19 @@ export default function Pipeline() {
 
   const dealsByStage = (stageKey: string) =>
     filteredDeals.filter((d) => (d.stage || "SUBMISSION_REVIEW") === stageKey);
+
+  const [visibleByStage, setVisibleByStage] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    setVisibleByStage({});
+  }, [filteredDeals]);
+
+  const loadMoreForStage = useCallback((stageKey: string) => {
+    setVisibleByStage((prev) => ({
+      ...prev,
+      [stageKey]: (prev[stageKey] ?? CARDS_PER_PAGE) + CARDS_PER_PAGE,
+    }));
+  }, []);
 
   const totalDeals = deals.length;
   const totalWcPremium = deals.reduce((sum, d) => {
@@ -513,13 +578,15 @@ export default function Pipeline() {
           style={{
             display: "flex",
             gap: "12px",
-            overflowX: "auto",
             flex: 1,
             paddingBottom: "12px",
           }}
         >
           {STAGES.map((stage) => {
             const stageDeals = dealsByStage(stage.key);
+            const visibleCount = visibleByStage[stage.key] ?? CARDS_PER_PAGE;
+            const visibleDeals = stageDeals.slice(0, visibleCount);
+            const hasMore = stageDeals.length > visibleDeals.length;
             const isDropTarget = dragOverStage === stage.key;
             return (
               <div
@@ -535,18 +602,14 @@ export default function Pipeline() {
                   <Badge label={String(stageDeals.length)} color="gray" />
                 </div>
 
-                <GlassCard
-                  padding="8px"
-                  style={{
-                    flex: 1,
-                    overflowY: "auto",
-                    minHeight: "200px",
-                    borderColor: isDropTarget ? "rgba(233,30,140,0.4)" : undefined,
-                    transition: "border-color 0.15s",
-                  }}
+                <LazyColumnBody
+                  hasMore={hasMore}
+                  onLoadMore={() => loadMoreForStage(stage.key)}
+                  isDropTarget={isDropTarget}
+                  isDark={isDark}
                 >
                   <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                    {stageDeals.map((deal) => (
+                    {visibleDeals.map((deal) => (
                       <div
                         key={deal.id}
                         draggable
@@ -637,7 +700,7 @@ export default function Pipeline() {
                       </div>
                     )}
                   </div>
-                </GlassCard>
+                </LazyColumnBody>
               </div>
             );
           })}
