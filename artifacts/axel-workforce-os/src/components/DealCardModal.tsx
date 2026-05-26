@@ -577,7 +577,7 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
         display: "flex",
         alignItems: "stretch",
         justifyContent: "center",
-        background: "rgba(0,0,0,0.5)",
+        background: "rgba(0,0,0,0.25)",
         padding: "24px",
       }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
@@ -1498,7 +1498,7 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            background: "rgba(0,0,0,0.5)",
+            background: "rgba(0,0,0,0.35)",
           }}
           onClick={(e) => { if (e.target === e.currentTarget) setShowTemplates(false); }}
         >
