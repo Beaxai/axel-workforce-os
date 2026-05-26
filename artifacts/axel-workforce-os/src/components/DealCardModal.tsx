@@ -18,13 +18,26 @@ import {
   Plus,
   FileText,
   Clock,
-  User,
   Calculator,
   FileSignature,
+  MessageSquare,
+  Upload,
+  PenLine,
+  CircleDot,
+  ArrowRight,
+  Mail,
+  HelpCircle,
+  Cog,
+  StickyNote,
+  CheckSquare,
+  Send,
+  AlertTriangle,
 } from "lucide-react";
 import BindStatusPanel from "@/components/submission/BindStatusPanel";
 import { AppetiteBadge } from "@/components/AppetiteBadge";
 import { sections as cannabisAppSections } from "@workspace/cannabis-application";
+import { PLACEHOLDER_USERS, CURRENT_USER, resolveActor } from "@/lib/users";
+import { getVerticalIcon } from "@/lib/vertical-icons";
 
 type CannabisAppPdfLink = { documentType: string; label: string; path: string };
 type CannabisAppData = {
@@ -47,12 +60,53 @@ const STAGES = [
   { num: 8, key: "LOST", label: "Lost" },
 ];
 
-const PLACEHOLDER_USERS = [
-  { id: "u1", name: "Alex Morgan" },
-  { id: "u2", name: "Sarah Chen" },
-  { id: "u3", name: "James Rivera" },
-  { id: "u4", name: "Priya Patel" },
-];
+const actorMeta = (extra: Record<string, unknown> = {}) => ({
+  userId: CURRENT_USER.id,
+  userName: CURRENT_USER.name,
+  ...extra,
+});
+
+function formatRelative(iso?: string): string {
+  if (!iso) return "";
+  const ts = new Date(iso).getTime();
+  if (isNaN(ts)) return "";
+  const diff = Date.now() - ts;
+  const s = Math.round(diff / 1000);
+  if (s < 60) return "just now";
+  const m = Math.round(s / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.round(h / 24);
+  if (d < 7) return `${d}d ago`;
+  return new Date(iso).toLocaleDateString();
+}
+
+type EventMeta = { Icon: typeof Clock; label: string };
+const EVENT_META: Record<string, EventMeta> = {
+  NOTE: { Icon: StickyNote, label: "Note" },
+  STAGE_CHANGE: { Icon: ArrowRight, label: "Stage change" },
+  TASK_CREATED: { Icon: Plus, label: "Task created" },
+  TASK_COMPLETED: { Icon: CheckSquare, label: "Task completed" },
+  TEMPLATE_APPLIED: { Icon: CircleDot, label: "Template applied" },
+  submission_submitted: { Icon: Send, label: "Submission" },
+  submission_completed: { Icon: Check, label: "Submission completed" },
+  submission_updated: { Icon: PenLine, label: "Submission updated" },
+  bind_requested: { Icon: FileSignature, label: "Bind requested" },
+  proposal_created: { Icon: FileText, label: "Proposal" },
+  approved_proposal_requested: { Icon: Send, label: "UW requested" },
+  uw_package_sent: { Icon: Mail, label: "UW package sent" },
+  uw_package_failed: { Icon: AlertTriangle, label: "UW package failed" },
+  loss_history_uploaded: { Icon: Upload, label: "Loss history" },
+  document_uploaded: { Icon: Upload, label: "Document uploaded" },
+  document_request_sent: { Icon: Mail, label: "Documents requested" },
+  additional_info_requested: { Icon: HelpCircle, label: "Info requested" },
+  signature_reminder_sent: { Icon: Mail, label: "Signature reminder" },
+  signature_signed: { Icon: PenLine, label: "Signature" },
+  signature_declined: { Icon: AlertTriangle, label: "Signature declined" },
+  signature_expired: { Icon: AlertTriangle, label: "Signature expired" },
+};
+const DEFAULT_EVENT_META: EventMeta = { Icon: Cog, label: "System" };
 
 const TASK_TEMPLATES: Record<string, string[]> = {
   "WC New Business": [
@@ -321,6 +375,7 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
         entityId: dealId,
         eventType: "STAGE_CHANGE",
         description: `Stage advanced from ${currentStage.label} to ${nextStage.label}`,
+        metadata: actorMeta({ from: currentStage.key, to: nextStage.key }),
       });
       fetchDeal();
       fetchActivity();
@@ -338,6 +393,7 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
         entityId: dealId,
         eventType: "NOTE",
         description: noteText.trim(),
+        metadata: actorMeta(),
       });
       setNoteText("");
       fetchActivity();
@@ -379,6 +435,7 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
         entityId: dealId,
         eventType: "TASK_CREATED",
         description: `Task added: ${taskForm.taskName}`,
+        metadata: actorMeta({ taskName: taskForm.taskName, assignedTo: taskForm.assignedTo || null }),
       });
       setTaskForm({ taskName: "", assignedTo: "", dueDate: "" });
       setShowAddTask(false);
@@ -401,6 +458,7 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
           entityId: task.id,
           eventType: "TASK_COMPLETED",
           description: `Task completed: ${task.taskName}`,
+          metadata: actorMeta({ taskName: task.taskName }),
         });
       }
       fetchTasks();
@@ -422,6 +480,7 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
         entityId: dealId,
         eventType: "TEMPLATE_APPLIED",
         description: `Task template applied: ${templateName} (${templateTasks.length} tasks)`,
+        metadata: actorMeta({ templateName, taskCount: templateTasks.length }),
       });
       setShowTemplates(false);
       fetchTasks();
@@ -444,6 +503,42 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
       onDealUpdated?.();
     } catch (err) {
       console.error("Failed to save edits:", err);
+    }
+  };
+
+  const handleRequestDocuments = async () => {
+    const what = window.prompt("What documents are you requesting? (e.g. 'Updated loss runs, ACORD 130')");
+    if (!what?.trim()) return;
+    const recipient = window.prompt("Send request to (email or name):", "");
+    try {
+      await api.post(`/deals/${dealId}/activity`, {
+        entityType: "deal",
+        entityId: dealId,
+        eventType: "document_request_sent",
+        description: `Document request sent${recipient ? " to " + recipient : ""}: ${what.trim()}`,
+        metadata: actorMeta({ recipient: recipient || null, items: what.trim() }),
+      });
+      fetchActivity();
+    } catch (err) {
+      console.error("Failed to log document request:", err);
+    }
+  };
+
+  const handleRequestInfo = async () => {
+    const what = window.prompt("What information do you need from the client/broker?");
+    if (!what?.trim()) return;
+    const recipient = window.prompt("Send request to (email or name):", "");
+    try {
+      await api.post(`/deals/${dealId}/activity`, {
+        entityType: "deal",
+        entityId: dealId,
+        eventType: "additional_info_requested",
+        description: `Additional info requested${recipient ? " from " + recipient : ""}: ${what.trim()}`,
+        metadata: actorMeta({ recipient: recipient || null, question: what.trim() }),
+      });
+      fetchActivity();
+    } catch (err) {
+      console.error("Failed to log info request:", err);
     }
   };
 
@@ -491,9 +586,9 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
         style={{
           width: "100%",
           maxWidth: "1200px",
-          background: isDark ? "rgba(14,14,18,0.82)" : "rgba(250,250,252,0.78)",
-          backdropFilter: "blur(40px)",
-          WebkitBackdropFilter: "blur(40px)",
+          background: isDark ? "rgba(18,18,24,0.55)" : "rgba(250,250,252,0.55)",
+          backdropFilter: "blur(48px) saturate(140%)",
+          WebkitBackdropFilter: "blur(48px) saturate(140%)",
           boxShadow: isDark
             ? "0 24px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06)"
             : "0 24px 80px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.8)",
@@ -505,90 +600,168 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
         }}
       >
         {/* HEADER */}
-        <div
-          style={{
-            padding: "20px 24px",
-            borderBottom: `1px solid ${borderSubtle}`,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            flexShrink: 0,
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "16px", flex: 1 }}>
-            <div>
-              <h2 style={{ fontSize: "20px", fontWeight: 700, color: textPrimary, margin: 0 }}>
-                {deal?.businessName || "Loading..."}
-              </h2>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "4px" }}>
-                {deal?.vertical && <span style={{ fontSize: "13px", color: textMuted }}>{deal.vertical}</span>}
-                {deal?.productType && (
-                  <Badge
-                    label={deal.productType === "PEO" ? "PEO" : deal.productType === "ASO" ? "ASO" : "WC"}
-                    color={deal.productType === "PEO" ? "#E91E8C" : deal.productType === "ASO" ? "#7C3AED" : "#1E6BE9"}
-                  />
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            <div style={{ textAlign: "right" }}>
-              <span style={{ fontSize: "12px", color: textMuted }}>
-                Stage {currentStage.num} — {currentStage.label}
-              </span>
-            </div>
-            {nextStage && (
-              <PinkButton
-                onClick={handleAdvanceStage}
-                style={{ display: "flex", alignItems: "center", gap: "4px", padding: "7px 14px", fontSize: "13px" }}
-              >
-                Advance Stage
-                <ChevronRight style={{ width: "14px", height: "14px" }} />
-              </PinkButton>
-            )}
-
-            <div style={{ display: "flex", marginLeft: "8px" }}>
-              {PLACEHOLDER_USERS.slice(0, 3).map((u, i) => (
-                <div
-                  key={u.id}
-                  title={u.name}
-                  style={{
-                    width: "28px",
-                    height: "28px",
-                    borderRadius: "50%",
-                    background: `hsl(${(i * 120 + 200) % 360}, 50%, 50%)`,
-                    border: `2px solid ${isDark ? "#0e0e12" : "#fafafc"}`,
-                    marginLeft: i > 0 ? "-8px" : 0,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: "11px",
-                    fontWeight: 600,
-                    color: "#fff",
-                    cursor: "default",
-                  }}
-                >
-                  {u.name.charAt(0)}
-                </div>
-              ))}
-            </div>
-
-            <button
-              onClick={onClose}
+        {(() => {
+          const VerticalIcon = getVerticalIcon(deal?.vertical);
+          const productLabel = deal?.productType === "PEO" ? "PEO" : deal?.productType === "ASO" ? "ASO" : "WC";
+          const assignees = PLACEHOLDER_USERS.slice(0, 3);
+          const headcount = deal?.employeeCountFt ? Number(deal.employeeCountFt).toLocaleString() : "—";
+          const payroll = deal?.annualPayroll && parseFloat(deal.annualPayroll) > 0
+            ? `$${Math.round(Number(deal.annualPayroll)).toLocaleString()}`
+            : "—";
+          const wcPremiumNum = deal?.wcPremium ? parseFloat(deal.wcPremium) : 0;
+          const wcPremium = wcPremiumNum > 0
+            ? `$${Math.round(wcPremiumNum).toLocaleString()}`
+            : "Not yet rated";
+          return (
+            <div
               style={{
-                background: "transparent",
-                border: "none",
-                cursor: "pointer",
-                color: textMuted,
-                padding: "6px",
-                marginLeft: "4px",
+                padding: "24px 28px 20px",
+                borderBottom: `1px solid ${borderSubtle}`,
+                flexShrink: 0,
               }}
             >
-              <X style={{ width: "20px", height: "20px" }} />
-            </button>
-          </div>
-        </div>
+              {/* Title row */}
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "16px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "14px", flex: 1, minWidth: 0 }}>
+                  <div
+                    style={{
+                      width: "44px",
+                      height: "44px",
+                      borderRadius: "12px",
+                      background: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)",
+                      border: `1px solid ${borderSubtle}`,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                    }}
+                    title={deal?.vertical || ""}
+                  >
+                    <VerticalIcon style={{ width: "22px", height: "22px", color: textPrimary }} />
+                  </div>
+                  <div style={{ minWidth: 0 }}>
+                    <h2 style={{ fontSize: "22px", fontWeight: 700, color: textPrimary, margin: 0, lineHeight: 1.2 }}>
+                      {deal?.businessName || "Loading..."}
+                    </h2>
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "6px" }}>
+                      {deal?.vertical && <span style={{ fontSize: "12px", color: textMuted }}>{deal.vertical}</span>}
+                      {deal?.productType && (
+                        <span
+                          style={{
+                            fontSize: "10px",
+                            fontWeight: 600,
+                            letterSpacing: "0.5px",
+                            color: textMuted,
+                            padding: "2px 8px",
+                            borderRadius: "999px",
+                            border: `1px solid ${borderSubtle}`,
+                            background: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)",
+                          }}
+                        >
+                          {productLabel}
+                        </span>
+                      )}
+                      {deal?.referenceCode && (
+                        <span style={{ fontSize: "11px", color: textMuted, fontFamily: "monospace" }}>
+                          {deal.referenceCode}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", gap: "12px", flexShrink: 0 }}>
+                  <span style={{ fontSize: "12px", color: textMuted }}>
+                    Stage {currentStage.num} — {currentStage.label}
+                  </span>
+                  {nextStage && (
+                    <PinkButton
+                      onClick={handleAdvanceStage}
+                      style={{ display: "flex", alignItems: "center", gap: "4px", padding: "7px 14px", fontSize: "13px" }}
+                    >
+                      Advance Stage
+                      <ChevronRight style={{ width: "14px", height: "14px" }} />
+                    </PinkButton>
+                  )}
+                  <button
+                    onClick={onClose}
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      cursor: "pointer",
+                      color: textMuted,
+                      padding: "6px",
+                    }}
+                    aria-label="Close"
+                  >
+                    <X style={{ width: "20px", height: "20px" }} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Assignees row */}
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "18px" }}>
+                <div style={{ display: "flex" }}>
+                  {assignees.map((u, i) => (
+                    <img
+                      key={u.id}
+                      src={u.avatarUrl}
+                      alt={u.name}
+                      title={u.name}
+                      style={{
+                        width: "30px",
+                        height: "30px",
+                        borderRadius: "50%",
+                        objectFit: "cover",
+                        border: `2px solid ${isDark ? "#0e0e12" : "#fafafc"}`,
+                        marginLeft: i > 0 ? "-8px" : 0,
+                        background: isDark ? "#1a1a20" : "#e5e7eb",
+                      }}
+                    />
+                  ))}
+                </div>
+                <span style={{ fontSize: "12px", color: textMuted }}>
+                  {assignees.map((u) => u.name).join(", ")}
+                </span>
+              </div>
+
+              {/* Metrics row */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px", marginTop: "16px" }}>
+                {[
+                  { label: "Headcount", value: headcount },
+                  { label: "Annual Payroll", value: payroll },
+                  { label: "WC Premium", value: wcPremium },
+                ].map((m) => (
+                  <div
+                    key={m.label}
+                    style={{
+                      padding: "14px 16px",
+                      background: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.025)",
+                      border: `1px solid ${borderSubtle}`,
+                      borderRadius: "12px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: "10px",
+                        fontWeight: 600,
+                        letterSpacing: "0.8px",
+                        textTransform: "uppercase",
+                        color: textMuted,
+                        marginBottom: "6px",
+                      }}
+                    >
+                      {m.label}
+                    </div>
+                    <div style={{ fontSize: "22px", fontWeight: 700, color: textPrimary, lineHeight: 1.1 }}>
+                      {m.value}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* TABS */}
         <div style={{ display: "flex", borderBottom: `1px solid ${borderSubtle}`, paddingLeft: "24px", flexShrink: 0 }}>
@@ -610,7 +783,7 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
                   borderBottom: isActive ? "2px solid #E91E8C" : "2px solid transparent",
                   cursor: "pointer",
                   background: "transparent",
-                  color: isActive ? "#E91E8C" : textMuted,
+                  color: isActive ? textPrimary : textMuted,
                   transition: "color 0.15s, border-color 0.15s",
                 }}
               >
@@ -663,51 +836,108 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
                 )}
 
                 {/* ACTIVITY FEED */}
-                <div>
-                  <h3 style={{ fontSize: "14px", fontWeight: 600, color: textPrimary, margin: "0 0 12px" }}>Activity</h3>
-                  <div style={{ display: "flex", flexDirection: "column", gap: "8px", maxHeight: "280px", overflowY: "auto", marginBottom: "12px" }}>
-                    {activity.length === 0 && (
-                      <p style={{ fontSize: "13px", color: textMuted }}>No activity yet.</p>
-                    )}
-                    {activity.map((a) => (
-                      <div
-                        key={a.id}
-                        style={{
-                          display: "flex",
-                          gap: "10px",
-                          padding: "10px 12px",
-                          background: inputBg,
-                          borderRadius: "8px",
-                          alignItems: "flex-start",
-                        }}
+                <div
+                  style={{
+                    padding: "16px",
+                    background: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)",
+                    border: `1px solid ${borderSubtle}`,
+                    borderRadius: "12px",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
+                    <h3 className="font-heading" style={{ fontSize: "12px", fontWeight: 600, color: textPrimary, margin: 0, letterSpacing: "1px" }}>ACTIVITY</h3>
+                    <div style={{ display: "flex", gap: "6px" }}>
+                      <GhostButton
+                        onClick={handleRequestDocuments}
+                        style={{ display: "flex", alignItems: "center", gap: "4px", padding: "4px 10px", fontSize: "11px" }}
                       >
+                        <Mail style={{ width: "11px", height: "11px" }} />
+                        Request Docs
+                      </GhostButton>
+                      <GhostButton
+                        onClick={handleRequestInfo}
+                        style={{ display: "flex", alignItems: "center", gap: "4px", padding: "4px 10px", fontSize: "11px" }}
+                      >
+                        <HelpCircle style={{ width: "11px", height: "11px" }} />
+                        Request Info
+                      </GhostButton>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "6px", maxHeight: "320px", overflowY: "auto", marginBottom: "12px" }}>
+                    {activity.length === 0 && (
+                      <p style={{ fontSize: "13px", color: textMuted, margin: 0 }}>No activity yet.</p>
+                    )}
+                    {activity.map((a) => {
+                      const actor = resolveActor((a as any).createdBy, a.metadata as Record<string, unknown> | undefined);
+                      const meta = EVENT_META[a.eventType] || DEFAULT_EVENT_META;
+                      const EventIcon = meta.Icon;
+                      const actorName = actor?.name
+                        || (a.metadata && typeof (a.metadata as any).userName === "string" ? (a.metadata as any).userName : null)
+                        || "System";
+                      return (
                         <div
+                          key={a.id}
                           style={{
-                            width: "24px",
-                            height: "24px",
-                            borderRadius: "50%",
-                            background: a.eventType === "NOTE" ? "rgba(233,30,140,0.15)" : "rgba(59,130,246,0.15)",
                             display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            flexShrink: 0,
-                            marginTop: "1px",
+                            gap: "10px",
+                            padding: "10px 12px",
+                            borderRadius: "8px",
+                            alignItems: "flex-start",
+                            background: isDark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.015)",
                           }}
                         >
-                          {a.eventType === "NOTE" ? (
-                            <User style={{ width: "12px", height: "12px", color: "#E91E8C" }} />
+                          {/* Actor avatar (or system glyph) */}
+                          {actor ? (
+                            <img
+                              src={actor.avatarUrl}
+                              alt={actor.name}
+                              title={actor.name}
+                              style={{
+                                width: "28px",
+                                height: "28px",
+                                borderRadius: "50%",
+                                objectFit: "cover",
+                                flexShrink: 0,
+                                background: isDark ? "#1a1a20" : "#e5e7eb",
+                              }}
+                            />
                           ) : (
-                            <Clock style={{ width: "12px", height: "12px", color: "#3b82f6" }} />
+                            <div
+                              title="System"
+                              style={{
+                                width: "28px",
+                                height: "28px",
+                                borderRadius: "50%",
+                                background: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                flexShrink: 0,
+                                color: textMuted,
+                              }}
+                            >
+                              <Cog style={{ width: "14px", height: "14px" }} />
+                            </div>
                           )}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "2px" }}>
+                              <EventIcon style={{ width: "12px", height: "12px", color: textMuted, flexShrink: 0 }} />
+                              <span style={{ fontSize: "11px", fontWeight: 600, color: textPrimary }}>{actorName}</span>
+                              <span style={{ fontSize: "10px", color: textMuted, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                                · {meta.label}
+                              </span>
+                              <span
+                                title={a.createdAt ? new Date(a.createdAt).toLocaleString() : ""}
+                                style={{ fontSize: "11px", color: textMuted, marginLeft: "auto", flexShrink: 0 }}
+                              >
+                                {formatRelative(a.createdAt)}
+                              </span>
+                            </div>
+                            <p style={{ fontSize: "13px", color: textPrimary, margin: 0, lineHeight: 1.4 }}>{a.description}</p>
+                          </div>
                         </div>
-                        <div style={{ flex: 1 }}>
-                          <p style={{ fontSize: "13px", color: textPrimary, margin: 0 }}>{a.description}</p>
-                          <span style={{ fontSize: "11px", color: textMuted }}>
-                            {a.createdAt ? new Date(a.createdAt).toLocaleString() : ""}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
 
                   {/* NOTE INPUT */}
@@ -723,7 +953,7 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
                         }}
                         placeholder="Add a note... (use @ to mention)"
                         style={{ ...inputStyle, flex: 1 }}
-                        onFocus={(e) => (e.currentTarget.style.borderColor = "#E91E8C")}
+                        onFocus={(e) => (e.currentTarget.style.borderColor = isDark ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.25)")}
                         onBlur={(e) => {
                           e.currentTarget.style.borderColor = inputBorder;
                           setTimeout(() => setShowMentions(false), 200);
@@ -785,13 +1015,13 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
                       >
                         Use Template
                       </GhostButton>
-                      <PinkButton
+                      <GhostButton
                         onClick={() => setShowAddTask(!showAddTask)}
                         style={{ display: "flex", alignItems: "center", gap: "4px", padding: "5px 12px", fontSize: "12px" }}
                       >
                         <Plus style={{ width: "12px", height: "12px" }} />
                         Add Task
-                      </PinkButton>
+                      </GhostButton>
                     </div>
                   </div>
 
@@ -803,7 +1033,7 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
                         onChange={(e) => setTaskForm((p) => ({ ...p, taskName: e.target.value }))}
                         placeholder="Task name"
                         style={{ ...inputStyle, flex: "2 1 200px" }}
-                        onFocus={(e) => (e.currentTarget.style.borderColor = "#E91E8C")}
+                        onFocus={(e) => (e.currentTarget.style.borderColor = isDark ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.25)")}
                         onBlur={(e) => (e.currentTarget.style.borderColor = inputBorder)}
                       />
                       <select
@@ -851,7 +1081,7 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
                             type="checkbox"
                             checked={isComplete}
                             onChange={() => handleToggleTask(task)}
-                            style={{ width: "16px", height: "16px", accentColor: "#E91E8C", cursor: "pointer" }}
+                            style={{ width: "16px", height: "16px", accentColor: isDark ? "#ffffff" : "#111111", cursor: "pointer" }}
                           />
                           <span
                             style={{
@@ -1125,7 +1355,7 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
                     <h3 style={{ fontSize: "14px", fontWeight: 600, color: textPrimary, margin: 0 }}>
                       WC Application
                     </h3>
-                    <Badge label="Cannabis" color="pink" />
+                    <Badge label="Cannabis" />
                   </div>
                   {/* PDF download buttons */}
                   <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "16px" }}>
@@ -1148,13 +1378,13 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
                           transition: "border-color 0.15s, background 0.15s",
                         }}
                         onMouseEnter={(e) => {
-                          e.currentTarget.style.borderColor = "rgba(233,30,140,0.4)";
+                          e.currentTarget.style.borderColor = isDark ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.25)";
                         }}
                         onMouseLeave={(e) => {
                           e.currentTarget.style.borderColor = borderSubtle;
                         }}
                       >
-                        <FileText style={{ width: "16px", height: "16px", color: "#E91E8C", flexShrink: 0 }} />
+                        <FileText style={{ width: "16px", height: "16px", color: textMuted, flexShrink: 0 }} />
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <p style={{ fontSize: "12px", fontWeight: 600, color: textPrimary, margin: 0 }}>
                             {pdf.label}
@@ -1240,7 +1470,7 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
                         border: `1px solid ${borderSubtle}`,
                       }}
                     >
-                      <FileText style={{ width: "16px", height: "16px", color: "#E91E8C", flexShrink: 0 }} />
+                      <FileText style={{ width: "16px", height: "16px", color: textMuted, flexShrink: 0 }} />
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <p style={{ fontSize: "12px", fontWeight: 600, color: textPrimary, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {doc.name}
@@ -1295,7 +1525,7 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
                     transition: "border-color 0.15s",
                   }}
                   onClick={() => handleApplyTemplate(name)}
-                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(233,30,140,0.3)"; }}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = isDark ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.25)"; }}
                   onMouseLeave={(e) => { e.currentTarget.style.borderColor = borderSubtle; }}
                 >
                   <p style={{ fontSize: "14px", fontWeight: 600, color: textPrimary, margin: "0 0 4px" }}>{name}</p>
@@ -1404,7 +1634,7 @@ function ProposalTabInline({ dealId }: { dealId: string }) {
           style={{
             display: "inline-flex", alignItems: "center", gap: 8,
             padding: "10px 22px", borderRadius: 8, border: "none",
-            background: "#E91E8C", color: "#fff", cursor: creating ? "not-allowed" : "pointer",
+            background: "rgba(255,255,255,0.1)", color: "#fff", border: "1px solid rgba(255,255,255,0.2)", cursor: creating ? "not-allowed" : "pointer",
             fontSize: 14, fontWeight: 600,
           }}
         >
@@ -1453,11 +1683,11 @@ function ProposalTabInline({ dealId }: { dealId: string }) {
         ].map((c) => (
           <div key={c.label} style={{
             background: "rgba(255,255,255,0.04)",
-            border: `1px solid ${c.accent ? "rgba(233,30,140,0.2)" : "rgba(255,255,255,0.06)"}`,
+            border: "1px solid rgba(255,255,255,0.06)",
             borderRadius: 8, padding: "12px 14px",
           }}>
             <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 10, textTransform: "uppercase", margin: "0 0 4px", letterSpacing: "0.3px" }}>{c.label}</p>
-            <p style={{ color: c.accent ? "#E91E8C" : "#fff", fontSize: 18, fontWeight: 700, margin: 0 }}>{c.value}</p>
+            <p style={{ color: "#fff", fontSize: 18, fontWeight: 700, margin: 0 }}>{c.value}</p>
           </div>
         ))}
       </div>

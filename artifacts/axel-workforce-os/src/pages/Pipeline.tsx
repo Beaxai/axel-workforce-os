@@ -10,19 +10,12 @@ import {
 import { useThemeStore } from "@/lib/theme-store";
 import { api } from "@/lib/api";
 import DealCardModal from "@/components/DealCardModal";
+import { PLACEHOLDER_USERS } from "@/lib/users";
+import { VERTICAL_ICONS } from "@/lib/vertical-icons";
 import {
-  Cannabis,
-  HardHat,
-  UsersRound,
-  HeartPulse,
-  UtensilsCrossed,
-  Truck,
-  Factory,
-  ShoppingBag,
   Plus,
   Columns3,
   List,
-  type LucideIcon,
 } from "lucide-react";
 
 interface Deal {
@@ -63,30 +56,12 @@ const VERTICALS = [
   "Retail",
 ];
 
-const VERTICAL_ICONS: Record<string, LucideIcon> = {
-  Cannabis,
-  Construction: HardHat,
-  Staffing: UsersRound,
-  Healthcare: HeartPulse,
-  Hospitality: UtensilsCrossed,
-  Transportation: Truck,
-  Manufacturing: Factory,
-  Retail: ShoppingBag,
-};
-
 const US_STATES = [
   "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA",
   "HI","ID","IL","IN","IA","KS","KY","LA","ME","MD",
   "MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ",
   "NM","NY","NC","ND","OH","OK","OR","PA","RI","SC",
   "SD","TN","TX","UT","VT","VA","WA","WV","WI","WY",
-];
-
-const PLACEHOLDER_USERS = [
-  { id: "u1", name: "Alex Morgan" },
-  { id: "u2", name: "Sarah Chen" },
-  { id: "u3", name: "James Rivera" },
-  { id: "u4", name: "Priya Patel" },
 ];
 
 const CARDS_PER_PAGE = 10;
