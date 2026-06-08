@@ -5,6 +5,7 @@ import { useQuoteFlowStore, type MultiLocationResult, type WorkforceProfilePaylo
 import { api } from "@/lib/api";
 import { Check, Clock, Shield, Cannabis, Loader2, AlertTriangle, FileCheck, Wallet, ClipboardCheck, HardHat, Smartphone, HeartPulse, Headset, ShieldCheck } from "lucide-react";
 import employeeGraphic from "@assets/employee_graphic_cutout_1780947767721.png";
+import wcShieldIcon from "@assets/image_1780951303245.png";
 
 export default function Step4Indication() {
   const s = useQuoteFlowStore();
@@ -277,16 +278,78 @@ export default function Step4Indication() {
   const cardRadius = 14;
 
   const rateBreakdownTable = (
-    <div
-      style={{
-        borderRadius: cardRadius,
-        background: panelBg,
-        borderLeft: "3px solid #E91E8C",
-        overflow: "hidden",
-        padding: "8px 4px",
-      }}
-    >
-      <h3
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      {/* Workers' Compensation Coverage Pricing header */}
+      <div
+        style={{
+          padding: 20,
+          borderRadius: 12,
+          background: isDark ? "#13131f" : "#f8f8fc",
+          borderLeft: "3px solid #E91E8C",
+        }}
+      >
+        <h3 style={{ fontSize: 26, fontWeight: 800, color: textPrimary, margin: "0 0 24px", lineHeight: 1.15, fontFamily: "var(--app-font-heading)", textTransform: "uppercase", letterSpacing: "0.01em" }}>Workers' Compensation Coverage Pricing</h3>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr minmax(190px, 260px)", gap: 28, alignItems: "center" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <p style={{ fontSize: 14, color: textSecondary, lineHeight: 1.6, margin: 0 }}>
+              Your workers' compensation premium is calculated from current filed carrier rates applied to payroll across each class code and location, then adjusted for your experience modifier.
+            </p>
+            <p style={{ fontSize: 14, color: textSecondary, lineHeight: 1.6, margin: 0 }}>
+              The figure shown reflects your total estimated annual premium and is finalized after underwriting review and audit.
+            </p>
+          </div>
+          <div style={{ position: "relative", paddingTop: 54 }}>
+            <img
+              src={wcShieldIcon}
+              alt=""
+              style={{
+                position: "absolute",
+                top: 0,
+                left: "50%",
+                transform: "translateX(-50%)",
+                width: 92,
+                height: "auto",
+                zIndex: 2,
+                pointerEvents: "none",
+                filter: "drop-shadow(0 8px 24px rgba(233,30,140,0.45))",
+              }}
+            />
+            <div
+              style={{
+                borderRadius: 20,
+                padding: 2,
+                background: "linear-gradient(135deg, #E91E8C 0%, #7C3AED 50%, #3B82F6 100%)",
+                boxShadow: "0 0 40px rgba(233,30,140,0.35)",
+              }}
+            >
+              <div
+                style={{
+                  borderRadius: 18,
+                  background: "#0a0a12",
+                  padding: "44px 24px 24px",
+                  textAlign: "center",
+                }}
+              >
+                <div style={{ fontSize: 44, fontWeight: 800, color: "#fff", lineHeight: 1 }}>
+                  ${totalPremium.toLocaleString()}
+                </div>
+                <div style={{ height: 1, background: "rgba(255,255,255,0.18)", margin: "16px auto", maxWidth: 150 }} />
+                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", letterSpacing: "0.04em" }}>total annual premium</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div
+        style={{
+          borderRadius: cardRadius,
+          background: panelBg,
+          borderLeft: "3px solid #E91E8C",
+          overflow: "hidden",
+          padding: "8px 4px",
+        }}
+      >
+        <h3
         style={{
           fontSize: 13,
           fontWeight: 700,
@@ -363,6 +426,7 @@ export default function Step4Indication() {
           </tr>
         </tbody>
       </table>
+      </div>
     </div>
   );
 
