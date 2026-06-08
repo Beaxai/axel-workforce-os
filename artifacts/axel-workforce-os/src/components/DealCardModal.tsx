@@ -11,6 +11,7 @@ import { api } from "@/lib/api";
 import { useNavigate } from "react-router-dom";
 import ProposalPanel from "@/components/ProposalPanel";
 import MultiLocationRatingPanel from "@/components/MultiLocationRatingPanel";
+import { useQuoteFlowStore } from "@/lib/quote-flow-store";
 import {
   X,
   Copy,
@@ -567,6 +568,41 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
         },
       },
     });
+  };
+
+  const handleContinueQuote = () => {
+    const wp = quoteRecord?.workforceProfile;
+    const locations = (wp?.locations || []).map((loc: any) => ({
+      id: Math.random().toString(36).substring(2, 9),
+      streetAddress: "",
+      city: "",
+      state: loc.state || "",
+      zip: loc.zip || "",
+      classCodes: (loc.classCodes || []).map((cc: any) => ({
+        classCode: cc.classCode || "",
+        description: cc.description || "",
+        fullTimeEmployees: cc.fullTimeEmployees || 0,
+        partTimeEmployees: cc.partTimeEmployees || 0,
+        annualPayroll: cc.annualPayroll || 0,
+      })),
+    }));
+    const coverageType =
+      deal?.productType === "PEO" ? "PEO" : deal?.productType === "ASO" ? "ASO" : "WC";
+    const eMod = quoteRecord?.eMod || "1.0";
+    const store = useQuoteFlowStore.getState();
+    store.reset();
+    store.update({
+      phase: 1,
+      currentStep: 5,
+      vertical: deal?.vertical || "Cannabis",
+      coverageType,
+      businessName: deal?.businessName || "",
+      ...(locations.length ? { locations } : {}),
+      hasExperienceMod: parseFloat(eMod) !== 1 ? "Yes" : "No",
+      experienceMod: eMod,
+    });
+    onClose();
+    navigate("/marketplace/quote/wizard");
   };
 
   const tabs: { key: TabKey; label: string; icon: any }[] = [
@@ -1179,7 +1215,13 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
                 )}
 
                 {quoteRecord && quoteRecord.wcRatingBreakdown && (
-                  <div style={{ marginTop: "16px", textAlign: "center" }}>
+                  <div style={{ marginTop: "16px", display: "flex", gap: "10px", justifyContent: "center" }}>
+                    {quoteRecord.workforceProfile?.locations?.length > 0 && (
+                      <PinkButton onClick={handleContinueQuote} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 20px" }}>
+                        Continue Quote
+                        <ArrowRight style={{ width: "14px", height: "14px" }} />
+                      </PinkButton>
+                    )}
                     <GhostButton onClick={handleRequote} style={{ padding: "8px 20px" }}>
                       Requote
                     </GhostButton>

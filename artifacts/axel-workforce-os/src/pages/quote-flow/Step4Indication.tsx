@@ -211,6 +211,32 @@ export default function Step4Indication() {
         wcPremium: isAso ? undefined : String(totalPremium),
       };
       const newDeal = await api.post<{ id: string }>("/deals", payload);
+
+      const ind = s.indicationData;
+      if (ind?.wcRatingBreakdown) {
+        const finalPremium = Number(ind.wcRatingBreakdown.finalPremium ?? totalPremium);
+        try {
+          await api.post("/quotes", {
+            dealId: newDeal.id,
+            status: "INDICATION",
+            state: s.locations[0]?.state || undefined,
+            annualPayroll: totalPayroll ? String(totalPayroll) : undefined,
+            headcount: totalEmployees || undefined,
+            eMod: String(modifier || 1.0),
+            scheduleRating: "1.0",
+            isPeo,
+            wcPremium: String(finalPremium),
+            wcFinalPremium: String(finalPremium),
+            wcIndicationMin: premiumLow != null ? String(premiumLow) : undefined,
+            wcIndicationMax: premiumHigh != null ? String(premiumHigh) : undefined,
+            wcRatingBreakdown: ind.wcRatingBreakdown,
+            workforceProfile: ind.workforceProfile,
+          });
+        } catch (e) {
+          console.error("Failed to persist indication quote:", e);
+        }
+      }
+
       const slug = businessName.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 30);
       api.post(`/deals/${newDeal.id}/email`, {
         emailAddress: `${slug}@listener.axel.io`,
