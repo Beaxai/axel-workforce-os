@@ -752,18 +752,9 @@ export default function Step4Indication() {
 
       {/* Carrier + timing */}
       {!isAso ? (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <Shield style={{ width: 18, height: 18, color: "#E91E8C" }} />
-            <div>
-              <p style={{ fontSize: 14, color: textPrimary, margin: 0, fontWeight: 600 }}>Benchmark Insurance</p>
-              <p style={{ fontSize: 12, color: textMuted, margin: 0 }}>Admitted carrier — Cannabis specialist</p>
-            </div>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <Clock style={{ width: 16, height: 16, color: textMuted }} />
-            <span style={{ fontSize: 13, color: textMuted }}>Est. 2-3 business days for approved proposal</span>
-          </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <Clock style={{ width: 16, height: 16, color: textMuted }} />
+          <span style={{ fontSize: 13, color: textMuted }}>Est. 2-3 business days for approved proposal</span>
         </div>
       ) : (
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
