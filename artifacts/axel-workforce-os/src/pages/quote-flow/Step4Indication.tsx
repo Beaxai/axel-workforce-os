@@ -400,7 +400,7 @@ export default function Step4Indication() {
               marginBottom: 8,
             }}
           >
-            Estimated Annual Premium
+            Estimated Annual Premium Range
           </div>
           <div style={{ fontSize: 36, fontWeight: 800, color: textPrimary, lineHeight: 1.1 }}>
             ${premiumLow.toLocaleString()} – ${premiumHigh.toLocaleString()}
