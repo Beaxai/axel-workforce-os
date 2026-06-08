@@ -427,6 +427,9 @@ export default function Step4Indication() {
         </tbody>
       </table>
       </div>
+      <p style={{ fontSize: 13, color: textSecondary, lineHeight: 1.6, margin: 0, padding: "0 4px" }}>
+        Workers' compensation premiums are seamlessly integrated into payroll processing. Premiums are calculated and remitted on a pay-as-you-go basis using actual payroll processed.
+      </p>
     </div>
   );
 
