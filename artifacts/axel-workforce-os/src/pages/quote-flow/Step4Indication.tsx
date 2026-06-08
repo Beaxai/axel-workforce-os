@@ -276,6 +276,96 @@ export default function Step4Indication() {
   const subtleBg = isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)";
   const cardRadius = 14;
 
+  const rateBreakdownTable = (
+    <div
+      style={{
+        borderRadius: cardRadius,
+        background: panelBg,
+        borderLeft: "3px solid #E91E8C",
+        overflow: "hidden",
+        padding: "8px 4px",
+      }}
+    >
+      <h3
+        style={{
+          fontSize: 13,
+          fontWeight: 700,
+          color: textPrimary,
+          textTransform: "uppercase",
+          letterSpacing: "0.06em",
+          fontFamily: "var(--app-font-heading)",
+          margin: "12px 18px 4px",
+        }}
+      >
+        Workers' Compensation Premium Rating
+      </h3>
+      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+        <thead>
+          <tr>
+            {["Location", "Class Code", "Description", "Payroll", "Rate", "Est. Premium"].map((h, i) => (
+              <th
+                key={h}
+                style={{
+                  padding: "16px 18px 12px",
+                  textAlign: i >= 3 ? "right" : "left",
+                  color: textMuted,
+                  fontWeight: 600,
+                  fontSize: 11,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.06em",
+                  fontFamily: "var(--app-font-heading)",
+                }}
+              >
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rateBreakdown.map((row, i) => {
+            const hasError = ratingResult?.locations[row.location - 1]?.classCodes.find(
+              (cc) => cc.classCode === row.classCode
+            )?.error;
+            return (
+              <tr key={i}>
+                <td style={{ padding: "12px 18px", color: textPrimary, fontWeight: 600 }}>Loc {row.location} ({row.state})</td>
+                <td style={{ padding: "12px 18px", color: hasError ? "#FFB547" : textPrimary, fontWeight: 600 }}>{row.classCode}</td>
+                <td style={{ padding: "12px 18px", color: textPrimary, fontWeight: 600 }}>{row.description}</td>
+                <td style={{ padding: "12px 18px", color: textPrimary, fontWeight: 600, textAlign: "right" }}>${row.payroll.toLocaleString()}</td>
+                <td style={{ padding: "12px 18px", color: hasError ? "#FFB547" : textPrimary, fontWeight: 600, textAlign: "right" }}>
+                  ${row.ratePer100.toFixed(2)}
+                  {hasError && <span title={hasError} style={{ marginLeft: 4, cursor: "help" }}>⚠</span>}
+                </td>
+                <td style={{ padding: "12px 18px", color: textPrimary, fontWeight: 700, textAlign: "right" }}>${Math.round(row.estPremium).toLocaleString()}</td>
+              </tr>
+            );
+          })}
+          {ratingResult?.locations.filter((loc) => loc.caTerritory != null && loc.caTerritoryMultiplier !== 1.0).map((loc, i) => (
+            <tr key={`territory-${i}`}>
+              <td colSpan={4} style={{ padding: "10px 18px", color: textMuted, fontSize: 12 }}>
+                CA Territory {loc.caTerritory} Adjustment ({loc.state})
+              </td>
+              <td style={{ padding: "10px 18px", color: textMuted, fontSize: 12, textAlign: "right" }}>
+                x{loc.caTerritoryMultiplier?.toFixed(2)}
+              </td>
+              <td style={{ padding: "10px 18px", color: textSecondary, fontWeight: 600, fontSize: 12, textAlign: "right" }}>
+                {loc.caTerritoryMultiplier! > 1 ? "+" : ""}{loc.subtotalBeforeTerritory != null
+                  ? `$${Math.round(loc.subtotal - loc.subtotalBeforeTerritory).toLocaleString()}`
+                  : ""}
+              </td>
+            </tr>
+          ))}
+          <tr>
+            <td colSpan={5} style={{ padding: "16px 18px", color: textPrimary, fontWeight: 700, borderTop: "1px solid #E91E8C" }}>Total</td>
+            <td style={{ padding: "16px 18px", color: textPrimary, fontWeight: 700, textAlign: "right", borderTop: "1px solid #E91E8C" }}>
+              ${totalPremium.toLocaleString()}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  );
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 22, alignItems: "stretch" }}>
       {/* Header */}
@@ -425,96 +515,8 @@ export default function Step4Indication() {
           </div>
         </div>
       )}
-      {/* Rate breakdown table */}
-      {!isAso && (
-        <div
-          style={{
-            borderRadius: cardRadius,
-            background: panelBg,
-            borderLeft: "3px solid #E91E8C",
-            overflow: "hidden",
-            padding: "8px 4px",
-          }}
-        >
-          <h3
-            style={{
-              fontSize: 13,
-              fontWeight: 700,
-              color: textPrimary,
-              textTransform: "uppercase",
-              letterSpacing: "0.06em",
-              fontFamily: "var(--app-font-heading)",
-              margin: "12px 18px 4px",
-            }}
-          >
-            Workers' Compensation Premium Rating
-          </h3>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-            <thead>
-              <tr>
-                {["Location", "Class Code", "Description", "Payroll", "Rate", "Est. Premium"].map((h, i) => (
-                  <th
-                    key={h}
-                    style={{
-                      padding: "16px 18px 12px",
-                      textAlign: i >= 3 ? "right" : "left",
-                      color: textMuted,
-                      fontWeight: 600,
-                      fontSize: 11,
-                      textTransform: "uppercase",
-                      letterSpacing: "0.06em",
-                      fontFamily: "var(--app-font-heading)",
-                    }}
-                  >
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rateBreakdown.map((row, i) => {
-                const hasError = ratingResult?.locations[row.location - 1]?.classCodes.find(
-                  (cc) => cc.classCode === row.classCode
-                )?.error;
-                return (
-                  <tr key={i}>
-                    <td style={{ padding: "12px 18px", color: textPrimary, fontWeight: 600 }}>Loc {row.location} ({row.state})</td>
-                    <td style={{ padding: "12px 18px", color: hasError ? "#FFB547" : textPrimary, fontWeight: 600 }}>{row.classCode}</td>
-                    <td style={{ padding: "12px 18px", color: textPrimary, fontWeight: 600 }}>{row.description}</td>
-                    <td style={{ padding: "12px 18px", color: textPrimary, fontWeight: 600, textAlign: "right" }}>${row.payroll.toLocaleString()}</td>
-                    <td style={{ padding: "12px 18px", color: hasError ? "#FFB547" : textPrimary, fontWeight: 600, textAlign: "right" }}>
-                      ${row.ratePer100.toFixed(2)}
-                      {hasError && <span title={hasError} style={{ marginLeft: 4, cursor: "help" }}>⚠</span>}
-                    </td>
-                    <td style={{ padding: "12px 18px", color: textPrimary, fontWeight: 700, textAlign: "right" }}>${Math.round(row.estPremium).toLocaleString()}</td>
-                  </tr>
-                );
-              })}
-              {ratingResult?.locations.filter((loc) => loc.caTerritory != null && loc.caTerritoryMultiplier !== 1.0).map((loc, i) => (
-                <tr key={`territory-${i}`}>
-                  <td colSpan={4} style={{ padding: "10px 18px", color: textMuted, fontSize: 12 }}>
-                    CA Territory {loc.caTerritory} Adjustment ({loc.state})
-                  </td>
-                  <td style={{ padding: "10px 18px", color: textMuted, fontSize: 12, textAlign: "right" }}>
-                    x{loc.caTerritoryMultiplier?.toFixed(2)}
-                  </td>
-                  <td style={{ padding: "10px 18px", color: textSecondary, fontWeight: 600, fontSize: 12, textAlign: "right" }}>
-                    {loc.caTerritoryMultiplier! > 1 ? "+" : ""}{loc.subtotalBeforeTerritory != null
-                      ? `$${Math.round(loc.subtotal - loc.subtotalBeforeTerritory).toLocaleString()}`
-                      : ""}
-                  </td>
-                </tr>
-              ))}
-              <tr>
-                <td colSpan={5} style={{ padding: "16px 18px", color: textPrimary, fontWeight: 700, borderTop: "1px solid #E91E8C" }}>Total</td>
-                <td style={{ padding: "16px 18px", color: textPrimary, fontWeight: 700, textAlign: "right", borderTop: "1px solid #E91E8C" }}>
-                  ${totalPremium.toLocaleString()}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      )}
+      {/* Rate breakdown table (WC only — PEO renders it inside its pricing card) */}
+      {!isAso && !isPeo && rateBreakdownTable}
       {!isAso && (ratingResult?.minimumPremiumApplied || (ratingResult?.isPEO && ratingResult.peoDiscountAmount > 0)) && (
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           {ratingResult?.minimumPremiumApplied && (
@@ -732,6 +734,9 @@ export default function Step4Indication() {
               </div>
             );
           })}
+        </div>
+        <div style={{ marginTop: 28 }}>
+          {rateBreakdownTable}
         </div>
       </div>
       )}
