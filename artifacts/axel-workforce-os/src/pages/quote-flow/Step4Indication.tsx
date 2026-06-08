@@ -344,6 +344,14 @@ export default function Step4Indication() {
       >
         Workers' Compensation Premium Rating
       </h3>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 18, margin: "0 18px 8px", fontSize: 13 }}>
+        <span style={{ color: textSecondary }}>
+          <span style={{ color: textMuted, fontWeight: 600 }}>Carrier:</span> Benchmark
+        </span>
+        <span style={{ color: textSecondary }}>
+          <span style={{ color: textMuted, fontWeight: 600 }}>Rating:</span> A (Excellent)
+        </span>
+      </div>
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
         <thead>
           <tr>
