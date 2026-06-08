@@ -5,7 +5,7 @@ import { useQuoteFlowStore, type MultiLocationResult, type WorkforceProfilePaylo
 import { api } from "@/lib/api";
 import { Check, Clock, Shield, Cannabis, Loader2, AlertTriangle, FileCheck, Wallet, ClipboardCheck, HardHat, Smartphone, HeartPulse, Headset, ShieldCheck } from "lucide-react";
 import employeeGraphic from "@assets/employee_graphic_cutout_1780947767721.png";
-import wcShieldIcon from "@assets/image_1780951303245.png";
+import wcShieldIcon from "@assets/Shield-Icon_1780952893965.png";
 
 export default function Step4Indication() {
   const s = useQuoteFlowStore();
