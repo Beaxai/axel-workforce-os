@@ -32,6 +32,14 @@ export default function Step1BusinessDetails() {
 
   return (
     <div style={{ maxWidth: 1080, margin: "0 auto" }}>
+      <FormSection title="Coverage Effective Date" subtitle="When would you like this coverage to begin?">
+        <FieldGrid columns={2}>
+          <FieldLabel label="Coverage Effective Date" required>
+            <TextInput value={s.coverageEffectiveDate} onChange={(v) => s.update({ coverageEffectiveDate: v })} type="date" />
+          </FieldLabel>
+        </FieldGrid>
+      </FormSection>
+
       <FormSection title="Tell us about the business">
         <FieldGrid columns={2}>
           <FieldLabel label="Legal Business Name" required>

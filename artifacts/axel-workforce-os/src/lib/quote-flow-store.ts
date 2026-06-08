@@ -91,6 +91,8 @@ export interface QuoteFlowState {
   vertical: string;
   coverageType: string;
 
+  coverageEffectiveDate: string;
+
   businessName: string;
   dba: string;
   fein: string;
@@ -314,6 +316,7 @@ const initialState: Omit<QuoteFlowState, keyof QuoteFlowActions> = {
   currentStep: 1,
   vertical: "",
   coverageType: "",
+  coverageEffectiveDate: "",
   businessName: "",
   dba: "",
   fein: "",
