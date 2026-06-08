@@ -434,7 +434,7 @@ export default function Step4Indication() {
           borderLeft: "3px solid #E91E8C",
         }}
       >
-        <h3 style={{ fontSize: 26, fontWeight: 800, color: textPrimary, margin: "0 0 16px", lineHeight: 1.15, fontFamily: "var(--app-font-heading)", textTransform: "uppercase", letterSpacing: "0.01em" }}>Workers' Compensation Coverage Pricing</h3>
+        <h3 style={{ fontSize: 26, fontWeight: 800, color: textPrimary, margin: "0 0 16px", lineHeight: 1.15, fontFamily: "var(--app-font-heading)", textTransform: "uppercase", letterSpacing: "0.01em" }}>Workers' Compensation Pricing</h3>
         <div style={{ display: "grid", gridTemplateColumns: "1fr minmax(190px, 240px)", gap: 24, alignItems: "center" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <p style={{ fontSize: 14, color: textSecondary, lineHeight: 1.6, margin: 0 }}>Workers' compensation premium is calculated from current filed carrier rates applied to payroll across each class code and location, then adjusted for your experience modifier.</p>
