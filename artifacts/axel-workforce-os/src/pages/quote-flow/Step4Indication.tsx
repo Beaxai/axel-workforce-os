@@ -639,11 +639,7 @@ export default function Step4Indication() {
             {(PEO_BASE_RATE * 100).toFixed(0)}% of annual payroll
           </span>
         </div>
-        <div style={{ fontSize: 24, fontWeight: 700, color: textPrimary, margin: "6px 0 4px" }}>
-          ${peoAnnual.toLocaleString()}
-          <span style={{ fontSize: 13, color: textMuted, fontWeight: 500, marginLeft: 8 }}>annual base</span>
-        </div>
-        <p style={{ fontSize: 12, color: textMuted, margin: "0 0 14px" }}>
+        <p style={{ fontSize: 12, color: textMuted, margin: "6px 0 14px" }}>
           Based on ${totalPayroll.toLocaleString()} payroll across {peoEmployees} employee{peoEmployees !== 1 ? "s" : ""}
         </p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
