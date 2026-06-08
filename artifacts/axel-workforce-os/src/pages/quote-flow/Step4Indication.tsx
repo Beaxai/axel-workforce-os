@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuoteFlowStore, type MultiLocationResult, type WorkforceProfilePayload } from "@/lib/quote-flow-store";
 import { api } from "@/lib/api";
-import { Check, Clock, Cannabis, Loader2, AlertTriangle, Wallet, ClipboardCheck, HardHat, Smartphone, HeartPulse, Headset, ShieldCheck } from "lucide-react";
+import { Check, Clock, Cannabis, Loader2, AlertTriangle, Wallet, ClipboardCheck, HardHat, Smartphone, HeartPulse, Headset, ShieldCheck, Users, type LucideIcon } from "lucide-react";
 import employeeGraphic from "@assets/employee_graphic_cutout_1780947767721.png";
 import wcShieldIcon from "@assets/Shield-Icon_1780952893965.png";
 
@@ -247,17 +247,131 @@ export default function Step4Indication() {
     { label: "Experience Mod", value: modifier.toFixed(2), accent: "#7C3AED" },
   ];
 
-  const wcFeatures = [
-    "Pay-as-you-go billing available",
-    'Dedicated Claims Management Team with "3-point" contact within 24 hrs',
-    "24-Hour claims reporting hotline",
-    "Carrier-managed medical provider network",
-    "Personalized loss prevention programs + safety resources (HazCom, ergonomics, injury prevention)",
+  type FeatureCard = {
+    title: string;
+    icon: LucideIcon;
+    desc: string;
+    badges?: string[];
+    badgeCheck?: boolean;
+    link?: boolean;
+  };
+  const featureCards: FeatureCard[] = [
+    {
+      title: "Flexible Billing",
+      icon: Wallet,
+      desc: "Pay-as-you-go billing available to align your insurance costs directly with your operational cycle and cash flow.",
+      link: true,
+    },
+    {
+      title: "Dedicated Claims Management",
+      icon: Users,
+      desc: 'Our specialized team guarantees a "3-point" contact within 24 hours of any incident. We bridge the gap between reporting and resolution with elite professional oversight.',
+      badges: ["24H Response", "3-Point Contact"],
+    },
+    {
+      title: "Elite Reporting",
+      icon: Headset,
+      desc: "24-Hour claims reporting hotline staffed by industry veterans ready to initiate immediate protocol activation.",
+    },
+    {
+      title: "Medical Network",
+      icon: HeartPulse,
+      desc: "Carrier-managed medical provider network ensuring top-tier care and streamlined integration with claims processing.",
+    },
+    {
+      title: "Safety Architecture",
+      icon: ShieldCheck,
+      desc: "Personalized loss prevention programs and safety resources including HazCom, ergonomics, and injury prevention metrics.",
+      badges: ["HazCom", "Ergonomics"],
+      badgeCheck: true,
+    },
   ];
-  const featureList = isAso ? highlights : wcFeatures;
 
   const panelBg = isDark ? "#13131f" : "#f8f8fc";
   const cardRadius = 14;
+  const featureCardBg = isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)";
+
+  const renderFeatureCard = (c: FeatureCard) => {
+    const Icon = c.icon;
+    return (
+      <div
+        key={c.title}
+        style={{
+          padding: 24,
+          borderRadius: cardRadius,
+          background: featureCardBg,
+          border: `1px solid ${borderColor}`,
+          display: "flex",
+          flexDirection: "column",
+          gap: 16,
+        }}
+      >
+        <div
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: 12,
+            background: "rgba(233,30,140,0.12)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+          }}
+        >
+          <Icon style={{ width: 22, height: 22, color: "#E91E8C" }} />
+        </div>
+        <div>
+          <div style={{ fontSize: 19, fontWeight: 700, color: textPrimary, marginBottom: 8 }}>{c.title}</div>
+          <p style={{ fontSize: 14, color: textMuted, lineHeight: 1.55, margin: 0 }}>{c.desc}</p>
+        </div>
+        {c.badges && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: "auto" }}>
+            {c.badges.map((b) => (
+              <span
+                key={b}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "5px 11px",
+                  borderRadius: 6,
+                  border: "1px solid rgba(233,30,140,0.4)",
+                  color: "#E91E8C",
+                  fontSize: 10,
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.06em",
+                  fontFamily: "var(--app-font-heading)",
+                }}
+              >
+                {c.badgeCheck && <Check style={{ width: 12, height: 12 }} />}
+                {b}
+              </span>
+            ))}
+          </div>
+        )}
+        {c.link && (
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              marginTop: "auto",
+              color: "#E91E8C",
+              fontSize: 11,
+              fontWeight: 700,
+              textTransform: "uppercase",
+              letterSpacing: "0.06em",
+              fontFamily: "var(--app-font-heading)",
+              cursor: "pointer",
+            }}
+          >
+            Learn More →
+          </span>
+        )}
+      </div>
+    );
+  };
 
   const rateBreakdownTable = (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -801,17 +915,28 @@ export default function Step4Indication() {
       )}
       {/* Features */}
       {!isPeo && (
-        <div style={{ padding: 28, borderRadius: cardRadius, background: panelBg }}>
-          <h3 style={{ fontSize: 17, fontWeight: 700, color: textPrimary, margin: "0 0 18px" }}>Features</h3>
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {featureList.map((h) => (
-              <div key={h} style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-                <Check style={{ width: 17, height: 17, color: "#E91E8C", flexShrink: 0, marginTop: 1 }} />
-                <span style={{ fontSize: 14, fontWeight: 600, color: textSecondary, lineHeight: 1.45 }}>{h}</span>
-              </div>
-            ))}
+        isAso ? (
+          <div style={{ padding: 28, borderRadius: cardRadius, background: panelBg }}>
+            <h3 style={{ fontSize: 17, fontWeight: 700, color: textPrimary, margin: "0 0 18px" }}>Features</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {highlights.map((h) => (
+                <div key={h} style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+                  <Check style={{ width: 17, height: 17, color: "#E91E8C", flexShrink: 0, marginTop: 1 }} />
+                  <span style={{ fontSize: 14, fontWeight: 600, color: textSecondary, lineHeight: 1.45 }}>{h}</span>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 16 }}>
+              {featureCards.slice(0, 2).map(renderFeatureCard)}
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+              {featureCards.slice(2).map(renderFeatureCard)}
+            </div>
+          </div>
+        )
       )}
       {/* Carrier + timing */}
       {!isAso ? (
