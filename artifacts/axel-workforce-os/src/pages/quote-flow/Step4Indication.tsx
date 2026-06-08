@@ -713,6 +713,9 @@ export default function Step4Indication() {
             {classCodeCount !== 1 ? "s" : ""} in {stateCount} state{stateCount !== 1 ? "s" : ""} • Experience
             modifier {modifier.toFixed(2)}
           </p>
+          <p style={{ fontSize: 13, color: textMuted, margin: "8px 0 0", lineHeight: 1.6 }}>
+            Final pricing is subject to underwriting review and may be adjusted through credits or debits based on historical loss experience and claims performance.
+          </p>
         </div>
       )}
       {!isAso && hasRateErrors && (
