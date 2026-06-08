@@ -339,7 +339,7 @@ export default function Step4Indication() {
 
   const panelBg = isDark ? "#13131f" : "#f8f8fc";
   const cardRadius = 14;
-  const featureCardBg = isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)";
+  const featureCardBg = panelBg;
 
   const renderFeatureCard = (c: FeatureCard) => {
     const Icon = c.icon;
