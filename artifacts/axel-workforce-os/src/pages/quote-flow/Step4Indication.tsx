@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuoteFlowStore, type MultiLocationResult, type WorkforceProfilePayload } from "@/lib/quote-flow-store";
 import { api } from "@/lib/api";
-import { Check, Clock, Shield, Cannabis, Loader2, AlertTriangle, FileCheck, Wallet, ClipboardCheck, HardHat, Smartphone } from "lucide-react";
+import { Check, Clock, Shield, Cannabis, Loader2, AlertTriangle, FileCheck, Wallet, ClipboardCheck, HardHat, Smartphone, HeartPulse, Headset, ShieldCheck } from "lucide-react";
 import employeeGraphic from "@assets/employee_graphic_cutout_1780947767721.png";
 
 export default function Step4Indication() {
@@ -689,6 +689,9 @@ export default function Step4Indication() {
             { title: "Payroll", icon: Wallet, items: ["Full Service Payroll Platform", "Automated Payroll Processing", "Direct Deposits", "All Inclusive Payroll Tax Filing"] },
             { title: "HR Platform", icon: Smartphone, items: ["Unified Platform", "Electronic Onboarding", "Time & Attendance", "Employee Self Service Portal"] },
             { title: "Risk Management", icon: HardHat, items: ["Injury & Illness Prevention Programs", "Safety Manuals", "Employer & Employee Safety Training", "Facility Inspections"] },
+            { title: "Benefits Administration", icon: HeartPulse, items: ["Major Medical (POS, EPO, HDHP options)", "ICHRA", "MEC and MVP", "Dental", "Vision", "Life"] },
+            { title: "HR Support", icon: Headset, items: ["Support for HR Matters, Payroll, & Benefits", "HR Best Practice Guidance", "Employee Service Center", "State and Federal Compliance Guidance", "Employment Law Posters", "Wage and Hour Guidance", "Performance Management Support"] },
+            { title: "Work Comp", icon: ShieldCheck, items: ["Pay-as-you-go workers' compensation billing", "Workers' Compensation Posters", "Compliance assistance for applicable federal/state employment laws", "W/C claims management", "24/7/365 Nurse Triage Claims Reporting Hotline", "Patient Advocacy"] },
           ].map((cat) => {
             const Icon = cat.icon;
             return (
