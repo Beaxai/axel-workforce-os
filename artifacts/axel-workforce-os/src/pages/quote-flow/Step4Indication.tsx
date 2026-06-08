@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuoteFlowStore, type MultiLocationResult, type WorkforceProfilePayload } from "@/lib/quote-flow-store";
 import { api } from "@/lib/api";
-import { Check, Clock, Cannabis, Loader2, AlertTriangle, Wallet, ClipboardCheck, HardHat, Smartphone, HeartPulse, Headset, ShieldCheck, Users, type LucideIcon } from "lucide-react";
+import { Check, Clock, Cannabis, Loader2, AlertTriangle, Wallet, ClipboardCheck, HardHat, Smartphone, HeartPulse, Headset, ShieldCheck, Users, MapPin, DollarSign, Gauge, type LucideIcon } from "lucide-react";
 import employeeGraphic from "@assets/employee_graphic_cutout_1780947767721.png";
 import wcShieldIcon from "@assets/Shield-Icon_1780952893965.png";
 
@@ -291,10 +291,10 @@ export default function Step4Indication() {
   })();
 
   const statCards = [
-    { label: "Number of Locations", value: String(locationCount), accent: "#E91E8C" },
-    { label: "Number of Employees", value: String(totalEmployees), accent: "#7C3AED" },
-    { label: "Annual Payroll", value: fmtCompact(totalPayroll), accent: "#E91E8C" },
-    { label: "Experience Mod", value: modifier.toFixed(2), accent: "#7C3AED" },
+    { label: "Number of Locations", value: String(locationCount), accent: "#E91E8C", icon: MapPin },
+    { label: "Number of Employees", value: String(totalEmployees), accent: "#7C3AED", icon: Users },
+    { label: "Annual Payroll", value: fmtCompact(totalPayroll), accent: "#E91E8C", icon: DollarSign },
+    { label: "Experience Mod", value: modifier.toFixed(2), accent: "#7C3AED", icon: Gauge },
   ];
 
   type FeatureCard = {
@@ -656,7 +656,9 @@ export default function Step4Indication() {
       </div>
       {/* Stat cards */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
-        {statCards.map((c) => (
+        {statCards.map((c) => {
+          const Icon = c.icon;
+          return (
           <div
             key={c.label}
             style={{
@@ -665,23 +667,43 @@ export default function Step4Indication() {
               background: panelBg,
               border: `1px solid ${borderColor}`,
               borderLeft: `3px solid ${c.accent}`,
+              display: "flex",
+              alignItems: "center",
+              gap: 14,
             }}
           >
             <div
               style={{
-                fontSize: 11,
-                color: textMuted,
-                textTransform: "uppercase",
-                letterSpacing: "0.07em",
-                fontFamily: "var(--app-font-heading)",
-                marginBottom: 10,
+                width: 40,
+                height: 40,
+                borderRadius: 10,
+                background: "rgba(233,30,140,0.12)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
               }}
             >
-              {c.label}
+              <Icon style={{ width: 20, height: 20, color: "#E91E8C" }} />
             </div>
-            <div style={{ fontSize: 30, fontWeight: 700, color: textPrimary, lineHeight: 1 }}>{c.value}</div>
+            <div style={{ minWidth: 0 }}>
+              <div
+                style={{
+                  fontSize: 11,
+                  color: textMuted,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.07em",
+                  fontFamily: "var(--app-font-heading)",
+                  marginBottom: 6,
+                }}
+              >
+                {c.label}
+              </div>
+              <div style={{ fontSize: 30, fontWeight: 700, color: textPrimary, lineHeight: 1 }}>{c.value}</div>
+            </div>
           </div>
-        ))}
+          );
+        })}
       </div>
       {!isAso && !isPeo && (
         <div
