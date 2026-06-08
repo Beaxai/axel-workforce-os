@@ -1000,9 +1000,7 @@ export default function Step4Indication() {
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            <h3
-              style={{ fontSize: 17, fontWeight: 700, color: textPrimary, margin: 0 }}
-              className="text-[18px]">Features</h3>
+            <h3 style={{ fontSize: 26, fontWeight: 800, color: textPrimary, margin: 0, lineHeight: 1.15, fontFamily: "var(--app-font-heading)", textTransform: "uppercase", letterSpacing: "0.01em" }}>Features</h3>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 16 }}>
               {featureCards.slice(0, 2).map(renderFeatureCard)}
             </div>
