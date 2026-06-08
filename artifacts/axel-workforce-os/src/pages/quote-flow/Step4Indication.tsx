@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuoteFlowStore, type MultiLocationResult, type WorkforceProfilePayload } from "@/lib/quote-flow-store";
 import { api } from "@/lib/api";
 import { Check, Clock, Shield, Cannabis, Loader2, AlertTriangle, FileCheck, Wallet, ClipboardCheck, HardHat, Smartphone } from "lucide-react";
+import employeeGraphic from "@assets/employee_graphic_cutout_1780947767721.png";
 
 export default function Step4Indication() {
   const s = useQuoteFlowStore();
@@ -636,20 +637,46 @@ export default function Step4Indication() {
           Human Capital Management Proposal
         </h3>
         <div style={{ display: "grid", gridTemplateColumns: "minmax(190px, 260px) 1fr", gap: 28, alignItems: "center", marginBottom: 32 }}>
-          <div
-            style={{
-              padding: "28px 24px",
-              borderRadius: 16,
-              background: "rgba(124,58,237,0.10)",
-              border: "1px solid rgba(124,58,237,0.35)",
-              textAlign: "center",
-            }}
-          >
-            <div style={{ fontSize: 44, fontWeight: 800, color: textPrimary, lineHeight: 1 }}>
-              ${peoPerEmployeeMonthly.toLocaleString()}
-            </div>
-            <div style={{ fontSize: 12, color: textMuted, marginTop: 10, textTransform: "uppercase", letterSpacing: "0.08em", fontFamily: "var(--app-font-heading)" }}>
-              per employee / month
+          <div style={{ position: "relative", paddingTop: 54 }}>
+            <img
+              src={employeeGraphic}
+              alt=""
+              style={{
+                position: "absolute",
+                top: 0,
+                left: "50%",
+                transform: "translateX(-50%)",
+                width: 92,
+                height: "auto",
+                zIndex: 2,
+                pointerEvents: "none",
+                filter: "drop-shadow(0 8px 24px rgba(124,58,237,0.45))",
+              }}
+            />
+            <div
+              style={{
+                borderRadius: 20,
+                padding: 2,
+                background: "linear-gradient(135deg, #E91E8C 0%, #7C3AED 50%, #3B82F6 100%)",
+                boxShadow: "0 0 40px rgba(124,58,237,0.35)",
+              }}
+            >
+              <div
+                style={{
+                  borderRadius: 18,
+                  background: "#0a0a12",
+                  padding: "44px 24px 24px",
+                  textAlign: "center",
+                }}
+              >
+                <div style={{ fontSize: 44, fontWeight: 800, color: "#fff", lineHeight: 1 }}>
+                  ${peoPerEmployeeMonthly.toLocaleString()}
+                </div>
+                <div style={{ height: 1, background: "rgba(255,255,255,0.18)", margin: "16px auto", maxWidth: 150 }} />
+                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", letterSpacing: "0.04em" }}>
+                  per employee
+                </div>
+              </div>
             </div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
