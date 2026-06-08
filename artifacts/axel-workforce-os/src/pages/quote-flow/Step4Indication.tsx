@@ -441,6 +441,9 @@ export default function Step4Indication() {
             <p style={{ fontSize: 14, color: textSecondary, lineHeight: 1.6, margin: 0 }}>
               The figure shown reflects your total estimated annual premium and is finalized after underwriting review and audit.
             </p>
+            <p style={{ fontSize: 14, color: textSecondary, lineHeight: 1.6, margin: 0 }}>
+              Workers' compensation premiums are seamlessly integrated into payroll processing. Premiums are calculated and remitted on a pay-as-you-go basis using actual payroll processed.
+            </p>
           </div>
           <div style={{ position: "relative", paddingTop: 40 }}>
             <img
