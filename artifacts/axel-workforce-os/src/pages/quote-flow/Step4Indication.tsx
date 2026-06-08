@@ -630,9 +630,6 @@ export default function Step4Indication() {
           marginBottom: 24,
         }}
       >
-        <div style={{ fontSize: 11, color: textMuted, textTransform: "uppercase", letterSpacing: "0.14em", fontFamily: "var(--app-font-heading)", marginBottom: 8 }}>
-          Proposal
-        </div>
         <h3 style={{ fontSize: 26, fontWeight: 800, color: textPrimary, margin: "0 0 24px", lineHeight: 1.15, fontFamily: "var(--app-font-heading)", textTransform: "uppercase", letterSpacing: "0.01em" }}>Workforce Solutions Program Pricing</h3>
         <div style={{ display: "grid", gridTemplateColumns: "minmax(190px, 260px) 1fr", gap: 28, alignItems: "center", marginBottom: 32 }}>
           <div style={{ position: "relative", paddingTop: 54 }}>
