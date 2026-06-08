@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuoteFlowStore, type MultiLocationResult, type WorkforceProfilePayload } from "@/lib/quote-flow-store";
 import { api } from "@/lib/api";
-import { Check, Clock, Shield, Cannabis, Loader2, AlertTriangle, FileCheck, Wallet, ClipboardCheck, HardHat, Smartphone, HeartPulse, Headset, ShieldCheck } from "lucide-react";
+import { Check, Clock, Cannabis, Loader2, AlertTriangle, Wallet, ClipboardCheck, HardHat, Smartphone, HeartPulse, Headset, ShieldCheck } from "lucide-react";
 import employeeGraphic from "@assets/employee_graphic_cutout_1780947767721.png";
 import wcShieldIcon from "@assets/Shield-Icon_1780952893965.png";
 
@@ -223,7 +223,6 @@ export default function Step4Indication() {
     ? "Workforce Solutions Program (PEO)"
     : "Workers' Compensation Insurance";
   const locationCount = new Set(rateBreakdown.map((r) => r.location)).size || 1;
-  const primaryState = rateBreakdown[0]?.state || "";
   const totalPremium = ratingResult
     ? Math.round(ratingResult.totalGrossPremium)
     : Math.round(rateBreakdown.reduce((sum, r) => sum + r.estPremium, 0));
@@ -257,24 +256,7 @@ export default function Step4Indication() {
   ];
   const featureList = isAso ? highlights : wcFeatures;
 
-  const coverageRows = [
-    { icon: Shield, title: "A Rated Carrier", sub: "", right: "" },
-    {
-      icon: Shield,
-      title: "Employer's Liability Limits",
-      sub: "$1,000,000 / $1,000,000 / $1,000,000",
-      right: "Included",
-    },
-    {
-      icon: FileCheck,
-      title: "Statutory WC Benefits",
-      sub: `${primaryState ? primaryState + " " : ""}COMPLIANCE STANDARD`,
-      right: "Mandatory",
-    },
-  ];
-
   const panelBg = isDark ? "#13131f" : "#f8f8fc";
-  const subtleBg = isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)";
   const cardRadius = 14;
 
   const rateBreakdownTable = (
@@ -806,65 +788,6 @@ export default function Step4Indication() {
           </p>
         </div>
       </div>
-      )}
-      {/* Coverage Breakdown */}
-      {!isAso && !isPeo && (
-        <div style={{ padding: 28, borderRadius: cardRadius, background: panelBg }}>
-          <h3 style={{ fontSize: 17, fontWeight: 700, color: textPrimary, margin: "0 0 20px" }}>Coverage Breakdown</h3>
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {coverageRows.map((row) => {
-              const Icon = row.icon;
-              return (
-                <div
-                  key={row.title}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 14,
-                    padding: "14px 16px",
-                    borderRadius: 12,
-                    background: subtleBg,
-                    border: `1px solid ${borderColor}`,
-                  }}
-                >
-                  <div
-                    style={{
-                      width: 38,
-                      height: 38,
-                      borderRadius: 10,
-                      background: "rgba(233,30,140,0.12)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      flexShrink: 0,
-                    }}
-                  >
-                    <Icon style={{ width: 18, height: 18, color: "#E91E8C" }} />
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: textPrimary }}>{row.title}</div>
-                    {row.sub && (
-                      <div
-                        style={{
-                          fontSize: 11,
-                          color: textMuted,
-                          marginTop: 2,
-                          textTransform: row.title === "Statutory WC Benefits" ? "uppercase" : "none",
-                          letterSpacing: row.title === "Statutory WC Benefits" ? "0.04em" : "normal",
-                        }}
-                      >
-                        {row.sub}
-                      </div>
-                    )}
-                  </div>
-                  {row.right && (
-                    <span style={{ fontSize: 13, fontWeight: 700, color: textSecondary, whiteSpace: "nowrap" }}>{row.right}</span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
       )}
       {/* Features */}
       {!isPeo && (
