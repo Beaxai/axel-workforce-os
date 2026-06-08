@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuoteFlowStore, type MultiLocationResult, type WorkforceProfilePayload } from "@/lib/quote-flow-store";
 import { api } from "@/lib/api";
-import { Check, Clock, Shield, Cannabis, Loader2, AlertTriangle, FileCheck, Wallet, ShieldCheck, ClipboardCheck, Scale, HardHat, HeartPulse, Smartphone } from "lucide-react";
+import { Check, Clock, Shield, Cannabis, Loader2, AlertTriangle, FileCheck, Wallet, ClipboardCheck, HardHat, Smartphone } from "lucide-react";
 
 export default function Step4Indication() {
   const s = useQuoteFlowStore();
@@ -189,11 +189,7 @@ export default function Step4Indication() {
   const PEO_BASE_RATE = 0.02;
   const peoAnnual = Math.round(totalPayroll * PEO_BASE_RATE);
   const peoEmployees = Math.max(totalEmployees, 1);
-  const peoFrequencies = [
-    { key: "Monthly", label: "Monthly", cycles: 12, unit: "PEPM" },
-    { key: "BiWeekly", label: "Bi-Weekly", cycles: 26, unit: "PEPC" },
-    { key: "Weekly", label: "Weekly", cycles: 52, unit: "PEPC" },
-  ] as const;
+  const peoPerEmployeeMonthly = Math.round(peoAnnual / peoEmployees / 12);
   const selectedFreq = s.payrollFrequency;
 
   const highlights = isAso
@@ -633,109 +629,86 @@ export default function Step4Indication() {
           marginBottom: 24,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-          <span style={{ fontSize: 12, color: textMuted, textTransform: "uppercase", letterSpacing: "0.05em", fontFamily: "var(--app-font-heading)" }}>workforce service Pricing</span>
-          <span style={{ fontSize: 11, color: textMuted }}>
-            {(PEO_BASE_RATE * 100).toFixed(0)}% of annual payroll
-          </span>
+        <div style={{ fontSize: 11, color: textMuted, textTransform: "uppercase", letterSpacing: "0.14em", fontFamily: "var(--app-font-heading)", marginBottom: 8 }}>
+          Proposal
         </div>
-        <p style={{ fontSize: 12, color: textMuted, margin: "6px 0 14px" }}>
-          Based on ${totalPayroll.toLocaleString()} payroll across {peoEmployees} employee{peoEmployees !== 1 ? "s" : ""}
-        </p>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
-          {peoFrequencies.map((f) => {
-            const perCycle = peoAnnual / peoEmployees / f.cycles;
-            const isSelected = selectedFreq === f.key;
-            return (
-              <div
-                key={f.key}
-                style={{
-                  padding: "12px 14px",
-                  borderRadius: 10,
-                  background: isSelected ? "rgba(124,58,237,0.12)" : isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)",
-                  border: isSelected ? "1px solid rgba(124,58,237,0.4)" : `1px solid ${borderColor}`,
-                }}
-              >
-                <div style={{ fontSize: 10, color: isSelected ? "#A78BFA" : textMuted, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: "var(--app-font-heading)", marginBottom: 4 }}>
-                  {f.label}
-                </div>
-                <div style={{ fontSize: 18, fontWeight: 700, color: textPrimary }}>
-                  ${perCycle.toFixed(0)}
-                </div>
-                <div style={{ fontSize: 10, color: textMuted, marginTop: 2 }}>
-                  {f.unit} • {f.cycles}/yr
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        {!selectedFreq && (
-          <p style={{ fontSize: 11, color: "#FFB547", margin: "10px 0 0", fontStyle: "italic" }}>
-            Select a payroll frequency on the Operations step to highlight your billing cadence.
-          </p>
-        )}
-        <div
-          style={{
-            marginTop: 18,
-            paddingTop: 18,
-            borderTop: `1px solid ${borderColor}`,
-          }}
-        >
+        <h3 style={{ fontSize: 26, fontWeight: 800, color: textPrimary, margin: "0 0 24px", lineHeight: 1.15, fontFamily: "var(--app-font-heading)", textTransform: "uppercase", letterSpacing: "0.01em" }}>
+          Human Capital Management Proposal
+        </h3>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(190px, 260px) 1fr", gap: 28, alignItems: "center", marginBottom: 32 }}>
           <div
             style={{
-              fontSize: 11,
-              color: textMuted,
-              textTransform: "uppercase",
-              letterSpacing: "0.06em",
-              fontFamily: "var(--app-font-heading)",
-              marginBottom: 12,
+              padding: "28px 24px",
+              borderRadius: 16,
+              background: "rgba(124,58,237,0.10)",
+              border: "1px solid rgba(124,58,237,0.35)",
+              textAlign: "center",
             }}
           >
-            Included Services
+            <div style={{ fontSize: 44, fontWeight: 800, color: textPrimary, lineHeight: 1 }}>
+              ${peoPerEmployeeMonthly.toLocaleString()}
+            </div>
+            <div style={{ fontSize: 12, color: textMuted, marginTop: 10, textTransform: "uppercase", letterSpacing: "0.08em", fontFamily: "var(--app-font-heading)" }}>
+              per employee / month
+            </div>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 10 }}>
-            {[
-              { label: "Payroll", icon: Wallet },
-              { label: "Workers' Compensation", icon: ShieldCheck },
-              { label: "HR & Compliance", icon: ClipboardCheck },
-              { label: "EPLI Insurance", icon: Scale },
-              { label: "Risk Management", icon: HardHat },
-              { label: "Rich Benefits", icon: HeartPulse },
-              { label: "HR Platform Technology", icon: Smartphone },
-            ].map((svc) => {
-              const Icon = svc.icon;
-              return (
-                <div
-                  key={svc.label}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                    padding: "10px 12px",
-                    borderRadius: 10,
-                    background: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)",
-                    border: `1px solid ${borderColor}`,
-                  }}
-                >
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <p style={{ fontSize: 14, color: textSecondary, lineHeight: 1.6, margin: 0 }}>
+              Our services are billed on a simple cost-per-employee, per-month model that includes payroll processing, tax administration, HR compliance, benefits administration, Risk Management services and access to a dedicated support team.
+            </p>
+            <p style={{ fontSize: 14, color: textSecondary, lineHeight: 1.6, margin: 0 }}>
+              This all-inclusive rate provides clear, predictable pricing with no hidden fees and automatically adjusts as your workforce grows or changes.
+            </p>
+          </div>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 16 }}>
+          {[
+            { title: "Compliance", icon: ClipboardCheck, items: ["280E Tax Code Compliance", "State and Federal Compliance", "EEOC Claims Management", "Employee Handbook"] },
+            { title: "Payroll", icon: Wallet, items: ["Full Service Payroll Platform", "Automated Payroll Processing", "Direct Deposits", "All Inclusive Payroll Tax Filing"] },
+            { title: "HR Platform", icon: Smartphone, items: ["Unified Platform", "Electronic Onboarding", "Time & Attendance", "Employee Self Service Portal"] },
+            { title: "Risk Management", icon: HardHat, items: ["Injury & Illness Prevention Programs", "Safety Manuals", "Employer & Employee Safety Training", "Facility Inspections"] },
+          ].map((cat) => {
+            const Icon = cat.icon;
+            return (
+              <div
+                key={cat.title}
+                style={{
+                  borderRadius: 14,
+                  background: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)",
+                  border: `1px solid ${borderColor}`,
+                  overflow: "hidden",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 18px", borderBottom: `1px solid ${borderColor}` }}>
                   <div
                     style={{
-                      width: 32,
-                      height: 32,
-                      borderRadius: 8,
-                      background: "rgba(124,58,237,0.12)",
+                      width: 34,
+                      height: 34,
+                      borderRadius: 9,
+                      background: "rgba(124,58,237,0.14)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                       flexShrink: 0,
                     }}
                   >
-                    <Icon style={{ width: 16, height: 16, color: "#A78BFA" }} />
+                    <Icon style={{ width: 17, height: 17, color: "#A78BFA" }} />
                   </div>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: textPrimary }}>{svc.label}</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: textPrimary, fontFamily: "var(--app-font-heading)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                    {cat.title}
+                  </span>
                 </div>
-              );
-            })}
-          </div>
+                <ul style={{ listStyle: "none", margin: 0, padding: "16px 18px", display: "flex", flexDirection: "column", gap: 10 }}>
+                  {cat.items.map((item) => (
+                    <li key={item} style={{ display: "flex", alignItems: "flex-start", gap: 9, fontSize: 13, color: textSecondary, lineHeight: 1.4 }}>
+                      <Check style={{ width: 14, height: 14, color: "#A78BFA", flexShrink: 0, marginTop: 2 }} />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })}
         </div>
       </div>
       )}
