@@ -434,15 +434,15 @@ export default function Step4Indication() {
           borderLeft: "3px solid #E91E8C",
         }}
       >
-        <h3 style={{ fontSize: 26, fontWeight: 800, color: textPrimary, margin: "0 0 24px", lineHeight: 1.15, fontFamily: "var(--app-font-heading)", textTransform: "uppercase", letterSpacing: "0.01em" }}>Workers' Compensation Coverage Pricing</h3>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr minmax(190px, 260px)", gap: 28, alignItems: "center" }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <h3 style={{ fontSize: 26, fontWeight: 800, color: textPrimary, margin: "0 0 16px", lineHeight: 1.15, fontFamily: "var(--app-font-heading)", textTransform: "uppercase", letterSpacing: "0.01em" }}>Workers' Compensation Coverage Pricing</h3>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr minmax(190px, 240px)", gap: 24, alignItems: "center" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <p style={{ fontSize: 14, color: textSecondary, lineHeight: 1.6, margin: 0 }}>Workers' compensation premium is calculated from current filed carrier rates applied to payroll across each class code and location, then adjusted for your experience modifier.</p>
             <p style={{ fontSize: 14, color: textSecondary, lineHeight: 1.6, margin: 0 }}>
               The figure shown reflects your total estimated annual premium and is finalized after underwriting review and audit.
             </p>
           </div>
-          <div style={{ position: "relative", paddingTop: 54 }}>
+          <div style={{ position: "relative", paddingTop: 40 }}>
             <img
               src={wcShieldIcon}
               alt=""
@@ -451,7 +451,7 @@ export default function Step4Indication() {
                 top: 0,
                 left: "50%",
                 transform: "translateX(-50%)",
-                width: 92,
+                width: 76,
                 height: "auto",
                 zIndex: 2,
                 pointerEvents: "none",
@@ -470,14 +470,14 @@ export default function Step4Indication() {
                 style={{
                   borderRadius: 18,
                   background: "#0a0a12",
-                  padding: "44px 24px 24px",
+                  padding: "32px 20px 18px",
                   textAlign: "center",
                 }}
               >
-                <div style={{ fontSize: 44, fontWeight: 800, color: "#fff", lineHeight: 1 }}>
+                <div style={{ fontSize: 40, fontWeight: 800, color: "#fff", lineHeight: 1 }}>
                   ${totalPremium.toLocaleString()}
                 </div>
-                <div style={{ height: 1, background: "rgba(255,255,255,0.18)", margin: "16px auto", maxWidth: 150 }} />
+                <div style={{ height: 1, background: "rgba(255,255,255,0.18)", margin: "12px auto", maxWidth: 150 }} />
                 <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", letterSpacing: "0.04em" }}>total annual premium</div>
               </div>
             </div>
