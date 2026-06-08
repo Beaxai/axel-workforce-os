@@ -331,26 +331,28 @@ export default function Step4Indication() {
           padding: "8px 4px",
         }}
       >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 12, margin: "12px 18px 8px" }}>
         <h3
-        style={{
-          fontSize: 13,
-          fontWeight: 700,
-          color: textPrimary,
-          textTransform: "uppercase",
-          letterSpacing: "0.06em",
-          fontFamily: "var(--app-font-heading)",
-          margin: "12px 18px 4px",
-        }}
-      >
-        Workers' Compensation Premium Rating
-      </h3>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 18, margin: "0 18px 8px", fontSize: 13 }}>
-        <span style={{ color: textSecondary }}>
-          <span style={{ color: textMuted, fontWeight: 600 }}>Carrier:</span> Benchmark
-        </span>
-        <span style={{ color: textSecondary }}>
-          <span style={{ color: textMuted, fontWeight: 600 }}>Rating:</span> A (Excellent)
-        </span>
+          style={{
+            fontSize: 13,
+            fontWeight: 700,
+            color: textPrimary,
+            textTransform: "uppercase",
+            letterSpacing: "0.06em",
+            fontFamily: "var(--app-font-heading)",
+            margin: 0,
+          }}
+        >
+          Workers' Compensation Premium Rating
+        </h3>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 18, fontSize: 13 }}>
+          <span style={{ color: textSecondary }}>
+            <span style={{ color: textMuted, fontWeight: 600 }}>Carrier:</span> Benchmark
+          </span>
+          <span style={{ color: textSecondary }}>
+            <span style={{ color: textMuted, fontWeight: 600 }}>Rating:</span> A (Excellent)
+          </span>
+        </div>
       </div>
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
         <thead>
