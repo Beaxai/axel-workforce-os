@@ -378,7 +378,7 @@ export default function Step4Indication() {
           </div>
         ))}
       </div>
-      {!isAso && (
+      {!isAso && !isPeo && (
         <div
           style={{
             padding: 24,
