@@ -738,7 +738,7 @@ export default function Step4Indication() {
       </div>
       )}
       {/* Coverage Breakdown */}
-      {!isAso && (
+      {!isAso && !isPeo && (
         <div style={{ padding: 28, borderRadius: cardRadius, background: panelBg }}>
           <h3 style={{ fontSize: 17, fontWeight: 700, color: textPrimary, margin: "0 0 20px" }}>Coverage Breakdown</h3>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
