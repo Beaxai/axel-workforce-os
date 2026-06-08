@@ -668,7 +668,7 @@ export default function Step4Indication() {
                   ${peoPerEmployeeMonthly.toLocaleString()}
                 </div>
                 <div style={{ height: 1, background: "rgba(255,255,255,0.18)", margin: "16px auto", maxWidth: 150 }} />
-                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", letterSpacing: "0.04em" }}>per employee per month</div>
+                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", letterSpacing: "0.04em" }}>per employee </div>
               </div>
             </div>
           </div>
