@@ -983,7 +983,6 @@ export default function Step4Indication() {
         </div>
         <div style={{ marginTop: 28 }}>
           {rateBreakdownTable}
-          <p style={{ fontSize: 13, fontStyle: "italic", color: textSecondary, lineHeight: 1.6, margin: "16px 0 0", padding: 0 }}>                    Workers' compensation premiums are seamlessly integrated into payroll processing. Premiums are calculated and remitted on a pay-as-you-go basis using actual payroll processed.</p>
         </div>
       </div>
       )}
