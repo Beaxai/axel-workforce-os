@@ -3,13 +3,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuoteFlowStore, type MultiLocationResult, type WorkforceProfilePayload } from "@/lib/quote-flow-store";
 import { api } from "@/lib/api";
-import { Check, Clock, Cannabis, Loader2, AlertTriangle, Wallet, ClipboardCheck, HardHat, Smartphone, HeartPulse, Headset, ShieldCheck, Users, MapPin, DollarSign, Gauge, type LucideIcon } from "lucide-react";
+import { Check, Clock, Loader2, AlertTriangle, Wallet, ClipboardCheck, HardHat, Smartphone, HeartPulse, Headset, ShieldCheck, Users, MapPin, DollarSign, Gauge, type LucideIcon } from "lucide-react";
 import employeeGraphic from "@assets/employee_graphic_cutout_1780947767721.png";
 import wcShieldIcon from "@assets/Shield-Icon_1780952893965.png";
 
 export default function Step4Indication() {
   const s = useQuoteFlowStore();
-  const { isDark, textPrimary, textSecondary, textMuted, cardBg, borderColor } = useThemeColors();
+  const { isDark, textPrimary, textSecondary, textMuted, borderColor } = useThemeColors();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [ratingError, setRatingError] = useState("");
@@ -243,28 +243,6 @@ export default function Step4Indication() {
   const peoEmployees = Math.max(totalEmployees, 1);
   const peoPerEmployeeMonthly = Math.round(peoAnnual / peoEmployees / 12);
   const selectedFreq = s.payrollFrequency;
-
-  const highlights = isAso
-    ? [
-        "Full-service payroll & tax filing",
-        "HR administration & compliance",
-        "Benefits administration",
-        "Time & attendance tracking",
-        "Employee handbook & policies",
-        "Onboarding & offboarding support",
-        "Multi-state compliance coverage",
-        "You keep your own WC policy",
-      ]
-    : [
-        "Statutory workers' compensation coverage",
-        "Employer's liability included",
-        "Pay-as-you-go billing available",
-        "Cannabis-specialized carrier",
-        "Multi-state coverage available",
-        "Dedicated claims management",
-        "Return-to-work program support",
-        "Certificate of insurance management",
-      ];
 
   const vertical = s.vertical || "Cannabis";
   const coverageLabel = isAso
@@ -779,59 +757,133 @@ export default function Step4Indication() {
           const asoPepm = 50;
           const asoEmployees = Math.max(totalEmployees, 1);
           const asoAnnual = asoPepm * asoEmployees * 12;
-          const asoLow = Math.round(asoAnnual * 0.95);
-          const asoHigh = Math.round(asoAnnual * 1.1);
           const asoFrequencies = [
             { key: "Monthly", label: "Monthly", cycles: 12, unit: "PEPM" },
             { key: "BiWeekly", label: "Bi-Weekly", cycles: 26, unit: "PEPC" },
             { key: "Weekly", label: "Weekly", cycles: 52, unit: "PEPC" },
           ] as const;
+          const asoCategories = [
+            { title: "Payroll", icon: Wallet, items: ["Full Service Payroll Platform", "Automated Payroll Processing", "Direct Deposits", "All Inclusive Payroll Tax Filing"] },
+            { title: "HR Platform", icon: Smartphone, items: ["Unified Platform", "Electronic Onboarding & Offboarding", "Time & Attendance Tracking", "Employee Self Service Portal"] },
+            { title: "Compliance", icon: ClipboardCheck, items: ["Multi-State Compliance Coverage", "Employee Handbook & Policies", "EEOC Claims Guidance", "Employment Law Posters"] },
+            { title: "Benefits Administration", icon: HeartPulse, items: ["Major Medical (POS, EPO, HDHP options)", "ICHRA", "MEC and MVP", "Dental", "Vision", "Life"] },
+            { title: "HR Support", icon: Headset, items: ["Support for HR Matters, Payroll, & Benefits", "HR Best Practice Guidance", "Employee Service Center", "Wage and Hour Guidance", "Performance Management Support"] },
+            { title: "Risk Management", icon: HardHat, items: ["Injury & Illness Prevention Programs", "Safety Manuals", "Employer & Employee Safety Training", "Facility Inspections"] },
+          ];
           return (
-            <>
-              <div
-                style={{
-                  padding: 24,
-                  borderRadius: 12,
-                  background: isDark ? "#13131f" : "#f8f8fc",
-                  borderLeft: "3px solid #E91E8C",
-                  marginBottom: 24,
-                }}
-              >
-                <span style={{ fontSize: 12, color: textMuted, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                  Estimated Annual ASO Service Fee
-                </span>
-                <div style={{ fontSize: 36, fontWeight: 700, color: textPrimary, margin: "8px 0" }}>
-                  ${asoLow.toLocaleString()} – ${asoHigh.toLocaleString()}
+            <div
+              style={{
+                padding: 20,
+                borderRadius: 12,
+                background: isDark ? "#13131f" : "#f8f8fc",
+                borderLeft: "3px solid #E91E8C",
+                marginBottom: 24,
+              }}
+            >
+              <h3 style={{ fontSize: 26, fontWeight: 800, color: textPrimary, margin: "0 0 24px", lineHeight: 1.15, fontFamily: "var(--app-font-heading)", textTransform: "uppercase", letterSpacing: "0.01em" }}>WorkPlus OS Program Pricing</h3>
+              <div style={{ display: "grid", gridTemplateColumns: "minmax(190px, 260px) 1fr", gap: 28, alignItems: "center", marginBottom: 32 }}>
+                <div style={{ position: "relative", paddingTop: 54 }}>
+                  <img
+                    src={employeeGraphic}
+                    alt=""
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: "50%",
+                      transform: "translateX(-50%)",
+                      width: 92,
+                      height: "auto",
+                      zIndex: 2,
+                      pointerEvents: "none",
+                      filter: "drop-shadow(0 8px 24px rgba(233,30,140,0.45))",
+                    }}
+                  />
+                  <div
+                    style={{
+                      borderRadius: 20,
+                      padding: 2,
+                      background: "linear-gradient(135deg, #E91E8C 0%, #7C3AED 50%, #3B82F6 100%)",
+                      boxShadow: "0 0 40px rgba(233,30,140,0.35)",
+                    }}
+                  >
+                    <div
+                      style={{
+                        borderRadius: 18,
+                        background: "#0a0a12",
+                        padding: "44px 24px 24px",
+                        textAlign: "center",
+                      }}
+                    >
+                      <div style={{ fontSize: 44, fontWeight: 800, color: "#fff", lineHeight: 1 }}>
+                        ${asoPepm.toLocaleString()}
+                      </div>
+                      <div style={{ height: 1, background: "rgba(255,255,255,0.18)", margin: "16px auto", maxWidth: 150 }} />
+                      <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", letterSpacing: "0.04em" }}>per employee / month</div>
+                    </div>
+                  </div>
                 </div>
-                <p style={{ fontSize: 13, color: textMuted, margin: 0 }}>
-                  Based on {asoEmployees} employee{asoEmployees !== 1 ? "s" : ""} at ${asoPepm}/employee/month
-                </p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  <p style={{ fontSize: 14, color: textSecondary, lineHeight: 1.6, margin: 0 }}>
+                    WorkPlus OS is billed on a simple cost-per-employee, per-month model that includes full-service payroll processing, tax administration, HR technology, benefits administration, and dedicated support — while you remain the employer of record and keep your own workers' compensation policy.
+                  </p>
+                  <p style={{ fontSize: 14, color: textSecondary, lineHeight: 1.6, margin: 0 }}>
+                    This all-inclusive rate provides clear, predictable pricing with no hidden fees and automatically adjusts as your workforce grows or changes.
+                  </p>
+                </div>
               </div>
-
-              <div
-                style={{
-                  padding: 20,
-                  borderRadius: 12,
-                  background: isDark ? "#13131f" : "#f8f8fc",
-                  borderLeft: "3px solid #E91E8C",
-                  marginBottom: 24,
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-                  <span style={{ fontSize: 12, color: textMuted, textTransform: "uppercase", letterSpacing: "0.05em", fontFamily: "var(--app-font-heading)" }}>
-                    ASO Service Pricing
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 16 }}>
+                {asoCategories.map((cat) => {
+                  const Icon = cat.icon;
+                  return (
+                    <div
+                      key={cat.title}
+                      style={{
+                        borderRadius: 14,
+                        background: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)",
+                        border: `1px solid ${borderColor}`,
+                        overflow: "hidden",
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 18px", borderBottom: `1px solid ${borderColor}` }}>
+                        <div
+                          style={{
+                            width: 34,
+                            height: 34,
+                            borderRadius: 9,
+                            background: "rgba(233,30,140,0.14)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            flexShrink: 0,
+                          }}
+                        >
+                          <Icon style={{ width: 17, height: 17, color: "#E91E8C" }} />
+                        </div>
+                        <span style={{ fontSize: 14, fontWeight: 700, color: textPrimary, fontFamily: "var(--app-font-heading)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                          {cat.title}
+                        </span>
+                      </div>
+                      <ul style={{ listStyle: "none", margin: 0, padding: "16px 18px", display: "flex", flexDirection: "column", gap: 10 }}>
+                        {cat.items.map((item) => (
+                          <li key={item} style={{ display: "flex", alignItems: "flex-start", gap: 9, fontSize: 13, color: textSecondary, lineHeight: 1.4 }}>
+                            <Check style={{ width: 14, height: 14, color: "#E91E8C", flexShrink: 0, marginTop: 2 }} />
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{ marginTop: 28 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: textPrimary, textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: "var(--app-font-heading)" }}>
+                    Billing Cadence
                   </span>
-                  <span style={{ fontSize: 11, color: textMuted }}>
-                    ${asoPepm} per employee per month
+                  <span style={{ fontSize: 13, color: textSecondary }}>
+                    <span style={{ color: textMuted, fontWeight: 600 }}>Annual base:</span> ${asoAnnual.toLocaleString()} • {asoEmployees} employee{asoEmployees !== 1 ? "s" : ""}
                   </span>
                 </div>
-                <div style={{ fontSize: 24, fontWeight: 700, color: textPrimary, margin: "6px 0 4px" }}>
-                  ${asoAnnual.toLocaleString()}
-                  <span style={{ fontSize: 13, color: textMuted, fontWeight: 500, marginLeft: 8 }}>annual base</span>
-                </div>
-                <p style={{ fontSize: 12, color: textMuted, margin: "0 0 14px" }}>
-                  {asoEmployees} employee{asoEmployees !== 1 ? "s" : ""} • billed via your chosen payroll cadence
-                </p>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
                   {asoFrequencies.map((f) => {
                     const perCycle = asoAnnual / asoEmployees / f.cycles;
@@ -865,7 +917,7 @@ export default function Step4Indication() {
                   </p>
                 )}
               </div>
-            </>
+            </div>
           );
         })()}
       {isPeo && (
@@ -987,30 +1039,16 @@ export default function Step4Indication() {
       </div>
       )}
       {/* Features */}
-      {!isPeo && (
-        isAso ? (
-          <div style={{ padding: 28, borderRadius: cardRadius, background: panelBg }}>
-            <h3 style={{ fontSize: 17, fontWeight: 700, color: textPrimary, margin: "0 0 18px" }}>Features</h3>
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {highlights.map((h) => (
-                <div key={h} style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-                  <Check style={{ width: 17, height: 17, color: "#E91E8C", flexShrink: 0, marginTop: 1 }} />
-                  <span style={{ fontSize: 14, fontWeight: 600, color: textSecondary, lineHeight: 1.45 }}>{h}</span>
-                </div>
-              ))}
-            </div>
+      {!isPeo && !isAso && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <h3 style={{ fontSize: 26, fontWeight: 800, color: textPrimary, margin: 0, lineHeight: 1.15, fontFamily: "var(--app-font-heading)", textTransform: "uppercase", letterSpacing: "0.01em" }}>Features</h3>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 16 }}>
+            {featureCards.slice(0, 2).map(renderFeatureCard)}
           </div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            <h3 style={{ fontSize: 26, fontWeight: 800, color: textPrimary, margin: 0, lineHeight: 1.15, fontFamily: "var(--app-font-heading)", textTransform: "uppercase", letterSpacing: "0.01em" }}>Features</h3>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 16 }}>
-              {featureCards.slice(0, 2).map(renderFeatureCard)}
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
-              {featureCards.slice(2).map(renderFeatureCard)}
-            </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+            {featureCards.slice(2).map(renderFeatureCard)}
           </div>
-        )
+        </div>
       )}
       {/* Carrier + timing */}
       {!isAso ? (
