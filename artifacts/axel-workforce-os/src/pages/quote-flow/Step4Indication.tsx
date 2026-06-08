@@ -14,6 +14,9 @@ export default function Step4Indication() {
   const [loading, setLoading] = useState(true);
   const [ratingError, setRatingError] = useState("");
   const [ratingResult, setRatingResult] = useState<MultiLocationResult | null>(null);
+  const [savingDeal, setSavingDeal] = useState(false);
+  const [savedDealId, setSavedDealId] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState("");
 
   const modifier = s.hasExperienceMod === "Yes" ? parseFloat(s.experienceMod) || 1.0 : 1.0;
 
@@ -180,6 +183,53 @@ export default function Step4Indication() {
   const handleRequestProposal = () => {
     s.setPhase(2);
     s.setStep(0);
+  };
+
+  const handleSaveIndication = async () => {
+    if (savingDeal) return;
+    if (savedDealId) {
+      navigate("/pipeline");
+      return;
+    }
+    setSavingDeal(true);
+    setSaveError("");
+    try {
+      const refTs = Date.now().toString(36).toUpperCase();
+      const refRand = Math.random().toString(36).substring(2, 6).toUpperCase();
+      const referenceCode = `AX-${refTs}-${refRand}`;
+      const businessName = s.businessName || "Untitled Business";
+      const productType = isPeo ? "PEO" : isAso ? "ASO" : "WC";
+      const payload: Record<string, unknown> = {
+        referenceCode,
+        businessName,
+        vertical: s.vertical || undefined,
+        productType,
+        state: s.locations[0]?.state || undefined,
+        annualPayroll: totalPayroll ? String(totalPayroll) : undefined,
+        employeeCountFt: totalEmployees || undefined,
+        stage: "INDICATION",
+        wcPremium: isAso ? undefined : String(totalPremium),
+      };
+      const newDeal = await api.post<{ id: string }>("/deals", payload);
+      const slug = businessName.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 30);
+      api.post(`/deals/${newDeal.id}/email`, {
+        emailAddress: `${slug}@listener.axel.io`,
+        companySlug: slug,
+      }).catch(() => {});
+      api.post(`/deals/${newDeal.id}/activity`, {
+        entityType: "deal",
+        entityId: newDeal.id,
+        eventType: "DEAL_CREATED",
+        description: `Indication saved for ${businessName}`,
+      }).catch(() => {});
+      window.dispatchEvent(new Event("deal-updated"));
+      setSavedDealId(newDeal.id);
+    } catch (err) {
+      console.error("Failed to save indication:", err);
+      setSaveError("Failed to save indication. Please try again.");
+    } finally {
+      setSavingDeal(false);
+    }
   };
 
   const isAso = s.coverageType === "ASO";
@@ -981,23 +1031,46 @@ export default function Step4Indication() {
 
         <button
           type="button"
+          onClick={handleSaveIndication}
+          disabled={savingDeal}
           style={{
             flex: "0 1 180px",
             padding: "14px 24px",
             borderRadius: 28,
             border: "1px solid #E91E8C",
-            background: "transparent",
+            background: savedDealId ? "rgba(233,30,140,0.12)" : "transparent",
             color: "#E91E8C",
             fontSize: 14,
             fontWeight: 600,
-            cursor: "pointer",
+            cursor: savingDeal ? "default" : "pointer",
+            opacity: savingDeal ? 0.7 : 1,
             height: 54,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 8,
             transition: "background 0.15s",
           }}
-          onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(233,30,140,0.08)")}
-          onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+          onMouseEnter={(e) => {
+            if (!savedDealId) e.currentTarget.style.background = "rgba(233,30,140,0.08)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = savedDealId ? "rgba(233,30,140,0.12)" : "transparent";
+          }}
         >
-          Save Indication
+          {savingDeal ? (
+            <>
+              <Loader2 style={{ width: 16, height: 16 }} className="animate-spin" />
+              Saving…
+            </>
+          ) : savedDealId ? (
+            <>
+              <Check style={{ width: 16, height: 16 }} />
+              View in Pipeline
+            </>
+          ) : (
+            "Save Indication"
+          )}
         </button>
 
         <button
@@ -1015,6 +1088,9 @@ export default function Step4Indication() {
           Back to Marketplace
         </button>
       </div>
+      {saveError && (
+        <p style={{ fontSize: 13, color: "#FF5B5B", margin: 0 }}>{saveError}</p>
+      )}
     </div>
   );
 }
