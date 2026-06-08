@@ -181,10 +181,24 @@ router.post("/submit-for-approval", async (req, res) => {
     totalPayroll, totalEmployees, experienceMod,
     premiumLow, premiumHigh, statesOfOperation,
     fein, entityType, contactName, contactEmail, contactPhone,
+    coverageEffectiveDate,
     lossHistoryCount,
     cannabisApplicationAnswers,
     wcRatingBreakdown, workforceProfile,
   } = req.body;
+
+  // Accept only a real YYYY-MM-DD calendar date; otherwise persist null.
+  // Regex alone would let impossible dates (e.g. 2026-99-99) reach the DB, so we
+  // round-trip through Date to confirm the day actually exists.
+  const normalizedEffectiveDate = (() => {
+    if (typeof coverageEffectiveDate !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(coverageEffectiveDate)) {
+      return null;
+    }
+    const parsed = new Date(`${coverageEffectiveDate}T00:00:00Z`);
+    return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === coverageEffectiveDate
+      ? coverageEffectiveDate
+      : null;
+  })();
 
   // Validate cannabis application answers if supplied. The schema is permissive
   // (every field has a default) so partial drafts pass; we only reject malformed
@@ -219,6 +233,7 @@ router.post("/submit-for-approval", async (req, res) => {
       fein: fein || null,
       entityType: entityType || null,
       statesOfOperation: statesOfOperation || [],
+      coverageEffectiveDate: normalizedEffectiveDate,
       emod: experienceMod ? String(experienceMod) : null,
       estimatedPremium: premiumHigh ? String(premiumHigh) : null,
     })
@@ -260,6 +275,7 @@ router.post("/submit-for-approval", async (req, res) => {
         totalPayroll, totalEmployees, experienceMod,
         premiumLow, premiumHigh, statesOfOperation,
         fein, entityType, contactName, contactEmail, contactPhone,
+        coverageEffectiveDate: normalizedEffectiveDate,
         generatedBy: "system",
       },
     },

@@ -57,6 +57,7 @@ export default function FinalSubmission() {
         contactName: s.contactName,
         contactEmail: s.contactEmail,
         contactPhone: s.contactPhone,
+        coverageEffectiveDate: s.coverageEffectiveDate || null,
         lossHistoryCount: s.lossHistoryFiles.length,
         cannabisApplicationAnswers,
         wcRatingBreakdown,
@@ -96,6 +97,7 @@ export default function FinalSubmission() {
         {[
           ["Business Name", s.businessName],
           ["Coverage Type", "Workers' Compensation"],
+          ["Coverage Effective Date", s.coverageEffectiveDate || "Not specified"],
           ["Vertical", s.vertical || "Cannabis"],
           ["Total Annual Payroll", `$${totalPayroll.toLocaleString()}`],
           ["Total Employees", String(totalEmployees)],

@@ -190,8 +190,11 @@ router.post("/:dealId/create-from-quote", async (req, res) => {
     const totalMonthly = wcMonthlyPremium + wfsMonthlyFee;
     const totalAnnual = wcPremium + wfsAnnualTotal;
 
-    const effectiveDate = new Date();
-    const expirationDate = new Date();
+    const effectiveDate =
+      deal.coverageEffectiveDate && /^\d{4}-\d{2}-\d{2}$/.test(deal.coverageEffectiveDate)
+        ? new Date(`${deal.coverageEffectiveDate}T00:00:00Z`)
+        : new Date();
+    const expirationDate = new Date(effectiveDate);
     expirationDate.setFullYear(expirationDate.getFullYear() + 1);
 
     const [proposal] = await db.insert(proposalsTable).values({

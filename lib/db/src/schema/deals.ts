@@ -38,6 +38,7 @@ export const dealsTable = pgTable("deals", {
   numberOfLocations: integer("number_of_locations"),
   multipleStates: boolean("multiple_states").default(false),
   statesOfOperation: text("states_of_operation").array(),
+  coverageEffectiveDate: date("coverage_effective_date", { mode: "string" }),
   nonRenewed: boolean("non_renewed").default(false),
   lapseInCoverage: boolean("lapse_in_coverage").default(false),
   dateOfLapse: date("date_of_lapse"),
