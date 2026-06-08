@@ -755,7 +755,7 @@ export default function Step4Indication() {
             { title: "Risk Management", icon: HardHat, items: ["Injury & Illness Prevention Programs", "Safety Manuals", "Employer & Employee Safety Training", "Facility Inspections"] },
             { title: "Benefits Administration", icon: HeartPulse, items: ["Major Medical (POS, EPO, HDHP options)", "ICHRA", "MEC and MVP", "Dental", "Vision", "Life"] },
             { title: "HR Support", icon: Headset, items: ["Support for HR Matters, Payroll, & Benefits", "HR Best Practice Guidance", "Employee Service Center", "State and Federal Compliance Guidance", "Employment Law Posters", "Wage and Hour Guidance", "Performance Management Support"] },
-            { title: "Work Comp", icon: ShieldCheck, items: ["Pay-as-you-go workers' compensation billing", "Workers' Compensation Posters", "Compliance assistance for applicable federal/state employment laws", "W/C claims management", "24/7/365 Nurse Triage Claims Reporting Hotline", "Patient Advocacy"] },
+            { title: "Workers' Compensation Administration", icon: ShieldCheck, items: ["Pay-as-you-go workers' compensation billing", "Workers' Compensation Posters", "Compliance assistance for applicable federal/state employment laws", "W/C claims management", "24/7/365 Nurse Triage Claims Reporting Hotline", "Patient Advocacy"] },
           ].map((cat) => {
             const Icon = cat.icon;
             return (
