@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuoteFlowStore, type MultiLocationResult, type WorkforceProfilePayload } from "@/lib/quote-flow-store";
 import { api } from "@/lib/api";
-import { Check, Clock, Shield, Cannabis, Loader2, AlertTriangle, FileCheck } from "lucide-react";
+import { Check, Clock, Shield, Cannabis, Loader2, AlertTriangle, FileCheck, Wallet, ShieldCheck, ClipboardCheck, Scale, HardHat, HeartPulse, Smartphone } from "lucide-react";
 
 export default function Step4Indication() {
   const s = useQuoteFlowStore();
@@ -678,6 +678,69 @@ export default function Step4Indication() {
             Select a payroll frequency on the Operations step to highlight your billing cadence.
           </p>
         )}
+        <div
+          style={{
+            marginTop: 18,
+            paddingTop: 18,
+            borderTop: `1px solid ${borderColor}`,
+          }}
+        >
+          <div
+            style={{
+              fontSize: 11,
+              color: textMuted,
+              textTransform: "uppercase",
+              letterSpacing: "0.06em",
+              fontFamily: "var(--app-font-heading)",
+              marginBottom: 12,
+            }}
+          >
+            Included Services
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 10 }}>
+            {[
+              { label: "Payroll", icon: Wallet },
+              { label: "Workers' Compensation", icon: ShieldCheck },
+              { label: "HR & Compliance", icon: ClipboardCheck },
+              { label: "EPLI Insurance", icon: Scale },
+              { label: "Risk Management", icon: HardHat },
+              { label: "Rich Benefits", icon: HeartPulse },
+              { label: "HR Platform Technology", icon: Smartphone },
+            ].map((svc) => {
+              const Icon = svc.icon;
+              return (
+                <div
+                  key={svc.label}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: "10px 12px",
+                    borderRadius: 10,
+                    background: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)",
+                    border: `1px solid ${borderColor}`,
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: 8,
+                      background: "rgba(124,58,237,0.12)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <Icon style={{ width: 16, height: 16, color: "#A78BFA" }} />
+                  </div>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: textPrimary }}>{svc.label}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
       )}
       {/* Coverage Breakdown */}
