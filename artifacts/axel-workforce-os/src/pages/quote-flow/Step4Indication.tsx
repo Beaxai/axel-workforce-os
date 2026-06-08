@@ -500,8 +500,8 @@ export default function Step4Indication() {
                 </tr>
               ))}
               <tr>
-                <td colSpan={5} style={{ padding: "16px 18px", color: textPrimary, fontWeight: 700, borderTop: `1px solid ${borderColor}` }}>Total</td>
-                <td style={{ padding: "16px 18px", color: textPrimary, fontWeight: 700, textAlign: "right", borderTop: `1px solid ${borderColor}` }}>
+                <td colSpan={5} style={{ padding: "16px 18px", color: textPrimary, fontWeight: 700, borderTop: "1px solid #E91E8C" }}>Total</td>
+                <td style={{ padding: "16px 18px", color: textPrimary, fontWeight: 700, textAlign: "right", borderTop: "1px solid #E91E8C" }}>
                   ${totalPremium.toLocaleString()}
                 </td>
               </tr>
