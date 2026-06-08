@@ -797,17 +797,19 @@ export default function Step4Indication() {
         </div>
       )}
       {/* Features */}
-      <div style={{ padding: 28, borderRadius: cardRadius, background: panelBg }}>
-        <h3 style={{ fontSize: 17, fontWeight: 700, color: textPrimary, margin: "0 0 18px" }}>Features</h3>
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {featureList.map((h) => (
-            <div key={h} style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-              <Check style={{ width: 17, height: 17, color: "#E91E8C", flexShrink: 0, marginTop: 1 }} />
-              <span style={{ fontSize: 14, fontWeight: 600, color: textSecondary, lineHeight: 1.45 }}>{h}</span>
-            </div>
-          ))}
+      {!isPeo && (
+        <div style={{ padding: 28, borderRadius: cardRadius, background: panelBg }}>
+          <h3 style={{ fontSize: 17, fontWeight: 700, color: textPrimary, margin: "0 0 18px" }}>Features</h3>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {featureList.map((h) => (
+              <div key={h} style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+                <Check style={{ width: 17, height: 17, color: "#E91E8C", flexShrink: 0, marginTop: 1 }} />
+                <span style={{ fontSize: 14, fontWeight: 600, color: textSecondary, lineHeight: 1.45 }}>{h}</span>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
       {/* Carrier + timing */}
       {!isAso ? (
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
