@@ -222,7 +222,7 @@ export default function Step4Indication() {
   const coverageLabel = isAso
     ? "WorkPlus OS — Administrative Services"
     : isPeo
-    ? "Workforce Solutions"
+    ? "Workforce Solutions Program (PEO)"
     : "Workers' Compensation Insurance";
   const locationCount = new Set(rateBreakdown.map((r) => r.location)).size || 1;
   const primaryState = rateBreakdown[0]?.state || "";
