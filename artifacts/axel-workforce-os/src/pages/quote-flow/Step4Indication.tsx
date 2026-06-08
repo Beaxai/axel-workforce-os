@@ -439,6 +439,19 @@ export default function Step4Indication() {
             padding: "8px 4px",
           }}
         >
+          <h3
+            style={{
+              fontSize: 13,
+              fontWeight: 700,
+              color: textPrimary,
+              textTransform: "uppercase",
+              letterSpacing: "0.06em",
+              fontFamily: "var(--app-font-heading)",
+              margin: "12px 18px 4px",
+            }}
+          >
+            Workers' Compensation Premium Rating
+          </h3>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead>
               <tr>
