@@ -380,6 +380,39 @@ export default function Step4Indication() {
         ))}
       </div>
 
+      {!isAso && (
+        <div
+          style={{
+            padding: 24,
+            borderRadius: cardRadius,
+            background: panelBg,
+            border: `1px solid ${borderColor}`,
+            borderLeft: "3px solid #E91E8C",
+          }}
+        >
+          <div
+            style={{
+              fontSize: 11,
+              color: textMuted,
+              textTransform: "uppercase",
+              letterSpacing: "0.07em",
+              fontFamily: "var(--app-font-heading)",
+              marginBottom: 8,
+            }}
+          >
+            Estimated Annual Premium
+          </div>
+          <div style={{ fontSize: 36, fontWeight: 800, color: textPrimary, lineHeight: 1.1 }}>
+            ${premiumLow.toLocaleString()} – ${premiumHigh.toLocaleString()}
+          </div>
+          <p style={{ fontSize: 13, color: textMuted, margin: "8px 0 0" }}>
+            Based on ${totalPayroll.toLocaleString()} total payroll across {classCodeCount} class code
+            {classCodeCount !== 1 ? "s" : ""} in {stateCount} state{stateCount !== 1 ? "s" : ""} • Experience
+            modifier {modifier.toFixed(2)}
+          </p>
+        </div>
+      )}
+
       {!isAso && hasRateErrors && (
         <div
           style={{
