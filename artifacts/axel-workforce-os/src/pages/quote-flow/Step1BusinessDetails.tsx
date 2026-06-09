@@ -164,7 +164,7 @@ export default function Step1BusinessDetails() {
             style={{
               display: "grid", gridTemplateColumns: "1fr 1fr 80px 1fr 80px 36px",
               gap: 10, alignItems: "end", marginBottom: 10, padding: 12, borderRadius: 8,
-              border: "1px solid rgba(124,58,237,0.15)", background: "rgba(124,58,237,0.02)",
+              border: "1px solid rgba(233,30,140,0.15)", background: "rgba(233,30,140,0.02)",
             }}
           >
             <FieldLabel label={i === 0 ? "First Name" : ""}>
@@ -185,7 +185,7 @@ export default function Step1BusinessDetails() {
                 onClick={() => s.updateOwner(i, { included: !owner.included })}
                 style={{
                   padding: "8px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.1)",
-                  background: owner.included ? "rgba(124,58,237,0.15)" : "transparent",
+                  background: owner.included ? "rgba(233,30,140,0.15)" : "transparent",
                   color: owner.included ? "var(--accent-primary)" : "#888", fontSize: 13, cursor: "pointer", width: "100%",
                 }}
               >

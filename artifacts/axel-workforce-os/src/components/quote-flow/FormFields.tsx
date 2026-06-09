@@ -254,7 +254,7 @@ export function MultiSelect({ values, onChange, options, placeholder }: {
                   gap: 4,
                   padding: "2px 8px",
                   borderRadius: 6,
-                  background: "rgba(124,58,237,0.15)",
+                  background: "rgba(233,30,140,0.15)",
                   color: "var(--accent-primary)",
                   fontSize: 12,
                 }}
@@ -322,7 +322,7 @@ export function MultiSelect({ values, onChange, options, placeholder }: {
                 gap: 10,
                 padding: "10px 14px",
                 border: "none",
-                background: values.includes(o.value) ? "rgba(124,58,237,0.08)" : "transparent",
+                background: values.includes(o.value) ? "rgba(233,30,140,0.08)" : "transparent",
                 color: "#fff",
                 fontSize: 14,
                 textAlign: "left",
@@ -363,7 +363,7 @@ export function YesNoToggle({ value, onChange, options }: {
             padding: "8px 20px",
             borderRadius: 8,
             border: value === opt ? "1px solid var(--accent-primary)" : "1px solid rgba(255,255,255,0.1)",
-            background: value === opt ? "rgba(124,58,237,0.15)" : "transparent",
+            background: value === opt ? "rgba(233,30,140,0.15)" : "transparent",
             color: value === opt ? "var(--accent-primary)" : "#888",
             fontSize: 14,
             fontWeight: 500,
@@ -397,7 +397,7 @@ export function RadioGroup({ value, onChange, options }: {
             padding: "10px 14px",
             borderRadius: 8,
             border: value === opt ? "1px solid var(--accent-primary)" : "1px solid rgba(255,255,255,0.08)",
-            background: value === opt ? "rgba(124,58,237,0.08)" : "transparent",
+            background: value === opt ? "rgba(233,30,140,0.08)" : "transparent",
             color: "#fff",
             fontSize: 14,
             textAlign: "left",
@@ -458,7 +458,7 @@ export function AddButton({ label, onClick }: { label: string; onClick: () => vo
         cursor: "pointer",
         transition: "background 0.15s",
       }}
-      onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(124,58,237,0.08)")}
+      onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(233,30,140,0.08)")}
       onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
     >
       <Plus style={{ width: 14, height: 14 }} />

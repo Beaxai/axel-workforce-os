@@ -1232,7 +1232,7 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
                           border: `1px solid ${borderSubtle}`,
                           background: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)",
                           padding: "24px",
-                          borderLeft: `3px solid ${isAsoDeal ? "var(--accent-primary)" : "#7C3AED"}`,
+                          borderLeft: `3px solid ${isAsoDeal ? "var(--accent-primary)" : "var(--accent-support)"}`,
                         }}
                       >
                         <div className="font-heading" style={{ fontSize: "12px", letterSpacing: "0.08em", color: textMuted, textTransform: "uppercase", marginBottom: "4px" }}>

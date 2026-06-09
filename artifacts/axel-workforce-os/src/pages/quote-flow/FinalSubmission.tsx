@@ -76,7 +76,7 @@ export default function FinalSubmission() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "60vh", textAlign: "center" }}>
-      <div style={{ width: 80, height: 80, borderRadius: 40, background: "rgba(124,58,237,0.12)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 24 }}>
+      <div style={{ width: 80, height: 80, borderRadius: 40, background: "rgba(233,30,140,0.12)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 24 }}>
         <CheckCircle style={{ width: 40, height: 40, color: "var(--accent-primary)" }} />
       </div>
 
@@ -166,7 +166,7 @@ export default function FinalSubmission() {
             alignItems: "baseline",
             marginTop: 12,
             paddingTop: 12,
-            borderTop: "2px solid rgba(124,58,237,0.3)",
+            borderTop: "2px solid rgba(233,30,140,0.3)",
           }}>
             <span style={{ fontSize: 13, color: "var(--accent-primary)", fontWeight: 700 }}>Final Premium</span>
             <span style={{ fontSize: 18, color: "var(--accent-primary)", fontWeight: 700 }}>

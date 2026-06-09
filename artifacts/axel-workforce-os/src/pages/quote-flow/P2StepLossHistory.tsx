@@ -98,7 +98,7 @@ export default function P2StepLossHistory() {
           padding: "40px 24px",
           textAlign: "center",
           cursor: "pointer",
-          background: dragOver ? "rgba(124,58,237,0.04)" : "rgba(255,255,255,0.02)",
+          background: dragOver ? "rgba(233,30,140,0.04)" : "rgba(255,255,255,0.02)",
           transition: "all 0.2s",
           marginBottom: 24,
         }}

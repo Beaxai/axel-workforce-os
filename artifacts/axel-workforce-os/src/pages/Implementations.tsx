@@ -149,7 +149,7 @@ export default function Implementations() {
               fontSize: "14px",
               fontWeight: 500,
               border: `1px solid ${tab === t ? "var(--accent-primary)" : isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`,
-              background: tab === t ? "rgba(124,58,237,0.12)" : "transparent",
+              background: tab === t ? "rgba(233,30,140,0.12)" : "transparent",
               color: tab === t ? "var(--accent-primary)" : textMuted,
               cursor: "pointer",
               transition: "all 0.15s",
@@ -242,8 +242,8 @@ export default function Implementations() {
                         flex: 1,
                         padding: "8px",
                         borderRadius: "6px",
-                        background: isDone ? "rgba(124,58,237,0.08)" : isCurrent ? "rgba(124,58,237,0.04)" : "transparent",
-                        border: `1px solid ${isCurrent ? "rgba(124,58,237,0.3)" : isDone ? "rgba(124,58,237,0.1)" : isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)"}`,
+                        background: isDone ? "rgba(233,30,140,0.08)" : isCurrent ? "rgba(233,30,140,0.04)" : "transparent",
+                        border: `1px solid ${isCurrent ? "rgba(233,30,140,0.3)" : isDone ? "rgba(233,30,140,0.1)" : isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)"}`,
                         textAlign: "center",
                       }}
                     >

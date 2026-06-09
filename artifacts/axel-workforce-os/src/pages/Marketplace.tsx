@@ -187,7 +187,7 @@ export default function Marketplace() {
                   letterSpacing: "0.02em",
                   cursor: "pointer",
                   transition: "background 0.25s ease, border-color 0.25s ease",
-                  boxShadow: isHovered ? "0 6px 18px rgba(124,58,237,0.35)" : "none",
+                  boxShadow: isHovered ? "0 6px 18px rgba(233,30,140,0.35)" : "none",
                 }}
               >
                 Start Submission →

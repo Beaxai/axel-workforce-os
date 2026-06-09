@@ -156,7 +156,7 @@ export default function MyProgram() {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
           <GlassCard>
             <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
-              <ClipboardList style={{ width: 20, height: 20, color: "#7C3AED" }} />
+              <ClipboardList style={{ width: 20, height: 20, color: "var(--accent-primary)" }} />
               <h3 style={{ fontSize: "16px", fontWeight: 600, color: textPrimary, margin: 0 }}>Administrative Services Program</h3>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
@@ -183,7 +183,7 @@ export default function MyProgram() {
               <li>Time &amp; attendance</li>
               <li>Employee handbook &amp; policies</li>
             </ul>
-            <div style={{ marginTop: 16, padding: 12, borderRadius: 10, background: isDark ? "rgba(124,58,237,0.08)" : "rgba(124,58,237,0.05)", border: `1px solid ${isDark ? "rgba(124,58,237,0.2)" : "rgba(124,58,237,0.15)"}` }}>
+            <div style={{ marginTop: 16, padding: 12, borderRadius: 10, background: isDark ? "rgba(233,30,140,0.08)" : "rgba(233,30,140,0.05)", border: `1px solid ${isDark ? "rgba(233,30,140,0.2)" : "rgba(233,30,140,0.15)"}` }}>
               <p style={{ margin: 0, fontSize: 12, color: textMuted }}>
                 Note: ASO clients retain their own Workers' Compensation policy. WC is not included in this program.
               </p>

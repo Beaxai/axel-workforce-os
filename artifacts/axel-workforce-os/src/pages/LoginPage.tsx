@@ -122,10 +122,10 @@ export default function LoginPage() {
                   cursor: "pointer",
                   transition: "all 0.15s",
                   background:
-                    selectedRole === role ? "rgba(124,58,237,0.15)" : cardBg,
+                    selectedRole === role ? "rgba(233,30,140,0.15)" : cardBg,
                   border:
                     selectedRole === role
-                      ? "1px solid rgba(124,58,237,0.4)"
+                      ? "1px solid rgba(233,30,140,0.4)"
                       : `1px solid ${borderColor}`,
                   color: selectedRole === role ? "var(--accent-primary)" : (isDark ? "rgba(255,255,255,0.7)" : "rgba(0,0,0,0.6)"),
                 }}

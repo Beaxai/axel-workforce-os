@@ -21,7 +21,7 @@ export default function ConfirmationScreen() {
           width: 80,
           height: 80,
           borderRadius: 40,
-          background: "rgba(124,58,237,0.12)",
+          background: "rgba(233,30,140,0.12)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -68,7 +68,7 @@ export default function ConfirmationScreen() {
             justifyContent: "space-between",
             padding: "10px 0 2px",
             marginTop: 6,
-            borderTop: "1px solid rgba(124,58,237,0.3)",
+            borderTop: "1px solid rgba(233,30,140,0.3)",
             fontSize: 14,
             fontWeight: 700,
           }}>
@@ -112,7 +112,7 @@ export default function ConfirmationScreen() {
             cursor: "pointer",
             transition: "background 0.15s",
           }}
-          onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(124,58,237,0.08)")}
+          onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(233,30,140,0.08)")}
           onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
         >
           Back to Marketplace
@@ -121,8 +121,8 @@ export default function ConfirmationScreen() {
 
       <style>{`
         @keyframes pulse-pink {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(124,58,237,0.3); }
-          50% { box-shadow: 0 0 0 16px rgba(124,58,237,0); }
+          0%, 100% { box-shadow: 0 0 0 0 rgba(233,30,140,0.3); }
+          50% { box-shadow: 0 0 0 16px rgba(233,30,140,0); }
         }
       `}</style>
     </div>

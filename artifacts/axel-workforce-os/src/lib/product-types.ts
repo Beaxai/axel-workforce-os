@@ -18,8 +18,8 @@ export const PRODUCT_LABELS: Record<string, string> = {
 export const PRODUCT_COLORS: Record<string, string> = {
   WC: "#1E6BE9",
   WC_ONLY: "#1E6BE9",
-  PEO: "#7C3AED",
-  ASO: "#7C3AED",
+  PEO: "#6D28D9",
+  ASO: "#6D28D9",
 };
 
 export function isAsoProduct(productType?: string | null): boolean {

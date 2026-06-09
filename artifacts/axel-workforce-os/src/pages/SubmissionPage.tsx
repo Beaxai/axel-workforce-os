@@ -95,7 +95,7 @@ export default function SubmissionPage() {
               borderRadius: "8px 8px 0 0",
               border: "none",
               borderBottom: `2px solid ${activeTab === tab.key ? accent : "transparent"}`,
-              background: activeTab === tab.key ? "rgba(124,58,237,0.08)" : "transparent",
+              background: activeTab === tab.key ? "rgba(233,30,140,0.08)" : "transparent",
               color: activeTab === tab.key ? accent : "rgba(255,255,255,0.5)",
               cursor: "pointer",
               fontSize: 14,

@@ -34,7 +34,7 @@ const DONUT_DATA = [
   { name: "Hospitality", value: 324 },
 ];
 
-const DONUT_COLORS = ["#7C3AED", "#6D28D9", "#5B21B6", "#4C1D95", "rgba(124,58,237,0.4)"];
+const DONUT_COLORS = ["hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))", "hsl(var(--chart-5))"];
 
 const SECTOR_DATA = [
   { icon: HeartPulse, name: "Healthcare", subtitle: "Critical Care & Pharma", count: "1,420", delta: "+4.1%", deltaType: "positive" as const },
@@ -47,7 +47,7 @@ const SECTOR_DATA = [
 const PIPELINE_DATA = [
   { initials: "TP", name: "Titan Pacific Contractors", vertical: "Construction", status: "IN REVIEW", revenue: "$450,000", color: "#1E40AF" },
   { initials: "EC", name: "Emerald Coast Cultivation", vertical: "Cannabis", status: "ACTIVE", revenue: "$1,200,000", color: "#065F46" },
-  { initials: "PH", name: "Pinnacle Home Health", vertical: "Healthcare", status: "PENDING", revenue: "$890,000", color: "#7C3AED" },
+  { initials: "PH", name: "Pinnacle Home Health", vertical: "Healthcare", status: "PENDING", revenue: "$890,000", color: "#6D28D9" },
 ];
 
 const STATUS_STYLES: Record<string, { color: string; bg: string }> = {
@@ -93,7 +93,7 @@ export default function AdminDashboard() {
             color: textSecondary, fontSize: 13, fontWeight: 500, padding: "8px 16px", cursor: "pointer",
           }}>Export Report</button>
           <button style={{
-            background: "#7C3AED", border: "none", borderRadius: 8,
+            background: "var(--accent-primary)", border: "none", borderRadius: 8,
             color: "#fff", fontSize: 13, fontWeight: 500, padding: "8px 16px", cursor: "pointer",
           }}>+ Generate Insight</button>
         </div>
@@ -101,13 +101,13 @@ export default function AdminDashboard() {
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 24 }}>
         {KPI_DATA.map((kpi) => (
-          <GlassPanel key={kpi.label} style={{ borderBottom: "2px solid #7C3AED" }}>
+          <GlassPanel key={kpi.label} style={{ borderBottom: "2px solid var(--accent-primary)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
               <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: textMuted, fontFamily: "var(--app-font-heading)" }}>
                 {kpi.label}
               </span>
-              <div style={{ background: "rgba(124,58,237,0.2)", borderRadius: 8, padding: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <kpi.icon style={{ width: 16, height: 16, color: "#7C3AED" }} />
+              <div style={{ background: "var(--accent-support-soft)", borderRadius: 8, padding: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <kpi.icon style={{ width: 16, height: 16, color: "var(--accent-support)" }} />
               </div>
             </div>
             <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
@@ -186,7 +186,7 @@ export default function AdminDashboard() {
             <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: textMuted, fontFamily: "var(--app-font-heading)" }}>
               SECTOR PERFORMANCE DETAIL
             </span>
-            <span style={{ fontSize: 12, color: "#7C3AED", cursor: "pointer", fontWeight: 500 }}>
+            <span style={{ fontSize: 12, color: "var(--accent-primary)", cursor: "pointer", fontWeight: 500 }}>
               Quarterly View
             </span>
           </div>
@@ -201,10 +201,10 @@ export default function AdminDashboard() {
                 }}
               >
                 <div style={{
-                  background: "rgba(124,58,237,0.15)", borderRadius: 8, padding: 8,
+                  background: "var(--accent-support-soft)", borderRadius: 8, padding: 8,
                   display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
                 }}>
-                  <sector.icon style={{ width: 18, height: 18, color: "#7C3AED" }} />
+                  <sector.icon style={{ width: 18, height: 18, color: "var(--accent-support)" }} />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 14, fontWeight: 600, color: textPrimary }}>{sector.name}</div>
@@ -223,7 +223,7 @@ export default function AdminDashboard() {
       <GlassPanel>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <span style={{ fontSize: 15, fontWeight: 600, color: textPrimary }}>Recent Implementation Pipelines</span>
-          <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: "#7C3AED", cursor: "pointer", fontFamily: "var(--app-font-heading)" }}>
+          <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--accent-primary)", cursor: "pointer", fontFamily: "var(--app-font-heading)" }}>
             VIEW ALL PIPELINES
           </span>
         </div>

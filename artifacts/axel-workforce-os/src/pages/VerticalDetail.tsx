@@ -436,7 +436,7 @@ function ProgramOfferingSection({
   cardBg: string;
   borderColor: string;
 }) {
-  const iconBg = isDark ? "rgba(124,58,237,0.10)" : "rgba(124,58,237,0.08)";
+  const iconBg = isDark ? "rgba(233,30,140,0.10)" : "rgba(233,30,140,0.08)";
   const bulletColor = ACCENT;
 
   return (

@@ -261,12 +261,12 @@ export default function AppShell() {
                       border: "none",
                       borderRadius: "6px",
                       cursor: "pointer",
-                      color: role === user.role ? (role === "ADMIN" ? "#7C3AED" : "var(--accent-primary)") : textSecondary,
+                      color: role === user.role ? (role === "ADMIN" ? "var(--accent-support)" : "var(--accent-primary)") : textSecondary,
                       background:
                         role === user.role
                           ? role === "ADMIN"
-                            ? "rgba(124,58,237,0.10)"
-                            : "rgba(124,58,237,0.10)"
+                            ? "rgba(233,30,140,0.10)"
+                            : "rgba(233,30,140,0.10)"
                           : "transparent",
                       transition: "background 0.1s",
                     }}
@@ -353,7 +353,7 @@ export default function AppShell() {
                       style={{
                         position: "absolute",
                         inset: 0,
-                        background: "var(--accent-brand-soft)",
+                        background: "var(--accent-primary-soft)",
                         pointerEvents: "none",
                         zIndex: 0,
                       }}
@@ -366,7 +366,7 @@ export default function AppShell() {
                         bottom: 0,
                         right: 0,
                         width: "3px",
-                        background: "var(--accent-brand)",
+                        background: "var(--accent-primary)",
                         pointerEvents: "none",
                         zIndex: 1,
                       }}
@@ -530,8 +530,8 @@ export default function AppShell() {
                     justifyContent: "center",
                     fontSize: "11px",
                     fontWeight: 700,
-                    background: "var(--accent-brand-soft)",
-                    color: "var(--accent-brand)",
+                    background: "var(--accent-primary-soft)",
+                    color: "var(--accent-primary)",
                   }}
                 >
                   {user.firstName[0]}

@@ -86,7 +86,7 @@ export default function AgentDashboard() {
             <button
               key={action.label}
               style={{ textAlign: "left", padding: "16px", borderRadius: "12px", background: subtleBg, border: `1px solid ${borderSubtle}`, cursor: "pointer", transition: "border-color 0.15s" }}
-              onMouseEnter={(e) => (e.currentTarget.style.borderColor = "rgba(124,58,237,0.3)")}
+              onMouseEnter={(e) => (e.currentTarget.style.borderColor = "rgba(233,30,140,0.3)")}
               onMouseLeave={(e) => (e.currentTarget.style.borderColor = borderSubtle)}
             >
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>

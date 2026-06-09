@@ -163,7 +163,7 @@ export default function ClassCodeSearch({ value, description, onChange, state }:
                 cursor: "pointer",
                 transition: "background 0.1s",
               }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(124,58,237,0.08)")}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(233,30,140,0.08)")}
               onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
             >
               <span style={{ color: "var(--accent-primary)", fontWeight: 600, flexShrink: 0, minWidth: 48 }}>

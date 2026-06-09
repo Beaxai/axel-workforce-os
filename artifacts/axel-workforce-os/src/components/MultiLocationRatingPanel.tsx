@@ -203,8 +203,8 @@ export default function MultiLocationRatingPanel({
           alignItems: "baseline",
           padding: "16px 18px",
           borderRadius: "10px",
-          border: "1px solid rgba(124,58,237,0.3)",
-          background: isDark ? "rgba(124,58,237,0.08)" : "rgba(124,58,237,0.05)",
+          border: "1px solid rgba(233,30,140,0.3)",
+          background: isDark ? "rgba(233,30,140,0.08)" : "rgba(233,30,140,0.05)",
         }}
       >
         <span style={{ fontSize: "13px", color: "var(--accent-primary)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>

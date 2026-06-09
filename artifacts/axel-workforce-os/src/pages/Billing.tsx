@@ -133,7 +133,7 @@ export default function Billing() {
               fontSize: "14px",
               fontWeight: 500,
               border: `1px solid ${tab === t ? "var(--accent-primary)" : inputBorder}`,
-              background: tab === t ? "rgba(124,58,237,0.12)" : "transparent",
+              background: tab === t ? "rgba(233,30,140,0.12)" : "transparent",
               color: tab === t ? "var(--accent-primary)" : textMuted,
               cursor: "pointer",
               transition: "all 0.15s",

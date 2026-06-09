@@ -334,7 +334,7 @@ function PricingCard({ label, value, isAccent }: { label: string; value: string;
   return (
     <div style={{
       background: "rgba(255,255,255,0.04)",
-      border: `1px solid ${isAccent ? "rgba(124,58,237,0.25)" : "rgba(255,255,255,0.07)"}`,
+      border: `1px solid ${isAccent ? "rgba(233,30,140,0.25)" : "rgba(255,255,255,0.07)"}`,
       borderRadius: 10, padding: "16px 20px",
     }}>
       <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 12, margin: "0 0 6px", textTransform: "uppercase", letterSpacing: "0.5px" }}>{label}</p>

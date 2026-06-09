@@ -105,7 +105,7 @@ function LazyColumnBody({ children, hasMore, onLoadMore, isDropTarget, isDark }:
         padding: "8px",
         background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)",
         backdropFilter: "blur(12px)",
-        border: `1px solid ${isDropTarget ? "rgba(124,58,237,0.4)" : isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`,
+        border: `1px solid ${isDropTarget ? "rgba(233,30,140,0.4)" : isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`,
         borderRadius: "12px",
         transition: "border-color 0.15s",
       }}
@@ -398,7 +398,7 @@ export default function Pipeline() {
                 fontWeight: 500,
                 border: "none",
                 cursor: "pointer",
-                background: viewMode === "kanban" ? "rgba(124,58,237,0.15)" : "transparent",
+                background: viewMode === "kanban" ? "rgba(233,30,140,0.15)" : "transparent",
                 color: viewMode === "kanban" ? "var(--accent-primary)" : textMuted,
                 transition: "background 0.15s, color 0.15s",
               }}
@@ -418,7 +418,7 @@ export default function Pipeline() {
                 border: "none",
                 borderLeft: `1px solid ${borderSubtle}`,
                 cursor: "pointer",
-                background: viewMode === "list" ? "rgba(124,58,237,0.15)" : "transparent",
+                background: viewMode === "list" ? "rgba(233,30,140,0.15)" : "transparent",
                 color: viewMode === "list" ? "var(--accent-primary)" : textMuted,
                 transition: "background 0.15s, color 0.15s",
               }}
@@ -606,7 +606,7 @@ export default function Pipeline() {
                           transition: "border-color 0.15s, opacity 0.15s",
                         }}
                         onMouseEnter={(e) => {
-                          e.currentTarget.style.borderColor = "rgba(124,58,237,0.3)";
+                          e.currentTarget.style.borderColor = "rgba(233,30,140,0.3)";
                         }}
                         onMouseLeave={(e) => {
                           e.currentTarget.style.borderColor = borderSubtle;

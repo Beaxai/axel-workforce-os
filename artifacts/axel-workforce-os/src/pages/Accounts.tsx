@@ -113,7 +113,7 @@ export default function Accounts() {
                 fontSize: "13px",
                 fontWeight: 500,
                 border: `1px solid ${statusFilter === f ? "var(--accent-primary)" : inputBorder}`,
-                background: statusFilter === f ? "rgba(124,58,237,0.12)" : "transparent",
+                background: statusFilter === f ? "rgba(233,30,140,0.12)" : "transparent",
                 color: statusFilter === f ? "var(--accent-primary)" : textMuted,
                 cursor: "pointer",
                 transition: "all 0.15s",

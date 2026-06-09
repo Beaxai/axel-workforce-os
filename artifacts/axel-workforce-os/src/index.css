@@ -68,18 +68,19 @@
 
 /* =====================================================================
    AXEL BRAND ACCENT TOKENS — single source of truth
-   PURPLE = primary interactive accent. PINK = brand moments / primary CTA.
+   PINK = primary interactive accent. PURPLE = supporting accent.
+   The single primary CTA per screen uses --gradient-cta (purple→pink).
    These are mode-independent (same hex in light & dark). Consumed by both
    the CSS path (here) and the JS path (lib/use-theme-colors.ts).
    ===================================================================== */
 :root {
-  --accent-primary:        #7C3AED;
-  --accent-primary-hover:  #6D28D9;
-  --accent-primary-soft:   rgba(124,58,237,0.15);
-  --accent-brand:          #E91E8C;
-  --accent-brand-soft:     rgba(233,30,140,0.18);
-  --accent-brand-hover:    #d1187e;
-  --accent-brand-focus:    #ff4ba6;
+  --accent-primary:        #E91E8C;
+  --accent-primary-hover:  #d1187e;
+  --accent-primary-focus:  #ff4ba6;
+  --accent-primary-soft:   rgba(233,30,140,0.15);
+  --accent-support:        #7C3AED;
+  --accent-support-hover:  #6D28D9;
+  --accent-support-soft:   rgba(124,58,237,0.15);
   --gradient-cta:          linear-gradient(135deg, #7C3AED 0%, #E91E8C 100%);
 }
 
@@ -104,15 +105,15 @@
   --sidebar: 210 40% 96%;
   --sidebar-foreground: 222 47% 11%;
   --sidebar-border: 214 32% 91%;
-  --sidebar-primary: 262 83% 58%;
+  --sidebar-primary: 328 84% 52%;
   --sidebar-primary-foreground: 210 40% 98%;
   --sidebar-accent: 210 40% 96%;
   --sidebar-accent-foreground: 222 47% 11%;
-  --sidebar-ring: 262 83% 58%;
+  --sidebar-ring: 328 84% 52%;
   --popover: 0 0% 100%;
   --popover-foreground: 222 47% 11%;
   --popover-border: 214 32% 91%;
-  --primary: 262 83% 58%;
+  --primary: 328 84% 52%;
   --primary-foreground: 210 40% 98%;
   --secondary: 210 40% 96%;
   --secondary-foreground: 222 47% 11%;
@@ -123,9 +124,9 @@
   --destructive: 0 84% 60%;
   --destructive-foreground: 210 40% 98%;
   --input: 214 32% 91%;
-  --ring: 262 83% 58%;
-  --chart-1: 262 83% 58%;
-  --chart-2: 327 81% 52%;
+  --ring: 328 84% 52%;
+  --chart-1: 328 84% 52%;
+  --chart-2: 262 83% 58%;
   --chart-3: 270 70% 60%;
   --chart-4: 300 65% 55%;
   --chart-5: 245 60% 55%;
@@ -198,15 +199,15 @@
   --sidebar: 240 13% 4%;
   --sidebar-foreground: 210 40% 98%;
   --sidebar-border: 217 33% 17%;
-  --sidebar-primary: 262 83% 58%;
+  --sidebar-primary: 328 84% 52%;
   --sidebar-primary-foreground: 210 40% 98%;
   --sidebar-accent: 217 33% 17%;
   --sidebar-accent-foreground: 210 40% 98%;
-  --sidebar-ring: 262 83% 58%;
+  --sidebar-ring: 328 84% 52%;
   --popover: 222 47% 13%;
   --popover-foreground: 210 40% 98%;
   --popover-border: 217 33% 17%;
-  --primary: 262 83% 58%;
+  --primary: 328 84% 52%;
   --primary-foreground: 210 40% 98%;
   --secondary: 217 33% 17%;
   --secondary-foreground: 210 40% 98%;
@@ -217,9 +218,9 @@
   --destructive: 0 63% 31%;
   --destructive-foreground: 210 40% 98%;
   --input: 217 33% 25%;
-  --ring: 262 83% 58%;
-  --chart-1: 262 83% 58%;
-  --chart-2: 327 81% 52%;
+  --ring: 328 84% 52%;
+  --chart-1: 328 84% 52%;
+  --chart-2: 262 83% 58%;
   --chart-3: 270 70% 60%;
   --chart-4: 300 65% 55%;
   --chart-5: 245 60% 55%;

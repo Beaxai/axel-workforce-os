@@ -243,7 +243,7 @@ export default function AccountDetail() {
                     border: `1px solid ${inputBorder}`,
                     transition: "border-color 0.15s",
                   }}
-                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(124,58,237,0.3)"; }}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(233,30,140,0.3)"; }}
                   onMouseLeave={(e) => { e.currentTarget.style.borderColor = inputBorder; }}
                 >
                   <div>
@@ -327,7 +327,7 @@ export default function AccountDetail() {
               {activity.length === 0 && <p style={{ fontSize: "13px", color: textMuted, margin: 0 }}>No activity yet.</p>}
               {activity.map((a) => (
                 <div key={a.id} style={{ display: "flex", gap: "10px", padding: "8px 10px", background: inputBg, borderRadius: "8px", alignItems: "flex-start" }}>
-                  <div style={{ width: "22px", height: "22px", borderRadius: "50%", background: a.eventType === "NOTE" ? "rgba(124,58,237,0.15)" : "rgba(59,130,246,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <div style={{ width: "22px", height: "22px", borderRadius: "50%", background: a.eventType === "NOTE" ? "rgba(233,30,140,0.15)" : "rgba(59,130,246,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                     {a.eventType === "NOTE" ? <User style={{ width: "10px", height: "10px", color: "var(--accent-primary)" }} /> : <Clock style={{ width: "10px", height: "10px", color: "#1E6BE9" }} />}
                   </div>
                   <div>

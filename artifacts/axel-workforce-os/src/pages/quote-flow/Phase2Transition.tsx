@@ -8,7 +8,7 @@ export default function Phase2Transition() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "60vh", textAlign: "center", maxWidth: 520, margin: "0 auto" }}>
-      <div style={{ width: 72, height: 72, borderRadius: 36, background: "rgba(124,58,237,0.12)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 24 }}>
+      <div style={{ width: 72, height: 72, borderRadius: 36, background: "rgba(233,30,140,0.12)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 24 }}>
         <FileText style={{ width: 32, height: 32, color: "var(--accent-primary)" }} />
       </div>
       <h2 style={{ fontSize: 28, fontWeight: 700, color: textPrimary, margin: "0 0 12px" }}>

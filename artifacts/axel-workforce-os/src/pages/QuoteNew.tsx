@@ -275,7 +275,7 @@ export default function QuoteNew() {
             fontWeight: 600,
             padding: "3px 10px",
             borderRadius: "6px",
-            background: quoteType === "PEO+WC" ? "rgba(124,58,237,0.15)" : "rgba(30,107,233,0.15)",
+            background: quoteType === "PEO+WC" ? "rgba(233,30,140,0.15)" : "rgba(30,107,233,0.15)",
             color: quoteType === "PEO+WC" ? "var(--accent-primary)" : "#1E6BE9",
           }}>
             {quoteType}
@@ -478,7 +478,7 @@ export default function QuoteNew() {
             right: "24px",
             zIndex: 500,
             background: isDark ? "rgba(14,14,18,0.98)" : "rgba(255,255,255,0.98)",
-            border: "1px solid rgba(124,58,237,0.3)",
+            border: "1px solid rgba(233,30,140,0.3)",
             borderRadius: "12px",
             padding: "16px 20px",
             display: "flex",

@@ -84,7 +84,7 @@ export default function DashboardLayout() {
                 to={item.path}
                 className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
                 style={{
-                  background: active ? "rgba(124,58,237,0.15)" : "transparent",
+                  background: active ? "rgba(233,30,140,0.15)" : "transparent",
                   color: active ? "var(--accent-primary)" : "rgba(255,255,255,0.6)",
                 }}
                 onMouseEnter={(e) => {
@@ -141,17 +141,17 @@ export default function DashboardLayout() {
                       style={{
                         color:
                           role === user.role ? "var(--accent-primary)" : "rgba(255,255,255,0.6)",
-                        background: role === user.role ? "rgba(124,58,237,0.1)" : "transparent",
+                        background: role === user.role ? "rgba(233,30,140,0.1)" : "transparent",
                       }}
                       onMouseEnter={(e) =>
                         (e.currentTarget.style.background =
                           role === user.role
-                            ? "rgba(124,58,237,0.15)"
+                            ? "rgba(233,30,140,0.15)"
                             : "rgba(255,255,255,0.06)")
                       }
                       onMouseLeave={(e) =>
                         (e.currentTarget.style.background =
-                          role === user.role ? "rgba(124,58,237,0.1)" : "transparent")
+                          role === user.role ? "rgba(233,30,140,0.1)" : "transparent")
                       }
                     >
                       {ROLE_LABELS[role]}
@@ -183,7 +183,7 @@ export default function DashboardLayout() {
           <div className="flex items-center gap-3">
             <div
               className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold"
-              style={{ background: "rgba(124,58,237,0.2)", color: "var(--accent-primary)" }}
+              style={{ background: "rgba(233,30,140,0.2)", color: "var(--accent-primary)" }}
             >
               {user.firstName[0]}
               {user.lastName[0]}
