@@ -184,6 +184,10 @@ interface QuoteRecord {
   wcIndicationMin?: string | null;
   wcIndicationMax?: string | null;
   wcFinalPremium?: string | null;
+  pepm?: string | null;
+  peoPepm?: string | null;
+  monthlyWfsFee?: string | null;
+  peoAnnualTotal?: string | null;
 }
 
 interface DealCardModalProps {
@@ -1151,35 +1155,43 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
               </>
             )}
 
-            {activeTab === "quote" && (
+            {activeTab === "quote" && (() => {
+              const hasWcQuote = !!(quoteRecord && quoteRecord.wcRatingBreakdown);
+              const productType = deal?.productType;
+              const isAsoPeoDeal = productType === "ASO" || productType === "PEO";
+              const asoPeoEmployees = Number(quoteRecord?.headcount ?? deal?.employeeCountFt ?? 0);
+              const showAsoPeoIndication = !hasWcQuote && isAsoPeoDeal && asoPeoEmployees > 0;
+              const canContinue = (quoteRecord?.workforceProfile?.locations?.length ?? 0) > 0;
+              const hasIndication = hasWcQuote || showAsoPeoIndication;
+              return (
               <div>
-                {quoteRecord && quoteRecord.wcRatingBreakdown ? (
+                {hasWcQuote ? (
                   (() => {
                     const wcBreakdown =
-                      quoteRecord.wcRatingBreakdown?.data || quoteRecord.wcRatingBreakdown;
+                      quoteRecord!.wcRatingBreakdown?.data || quoteRecord!.wcRatingBreakdown;
                     const isMultiLocation = Array.isArray(wcBreakdown?.locations);
                     if (isMultiLocation) {
                       return (
                         <MultiLocationRatingPanel
                           businessName={deal?.businessName || ""}
                           wcBreakdown={wcBreakdown}
-                          workforceProfile={quoteRecord.workforceProfile || null}
+                          workforceProfile={quoteRecord!.workforceProfile || null}
                           indicationLow={
-                            quoteRecord.wcIndicationMin != null
-                              ? Number(quoteRecord.wcIndicationMin)
+                            quoteRecord!.wcIndicationMin != null
+                              ? Number(quoteRecord!.wcIndicationMin)
                               : null
                           }
                           indicationHigh={
-                            quoteRecord.wcIndicationMax != null
-                              ? Number(quoteRecord.wcIndicationMax)
+                            quoteRecord!.wcIndicationMax != null
+                              ? Number(quoteRecord!.wcIndicationMax)
                               : null
                           }
                           finalPremiumFallback={
-                            quoteRecord.wcFinalPremium != null
-                              ? Number(quoteRecord.wcFinalPremium)
+                            quoteRecord!.wcFinalPremium != null
+                              ? Number(quoteRecord!.wcFinalPremium)
                               : null
                           }
-                          ratedAt={quoteRecord.ratedAt}
+                          ratedAt={quoteRecord!.ratedAt}
                         />
                       );
                     }
@@ -1189,12 +1201,69 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
                         quoteType={deal?.productType === "PEO" ? "PEO+WC" : "WC Only"}
                         wcBreakdown={wcBreakdown}
                         wfsBreakdown={
-                          quoteRecord.wfsRatingBreakdown?.data ||
-                          quoteRecord.wfsRatingBreakdown
+                          quoteRecord!.wfsRatingBreakdown?.data ||
+                          quoteRecord!.wfsRatingBreakdown
                         }
                         readOnly
-                        ratedAt={quoteRecord.ratedAt}
+                        ratedAt={quoteRecord!.ratedAt}
                       />
+                    );
+                  })()
+                ) : showAsoPeoIndication ? (
+                  (() => {
+                    const isAsoDeal = productType === "ASO";
+                    const pepm = isAsoDeal
+                      ? Number(quoteRecord?.pepm ?? 50)
+                      : Number(quoteRecord?.peoPepm ?? deal?.wfsPepmRate ?? 0);
+                    const monthly =
+                      quoteRecord?.monthlyWfsFee != null
+                        ? Number(quoteRecord.monthlyWfsFee)
+                        : pepm * asoPeoEmployees;
+                    const annual =
+                      quoteRecord?.peoAnnualTotal != null
+                        ? Number(quoteRecord.peoAnnualTotal)
+                        : monthly * 12;
+                    const fmtUsd = (n: number) =>
+                      n.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0, maximumFractionDigits: 0 });
+                    return (
+                      <div
+                        style={{
+                          borderRadius: "14px",
+                          border: `1px solid ${borderSubtle}`,
+                          background: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)",
+                          padding: "24px",
+                          borderLeft: `3px solid ${isAsoDeal ? "#E91E8C" : "#7C3AED"}`,
+                        }}
+                      >
+                        <div className="font-heading" style={{ fontSize: "12px", letterSpacing: "0.08em", color: textMuted, textTransform: "uppercase", marginBottom: "4px" }}>
+                          {isAsoDeal ? "WorkPlus OS — Administrative Services" : "Workforce Solutions Program (PEO)"}
+                        </div>
+                        <div style={{ fontSize: "13px", color: textMuted, marginBottom: "20px" }}>Pricing Indication</div>
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "12px" }}>
+                          {[
+                            { label: "Per Employee / Month", value: fmtUsd(pepm) },
+                            { label: "Monthly Total", value: fmtUsd(monthly) },
+                            { label: "Annual Total", value: fmtUsd(annual) },
+                          ].map((stat) => (
+                            <div
+                              key={stat.label}
+                              style={{
+                                borderRadius: "10px",
+                                background: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)",
+                                border: `1px solid ${borderSubtle}`,
+                                padding: "14px 16px",
+                              }}
+                            >
+                              <div style={{ fontSize: "11px", color: textMuted, marginBottom: "6px" }}>{stat.label}</div>
+                              <div style={{ fontSize: "22px", fontWeight: 700, color: textPrimary }}>{stat.value}</div>
+                            </div>
+                          ))}
+                        </div>
+                        <div style={{ fontSize: "12px", color: textMuted, marginTop: "16px" }}>
+                          Based on {asoPeoEmployees} employee{asoPeoEmployees !== 1 ? "s" : ""}
+                          {deal?.annualPayroll ? ` • ${formatCurrency(deal.annualPayroll)} annual payroll` : ""}.
+                        </div>
+                      </div>
                     );
                   })()
                 ) : (
@@ -1214,21 +1283,24 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
                   </div>
                 )}
 
-                {quoteRecord && quoteRecord.wcRatingBreakdown && (
+                {hasIndication && (
                   <div style={{ marginTop: "16px", display: "flex", gap: "10px", justifyContent: "center" }}>
-                    {quoteRecord.workforceProfile?.locations?.length > 0 && (
+                    {canContinue && (
                       <PinkButton onClick={handleContinueQuote} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 20px" }}>
                         Continue Quote
                         <ArrowRight style={{ width: "14px", height: "14px" }} />
                       </PinkButton>
                     )}
-                    <GhostButton onClick={handleRequote} style={{ padding: "8px 20px" }}>
-                      Requote
-                    </GhostButton>
+                    {hasWcQuote && (
+                      <GhostButton onClick={handleRequote} style={{ padding: "8px 20px" }}>
+                        Requote
+                      </GhostButton>
+                    )}
                   </div>
                 )}
               </div>
-            )}
+              );
+            })()}
 
             {activeTab === "proposal" && (
               <ProposalTabInline dealId={dealId} />

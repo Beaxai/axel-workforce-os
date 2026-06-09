@@ -213,25 +213,39 @@ export default function Step4Indication() {
       const newDeal = await api.post<{ id: string }>("/deals", payload);
 
       const ind = s.indicationData;
-      if (ind?.wcRatingBreakdown) {
-        const finalPremium = Number(ind.wcRatingBreakdown.finalPremium ?? totalPremium);
+      if (ind) {
+        const quoteBody: Record<string, unknown> = {
+          dealId: newDeal.id,
+          status: "INDICATION",
+          state: s.locations[0]?.state || undefined,
+          annualPayroll: totalPayroll ? String(totalPayroll) : undefined,
+          headcount: totalEmployees || undefined,
+          eMod: String(modifier || 1.0),
+          scheduleRating: "1.0",
+          isPeo,
+          workforceProfile: ind.workforceProfile,
+        };
+        if (isAso) {
+          const asoPepm = 50;
+          const asoEmployees = Math.max(totalEmployees, 1);
+          quoteBody.pepm = String(asoPepm);
+          quoteBody.monthlyWfsFee = String(asoPepm * asoEmployees);
+          quoteBody.peoAnnualTotal = String(asoPepm * asoEmployees * 12);
+        } else if (isPeo) {
+          quoteBody.peoPepm = String(peoPerEmployeeMonthly);
+          quoteBody.monthlyWfsFee = String(peoPerEmployeeMonthly * peoEmployees);
+          quoteBody.peoAnnualTotal = String(peoAnnual);
+        }
+        if (!isAso && ind.wcRatingBreakdown) {
+          const finalPremium = Number(ind.wcRatingBreakdown.finalPremium ?? totalPremium);
+          quoteBody.wcPremium = String(finalPremium);
+          quoteBody.wcFinalPremium = String(finalPremium);
+          quoteBody.wcIndicationMin = premiumLow != null ? String(premiumLow) : undefined;
+          quoteBody.wcIndicationMax = premiumHigh != null ? String(premiumHigh) : undefined;
+          quoteBody.wcRatingBreakdown = ind.wcRatingBreakdown;
+        }
         try {
-          await api.post("/quotes", {
-            dealId: newDeal.id,
-            status: "INDICATION",
-            state: s.locations[0]?.state || undefined,
-            annualPayroll: totalPayroll ? String(totalPayroll) : undefined,
-            headcount: totalEmployees || undefined,
-            eMod: String(modifier || 1.0),
-            scheduleRating: "1.0",
-            isPeo,
-            wcPremium: String(finalPremium),
-            wcFinalPremium: String(finalPremium),
-            wcIndicationMin: premiumLow != null ? String(premiumLow) : undefined,
-            wcIndicationMax: premiumHigh != null ? String(premiumHigh) : undefined,
-            wcRatingBreakdown: ind.wcRatingBreakdown,
-            workforceProfile: ind.workforceProfile,
-          });
+          await api.post("/quotes", quoteBody);
         } catch (e) {
           console.error("Failed to persist indication quote:", e);
         }
