@@ -13,7 +13,7 @@ function Checkbox({ checked, onChange, label, color }: { checked: boolean; onCha
         style={{
           width: 18, height: 18, borderRadius: 4,
           border: checked ? "none" : "2px solid rgba(255,255,255,0.2)",
-          background: checked ? "#E91E8C" : "transparent",
+          background: checked ? "var(--accent-primary)" : "transparent",
           display: "flex", alignItems: "center", justifyContent: "center",
         }}
       >
@@ -252,7 +252,7 @@ export default function P2Step7AutoExposure() {
                 style={{
                   width: 18, height: 18, borderRadius: 4,
                   border: s.vehiclesUnmarked ? "none" : "2px solid rgba(255,255,255,0.2)",
-                  background: s.vehiclesUnmarked ? "#E91E8C" : "transparent",
+                  background: s.vehiclesUnmarked ? "var(--accent-primary)" : "transparent",
                   display: "flex", alignItems: "center", justifyContent: "center",
                 }}
               >

@@ -33,7 +33,7 @@ export default function CsaDashboard() {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px", marginBottom: "24px" }}>
         <GlassCard>
           <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
-            <Users style={{ width: "16px", height: "16px", color: "#E91E8C" }} />
+            <Users style={{ width: "16px", height: "16px", color: "var(--accent-primary)" }} />
             <h3 style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, margin: 0 }}>Client Contacts</h3>
           </div>
           {contacts.length === 0 ? (
@@ -55,7 +55,7 @@ export default function CsaDashboard() {
 
         <GlassCard>
           <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
-            <ClipboardList style={{ width: "16px", height: "16px", color: "#E91E8C" }} />
+            <ClipboardList style={{ width: "16px", height: "16px", color: "var(--accent-primary)" }} />
             <h3 style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, margin: 0 }}>My Tasks</h3>
           </div>
           {openTasks.length === 0 ? (
@@ -78,7 +78,7 @@ export default function CsaDashboard() {
 
       <GlassCard>
         <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
-          <Shield style={{ width: "16px", height: "16px", color: "#E91E8C" }} />
+          <Shield style={{ width: "16px", height: "16px", color: "var(--accent-primary)" }} />
           <h3 style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, margin: 0 }}>Active Policies</h3>
         </div>
         {policies.length === 0 ? (

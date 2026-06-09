@@ -15,5 +15,17 @@ export function useThemeColors() {
     borderColor: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.1)",
     hoverBg: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)",
     dropdownBg: isDark ? "rgba(30,30,35,0.95)" : "rgba(255,255,255,0.98)",
+
+    // Brand accent tokens — mirror the CSS variables in index.css so the JS
+    // styling path and the CSS path read identical values. Purple = primary
+    // interactive accent; pink = brand moments / primary CTA only.
+    accentPrimary: "#7C3AED",
+    accentPrimaryHover: "#6D28D9",
+    accentPrimarySoft: "rgba(124,58,237,0.15)",
+    accentBrand: "#E91E8C",
+    accentBrandSoft: "rgba(233,30,140,0.18)",
+    accentBrandHover: "#d1187e",
+    accentBrandFocus: "#ff4ba6",
+    gradientCta: "linear-gradient(135deg, #7C3AED 0%, #E91E8C 100%)",
   };
 }

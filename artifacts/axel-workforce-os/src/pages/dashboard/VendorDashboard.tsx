@@ -30,7 +30,7 @@ export default function VendorDashboard() {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
         <GlassCard>
           <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
-            <ClipboardList style={{ width: "16px", height: "16px", color: "#E91E8C" }} />
+            <ClipboardList style={{ width: "16px", height: "16px", color: "var(--accent-primary)" }} />
             <h3 style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, margin: 0 }}>Open Tasks</h3>
           </div>
           {openTasks.length === 0 ? (
@@ -55,7 +55,7 @@ export default function VendorDashboard() {
 
         <GlassCard>
           <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
-            <CheckCircle2 style={{ width: "16px", height: "16px", color: "#E91E8C" }} />
+            <CheckCircle2 style={{ width: "16px", height: "16px", color: "var(--accent-primary)" }} />
             <h3 style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, margin: 0 }}>Completed Tasks</h3>
           </div>
           {completedTasks.length === 0 ? (

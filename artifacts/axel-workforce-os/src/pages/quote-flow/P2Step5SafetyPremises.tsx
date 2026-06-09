@@ -98,7 +98,7 @@ export default function P2Step5SafetyPremises() {
               style={{
                 width: 18, height: 18, borderRadius: 4,
                 border: s.chemicalsNotApplicable ? "none" : "2px solid rgba(255,255,255,0.2)",
-                background: s.chemicalsNotApplicable ? "#E91E8C" : "transparent",
+                background: s.chemicalsNotApplicable ? "var(--accent-primary)" : "transparent",
                 display: "flex", alignItems: "center", justifyContent: "center",
               }}
             >
@@ -139,7 +139,7 @@ export default function P2Step5SafetyPremises() {
                 style={{
                   width: 18, height: 18, borderRadius: 4,
                   border: s.forkliftsCertified ? "none" : "2px solid rgba(255,255,255,0.2)",
-                  background: s.forkliftsCertified ? "#E91E8C" : "transparent",
+                  background: s.forkliftsCertified ? "var(--accent-primary)" : "transparent",
                   display: "flex", alignItems: "center", justifyContent: "center",
                 }}
               >
@@ -210,7 +210,7 @@ export default function P2Step5SafetyPremises() {
                   style={{
                     width: 18, height: 18, borderRadius: 4,
                     border: s.outsideSecurityCois ? "none" : "2px solid rgba(255,255,255,0.2)",
-                    background: s.outsideSecurityCois ? "#E91E8C" : "transparent",
+                    background: s.outsideSecurityCois ? "var(--accent-primary)" : "transparent",
                     display: "flex", alignItems: "center", justifyContent: "center",
                   }}
                 >
@@ -224,7 +224,7 @@ export default function P2Step5SafetyPremises() {
                   style={{
                     width: 18, height: 18, borderRadius: 4,
                     border: s.outsideSecurityAdditionalInsured ? "none" : "2px solid rgba(255,255,255,0.2)",
-                    background: s.outsideSecurityAdditionalInsured ? "#E91E8C" : "transparent",
+                    background: s.outsideSecurityAdditionalInsured ? "var(--accent-primary)" : "transparent",
                     display: "flex", alignItems: "center", justifyContent: "center",
                   }}
                 >

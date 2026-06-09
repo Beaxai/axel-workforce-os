@@ -65,12 +65,12 @@ export default function Step3ExperienceMod() {
                   gap: 12,
                   padding: "14px 18px",
                   borderRadius: 10,
-                  background: "rgba(233,30,140,0.06)",
-                  border: "1px solid rgba(233,30,140,0.15)",
+                  background: "rgba(124,58,237,0.06)",
+                  border: "1px solid rgba(124,58,237,0.15)",
                   marginTop: 16,
                 }}
               >
-                <AlertCircle style={{ width: 18, height: 18, color: "#E91E8C", flexShrink: 0, marginTop: 2 }} />
+                <AlertCircle style={{ width: 18, height: 18, color: "var(--accent-primary)", flexShrink: 0, marginTop: 2 }} />
                 <p style={{ fontSize: 14, color: "#ccc", margin: 0, lineHeight: 1.5 }}>
                   We'll use a neutral modifier of <strong style={{ color: textPrimary }}>1.00</strong> for your indication.
                   Final pricing may vary.
@@ -145,7 +145,7 @@ export default function Step3ExperienceMod() {
             style={{
               display: "grid", gridTemplateColumns: "1fr 1fr 1fr 120px 80px 120px 36px",
               gap: 10, alignItems: "end", marginBottom: 10, padding: 12, borderRadius: 8,
-              border: "1px solid rgba(233,30,140,0.15)", background: "rgba(233,30,140,0.02)",
+              border: "1px solid rgba(124,58,237,0.15)", background: "rgba(124,58,237,0.02)",
             }}
           >
             <FieldLabel label={i === 0 ? "Effective" : ""}>

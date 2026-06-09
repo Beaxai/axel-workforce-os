@@ -21,7 +21,7 @@ export default function ConfirmationScreen() {
           width: 80,
           height: 80,
           borderRadius: 40,
-          background: "rgba(233,30,140,0.12)",
+          background: "rgba(124,58,237,0.12)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -29,7 +29,7 @@ export default function ConfirmationScreen() {
           animation: "pulse-pink 1.5s ease-in-out infinite",
         }}
       >
-        <CheckCircle style={{ width: 44, height: 44, color: "#E91E8C" }} />
+        <CheckCircle style={{ width: 44, height: 44, color: "var(--accent-primary)" }} />
       </div>
 
       <h2 style={{ fontSize: 32, fontWeight: 700, color: textPrimary, margin: "0 0 8px" }}>
@@ -68,12 +68,12 @@ export default function ConfirmationScreen() {
             justifyContent: "space-between",
             padding: "10px 0 2px",
             marginTop: 6,
-            borderTop: "1px solid rgba(233,30,140,0.3)",
+            borderTop: "1px solid rgba(124,58,237,0.3)",
             fontSize: 14,
             fontWeight: 700,
           }}>
-            <span style={{ color: "#E91E8C" }}>Final Premium</span>
-            <span style={{ color: "#E91E8C" }}>${Math.round(wcRatingBreakdown.finalPremium).toLocaleString()}</span>
+            <span style={{ color: "var(--accent-primary)" }}>Final Premium</span>
+            <span style={{ color: "var(--accent-primary)" }}>${Math.round(wcRatingBreakdown.finalPremium).toLocaleString()}</span>
           </div>
         </div>
       )}
@@ -86,7 +86,7 @@ export default function ConfirmationScreen() {
             padding: "14px 28px",
             borderRadius: 28,
             border: "none",
-            background: "#E91E8C",
+            background: "var(--accent-primary)",
             color: textPrimary,
             fontSize: 15,
             fontWeight: 700,
@@ -104,15 +104,15 @@ export default function ConfirmationScreen() {
           style={{
             padding: "14px 28px",
             borderRadius: 28,
-            border: "1px solid #E91E8C",
+            border: "1px solid var(--accent-primary)",
             background: "transparent",
-            color: "#E91E8C",
+            color: "var(--accent-primary)",
             fontSize: 15,
             fontWeight: 700,
             cursor: "pointer",
             transition: "background 0.15s",
           }}
-          onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(233,30,140,0.08)")}
+          onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(124,58,237,0.08)")}
           onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
         >
           Back to Marketplace
@@ -121,8 +121,8 @@ export default function ConfirmationScreen() {
 
       <style>{`
         @keyframes pulse-pink {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(233,30,140,0.3); }
-          50% { box-shadow: 0 0 0 16px rgba(233,30,140,0); }
+          0%, 100% { box-shadow: 0 0 0 0 rgba(124,58,237,0.3); }
+          50% { box-shadow: 0 0 0 16px rgba(124,58,237,0); }
         }
       `}</style>
     </div>

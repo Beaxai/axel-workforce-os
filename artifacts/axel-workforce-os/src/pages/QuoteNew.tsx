@@ -275,8 +275,8 @@ export default function QuoteNew() {
             fontWeight: 600,
             padding: "3px 10px",
             borderRadius: "6px",
-            background: quoteType === "PEO+WC" ? "rgba(233,30,140,0.15)" : "rgba(30,107,233,0.15)",
-            color: quoteType === "PEO+WC" ? "#E91E8C" : "#1E6BE9",
+            background: quoteType === "PEO+WC" ? "rgba(124,58,237,0.15)" : "rgba(30,107,233,0.15)",
+            color: quoteType === "PEO+WC" ? "var(--accent-primary)" : "#1E6BE9",
           }}>
             {quoteType}
           </span>
@@ -293,7 +293,7 @@ export default function QuoteNew() {
               onChange={(e) => update("businessName", e.target.value)}
               placeholder="Enter business name"
               style={{ ...inputStyle, borderColor: fieldErrors.businessName ? "#ef4444" : inputBorder }}
-              onFocus={(e) => (e.currentTarget.style.borderColor = "#E91E8C")}
+              onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent-primary)")}
               onBlur={(e) => (e.currentTarget.style.borderColor = fieldErrors.businessName ? "#ef4444" : inputBorder)}
             />
             {fieldErrors.businessName && <p style={errorStyle}>{fieldErrors.businessName}</p>}
@@ -305,7 +305,7 @@ export default function QuoteNew() {
               value={form.state}
               onChange={(e) => update("state", e.target.value)}
               style={{ ...inputStyle, cursor: "pointer", appearance: "auto", borderColor: fieldErrors.state ? "#ef4444" : inputBorder }}
-              onFocus={(e) => (e.currentTarget.style.borderColor = "#E91E8C")}
+              onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent-primary)")}
               onBlur={(e) => (e.currentTarget.style.borderColor = fieldErrors.state ? "#ef4444" : inputBorder)}
             >
               <option value="" style={{ background: isDark ? "#141418" : "#fff" }}>Select state</option>
@@ -325,7 +325,7 @@ export default function QuoteNew() {
               onChange={(e) => handlePayrollChange(e.target.value)}
               placeholder="$0"
               style={{ ...inputStyle, borderColor: fieldErrors.annualPayroll ? "#ef4444" : inputBorder }}
-              onFocus={(e) => (e.currentTarget.style.borderColor = "#E91E8C")}
+              onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent-primary)")}
               onBlur={(e) => (e.currentTarget.style.borderColor = fieldErrors.annualPayroll ? "#ef4444" : inputBorder)}
             />
             {fieldErrors.annualPayroll && <p style={errorStyle}>{fieldErrors.annualPayroll}</p>}
@@ -339,7 +339,7 @@ export default function QuoteNew() {
               onChange={(e) => update("employeeCount", e.target.value)}
               placeholder="0"
               style={{ ...inputStyle, borderColor: fieldErrors.employeeCount ? "#ef4444" : inputBorder }}
-              onFocus={(e) => (e.currentTarget.style.borderColor = "#E91E8C")}
+              onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent-primary)")}
               onBlur={(e) => (e.currentTarget.style.borderColor = fieldErrors.employeeCount ? "#ef4444" : inputBorder)}
             />
             {fieldErrors.employeeCount && <p style={errorStyle}>{fieldErrors.employeeCount}</p>}
@@ -353,7 +353,7 @@ export default function QuoteNew() {
               onChange={(e) => update("classCode", e.target.value)}
               placeholder="e.g. 8810"
               style={{ ...inputStyle, borderColor: fieldErrors.classCode ? "#ef4444" : inputBorder }}
-              onFocus={(e) => (e.currentTarget.style.borderColor = "#E91E8C")}
+              onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent-primary)")}
               onBlur={(e) => (e.currentTarget.style.borderColor = fieldErrors.classCode ? "#ef4444" : inputBorder)}
             />
             {fieldErrors.classCode && <p style={errorStyle}>{fieldErrors.classCode}</p>}
@@ -367,7 +367,7 @@ export default function QuoteNew() {
               value={form.eMod}
               onChange={(e) => update("eMod", e.target.value)}
               style={{ ...inputStyle, borderColor: fieldErrors.eMod ? "#ef4444" : inputBorder }}
-              onFocus={(e) => (e.currentTarget.style.borderColor = "#E91E8C")}
+              onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent-primary)")}
               onBlur={(e) => (e.currentTarget.style.borderColor = fieldErrors.eMod ? "#ef4444" : inputBorder)}
             />
             {fieldErrors.eMod && <p style={errorStyle}>{fieldErrors.eMod}</p>}
@@ -381,7 +381,7 @@ export default function QuoteNew() {
               value={form.scheduleRating}
               onChange={(e) => update("scheduleRating", e.target.value)}
               style={{ ...inputStyle, borderColor: fieldErrors.scheduleRating ? "#ef4444" : inputBorder }}
-              onFocus={(e) => (e.currentTarget.style.borderColor = "#E91E8C")}
+              onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent-primary)")}
               onBlur={(e) => (e.currentTarget.style.borderColor = fieldErrors.scheduleRating ? "#ef4444" : inputBorder)}
             />
             {fieldErrors.scheduleRating && <p style={errorStyle}>{fieldErrors.scheduleRating}</p>}
@@ -478,7 +478,7 @@ export default function QuoteNew() {
             right: "24px",
             zIndex: 500,
             background: isDark ? "rgba(14,14,18,0.98)" : "rgba(255,255,255,0.98)",
-            border: "1px solid rgba(233,30,140,0.3)",
+            border: "1px solid rgba(124,58,237,0.3)",
             borderRadius: "12px",
             padding: "16px 20px",
             display: "flex",
@@ -489,7 +489,7 @@ export default function QuoteNew() {
             maxWidth: "420px",
           }}
         >
-          <CheckCircle style={{ width: "20px", height: "20px", color: "#E91E8C", flexShrink: 0 }} />
+          <CheckCircle style={{ width: "20px", height: "20px", color: "var(--accent-primary)", flexShrink: 0 }} />
           <div style={{ flex: 1 }}>
             <p style={{ fontSize: "14px", fontWeight: 500, color: textPrimary, margin: "0 0 6px" }}>{toast.message}</p>
             <GhostButton

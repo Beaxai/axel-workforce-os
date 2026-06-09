@@ -76,8 +76,8 @@ export default function FinalSubmission() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "60vh", textAlign: "center" }}>
-      <div style={{ width: 80, height: 80, borderRadius: 40, background: "rgba(233,30,140,0.12)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 24 }}>
-        <CheckCircle style={{ width: 40, height: 40, color: "#E91E8C" }} />
+      <div style={{ width: 80, height: 80, borderRadius: 40, background: "rgba(124,58,237,0.12)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 24 }}>
+        <CheckCircle style={{ width: 40, height: 40, color: "var(--accent-primary)" }} />
       </div>
 
       <h2 style={{ fontSize: 32, fontWeight: 700, color: textPrimary, margin: "0 0 8px" }}>Ready to Submit</h2>
@@ -122,7 +122,7 @@ export default function FinalSubmission() {
           width: "100%",
           textAlign: "left",
           marginBottom: 24,
-          borderLeft: "3px solid #E91E8C",
+          borderLeft: "3px solid var(--accent-primary)",
         }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 12 }}>
             <span style={{ fontSize: 12, color: textMuted, textTransform: "uppercase", letterSpacing: "0.05em" }}>
@@ -166,10 +166,10 @@ export default function FinalSubmission() {
             alignItems: "baseline",
             marginTop: 12,
             paddingTop: 12,
-            borderTop: "2px solid rgba(233,30,140,0.3)",
+            borderTop: "2px solid rgba(124,58,237,0.3)",
           }}>
-            <span style={{ fontSize: 13, color: "#E91E8C", fontWeight: 700 }}>Final Premium</span>
-            <span style={{ fontSize: 18, color: "#E91E8C", fontWeight: 700 }}>
+            <span style={{ fontSize: 13, color: "var(--accent-primary)", fontWeight: 700 }}>Final Premium</span>
+            <span style={{ fontSize: 18, color: "var(--accent-primary)", fontWeight: 700 }}>
               ${Math.round(finalPremium).toLocaleString()}
             </span>
           </div>
@@ -218,7 +218,7 @@ export default function FinalSubmission() {
           padding: "18px 64px",
           borderRadius: 32,
           border: "none",
-          background: "#E91E8C",
+          background: "var(--accent-primary)",
           color: "#fff",
           fontSize: 18,
           fontWeight: 700,

@@ -53,8 +53,9 @@ Authentication is managed via a Zustand store, supporting eight distinct party t
 
 **UI/UX and Design System:**
 The platform enforces a strict design system:
-- **Default Theme:** Dark mode.
-- **Accent Color:** `#E91E8C` (solid pink, no gradients).
+- **Default Theme:** Dark mode (dark canvas `#060608`).
+- **Accent System (two-tier):** Purple `#7C3AED` is the **primary interactive accent** (buttons, links, focus rings, selected/active states, icon chips). Pink `#E91E8C` is reserved for **brand moments only**: the single primary CTA per screen (rendered via the `--gradient-cta` purple→pink gradient — the ONLY permitted gradient), the active nav indicator bar (solid pink), selected tab underlines, and the avatar/brand mark. No other gradients are allowed.
+- **Tokens:** All accent values come from CSS variables in `src/index.css` (`--accent-primary`, `--accent-primary-hover`, `--accent-primary-soft`, `--accent-brand`, `--accent-brand-soft`, `--accent-brand-hover`, `--accent-brand-focus`, `--gradient-cta`) and are mirrored in `src/lib/use-theme-colors.ts` for the JS styling path. shadcn HSL tokens (`--primary`, `--ring`, `--sidebar-primary`, `--chart-1`) are repointed to purple. The only allowed raw accent hex literals are `#7C3AED` (purple) and `#1E6BE9` (categorical WC blue); brand-pink literals live exclusively in the two token files.
 - **Glassmorphism Modals:** Overlay uses `rgba(0,0,0,0.5)` (dark tint only, no blur); popup panels use `rgba(18,18,24,0.82)` background with `backdrop-filter: blur(40px)`, `box-shadow: 0 24px 80px rgba(0,0,0,0.6)`, and `inset 0 1px 0 rgba(255,255,255,0.06)` highlight.
 - **Typography:** Open Sans (body/labels via `--app-font-sans`), Jost all-caps for section subheadings (`--app-font-heading`, `.font-heading` utility class). Base font-size: 15px.
 - **Layout:** Main content centered with `maxWidth: 1280px`, `margin: 0 auto`, padding `32px 40px`.

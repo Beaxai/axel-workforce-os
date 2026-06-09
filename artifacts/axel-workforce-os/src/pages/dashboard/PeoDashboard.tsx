@@ -31,7 +31,7 @@ export default function PeoDashboard() {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
         <GlassCard>
           <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
-            <Briefcase style={{ width: "16px", height: "16px", color: "#E91E8C" }} />
+            <Briefcase style={{ width: "16px", height: "16px", color: "var(--accent-primary)" }} />
             <h3 style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, margin: 0 }}>Workforce by Vertical</h3>
           </div>
           {workforce.length === 0 ? (
@@ -53,7 +53,7 @@ export default function PeoDashboard() {
 
         <GlassCard>
           <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
-            <Users style={{ width: "16px", height: "16px", color: "#E91E8C" }} />
+            <Users style={{ width: "16px", height: "16px", color: "var(--accent-primary)" }} />
             <h3 style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, margin: 0 }}>Client Organizations</h3>
           </div>
           {orgs.length === 0 ? (

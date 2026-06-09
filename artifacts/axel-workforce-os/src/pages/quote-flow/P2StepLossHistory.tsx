@@ -93,17 +93,17 @@ export default function P2StepLossHistory() {
         onDrop={handleDrop}
         onClick={() => fileInputRef.current?.click()}
         style={{
-          border: `2px dashed ${dragOver ? "#E91E8C" : "rgba(255,255,255,0.1)"}`,
+          border: `2px dashed ${dragOver ? "var(--accent-primary)" : "rgba(255,255,255,0.1)"}`,
           borderRadius: 12,
           padding: "40px 24px",
           textAlign: "center",
           cursor: "pointer",
-          background: dragOver ? "rgba(233,30,140,0.04)" : "rgba(255,255,255,0.02)",
+          background: dragOver ? "rgba(124,58,237,0.04)" : "rgba(255,255,255,0.02)",
           transition: "all 0.2s",
           marginBottom: 24,
         }}
       >
-        <Upload style={{ width: 36, height: 36, color: dragOver ? "#E91E8C" : "#666", margin: "0 auto 12px" }} />
+        <Upload style={{ width: 36, height: 36, color: dragOver ? "var(--accent-primary)" : "#666", margin: "0 auto 12px" }} />
         <p style={{ fontSize: 15, fontWeight: 600, color: textPrimary, margin: "0 0 4px" }}>
           {dragOver ? "Drop files here" : "Drag & drop loss run PDFs"}
         </p>
@@ -141,7 +141,7 @@ export default function P2StepLossHistory() {
             >
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <FileText style={{ width: 20, height: 20, color: "#E91E8C" }} />
+                  <FileText style={{ width: 20, height: 20, color: "var(--accent-primary)" }} />
                   <div>
                     <p style={{ fontSize: 14, fontWeight: 600, color: textPrimary, margin: 0 }}>{file.name}</p>
                     <p style={{ fontSize: 12, color: "#666", margin: 0 }}>{formatSize(file.size)}</p>

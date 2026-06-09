@@ -122,12 +122,12 @@ export default function LoginPage() {
                   cursor: "pointer",
                   transition: "all 0.15s",
                   background:
-                    selectedRole === role ? "rgba(233,30,140,0.15)" : cardBg,
+                    selectedRole === role ? "rgba(124,58,237,0.15)" : cardBg,
                   border:
                     selectedRole === role
-                      ? "1px solid rgba(233,30,140,0.4)"
+                      ? "1px solid rgba(124,58,237,0.4)"
                       : `1px solid ${borderColor}`,
-                  color: selectedRole === role ? "#E91E8C" : (isDark ? "rgba(255,255,255,0.7)" : "rgba(0,0,0,0.6)"),
+                  color: selectedRole === role ? "var(--accent-primary)" : (isDark ? "rgba(255,255,255,0.7)" : "rgba(0,0,0,0.6)"),
                 }}
               >
                 {ROLE_LABELS[role]}
@@ -174,15 +174,15 @@ export default function LoginPage() {
               color: "#fff",
               border: "none",
               cursor: selectedRole ? "pointer" : "not-allowed",
-              background: selectedRole ? "#E91E8C" : (isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"),
+              background: selectedRole ? "var(--gradient-cta)" : (isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"),
               opacity: selectedRole ? 1 : 0.5,
-              transition: "background 0.15s",
+              transition: "filter 0.15s",
             }}
             onMouseEnter={(e) => {
-              if (selectedRole) e.currentTarget.style.background = "#d1187e";
+              if (selectedRole) e.currentTarget.style.filter = "brightness(1.1)";
             }}
             onMouseLeave={(e) => {
-              if (selectedRole) e.currentTarget.style.background = "#E91E8C";
+              if (selectedRole) e.currentTarget.style.filter = "none";
             }}
           >
             Enter Platform

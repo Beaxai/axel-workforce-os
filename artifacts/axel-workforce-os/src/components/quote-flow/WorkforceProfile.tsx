@@ -280,9 +280,9 @@ export default function WorkforceProfile() {
                 gap: 6,
                 padding: "6px 14px",
                 borderRadius: 20,
-                border: `1px solid ${isDark ? "rgba(233,30,140,0.25)" : "rgba(233,30,140,0.3)"}`,
-                background: aiOpen ? "rgba(233,30,140,0.12)" : "rgba(233,30,140,0.06)",
-                color: "#E91E8C",
+                border: `1px solid ${isDark ? "rgba(124,58,237,0.25)" : "rgba(124,58,237,0.3)"}`,
+                background: aiOpen ? "rgba(124,58,237,0.12)" : "rgba(124,58,237,0.06)",
+                color: "var(--accent-primary)",
                 fontSize: 12,
                 fontWeight: 600,
                 cursor: "pointer",
@@ -301,13 +301,13 @@ export default function WorkforceProfile() {
               marginBottom: 20,
               padding: 20,
               borderRadius: 14,
-              border: `1px solid ${isDark ? "rgba(233,30,140,0.2)" : "rgba(233,30,140,0.15)"}`,
-              background: isDark ? "rgba(233,30,140,0.04)" : "rgba(233,30,140,0.02)",
+              border: `1px solid ${isDark ? "rgba(124,58,237,0.2)" : "rgba(124,58,237,0.15)"}`,
+              background: isDark ? "rgba(124,58,237,0.04)" : "rgba(124,58,237,0.02)",
             }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <Sparkles style={{ width: 14, height: 14, color: "#E91E8C" }} />
+                <Sparkles style={{ width: 14, height: 14, color: "var(--accent-primary)" }} />
                 <span style={{ fontSize: 13, fontWeight: 600, color: textPrimary }}>
                   AI Classification Advisor
                 </span>
@@ -375,7 +375,7 @@ export default function WorkforceProfile() {
                   padding: "10px 20px",
                   borderRadius: 10,
                   border: "none",
-                  background: "#E91E8C",
+                  background: "var(--accent-primary)",
                   color: "#fff",
                   fontSize: 13,
                   fontWeight: 600,
@@ -419,7 +419,7 @@ export default function WorkforceProfile() {
                   >
                     <div style={{ flex: 1 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
-                        <span style={{ fontSize: 13, fontWeight: 700, color: "#E91E8C" }}>{sg.classCode}</span>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: "var(--accent-primary)" }}>{sg.classCode}</span>
                         <span style={{ fontSize: 13, color: textPrimary }}>{sg.description}</span>
                         <span
                           style={{
@@ -447,9 +447,9 @@ export default function WorkforceProfile() {
                       style={{
                         padding: "6px 14px",
                         borderRadius: 8,
-                        border: `1px solid ${isDark ? "rgba(233,30,140,0.3)" : "rgba(233,30,140,0.2)"}`,
-                        background: "rgba(233,30,140,0.08)",
-                        color: "#E91E8C",
+                        border: `1px solid ${isDark ? "rgba(124,58,237,0.3)" : "rgba(124,58,237,0.2)"}`,
+                        background: "rgba(124,58,237,0.08)",
+                        color: "var(--accent-primary)",
                         fontSize: 11,
                         fontWeight: 600,
                         cursor: "pointer",
@@ -501,9 +501,9 @@ export default function WorkforceProfile() {
                       style={{
                         padding: "5px 14px",
                         borderRadius: 8,
-                        border: `1px solid ${safeTargetIdx === idx ? "#E91E8C" : (isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)")}`,
-                        background: safeTargetIdx === idx ? "rgba(233,30,140,0.15)" : "transparent",
-                        color: safeTargetIdx === idx ? "#E91E8C" : textSecondary,
+                        border: `1px solid ${safeTargetIdx === idx ? "var(--accent-primary)" : (isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)")}`,
+                        background: safeTargetIdx === idx ? "rgba(124,58,237,0.15)" : "transparent",
+                        color: safeTargetIdx === idx ? "var(--accent-primary)" : textSecondary,
                         fontSize: 12,
                         fontWeight: safeTargetIdx === idx ? 700 : 500,
                         cursor: "pointer",
@@ -551,13 +551,13 @@ export default function WorkforceProfile() {
                     borderRadius: 20,
                     border: `1px solid ${
                       activeVertical === v
-                        ? (isDark ? "rgba(233,30,140,0.5)" : "rgba(233,30,140,0.4)")
+                        ? (isDark ? "rgba(124,58,237,0.5)" : "rgba(124,58,237,0.4)")
                         : (isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)")
                     }`,
                     background: activeVertical === v
-                      ? (isDark ? "rgba(233,30,140,0.15)" : "rgba(233,30,140,0.08)")
+                      ? (isDark ? "rgba(124,58,237,0.15)" : "rgba(124,58,237,0.08)")
                       : (isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)"),
-                    color: activeVertical === v ? "#E91E8C" : textSecondary,
+                    color: activeVertical === v ? "var(--accent-primary)" : textSecondary,
                     fontSize: 12,
                     fontWeight: 600,
                     cursor: "pointer",
@@ -588,9 +588,9 @@ export default function WorkforceProfile() {
                   style={{
                     padding: "16px 18px",
                     borderRadius: 12,
-                    border: `1px solid ${isAdded ? "rgba(233,30,140,0.4)" : borderColor}`,
+                    border: `1px solid ${isAdded ? "rgba(124,58,237,0.4)" : borderColor}`,
                     background: isAdded
-                      ? (isDark ? "rgba(233,30,140,0.08)" : "rgba(233,30,140,0.04)")
+                      ? (isDark ? "rgba(124,58,237,0.08)" : "rgba(124,58,237,0.04)")
                       : (isDark ? "rgba(255,255,255,0.03)" : "#fff"),
                     transition: "all 0.15s",
                     display: "flex",
@@ -599,8 +599,8 @@ export default function WorkforceProfile() {
                   }}
                   onMouseEnter={(e) => {
                     if (!isAdded) {
-                      e.currentTarget.style.borderColor = isDark ? "rgba(233,30,140,0.35)" : "rgba(233,30,140,0.25)";
-                      e.currentTarget.style.background = isDark ? "rgba(233,30,140,0.04)" : "rgba(233,30,140,0.02)";
+                      e.currentTarget.style.borderColor = isDark ? "rgba(124,58,237,0.35)" : "rgba(124,58,237,0.25)";
+                      e.currentTarget.style.background = isDark ? "rgba(124,58,237,0.04)" : "rgba(124,58,237,0.02)";
                     }
                   }}
                   onMouseLeave={(e) => {
@@ -611,7 +611,7 @@ export default function WorkforceProfile() {
                   }}
                 >
                   <div style={{ fontSize: 24, lineHeight: 1 }}>{entry.ico}</div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: "#E91E8C", lineHeight: 1.2 }}>{entry.c}</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "var(--accent-primary)", lineHeight: 1.2 }}>{entry.c}</div>
                   <div style={{ fontSize: 13, fontWeight: 700, color: textPrimary, lineHeight: 1.3 }}>
                     {entry.n} {entry.p !== entry.n ? `\u2014 ${entry.p.replace(entry.n, "").replace(/^[\s\-—]+/, "")}` : ""}
                   </div>
@@ -635,9 +635,9 @@ export default function WorkforceProfile() {
                           gap: 5,
                           padding: "5px 12px",
                           borderRadius: 8,
-                          border: "1px solid rgba(233,30,140,0.3)",
-                          background: "rgba(233,30,140,0.12)",
-                          color: "#E91E8C",
+                          border: "1px solid rgba(124,58,237,0.3)",
+                          background: "rgba(124,58,237,0.12)",
+                          color: "var(--accent-primary)",
                           fontSize: 11,
                           fontWeight: 700,
                         }}
@@ -727,16 +727,16 @@ export default function WorkforceProfile() {
             marginTop: 12,
             padding: "10px 14px",
             borderRadius: 12,
-            border: `1px dashed ${isDark ? "rgba(233,30,140,0.4)" : "rgba(233,30,140,0.35)"}`,
+            border: `1px dashed ${isDark ? "rgba(124,58,237,0.4)" : "rgba(124,58,237,0.35)"}`,
             background: "transparent",
-            color: "#E91E8C",
+            color: "var(--accent-primary)",
             fontSize: 12,
             fontWeight: 700,
             cursor: "pointer",
             transition: "all 0.15s",
             width: "100%",
           }}
-          onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(233,30,140,0.06)")}
+          onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(124,58,237,0.06)")}
           onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
         >
           <Plus style={{ width: 12, height: 12 }} />
@@ -772,8 +772,8 @@ export default function WorkforceProfile() {
                 gap: 12,
                 padding: "14px 18px",
                 borderRadius: 12,
-                border: `1px solid ${isDark ? "rgba(233,30,140,0.2)" : "rgba(233,30,140,0.15)"}`,
-                background: isDark ? "rgba(233,30,140,0.04)" : "rgba(233,30,140,0.02)",
+                border: `1px solid ${isDark ? "rgba(124,58,237,0.2)" : "rgba(124,58,237,0.15)"}`,
+                background: isDark ? "rgba(124,58,237,0.04)" : "rgba(124,58,237,0.02)",
               }}
             >
               <div
@@ -781,14 +781,14 @@ export default function WorkforceProfile() {
                   width: 36,
                   height: 36,
                   borderRadius: 10,
-                  background: "rgba(233,30,140,0.1)",
+                  background: "rgba(124,58,237,0.1)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   flexShrink: 0,
                 }}
               >
-                <item.icon style={{ width: 18, height: 18, color: "#E91E8C" }} />
+                <item.icon style={{ width: 18, height: 18, color: "var(--accent-primary)" }} />
               </div>
               <div>
                 <div style={{ fontSize: 11, fontWeight: 600, color: textMuted, letterSpacing: 0.5, marginBottom: 2 }}>
@@ -842,7 +842,7 @@ export default function WorkforceProfile() {
                 <X style={{ width: 18, height: 18 }} />
               </button>
             </div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: "#E91E8C", marginBottom: 4 }}>
+            <div style={{ fontSize: 18, fontWeight: 700, color: "var(--accent-primary)", marginBottom: 4 }}>
               Code {learnMoreEntry.c}
             </div>
             <div style={{ fontSize: 16, fontWeight: 700, color: textPrimary, marginBottom: 12, lineHeight: 1.4 }}>
@@ -853,8 +853,8 @@ export default function WorkforceProfile() {
                 display: "inline-block",
                 fontSize: 11,
                 fontWeight: 600,
-                color: "#E91E8C",
-                background: "rgba(233,30,140,0.1)",
+                color: "var(--accent-primary)",
+                background: "rgba(124,58,237,0.1)",
                 padding: "3px 10px",
                 borderRadius: 10,
                 marginBottom: 12,
@@ -878,9 +878,9 @@ export default function WorkforceProfile() {
                   gap: 6,
                   padding: "10px 24px",
                   borderRadius: 10,
-                  border: "1px solid rgba(233,30,140,0.3)",
-                  background: "rgba(233,30,140,0.12)",
-                  color: "#E91E8C",
+                  border: "1px solid rgba(124,58,237,0.3)",
+                  background: "rgba(124,58,237,0.12)",
+                  color: "var(--accent-primary)",
                   fontSize: 13,
                   fontWeight: 700,
                 }}
@@ -902,7 +902,7 @@ export default function WorkforceProfile() {
                   padding: "10px 24px",
                   borderRadius: 10,
                   border: "none",
-                  background: "#E91E8C",
+                  background: "var(--accent-primary)",
                   color: "#fff",
                   fontSize: 13,
                   fontWeight: 600,

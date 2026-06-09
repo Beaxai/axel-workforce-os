@@ -55,7 +55,7 @@ export default function AppLayout() {
         <div className="h-16 flex items-center justify-between px-3 border-b border-slate-200">
           {!collapsed && (
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "#E91E8C" }}>
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "var(--accent-primary)" }}>
                 <Zap className="w-4 h-4 text-white" />
               </div>
               <span className="text-sm font-bold text-slate-900 tracking-tight">Axel WOS</span>

@@ -74,7 +74,7 @@ export default function LocationCard({ location, index, canRemove, stateOptions,
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <MapPin style={{ width: 16, height: 16, color: "#E91E8C" }} />
+          <MapPin style={{ width: 16, height: 16, color: "var(--accent-primary)" }} />
           <span style={{ fontSize: 15, fontWeight: 600, color: textPrimary }}>
             Location {index + 1}
           </span>
@@ -82,8 +82,8 @@ export default function LocationCard({ location, index, canRemove, stateOptions,
             <span style={{
               fontSize: 11,
               fontWeight: 600,
-              color: "#E91E8C",
-              background: "rgba(233,30,140,0.1)",
+              color: "var(--accent-primary)",
+              background: "rgba(124,58,237,0.1)",
               padding: "2px 8px",
               borderRadius: 10,
             }}>
@@ -191,9 +191,9 @@ export default function LocationCard({ location, index, canRemove, stateOptions,
                     alignItems: "center",
                     padding: "8px 12px",
                     borderRadius: rich ? "10px 10px 0 0" : 10,
-                    border: `1px solid ${isDark ? "rgba(233,30,140,0.12)" : "rgba(233,30,140,0.15)"}`,
+                    border: `1px solid ${isDark ? "rgba(124,58,237,0.12)" : "rgba(124,58,237,0.15)"}`,
                     borderBottom: rich ? "none" : undefined,
-                    background: isDark ? "rgba(233,30,140,0.02)" : "rgba(233,30,140,0.02)",
+                    background: isDark ? "rgba(124,58,237,0.02)" : "rgba(124,58,237,0.02)",
                   }}
                 >
                   <ClassCodeSearch
@@ -244,13 +244,13 @@ export default function LocationCard({ location, index, canRemove, stateOptions,
                       gap: 8,
                       padding: "6px 12px",
                       borderRadius: "0 0 10px 10px",
-                      border: `1px solid ${isDark ? "rgba(233,30,140,0.12)" : "rgba(233,30,140,0.15)"}`,
+                      border: `1px solid ${isDark ? "rgba(124,58,237,0.12)" : "rgba(124,58,237,0.15)"}`,
                       borderTop: "none",
-                      background: isDark ? "rgba(233,30,140,0.04)" : "rgba(233,30,140,0.03)",
+                      background: isDark ? "rgba(124,58,237,0.04)" : "rgba(124,58,237,0.03)",
                     }}
                   >
                     <span style={{ fontSize: 14 }}>{rich.ico}</span>
-                    <span style={{ fontSize: 11, fontWeight: 600, color: "#E91E8C" }}>{rich.c}</span>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: "var(--accent-primary)" }}>{rich.c}</span>
                     <span style={{ fontSize: 11, color: textSecondary, flex: 1 }}>{rich.p}</span>
                     <button
                       type="button"
@@ -261,9 +261,9 @@ export default function LocationCard({ location, index, canRemove, stateOptions,
                         gap: 4,
                         padding: "3px 10px",
                         borderRadius: 10,
-                        border: "1px solid rgba(233,30,140,0.3)",
-                        background: "rgba(233,30,140,0.08)",
-                        color: "#E91E8C",
+                        border: "1px solid rgba(124,58,237,0.3)",
+                        background: "rgba(124,58,237,0.08)",
+                        color: "var(--accent-primary)",
                         fontSize: 10,
                         fontWeight: 700,
                         textTransform: "uppercase",
@@ -272,8 +272,8 @@ export default function LocationCard({ location, index, canRemove, stateOptions,
                         cursor: "pointer",
                         transition: "background 0.15s",
                       }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(233,30,140,0.16)")}
-                      onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(233,30,140,0.08)")}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(124,58,237,0.16)")}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(124,58,237,0.08)")}
                     >
                       <Info style={{ width: 11, height: 11 }} />
                       Learn More
@@ -327,7 +327,7 @@ export default function LocationCard({ location, index, canRemove, stateOptions,
                 <X style={{ width: 18, height: 18 }} />
               </button>
             </div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: "#E91E8C", marginBottom: 4 }}>
+            <div style={{ fontSize: 18, fontWeight: 700, color: "var(--accent-primary)", marginBottom: 4 }}>
               Code {learnMoreEntry.c}
             </div>
             <div style={{ fontSize: 16, fontWeight: 700, color: textPrimary, marginBottom: 12, lineHeight: 1.4 }}>
@@ -338,8 +338,8 @@ export default function LocationCard({ location, index, canRemove, stateOptions,
                 display: "inline-block",
                 fontSize: 11,
                 fontWeight: 600,
-                color: "#E91E8C",
-                background: "rgba(233,30,140,0.1)",
+                color: "var(--accent-primary)",
+                background: "rgba(124,58,237,0.1)",
                 padding: "3px 10px",
                 borderRadius: 10,
                 marginBottom: 12,

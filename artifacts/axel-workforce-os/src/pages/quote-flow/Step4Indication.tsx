@@ -155,7 +155,7 @@ export default function Step4Indication() {
   if (loading) {
     return (
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 80, gap: 16 }}>
-        <Loader2 style={{ width: 32, height: 32, color: "#E91E8C", animation: "spin 1s linear infinite" }} />
+        <Loader2 style={{ width: 32, height: 32, color: "var(--accent-primary)", animation: "spin 1s linear infinite" }} />
         <p style={{ fontSize: 14, color: textSecondary }}>Calculating rates from the rating table...</p>
         <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
       </div>
@@ -309,9 +309,9 @@ export default function Step4Indication() {
   })();
 
   const statCards = [
-    { label: "Number of Locations", value: String(locationCount), accent: "#E91E8C", icon: MapPin },
+    { label: "Number of Locations", value: String(locationCount), accent: "var(--accent-primary)", icon: MapPin },
     { label: "Number of Employees", value: String(totalEmployees), accent: "#7C3AED", icon: Users },
-    { label: "Annual Payroll", value: fmtCompact(totalPayroll), accent: "#E91E8C", icon: DollarSign },
+    { label: "Annual Payroll", value: fmtCompact(totalPayroll), accent: "var(--accent-primary)", icon: DollarSign },
     { label: "Experience Mod", value: modifier.toFixed(2), accent: "#7C3AED", icon: Gauge },
   ];
 
@@ -379,14 +379,14 @@ export default function Step4Indication() {
             width: 44,
             height: 44,
             borderRadius: 12,
-            background: "rgba(233,30,140,0.12)",
+            background: "rgba(124,58,237,0.12)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             flexShrink: 0,
           }}
         >
-          <Icon style={{ width: 22, height: 22, color: "#E91E8C" }} />
+          <Icon style={{ width: 22, height: 22, color: "var(--accent-primary)" }} />
         </div>
         <div>
           <div style={{ fontSize: 19, fontWeight: 700, color: textPrimary, marginBottom: 8 }}>{c.title}</div>
@@ -403,8 +403,8 @@ export default function Step4Indication() {
                   gap: 6,
                   padding: "5px 11px",
                   borderRadius: 6,
-                  border: "1px solid rgba(233,30,140,0.4)",
-                  color: "#E91E8C",
+                  border: "1px solid rgba(124,58,237,0.4)",
+                  color: "var(--accent-primary)",
                   fontSize: 10,
                   fontWeight: 700,
                   textTransform: "uppercase",
@@ -425,7 +425,7 @@ export default function Step4Indication() {
               alignItems: "center",
               gap: 6,
               marginTop: "auto",
-              color: "#E91E8C",
+              color: "var(--accent-primary)",
               fontSize: 11,
               fontWeight: 700,
               textTransform: "uppercase",
@@ -449,7 +449,7 @@ export default function Step4Indication() {
           padding: 20,
           borderRadius: 12,
           background: isDark ? "#13131f" : "#f8f8fc",
-          borderLeft: "3px solid #E91E8C",
+          borderLeft: "3px solid var(--accent-primary)",
         }}
       >
         <h3 style={{ fontSize: 26, fontWeight: 800, color: textPrimary, margin: "0 0 16px", lineHeight: 1.15, fontFamily: "var(--app-font-heading)", textTransform: "uppercase", letterSpacing: "0.01em" }}>Workers' Compensation Pricing</h3>
@@ -476,15 +476,15 @@ export default function Step4Indication() {
                 height: "auto",
                 zIndex: 2,
                 pointerEvents: "none",
-                filter: "drop-shadow(0 8px 24px rgba(233,30,140,0.45))",
+                filter: "drop-shadow(0 8px 24px rgba(124,58,237,0.45))",
               }}
             />
             <div
               style={{
                 borderRadius: 20,
                 padding: 2,
-                background: "linear-gradient(135deg, #E91E8C 0%, #7C3AED 50%, #3B82F6 100%)",
-                boxShadow: "0 0 40px rgba(233,30,140,0.35)",
+                background: "var(--accent-primary)",
+                boxShadow: "0 0 40px rgba(124,58,237,0.35)",
               }}
             >
               <div
@@ -509,7 +509,7 @@ export default function Step4Indication() {
         style={{
           borderRadius: cardRadius,
           background: panelBg,
-          borderLeft: "3px solid #E91E8C",
+          borderLeft: "3px solid var(--accent-primary)",
           overflow: "hidden",
           padding: "8px 4px",
         }}
@@ -594,8 +594,8 @@ export default function Step4Indication() {
             </tr>
           ))}
           <tr>
-            <td colSpan={5} style={{ padding: "16px 18px", color: textPrimary, fontWeight: 700, borderTop: "1px solid #E91E8C" }}>Total</td>
-            <td style={{ padding: "16px 18px", color: textPrimary, fontWeight: 700, textAlign: "right", borderTop: "1px solid #E91E8C" }}>
+            <td colSpan={5} style={{ padding: "16px 18px", color: textPrimary, fontWeight: 700, borderTop: "1px solid var(--accent-primary)" }}>Total</td>
+            <td style={{ padding: "16px 18px", color: textPrimary, fontWeight: 700, textAlign: "right", borderTop: "1px solid var(--accent-primary)" }}>
               ${totalPremium.toLocaleString()}
             </td>
           </tr>
@@ -615,8 +615,8 @@ export default function Step4Indication() {
               style={{
                 padding: "5px 12px",
                 borderRadius: 6,
-                border: "1px solid rgba(233,30,140,0.5)",
-                color: "#E91E8C",
+                border: "1px solid rgba(124,58,237,0.5)",
+                color: "var(--accent-primary)",
                 fontSize: 11,
                 fontWeight: 700,
                 textTransform: "uppercase",
@@ -664,7 +664,7 @@ export default function Step4Indication() {
         {coverageEffFormatted && (
           <div
             style={{
-              color: "#E91E8C",
+              color: "var(--accent-primary)",
               fontSize: 19,
               fontWeight: 700,
               whiteSpace: "nowrap",
@@ -698,14 +698,14 @@ export default function Step4Indication() {
                 width: 40,
                 height: 40,
                 borderRadius: 10,
-                background: "rgba(233,30,140,0.12)",
+                background: "rgba(124,58,237,0.12)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 flexShrink: 0,
               }}
             >
-              <Icon style={{ width: 20, height: 20, color: "#E91E8C" }} />
+              <Icon style={{ width: 20, height: 20, color: "var(--accent-primary)" }} />
             </div>
             <div style={{ minWidth: 0 }}>
               <div
@@ -733,7 +733,7 @@ export default function Step4Indication() {
             borderRadius: cardRadius,
             background: panelBg,
             border: `1px solid ${borderColor}`,
-            borderLeft: "3px solid #E91E8C",
+            borderLeft: "3px solid var(--accent-primary)",
           }}
         >
           <div
@@ -816,7 +816,7 @@ export default function Step4Indication() {
                 padding: 20,
                 borderRadius: 12,
                 background: isDark ? "#13131f" : "#f8f8fc",
-                borderLeft: "3px solid #E91E8C",
+                borderLeft: "3px solid var(--accent-primary)",
                 marginBottom: 24,
               }}
             >
@@ -835,15 +835,15 @@ export default function Step4Indication() {
                       height: "auto",
                       zIndex: 2,
                       pointerEvents: "none",
-                      filter: "drop-shadow(0 8px 24px rgba(233,30,140,0.45))",
+                      filter: "drop-shadow(0 8px 24px rgba(124,58,237,0.45))",
                     }}
                   />
                   <div
                     style={{
                       borderRadius: 20,
                       padding: 2,
-                      background: "linear-gradient(135deg, #E91E8C 0%, #7C3AED 50%, #3B82F6 100%)",
-                      boxShadow: "0 0 40px rgba(233,30,140,0.35)",
+                      background: "var(--accent-primary)",
+                      boxShadow: "0 0 40px rgba(124,58,237,0.35)",
                     }}
                   >
                     <div
@@ -890,14 +890,14 @@ export default function Step4Indication() {
                             width: 34,
                             height: 34,
                             borderRadius: 9,
-                            background: "rgba(233,30,140,0.14)",
+                            background: "rgba(124,58,237,0.14)",
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
                             flexShrink: 0,
                           }}
                         >
-                          <Icon style={{ width: 17, height: 17, color: "#E91E8C" }} />
+                          <Icon style={{ width: 17, height: 17, color: "var(--accent-primary)" }} />
                         </div>
                         <span style={{ fontSize: 14, fontWeight: 700, color: textPrimary, fontFamily: "var(--app-font-heading)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
                           {cat.title}
@@ -906,7 +906,7 @@ export default function Step4Indication() {
                       <ul style={{ listStyle: "none", margin: 0, padding: "16px 18px", display: "flex", flexDirection: "column", gap: 10 }}>
                         {cat.items.map((item) => (
                           <li key={item} style={{ display: "flex", alignItems: "flex-start", gap: 9, fontSize: 13, color: textSecondary, lineHeight: 1.4 }}>
-                            <Check style={{ width: 14, height: 14, color: "#E91E8C", flexShrink: 0, marginTop: 2 }} />
+                            <Check style={{ width: 14, height: 14, color: "var(--accent-primary)", flexShrink: 0, marginTop: 2 }} />
                             <span>{item}</span>
                           </li>
                         ))}
@@ -934,11 +934,11 @@ export default function Step4Indication() {
                         style={{
                           padding: "12px 14px",
                           borderRadius: 10,
-                          background: isSelected ? "rgba(233,30,140,0.12)" : isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)",
-                          border: isSelected ? "1px solid rgba(233,30,140,0.4)" : `1px solid ${borderColor}`,
+                          background: isSelected ? "rgba(124,58,237,0.12)" : isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)",
+                          border: isSelected ? "1px solid rgba(124,58,237,0.4)" : `1px solid ${borderColor}`,
                         }}
                       >
-                        <div style={{ fontSize: 10, color: isSelected ? "#E91E8C" : textMuted, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: "var(--app-font-heading)", marginBottom: 4 }}>
+                        <div style={{ fontSize: 10, color: isSelected ? "var(--accent-primary)" : textMuted, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: "var(--app-font-heading)", marginBottom: 4 }}>
                           {f.label}
                         </div>
                         <div style={{ fontSize: 18, fontWeight: 700, color: textPrimary }}>
@@ -992,7 +992,7 @@ export default function Step4Indication() {
               style={{
                 borderRadius: 20,
                 padding: 2,
-                background: "linear-gradient(135deg, #E91E8C 0%, #7C3AED 50%, #3B82F6 100%)",
+                background: "var(--accent-primary)",
                 boxShadow: "0 0 40px rgba(124,58,237,0.35)",
               }}
             >
@@ -1118,7 +1118,7 @@ export default function Step4Indication() {
             padding: "16px 24px",
             borderRadius: 28,
             border: "none",
-            background: "#E91E8C",
+            background: "var(--accent-primary)",
             color: "#fff",
             fontSize: 16,
             fontWeight: 700,
@@ -1140,9 +1140,9 @@ export default function Step4Indication() {
             flex: "0 1 180px",
             padding: "14px 24px",
             borderRadius: 28,
-            border: "1px solid #E91E8C",
-            background: savedDealId ? "rgba(233,30,140,0.12)" : "transparent",
-            color: "#E91E8C",
+            border: "1px solid var(--accent-primary)",
+            background: savedDealId ? "rgba(124,58,237,0.12)" : "transparent",
+            color: "var(--accent-primary)",
             fontSize: 14,
             fontWeight: 600,
             cursor: savingDeal ? "default" : "pointer",
@@ -1155,10 +1155,10 @@ export default function Step4Indication() {
             transition: "background 0.15s",
           }}
           onMouseEnter={(e) => {
-            if (!savedDealId) e.currentTarget.style.background = "rgba(233,30,140,0.08)";
+            if (!savedDealId) e.currentTarget.style.background = "rgba(124,58,237,0.08)";
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.background = savedDealId ? "rgba(233,30,140,0.12)" : "transparent";
+            e.currentTarget.style.background = savedDealId ? "rgba(124,58,237,0.12)" : "transparent";
           }}
         >
           {savingDeal ? (

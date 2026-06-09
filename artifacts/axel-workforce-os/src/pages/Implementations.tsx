@@ -148,9 +148,9 @@ export default function Implementations() {
               borderRadius: "8px",
               fontSize: "14px",
               fontWeight: 500,
-              border: `1px solid ${tab === t ? "#E91E8C" : isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`,
-              background: tab === t ? "rgba(233,30,140,0.12)" : "transparent",
-              color: tab === t ? "#E91E8C" : textMuted,
+              border: `1px solid ${tab === t ? "var(--accent-primary)" : isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`,
+              background: tab === t ? "rgba(124,58,237,0.12)" : "transparent",
+              color: tab === t ? "var(--accent-primary)" : textMuted,
               cursor: "pointer",
               transition: "all 0.15s",
             }}
@@ -189,7 +189,7 @@ export default function Implementations() {
                     </h3>
                     <Badge
                       label={trackerLabel}
-                      color={isAsoTracker(tracker) ? "#7C3AED" : isPeoTracker(tracker) ? "#E91E8C" : "#1E6BE9"}
+                      color={isAsoTracker(tracker) ? "purple" : isPeoTracker(tracker) ? "purple" : "blue"}
                     />
                   </div>
                   <span style={{ fontSize: "13px", color: textMuted }}>
@@ -200,7 +200,7 @@ export default function Implementations() {
                 <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                   <Badge
                     label={isComplete ? "Complete" : "In Progress"}
-                    color={isComplete ? "#22c55e" : "#E91E8C"}
+                    color={isComplete ? "green" : "purple"}
                   />
                   {!isComplete && currentPhase < totalPhases && (
                     <GhostButton onClick={() => handleAdvancePhase(tracker)} style={{ padding: "6px 14px", fontSize: "12px" }}>
@@ -223,7 +223,7 @@ export default function Implementations() {
                     width: `${(currentPhase / totalPhases) * 100}%`,
                     height: "100%",
                     borderRadius: "4px",
-                    background: "#E91E8C",
+                    background: "var(--accent-primary)",
                     transition: "width 0.3s ease",
                   }} />
                 </div>
@@ -242,12 +242,12 @@ export default function Implementations() {
                         flex: 1,
                         padding: "8px",
                         borderRadius: "6px",
-                        background: isDone ? "rgba(233,30,140,0.08)" : isCurrent ? "rgba(233,30,140,0.04)" : "transparent",
-                        border: `1px solid ${isCurrent ? "rgba(233,30,140,0.3)" : isDone ? "rgba(233,30,140,0.1)" : isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)"}`,
+                        background: isDone ? "rgba(124,58,237,0.08)" : isCurrent ? "rgba(124,58,237,0.04)" : "transparent",
+                        border: `1px solid ${isCurrent ? "rgba(124,58,237,0.3)" : isDone ? "rgba(124,58,237,0.1)" : isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)"}`,
                         textAlign: "center",
                       }}
                     >
-                      <div style={{ fontSize: "10px", fontWeight: 600, color: isDone ? "#E91E8C" : textMuted, marginBottom: "2px" }}>
+                      <div style={{ fontSize: "10px", fontWeight: 600, color: isDone ? "var(--accent-primary)" : textMuted, marginBottom: "2px" }}>
                         {isDone ? <CheckCircle2 style={{ width: "12px", height: "12px", display: "inline" }} /> : `Phase ${phaseNum}`}
                       </div>
                       <div style={{ fontSize: "11px", color: isCurrent ? textPrimary : textMuted }}>{phase}</div>

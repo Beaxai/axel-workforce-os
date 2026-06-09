@@ -250,7 +250,7 @@ export default function AsoQuote() {
   const annual = breakdown?.result.annualAsoFee ?? 0;
   const pepm = breakdown?.result.pepm ?? ASO_BASE_PEPM_RATE;
 
-  const accent = "#E91E8C";
+  const accent = "var(--accent-primary)";
 
   return (
     <div style={{ width: "100%", maxWidth: 1080, margin: "0 auto" }}>
@@ -471,8 +471,8 @@ export default function AsoQuote() {
                 style={{
                   padding: 16,
                   borderRadius: 12,
-                  background: isDark ? "rgba(233,30,140,0.06)" : "rgba(233,30,140,0.04)",
-                  border: `1px solid ${isDark ? "rgba(233,30,140,0.2)" : "rgba(233,30,140,0.15)"}`,
+                  background: isDark ? "rgba(124,58,237,0.06)" : "rgba(124,58,237,0.04)",
+                  border: `1px solid ${isDark ? "rgba(124,58,237,0.2)" : "rgba(124,58,237,0.15)"}`,
                   marginBottom: 20,
                 }}
               >

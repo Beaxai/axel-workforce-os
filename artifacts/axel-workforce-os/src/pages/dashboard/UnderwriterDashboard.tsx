@@ -33,7 +33,7 @@ export default function UnderwriterDashboard() {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px", marginBottom: "24px" }}>
         <GlassCard>
           <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
-            <ListChecks style={{ width: "16px", height: "16px", color: "#E91E8C" }} />
+            <ListChecks style={{ width: "16px", height: "16px", color: "var(--accent-primary)" }} />
             <h3 style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, margin: 0 }}>Underwriting Queue</h3>
           </div>
           {pendingDeals.length === 0 ? (
@@ -55,7 +55,7 @@ export default function UnderwriterDashboard() {
 
         <GlassCard>
           <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
-            <BarChart3 style={{ width: "16px", height: "16px", color: "#E91E8C" }} />
+            <BarChart3 style={{ width: "16px", height: "16px", color: "var(--accent-primary)" }} />
             <h3 style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, margin: 0 }}>Rate Table Overview</h3>
           </div>
           {rates.length === 0 ? (
@@ -78,7 +78,7 @@ export default function UnderwriterDashboard() {
 
       <GlassCard>
         <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
-          <Shield style={{ width: "16px", height: "16px", color: "#E91E8C" }} />
+          <Shield style={{ width: "16px", height: "16px", color: "var(--accent-primary)" }} />
           <h3 style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, margin: 0 }}>Bound Policies</h3>
         </div>
         {policies.length === 0 ? (

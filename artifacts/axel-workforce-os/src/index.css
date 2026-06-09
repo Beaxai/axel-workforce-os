@@ -66,6 +66,23 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
+/* =====================================================================
+   AXEL BRAND ACCENT TOKENS — single source of truth
+   PURPLE = primary interactive accent. PINK = brand moments / primary CTA.
+   These are mode-independent (same hex in light & dark). Consumed by both
+   the CSS path (here) and the JS path (lib/use-theme-colors.ts).
+   ===================================================================== */
+:root {
+  --accent-primary:        #7C3AED;
+  --accent-primary-hover:  #6D28D9;
+  --accent-primary-soft:   rgba(124,58,237,0.15);
+  --accent-brand:          #E91E8C;
+  --accent-brand-soft:     rgba(233,30,140,0.18);
+  --accent-brand-hover:    #d1187e;
+  --accent-brand-focus:    #ff4ba6;
+  --gradient-cta:          linear-gradient(135deg, #7C3AED 0%, #E91E8C 100%);
+}
+
 /* LIGHT MODE */
 :root {
   --button-outline: rgba(0,0,0, .10);
@@ -87,15 +104,15 @@
   --sidebar: 210 40% 96%;
   --sidebar-foreground: 222 47% 11%;
   --sidebar-border: 214 32% 91%;
-  --sidebar-primary: 221 83% 53%;
+  --sidebar-primary: 262 83% 58%;
   --sidebar-primary-foreground: 210 40% 98%;
   --sidebar-accent: 210 40% 96%;
   --sidebar-accent-foreground: 222 47% 11%;
-  --sidebar-ring: 221 83% 53%;
+  --sidebar-ring: 262 83% 58%;
   --popover: 0 0% 100%;
   --popover-foreground: 222 47% 11%;
   --popover-border: 214 32% 91%;
-  --primary: 221 83% 53%;
+  --primary: 262 83% 58%;
   --primary-foreground: 210 40% 98%;
   --secondary: 210 40% 96%;
   --secondary-foreground: 222 47% 11%;
@@ -106,26 +123,28 @@
   --destructive: 0 84% 60%;
   --destructive-foreground: 210 40% 98%;
   --input: 214 32% 91%;
-  --ring: 221 83% 53%;
-  --chart-1: 221 83% 53%;
-  --chart-2: 160 60% 45%;
-  --chart-3: 30 80% 55%;
-  --chart-4: 280 65% 60%;
-  --chart-5: 340 75% 55%;
+  --ring: 262 83% 58%;
+  --chart-1: 262 83% 58%;
+  --chart-2: 327 81% 52%;
+  --chart-3: 270 70% 60%;
+  --chart-4: 300 65% 55%;
+  --chart-5: 245 60% 55%;
 
   --app-font-sans: 'Inter', system-ui, sans-serif;
   --app-font-heading: 'Jost', 'Open Sans', system-ui, sans-serif;
   --app-font-serif: Georgia, serif;
   --app-font-mono: Menlo, monospace;
   --radius: .5rem; /* 8px */
-  --shadow-2xs: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00); /*replace with H S L */
-  --shadow-xs: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00); /*replace with H S L */
-  --shadow-sm: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00), 0px 1px 2px -1px hsl(202.8169 89.1213% 53.1373% / 0.00);
-  --shadow: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00), 0px 1px 2px -1px hsl(202.8169 89.1213% 53.1373% / 0.00);
-  --shadow-md: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00), 0px 2px 4px -1px hsl(202.8169 89.1213% 53.1373% / 0.00);
-  --shadow-lg: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00), 0px 4px 6px -1px hsl(202.8169 89.1213% 53.1373% / 0.00);
-  --shadow-xl: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00), 0px 8px 10px -1px hsl(202.8169 89.1213% 53.1373% / 0.00);
-  --shadow-2xl: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00);
+
+  /* Real elevation scale derived from the heavy-glass modal shadow */
+  --shadow-2xs: 0 1px 2px 0 rgba(0,0,0,0.04);
+  --shadow-xs:  0 1px 3px 0 rgba(0,0,0,0.06);
+  --shadow-sm:  0 2px 6px -1px rgba(0,0,0,0.08);
+  --shadow:     0 4px 12px -2px rgba(0,0,0,0.10);
+  --shadow-md:  0 8px 24px -4px rgba(0,0,0,0.12);
+  --shadow-lg:  0 16px 48px -8px rgba(0,0,0,0.14);
+  --shadow-xl:  0 24px 80px -12px rgba(0,0,0,0.16);
+  --shadow-2xl: 0 32px 100px -16px rgba(0,0,0,0.18);
   --tracking-normal: 0em;
   --spacing: 0.25rem;
 
@@ -170,25 +189,25 @@
   --elevate-1: rgba(255,255,255, .04);
   --elevate-2: rgba(255,255,255, .09);
 
-  --background: 222 47% 11%;
+  --background: 240 13% 3%;
   --foreground: 210 40% 98%;
   --border: 217 33% 17%;
   --card: 222 47% 13%;
   --card-foreground: 210 40% 98%;
   --card-border: 217 33% 17%;
-  --sidebar: 222 47% 10%;
+  --sidebar: 240 13% 4%;
   --sidebar-foreground: 210 40% 98%;
   --sidebar-border: 217 33% 17%;
-  --sidebar-primary: 217 91% 60%;
-  --sidebar-primary-foreground: 222 47% 11%;
+  --sidebar-primary: 262 83% 58%;
+  --sidebar-primary-foreground: 210 40% 98%;
   --sidebar-accent: 217 33% 17%;
   --sidebar-accent-foreground: 210 40% 98%;
-  --sidebar-ring: 217 91% 60%;
+  --sidebar-ring: 262 83% 58%;
   --popover: 222 47% 13%;
   --popover-foreground: 210 40% 98%;
   --popover-border: 217 33% 17%;
-  --primary: 217 91% 60%;
-  --primary-foreground: 222 47% 11%;
+  --primary: 262 83% 58%;
+  --primary-foreground: 210 40% 98%;
   --secondary: 217 33% 17%;
   --secondary-foreground: 210 40% 98%;
   --muted: 217 33% 17%;
@@ -198,21 +217,22 @@
   --destructive: 0 63% 31%;
   --destructive-foreground: 210 40% 98%;
   --input: 217 33% 25%;
-  --ring: 217 91% 60%;
-  --chart-1: 217 91% 60%;
-  --chart-2: 160 60% 45%;
-  --chart-3: 30 80% 55%;
-  --chart-4: 280 65% 60%;
-  --chart-5: 340 75% 55%;
+  --ring: 262 83% 58%;
+  --chart-1: 262 83% 58%;
+  --chart-2: 327 81% 52%;
+  --chart-3: 270 70% 60%;
+  --chart-4: 300 65% 55%;
+  --chart-5: 245 60% 55%;
 
-  --shadow-2xs: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00);
-  --shadow-xs: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00);
-  --shadow-sm: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00), 0px 1px 2px -1px hsl(202.8169 89.1213% 53.1373% / 0.00);
-  --shadow: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00), 0px 1px 2px -1px hsl(202.8169 89.1213% 53.1373% / 0.00);
-  --shadow-md: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00), 0px 2px 4px -1px hsl(202.8169 89.1213% 53.1373% / 0.00);
-  --shadow-lg: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00), 0px 4px 6px -1px hsl(202.8169 89.1213% 53.1373% / 0.00);
-  --shadow-xl: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00), 0px 8px 10px -1px hsl(202.8169 89.1213% 53.1373% / 0.00);
-  --shadow-2xl: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00);
+  /* Real elevation scale derived from the heavy-glass modal shadow */
+  --shadow-2xs: 0 1px 2px 0 rgba(0,0,0,0.30);
+  --shadow-xs:  0 1px 3px 0 rgba(0,0,0,0.35);
+  --shadow-sm:  0 2px 6px -1px rgba(0,0,0,0.40);
+  --shadow:     0 4px 12px -2px rgba(0,0,0,0.45);
+  --shadow-md:  0 8px 24px -4px rgba(0,0,0,0.50);
+  --shadow-lg:  0 16px 48px -8px rgba(0,0,0,0.55);
+  --shadow-xl:  0 24px 80px -12px rgba(0,0,0,0.60);
+  --shadow-2xl: 0 32px 100px -16px rgba(0,0,0,0.65);
 
 }
 
@@ -336,6 +356,27 @@
   .border.hover-elevate:not(.no-hover-interaction-elevate)::after {
     inset: -1px;
   }
+
+  /* =====================================================================
+     STANDARD GLASS RECIPES — exactly two tiers (dark-default values).
+     Components that need light-mode counterparts continue to branch on the
+     theme via lib/use-theme-colors.ts, mirroring these exact values.
+     ===================================================================== */
+  .glass-card {
+    background: rgba(255,255,255,0.05);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+  }
+  .glass-panel {
+    background: rgba(18,18,24,0.82);
+    backdrop-filter: blur(40px);
+    -webkit-backdrop-filter: blur(40px);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 16px;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06);
+  }
 }
 
 html {
@@ -359,11 +400,11 @@ body {
   outline: none;
 }
 .axel-sidebar-control:focus-visible {
-  outline: 2px solid #E91E8C;
+  outline: 2px solid var(--accent-primary);
   outline-offset: 2px;
 }
 .dark .axel-sidebar-control:focus-visible {
-  outline-color: #ff4ba6;
+  outline-color: var(--accent-primary);
 }
 
 /* Responsive marketplace category grid — fills viewport height, no scroll on desktop */

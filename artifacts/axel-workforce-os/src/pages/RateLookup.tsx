@@ -112,7 +112,7 @@ export default function RateLookup() {
                 </div>
                 <div>
                   <p style={{ fontSize: "12px", color: textMuted, margin: 0 }}>Base Rate</p>
-                  <p style={{ fontSize: "20px", fontWeight: 700, color: "#E91E8C", margin: "4px 0 0" }}>{lookupResult.baseRate}</p>
+                  <p style={{ fontSize: "20px", fontWeight: 700, color: "var(--accent-primary)", margin: "4px 0 0" }}>{lookupResult.baseRate}</p>
                 </div>
                 <div>
                   <p style={{ fontSize: "12px", color: textMuted, margin: 0 }}>Effective Date</p>
@@ -177,7 +177,7 @@ export default function RateLookup() {
                     <td style={{ padding: "10px 12px", color: textPrimary }}>{row.state}</td>
                     <td style={{ padding: "10px 12px", color: textPrimary, fontWeight: 500 }}>{row.classCode}</td>
                     <td style={{ padding: "10px 12px", color: isDark ? "rgba(255,255,255,0.7)" : "rgba(0,0,0,0.6)", maxWidth: "300px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.description || "—"}</td>
-                    <td style={{ padding: "10px 12px", color: "#E91E8C", fontWeight: 600 }}>{row.baseRate}</td>
+                    <td style={{ padding: "10px 12px", color: "var(--accent-primary)", fontWeight: 600 }}>{row.baseRate}</td>
                     <td style={{ padding: "10px 12px", color: textMuted }}>{row.effectiveDate}</td>
                   </tr>
                 ))

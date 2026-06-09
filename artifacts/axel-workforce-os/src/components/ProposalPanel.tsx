@@ -124,7 +124,7 @@ export default function ProposalPanel({
       {!isPEO && (
         <div style={{ marginTop: "20px" }}>
           <span style={{ fontSize: "12px", color: textMuted }}>Final WC Premium</span>
-          <p style={{ fontSize: "28px", fontWeight: 700, color: "#E91E8C", margin: "4px 0 0" }}>
+          <p style={{ fontSize: "28px", fontWeight: 700, color: "var(--accent-primary)", margin: "4px 0 0" }}>
             {fmt(wcPremium)}
           </p>
         </div>
@@ -175,15 +175,15 @@ export default function ProposalPanel({
 
               <div style={{ marginTop: "16px" }}>
                 <span style={{ fontSize: "12px", color: textMuted }}>PEPM</span>
-                <p style={{ fontSize: "28px", fontWeight: 700, color: "#E91E8C", margin: "4px 0 0" }}>
+                <p style={{ fontSize: "28px", fontWeight: 700, color: "var(--accent-primary)", margin: "4px 0 0" }}>
                   {fmt(wfs.result?.pepm ?? wfs.calculation?.pepm)}
                 </p>
               </div>
 
               {totalMonthlyInvestment != null && totalMonthlyInvestment > 0 && (
-                <div style={{ marginTop: "16px", padding: "16px", background: isDark ? "rgba(233,30,140,0.08)" : "rgba(233,30,140,0.05)", borderRadius: "10px" }}>
+                <div style={{ marginTop: "16px", padding: "16px", background: isDark ? "rgba(124,58,237,0.08)" : "rgba(124,58,237,0.05)", borderRadius: "10px" }}>
                   <span style={{ fontSize: "12px", color: textMuted }}>Total Monthly Investment</span>
-                  <p style={{ fontSize: "24px", fontWeight: 700, color: "#E91E8C", margin: "4px 0 0" }}>
+                  <p style={{ fontSize: "24px", fontWeight: 700, color: "var(--accent-primary)", margin: "4px 0 0" }}>
                     {fmt(totalMonthlyInvestment)}
                   </p>
                   <span style={{ fontSize: "11px", color: textMuted }}>

@@ -10,7 +10,7 @@ const glass: React.CSSProperties = {
   border: "1px solid rgba(255,255,255,0.08)",
   borderRadius: 12,
 };
-const accent = "#E91E8C";
+const accent = "var(--accent-primary)";
 
 const DOC_CATEGORY_LABELS: Record<string, string> = {
   proposal: "Proposal",

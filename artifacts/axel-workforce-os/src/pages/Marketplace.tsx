@@ -34,7 +34,7 @@ export default function Marketplace() {
             fontWeight: 200,
             letterSpacing: "0.28em",
             textTransform: "uppercase",
-            color: "#E91E8C",
+            color: "var(--accent-primary)",
             margin: 0,
             marginBottom: 8,
           }}
@@ -178,7 +178,7 @@ export default function Marketplace() {
                   padding: "10px 14px",
                   borderRadius: 8,
                   border: "1px solid rgba(255,255,255,0.18)",
-                  background: isHovered ? "#E91E8C" : "rgba(0,0,0,0.45)",
+                  background: isHovered ? "var(--accent-primary)" : "rgba(0,0,0,0.45)",
                   backdropFilter: "blur(8px)",
                   WebkitBackdropFilter: "blur(8px)",
                   color: "#fff",
@@ -187,7 +187,7 @@ export default function Marketplace() {
                   letterSpacing: "0.02em",
                   cursor: "pointer",
                   transition: "background 0.25s ease, border-color 0.25s ease",
-                  boxShadow: isHovered ? "0 6px 18px rgba(233,30,140,0.35)" : "none",
+                  boxShadow: isHovered ? "0 6px 18px rgba(124,58,237,0.35)" : "none",
                 }}
               >
                 Start Submission →

@@ -7,7 +7,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 
-const accent = "#E91E8C";
+const accent = "var(--accent-primary)";
 
 interface Question {
   id: string;

@@ -261,12 +261,12 @@ export default function AppShell() {
                       border: "none",
                       borderRadius: "6px",
                       cursor: "pointer",
-                      color: role === user.role ? (role === "ADMIN" ? "#7C3AED" : "#E91E8C") : textSecondary,
+                      color: role === user.role ? (role === "ADMIN" ? "#7C3AED" : "var(--accent-primary)") : textSecondary,
                       background:
                         role === user.role
                           ? role === "ADMIN"
                             ? "rgba(124,58,237,0.10)"
-                            : "rgba(233,30,140,0.10)"
+                            : "rgba(124,58,237,0.10)"
                           : "transparent",
                       transition: "background 0.1s",
                     }}
@@ -300,12 +300,6 @@ export default function AppShell() {
             const active = isActive(item);
             const locked = item.locked;
             const isAdmin = user.role === "ADMIN";
-            const accent = isAdmin ? "#7C3AED" : "#E91E8C";
-            const accentRgb = isAdmin ? "124,58,237" : "233,30,140";
-            const edgeGradient = isAdmin
-              ? "linear-gradient(180deg, #7C3AED 0%, #1E1147 100%)"
-              : "linear-gradient(180deg, #E91E8C 0%, #2D1A5C 100%)";
-            const glowGradient = `linear-gradient(270deg, rgba(${accentRgb},0.45) 0%, rgba(${accentRgb},0) 55%)`;
             const activePillBg = isDark ? "#15151c" : "rgba(0,0,0,0.04)";
             const activeBoxShadow = isDark
               ? "inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -1px 0 rgba(0,0,0,0.4), 0 6px 16px -8px rgba(0,0,0,0.5)"
@@ -359,7 +353,7 @@ export default function AppShell() {
                       style={{
                         position: "absolute",
                         inset: 0,
-                        background: glowGradient,
+                        background: "var(--accent-brand-soft)",
                         pointerEvents: "none",
                         zIndex: 0,
                       }}
@@ -372,7 +366,7 @@ export default function AppShell() {
                         bottom: 0,
                         right: 0,
                         width: "3px",
-                        background: edgeGradient,
+                        background: "var(--accent-brand)",
                         pointerEvents: "none",
                         zIndex: 1,
                       }}
@@ -536,8 +530,8 @@ export default function AppShell() {
                     justifyContent: "center",
                     fontSize: "11px",
                     fontWeight: 700,
-                    background: "rgba(233,30,140,0.2)",
-                    color: "#E91E8C",
+                    background: "var(--accent-brand-soft)",
+                    color: "var(--accent-brand)",
                   }}
                 >
                   {user.firstName[0]}

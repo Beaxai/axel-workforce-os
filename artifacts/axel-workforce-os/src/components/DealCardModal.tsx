@@ -634,9 +634,9 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
         style={{
           width: "100%",
           maxWidth: "1200px",
-          background: isDark ? "rgba(18,18,24,0.55)" : "rgba(250,250,252,0.55)",
-          backdropFilter: "blur(48px) saturate(140%)",
-          WebkitBackdropFilter: "blur(48px) saturate(140%)",
+          background: isDark ? "rgba(18,18,24,0.82)" : "rgba(255,255,255,0.78)",
+          backdropFilter: "blur(40px)",
+          WebkitBackdropFilter: "blur(40px)",
           boxShadow: isDark
             ? "0 24px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06)"
             : "0 24px 80px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.8)",
@@ -828,7 +828,7 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
                   fontSize: "13px",
                   fontWeight: 500,
                   border: "none",
-                  borderBottom: isActive ? "2px solid #E91E8C" : "2px solid transparent",
+                  borderBottom: isActive ? "2px solid var(--accent-primary)" : "2px solid transparent",
                   cursor: "pointer",
                   background: "transparent",
                   color: isActive ? textPrimary : textMuted,
@@ -1232,7 +1232,7 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
                           border: `1px solid ${borderSubtle}`,
                           background: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)",
                           padding: "24px",
-                          borderLeft: `3px solid ${isAsoDeal ? "#E91E8C" : "#7C3AED"}`,
+                          borderLeft: `3px solid ${isAsoDeal ? "var(--accent-primary)" : "#7C3AED"}`,
                         }}
                       >
                         <div className="font-heading" style={{ fontSize: "12px", letterSpacing: "0.08em", color: textMuted, textTransform: "uppercase", marginBottom: "4px" }}>

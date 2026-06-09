@@ -66,7 +66,7 @@ export default function MyProgram() {
           {tabs.map((t) => (
             <button key={t} onClick={() => setTab(t)} style={{
               padding: "8px 20px", borderRadius: "8px", border: "none", cursor: "pointer", fontSize: "14px", fontWeight: 500,
-              background: tab === t ? "#E91E8C" : isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)",
+              background: tab === t ? "var(--accent-primary)" : isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)",
               color: tab === t ? "#fff" : textMuted,
             }}>{tabLabel[t]}</button>
           ))}
@@ -77,7 +77,7 @@ export default function MyProgram() {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
           <GlassCard>
             <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
-              <Shield style={{ width: 20, height: 20, color: "#E91E8C" }} />
+              <Shield style={{ width: 20, height: 20, color: "var(--accent-primary)" }} />
               <h3 style={{ fontSize: "16px", fontWeight: 600, color: textPrimary, margin: 0 }}>Policy Summary</h3>
             </div>
             {wcDeals.length > 0 ? (
@@ -100,7 +100,7 @@ export default function MyProgram() {
 
           <GlassCard>
             <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
-              <User style={{ width: 20, height: 20, color: "#E91E8C" }} />
+              <User style={{ width: 20, height: 20, color: "var(--accent-primary)" }} />
               <h3 style={{ fontSize: "16px", fontWeight: 600, color: textPrimary, margin: 0 }}>Your Team</h3>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>

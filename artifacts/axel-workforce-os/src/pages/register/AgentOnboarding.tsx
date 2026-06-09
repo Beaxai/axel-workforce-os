@@ -21,7 +21,7 @@ export default function AgentOnboarding() {
       <div style={{ width: "100%", maxWidth: "560px" }}>
         <div style={{ textAlign: "center", marginBottom: "32px" }}>
           <h1 style={{ fontSize: "28px", fontWeight: 700, color: textPrimary, margin: 0 }}>
-            <span style={{ color: "#E91E8C" }}>Axel</span> Onboarding
+            <span style={{ color: "var(--accent-primary)" }}>Axel</span> Onboarding
           </h1>
         </div>
 
@@ -36,7 +36,7 @@ export default function AgentOnboarding() {
             </div>
           ) : (
             <div style={{ textAlign: "center", padding: "24px" }}>
-              <Video style={{ width: 48, height: 48, color: "#E91E8C", marginBottom: "16px" }} />
+              <Video style={{ width: 48, height: 48, color: "var(--accent-primary)", marginBottom: "16px" }} />
               <h2 style={{ fontSize: "20px", fontWeight: 600, color: textPrimary, margin: "0 0 12px" }}>Schedule Your Onboarding Call</h2>
               <p style={{ fontSize: "15px", color: textSecondary, lineHeight: 1.6, marginBottom: "24px" }}>
                 Please schedule your onboarding call with the Axel team to complete your registration.

@@ -58,7 +58,7 @@ export default function AgentRegister() {
       <div style={{ width: "100%", maxWidth: "560px" }}>
         <div style={{ textAlign: "center", marginBottom: "32px" }}>
           <h1 style={{ fontSize: "28px", fontWeight: 700, color: textPrimary, margin: 0 }}>
-            <span style={{ color: "#E91E8C" }}>Axel</span> Agent Registration
+            <span style={{ color: "var(--accent-primary)" }}>Axel</span> Agent Registration
           </h1>
           <p style={{ fontSize: "15px", color: textMuted, marginTop: "8px" }}>
             Join the Axel Insurance Network
@@ -108,7 +108,7 @@ export default function AgentRegister() {
                   {US_STATES.map((st) => (
                     <button key={st} onClick={() => toggleState(st)} type="button" style={{
                       padding: "4px 10px", borderRadius: "4px", fontSize: "12px", border: "none", cursor: "pointer",
-                      background: form.licenseStates.includes(st) ? "#E91E8C" : (isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"),
+                      background: form.licenseStates.includes(st) ? "var(--accent-primary)" : (isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"),
                       color: form.licenseStates.includes(st) ? "#fff" : textMuted,
                     }}>{st}</button>
                   ))}

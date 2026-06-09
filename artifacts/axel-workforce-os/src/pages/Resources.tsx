@@ -79,7 +79,7 @@ export default function Resources() {
             onClick={() => setCategory(cat)}
             style={{
               padding: "6px 16px", borderRadius: "8px", border: "none", cursor: "pointer", fontSize: "13px", fontWeight: 500,
-              background: category === cat ? "#E91E8C" : isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)",
+              background: category === cat ? "var(--accent-primary)" : isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)",
               color: category === cat ? "#fff" : textMuted,
             }}
           >
@@ -91,7 +91,7 @@ export default function Resources() {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px" }}>
         <GlassCard>
           <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
-            <BookOpen style={{ width: 20, height: 20, color: "#E91E8C", flexShrink: 0 }} />
+            <BookOpen style={{ width: 20, height: 20, color: "var(--accent-primary)", flexShrink: 0 }} />
             <div>
               <p style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, margin: 0 }}>Appetite Guide</p>
               <AxelBadge label="Underwriting" color="light-violet" />
@@ -111,7 +111,7 @@ export default function Resources() {
             <GlassCard key={r.id}>
               <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "12px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                  <Icon style={{ width: 20, height: 20, color: "#E91E8C", flexShrink: 0 }} />
+                  <Icon style={{ width: 20, height: 20, color: "var(--accent-primary)", flexShrink: 0 }} />
                   <div>
                     <p style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, margin: 0 }}>{r.title}</p>
                     <AxelBadge label={r.category} color="light-violet" />

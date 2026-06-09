@@ -132,9 +132,9 @@ export default function Billing() {
               borderRadius: "8px",
               fontSize: "14px",
               fontWeight: 500,
-              border: `1px solid ${tab === t ? "#E91E8C" : inputBorder}`,
-              background: tab === t ? "rgba(233,30,140,0.12)" : "transparent",
-              color: tab === t ? "#E91E8C" : textMuted,
+              border: `1px solid ${tab === t ? "var(--accent-primary)" : inputBorder}`,
+              background: tab === t ? "rgba(124,58,237,0.12)" : "transparent",
+              color: tab === t ? "var(--accent-primary)" : textMuted,
               cursor: "pointer",
               transition: "all 0.15s",
             }}
@@ -168,7 +168,7 @@ export default function Billing() {
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Filter by business name..."
             style={{ ...inputStyle, paddingLeft: "36px" }}
-            onFocus={(e) => (e.currentTarget.style.borderColor = "#E91E8C")}
+            onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent-primary)")}
             onBlur={(e) => (e.currentTarget.style.borderColor = inputBorder)}
           />
         </div>
@@ -235,7 +235,7 @@ export default function Billing() {
                   </div>
                   <div style={{ textAlign: "right" }}>
                     <span style={{ fontSize: "11px", color: textMuted, display: "block" }}>PEPM</span>
-                    <span style={{ fontSize: "14px", fontWeight: 600, color: "#E91E8C" }}>{fmt(parseFloat(d.wfsPepmRate || "0"))}</span>
+                    <span style={{ fontSize: "14px", fontWeight: 600, color: "var(--accent-primary)" }}>{fmt(parseFloat(d.wfsPepmRate || "0"))}</span>
                   </div>
                 </div>
               </div>

@@ -5,7 +5,8 @@ interface AxelBadgeProps {
 }
 
 const COLOR_MAP: Record<string, string> = {
-  pink: "#E91E8C",
+  pink: "#7C3AED",
+  purple: "#7C3AED",
   green: "#22c55e",
   red: "#ef4444",
   yellow: "#eab308",

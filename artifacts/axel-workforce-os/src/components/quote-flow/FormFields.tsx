@@ -47,7 +47,7 @@ export function FieldLabel({ label, required, children }: {
   return (
     <div>
       <label style={{ display: "block", fontSize: 13, color: "#888", marginBottom: 6, fontFamily: "var(--app-font-sans)" }}>
-        {label} {required && <span style={{ color: "#E91E8C" }}>*</span>}
+        {label} {required && <span style={{ color: "var(--accent-primary)" }}>*</span>}
       </label>
       {children}
     </div>
@@ -78,7 +78,7 @@ export function TextInput({ value, onChange, placeholder, type = "text", error, 
           cursor: disabled ? "not-allowed" : "text",
           ...style,
         }}
-        onFocus={(e) => { if (!disabled) e.currentTarget.style.borderColor = "#E91E8C"; }}
+        onFocus={(e) => { if (!disabled) e.currentTarget.style.borderColor = "var(--accent-primary)"; }}
         onBlur={(e) => (e.currentTarget.style.borderColor = error ? "#ef4444" : "rgba(255,255,255,0.08)")}
       />
       {error && <p style={{ fontSize: 12, color: "#ef4444", margin: "4px 0 0" }}>{error}</p>}
@@ -104,7 +104,7 @@ export function CurrencyInput({ value, onChange, placeholder, error }: {
         }}
         placeholder={placeholder}
         style={{ ...inputBase, paddingLeft: 28, borderColor: error ? "#ef4444" : "rgba(255,255,255,0.08)" }}
-        onFocus={(e) => (e.currentTarget.style.borderColor = "#E91E8C")}
+        onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent-primary)")}
         onBlur={(e) => (e.currentTarget.style.borderColor = error ? "#ef4444" : "rgba(255,255,255,0.08)")}
       />
       {error && <p style={{ fontSize: 12, color: "#ef4444", margin: "4px 0 0" }}>{error}</p>}
@@ -140,7 +140,7 @@ export function NumberInput({ value, onChange, placeholder, error, min, max, sty
           cursor: disabled ? "not-allowed" : "text",
           ...style,
         }}
-        onFocus={(e) => { if (!disabled) e.currentTarget.style.borderColor = "#E91E8C"; }}
+        onFocus={(e) => { if (!disabled) e.currentTarget.style.borderColor = "var(--accent-primary)"; }}
         onBlur={(e) => (e.currentTarget.style.borderColor = error ? "#ef4444" : "rgba(255,255,255,0.08)")}
       />
       {error && <p style={{ fontSize: 12, color: "#ef4444", margin: "4px 0 0" }}>{error}</p>}
@@ -167,7 +167,7 @@ export function SelectInput({ value, onChange, options, placeholder, error }: {
           color: value ? "#fff" : "#666",
           borderColor: error ? "#ef4444" : "rgba(255,255,255,0.08)",
         }}
-        onFocus={(e) => (e.currentTarget.style.borderColor = "#E91E8C")}
+        onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent-primary)")}
         onBlur={(e) => (e.currentTarget.style.borderColor = error ? "#ef4444" : "rgba(255,255,255,0.08)")}
       >
         {placeholder && <option value="">{placeholder}</option>}
@@ -254,8 +254,8 @@ export function MultiSelect({ values, onChange, options, placeholder }: {
                   gap: 4,
                   padding: "2px 8px",
                   borderRadius: 6,
-                  background: "rgba(233,30,140,0.15)",
-                  color: "#E91E8C",
+                  background: "rgba(124,58,237,0.15)",
+                  color: "var(--accent-primary)",
                   fontSize: 12,
                 }}
               >
@@ -322,7 +322,7 @@ export function MultiSelect({ values, onChange, options, placeholder }: {
                 gap: 10,
                 padding: "10px 14px",
                 border: "none",
-                background: values.includes(o.value) ? "rgba(233,30,140,0.08)" : "transparent",
+                background: values.includes(o.value) ? "rgba(124,58,237,0.08)" : "transparent",
                 color: "#fff",
                 fontSize: 14,
                 textAlign: "left",
@@ -332,7 +332,7 @@ export function MultiSelect({ values, onChange, options, placeholder }: {
               <div style={{
                 width: 18, height: 18, borderRadius: 4,
                 border: values.includes(o.value) ? "none" : "2px solid rgba(255,255,255,0.2)",
-                background: values.includes(o.value) ? "#E91E8C" : "transparent",
+                background: values.includes(o.value) ? "var(--accent-primary)" : "transparent",
                 display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
               }}>
                 {values.includes(o.value) && <Check style={{ width: 12, height: 12, color: "#fff" }} />}
@@ -362,9 +362,9 @@ export function YesNoToggle({ value, onChange, options }: {
           style={{
             padding: "8px 20px",
             borderRadius: 8,
-            border: value === opt ? "1px solid #E91E8C" : "1px solid rgba(255,255,255,0.1)",
-            background: value === opt ? "rgba(233,30,140,0.15)" : "transparent",
-            color: value === opt ? "#E91E8C" : "#888",
+            border: value === opt ? "1px solid var(--accent-primary)" : "1px solid rgba(255,255,255,0.1)",
+            background: value === opt ? "rgba(124,58,237,0.15)" : "transparent",
+            color: value === opt ? "var(--accent-primary)" : "#888",
             fontSize: 14,
             fontWeight: 500,
             cursor: "pointer",
@@ -396,8 +396,8 @@ export function RadioGroup({ value, onChange, options }: {
             gap: 10,
             padding: "10px 14px",
             borderRadius: 8,
-            border: value === opt ? "1px solid #E91E8C" : "1px solid rgba(255,255,255,0.08)",
-            background: value === opt ? "rgba(233,30,140,0.08)" : "transparent",
+            border: value === opt ? "1px solid var(--accent-primary)" : "1px solid rgba(255,255,255,0.08)",
+            background: value === opt ? "rgba(124,58,237,0.08)" : "transparent",
             color: "#fff",
             fontSize: 14,
             textAlign: "left",
@@ -408,7 +408,7 @@ export function RadioGroup({ value, onChange, options }: {
           <div style={{
             width: 18, height: 18, borderRadius: 9,
             border: value === opt ? "none" : "2px solid rgba(255,255,255,0.2)",
-            background: value === opt ? "#E91E8C" : "transparent",
+            background: value === opt ? "var(--accent-primary)" : "transparent",
             display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
           }}>
             {value === opt && <div style={{ width: 6, height: 6, borderRadius: 3, background: "#fff" }} />}
@@ -433,7 +433,7 @@ export function TextArea({ value, onChange, placeholder, rows }: {
       placeholder={placeholder}
       rows={rows || 4}
       style={{ ...inputBase, resize: "vertical", minHeight: 80 }}
-      onFocus={(e) => (e.currentTarget.style.borderColor = "#E91E8C")}
+      onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent-primary)")}
       onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)")}
     />
   );
@@ -450,15 +450,15 @@ export function AddButton({ label, onClick }: { label: string; onClick: () => vo
         gap: 6,
         padding: "8px 16px",
         borderRadius: 8,
-        border: "1px dashed #E91E8C",
+        border: "1px dashed var(--accent-primary)",
         background: "transparent",
-        color: "#E91E8C",
+        color: "var(--accent-primary)",
         fontSize: 13,
         fontWeight: 500,
         cursor: "pointer",
         transition: "background 0.15s",
       }}
-      onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(233,30,140,0.08)")}
+      onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(124,58,237,0.08)")}
       onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
     >
       <Plus style={{ width: 14, height: 14 }} />
@@ -495,10 +495,10 @@ export function ProgressBar({ current, total, label }: { current: number; total:
   return (
     <div>
       <div style={{ height: 3, background: "rgba(255,255,255,0.06)", width: "100%", borderRadius: 2 }}>
-        <div style={{ height: "100%", width: `${(current / total) * 100}%`, background: "#E91E8C", borderRadius: 2, transition: "width 0.3s" }} />
+        <div style={{ height: "100%", width: `${(current / total) * 100}%`, background: "var(--accent-primary)", borderRadius: 2, transition: "width 0.3s" }} />
       </div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10 }}>
-        <span style={{ fontSize: 12, fontWeight: 700, color: "#E91E8C", textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: "var(--app-font-heading)" }}>
+        <span style={{ fontSize: 12, fontWeight: 700, color: "var(--accent-primary)", textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: "var(--app-font-heading)" }}>
           {label}
         </span>
         <span style={{ fontSize: 13, color: "#666" }}>

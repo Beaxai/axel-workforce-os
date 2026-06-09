@@ -29,7 +29,7 @@ export default function EmployerDashboard() {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
         <GlassCard>
           <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
-            <Shield style={{ width: "16px", height: "16px", color: "#E91E8C" }} />
+            <Shield style={{ width: "16px", height: "16px", color: "var(--accent-primary)" }} />
             <h3 style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, margin: 0 }}>My Policies</h3>
           </div>
           {policies.length === 0 ? (
@@ -54,7 +54,7 @@ export default function EmployerDashboard() {
         <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
           <GlassCard>
             <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
-              <Receipt style={{ width: "16px", height: "16px", color: "#E91E8C" }} />
+              <Receipt style={{ width: "16px", height: "16px", color: "var(--accent-primary)" }} />
               <h3 style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, margin: 0 }}>Payroll / Billing</h3>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
@@ -71,11 +71,11 @@ export default function EmployerDashboard() {
 
           <GlassCard>
             <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
-              <Rocket style={{ width: "16px", height: "16px", color: "#E91E8C" }} />
+              <Rocket style={{ width: "16px", height: "16px", color: "var(--accent-primary)" }} />
               <h3 style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, margin: 0 }}>PEO Onboarding</h3>
             </div>
             <div style={{ width: "100%", height: "8px", borderRadius: "9999px", overflow: "hidden", background: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)" }}>
-              <div style={{ height: "100%", borderRadius: "9999px", width: "0%", background: "#E91E8C" }} />
+              <div style={{ height: "100%", borderRadius: "9999px", width: "0%", background: "var(--accent-primary)" }} />
             </div>
             <p style={{ fontSize: "12px", marginTop: "8px", color: textMuted }}>No onboarding in progress</p>
           </GlassCard>

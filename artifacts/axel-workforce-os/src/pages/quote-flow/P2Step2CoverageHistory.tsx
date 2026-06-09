@@ -62,7 +62,7 @@ export default function P2Step2CoverageHistory() {
             style={{
               display: "grid", gridTemplateColumns: "1fr 1fr 1fr 120px 80px 120px 36px",
               gap: 10, alignItems: "end", marginBottom: 10, padding: 12, borderRadius: 8,
-              border: "1px solid rgba(233,30,140,0.15)", background: "rgba(233,30,140,0.02)",
+              border: "1px solid rgba(124,58,237,0.15)", background: "rgba(124,58,237,0.02)",
             }}
           >
             <FieldLabel label={i === 0 ? "Effective" : ""}>

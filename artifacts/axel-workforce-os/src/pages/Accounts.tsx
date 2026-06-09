@@ -16,7 +16,7 @@ const STATUS_FILTERS = ["All", "Active Client", "Prospect", "Inactive"];
 
 const STATUS_COLORS: Record<string, string> = {
   "Active Client": "#22c55e",
-  Prospect: "#E91E8C",
+  Prospect: "var(--accent-primary)",
   Inactive: "#6b7280",
 };
 
@@ -97,7 +97,7 @@ export default function Accounts() {
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search accounts..."
             style={{ ...inputStyle, paddingLeft: "36px" }}
-            onFocus={(e) => (e.currentTarget.style.borderColor = "#E91E8C")}
+            onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent-primary)")}
             onBlur={(e) => (e.currentTarget.style.borderColor = inputBorder)}
           />
         </div>
@@ -112,9 +112,9 @@ export default function Accounts() {
                 borderRadius: "8px",
                 fontSize: "13px",
                 fontWeight: 500,
-                border: `1px solid ${statusFilter === f ? "#E91E8C" : inputBorder}`,
-                background: statusFilter === f ? "rgba(233,30,140,0.12)" : "transparent",
-                color: statusFilter === f ? "#E91E8C" : textMuted,
+                border: `1px solid ${statusFilter === f ? "var(--accent-primary)" : inputBorder}`,
+                background: statusFilter === f ? "rgba(124,58,237,0.12)" : "transparent",
+                color: statusFilter === f ? "var(--accent-primary)" : textMuted,
                 cursor: "pointer",
                 transition: "all 0.15s",
               }}

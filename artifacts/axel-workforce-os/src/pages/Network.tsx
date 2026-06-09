@@ -76,7 +76,7 @@ export default function Network() {
             onClick={() => { setTab(t); setSearch(""); }}
             style={{
               padding: "8px 18px", borderRadius: "8px", border: "none", cursor: "pointer", fontSize: "14px", fontWeight: 500,
-              background: tab === t ? "#E91E8C" : isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)",
+              background: tab === t ? "var(--accent-primary)" : isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)",
               color: tab === t ? "#fff" : textMuted,
               transition: "all 0.15s",
             }}
@@ -241,7 +241,7 @@ function AddPartnerModal({ partnerType, onClose, onSubmit }: { partnerType: stri
                 {US_STATES.map((st) => (
                   <button key={st} onClick={() => toggleState(st)} style={{
                     padding: "4px 8px", borderRadius: "4px", fontSize: "12px", border: "none", cursor: "pointer",
-                    background: selectedStates.includes(st) ? "#E91E8C" : "rgba(255,255,255,0.06)",
+                    background: selectedStates.includes(st) ? "var(--accent-primary)" : "rgba(255,255,255,0.06)",
                     color: selectedStates.includes(st) ? "#fff" : "rgba(255,255,255,0.5)",
                   }}>{st}</button>
                 ))}

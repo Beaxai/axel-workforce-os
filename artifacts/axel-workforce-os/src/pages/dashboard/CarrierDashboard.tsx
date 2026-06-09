@@ -29,7 +29,7 @@ export default function CarrierDashboard() {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
         <GlassCard>
           <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
-            <Shield style={{ width: "16px", height: "16px", color: "#E91E8C" }} />
+            <Shield style={{ width: "16px", height: "16px", color: "var(--accent-primary)" }} />
             <h3 style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, margin: 0 }}>Bound Policies</h3>
           </div>
           {policies.length === 0 ? (
@@ -51,7 +51,7 @@ export default function CarrierDashboard() {
 
         <GlassCard>
           <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
-            <BarChart3 style={{ width: "16px", height: "16px", color: "#E91E8C" }} />
+            <BarChart3 style={{ width: "16px", height: "16px", color: "var(--accent-primary)" }} />
             <h3 style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, margin: 0 }}>Performance Summary</h3>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>

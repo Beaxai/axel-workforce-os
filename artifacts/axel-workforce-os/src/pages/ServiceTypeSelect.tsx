@@ -2,7 +2,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Check, ArrowLeft } from "lucide-react";
 import { useThemeColors } from "@/lib/use-theme-colors";
 
-const ACCENT = "#E91E8C";
+const ACCENT = "var(--accent-primary)";
 const BASE = import.meta.env.BASE_URL;
 
 const WC_FEATURES = [

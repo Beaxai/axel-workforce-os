@@ -112,7 +112,7 @@ function TrackerCard({ title, tracker, labels, encouragement, isDark, textPrimar
           <span style={{ fontSize: "13px", fontWeight: 600, color: textPrimary }}>{progress}%</span>
         </div>
         <div style={{ height: "8px", borderRadius: "4px", background: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)", overflow: "hidden" }}>
-          <div style={{ height: "100%", width: `${progress}%`, background: "#E91E8C", borderRadius: "4px", transition: "width 0.3s" }} />
+          <div style={{ height: "100%", width: `${progress}%`, background: "var(--accent-primary)", borderRadius: "4px", transition: "width 0.3s" }} />
         </div>
       </div>
 
@@ -126,7 +126,7 @@ function TrackerCard({ title, tracker, labels, encouragement, isDark, textPrimar
                 {isComplete ? (
                   <CheckCircle style={{ width: 20, height: 20, color: "#1EE97B" }} />
                 ) : isCurrent ? (
-                  <Clock style={{ width: 20, height: 20, color: "#E91E8C" }} />
+                  <Clock style={{ width: 20, height: 20, color: "var(--accent-primary)" }} />
                 ) : (
                   <Circle style={{ width: 20, height: 20, color: isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.15)" }} />
                 )}

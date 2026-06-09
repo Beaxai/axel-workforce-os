@@ -4,7 +4,7 @@ import {
   Loader, Send, RefreshCw,
 } from "lucide-react";
 
-const accent = "#E91E8C";
+const accent = "var(--accent-primary)";
 
 const BIND_STAGES = [
   { key: "not_started", label: "Not Started" },

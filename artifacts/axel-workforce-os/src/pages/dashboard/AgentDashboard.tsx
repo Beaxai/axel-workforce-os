@@ -33,7 +33,7 @@ export default function AgentDashboard() {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px", marginBottom: "24px" }}>
         <GlassCard>
           <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
-            <Handshake style={{ width: "16px", height: "16px", color: "#E91E8C" }} />
+            <Handshake style={{ width: "16px", height: "16px", color: "var(--accent-primary)" }} />
             <h3 style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, margin: 0 }}>My Deals</h3>
           </div>
           {deals.length === 0 ? (
@@ -55,7 +55,7 @@ export default function AgentDashboard() {
 
         <GlassCard>
           <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
-            <DollarSign style={{ width: "16px", height: "16px", color: "#E91E8C" }} />
+            <DollarSign style={{ width: "16px", height: "16px", color: "var(--accent-primary)" }} />
             <h3 style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, margin: 0 }}>Commission Statements</h3>
           </div>
           {commissions.length === 0 ? (
@@ -86,7 +86,7 @@ export default function AgentDashboard() {
             <button
               key={action.label}
               style={{ textAlign: "left", padding: "16px", borderRadius: "12px", background: subtleBg, border: `1px solid ${borderSubtle}`, cursor: "pointer", transition: "border-color 0.15s" }}
-              onMouseEnter={(e) => (e.currentTarget.style.borderColor = "rgba(233,30,140,0.3)")}
+              onMouseEnter={(e) => (e.currentTarget.style.borderColor = "rgba(124,58,237,0.3)")}
               onMouseLeave={(e) => (e.currentTarget.style.borderColor = borderSubtle)}
             >
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>

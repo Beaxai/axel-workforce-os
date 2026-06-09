@@ -18,7 +18,7 @@ export const PRODUCT_LABELS: Record<string, string> = {
 export const PRODUCT_COLORS: Record<string, string> = {
   WC: "#1E6BE9",
   WC_ONLY: "#1E6BE9",
-  PEO: "#E91E8C",
+  PEO: "#7C3AED",
   ASO: "#7C3AED",
 };
 

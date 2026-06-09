@@ -31,7 +31,7 @@ export default function Welcome() {
 
         <GlassCard>
           <div style={{ display: "flex", alignItems: "center", gap: "12px", justifyContent: "center" }}>
-            <User style={{ width: 18, height: 18, color: "#E91E8C" }} />
+            <User style={{ width: 18, height: 18, color: "var(--accent-primary)" }} />
             <p style={{ fontSize: "14px", color: "rgba(255,255,255,0.6)", margin: 0 }}>
               Your assigned CSA will contact you soon
             </p>

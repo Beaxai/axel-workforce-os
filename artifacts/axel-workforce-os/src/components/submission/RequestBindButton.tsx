@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { FileSignature, Loader, CheckCircle, AlertCircle } from "lucide-react";
 
-const accent = "#E91E8C";
+const accent = "var(--accent-primary)";
 
 interface RequestBindButtonProps {
   dealId: string;

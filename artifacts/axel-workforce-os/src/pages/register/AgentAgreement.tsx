@@ -34,7 +34,7 @@ export default function AgentAgreement() {
       <div style={{ width: "100%", maxWidth: "560px" }}>
         <div style={{ textAlign: "center", marginBottom: "32px" }}>
           <h1 style={{ fontSize: "28px", fontWeight: 700, color: textPrimary, margin: 0 }}>
-            <span style={{ color: "#E91E8C" }}>Axel</span> Agency Agreement
+            <span style={{ color: "var(--accent-primary)" }}>Axel</span> Agency Agreement
           </h1>
         </div>
 
@@ -49,7 +49,7 @@ export default function AgentAgreement() {
             </div>
           ) : (
             <div style={{ textAlign: "center", padding: "24px" }}>
-              <FileSignature style={{ width: 48, height: 48, color: "#E91E8C", marginBottom: "16px" }} />
+              <FileSignature style={{ width: 48, height: 48, color: "var(--accent-primary)", marginBottom: "16px" }} />
               <h2 style={{ fontSize: "20px", fontWeight: 600, color: textPrimary, margin: "0 0 12px" }}>Application Approved</h2>
               <p style={{ fontSize: "15px", color: textSecondary, lineHeight: 1.6, marginBottom: "24px" }}>
                 Your application has been approved. Please sign your agency agreement below.

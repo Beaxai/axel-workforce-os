@@ -10,7 +10,7 @@ export default function UnauthorizedPage() {
       style={{ background: "#060608" }}
     >
       <div className="text-center">
-        <ShieldX className="w-12 h-12 mx-auto mb-4" style={{ color: "#E91E8C" }} />
+        <ShieldX className="w-12 h-12 mx-auto mb-4" style={{ color: "var(--accent-primary)" }} />
         <h1 className="text-xl font-bold text-white mb-2">Access Denied</h1>
         <p className="text-sm mb-6" style={{ color: "rgba(255,255,255,0.5)" }}>
           You don't have permission to access this area.
@@ -18,7 +18,7 @@ export default function UnauthorizedPage() {
         <button
           onClick={() => navigate("/login")}
           className="px-6 py-2.5 rounded-xl text-sm font-semibold text-white"
-          style={{ background: "#E91E8C" }}
+          style={{ background: "var(--accent-primary)" }}
         >
           Return to Login
         </button>

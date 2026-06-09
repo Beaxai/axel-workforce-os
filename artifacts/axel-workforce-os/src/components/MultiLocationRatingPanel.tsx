@@ -79,7 +79,7 @@ export default function MultiLocationRatingPanel({
         <h2 style={{ fontSize: "18px", fontWeight: 700, color: textPrimary, margin: 0 }}>
           {businessName} — Rating Breakdown
         </h2>
-        <Badge label={isPEO ? "PEO+WC" : "WC Only"} color={isPEO ? "#E91E8C" : "#1E6BE9"} />
+        <Badge label={isPEO ? "PEO+WC" : "WC Only"} color={isPEO ? "purple" : "blue"} />
       </div>
 
       {ratedAt && (
@@ -203,14 +203,14 @@ export default function MultiLocationRatingPanel({
           alignItems: "baseline",
           padding: "16px 18px",
           borderRadius: "10px",
-          border: "1px solid rgba(233,30,140,0.3)",
-          background: isDark ? "rgba(233,30,140,0.08)" : "rgba(233,30,140,0.05)",
+          border: "1px solid rgba(124,58,237,0.3)",
+          background: isDark ? "rgba(124,58,237,0.08)" : "rgba(124,58,237,0.05)",
         }}
       >
-        <span style={{ fontSize: "13px", color: "#E91E8C", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+        <span style={{ fontSize: "13px", color: "var(--accent-primary)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>
           Final Premium
         </span>
-        <span style={{ fontSize: "26px", color: "#E91E8C", fontWeight: 700 }}>
+        <span style={{ fontSize: "26px", color: "var(--accent-primary)", fontWeight: 700 }}>
           {fmtMoney(finalPremium)}
         </span>
       </div>

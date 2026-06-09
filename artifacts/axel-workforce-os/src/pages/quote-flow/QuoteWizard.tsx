@@ -154,10 +154,10 @@ export default function QuoteWizard() {
       {!isTransition && progress.total > 0 && (
         <div style={{ marginBottom: 32 }}>
           <div style={{ height: 3, background: trackBg, width: "100%", borderRadius: 2 }}>
-            <div style={{ height: "100%", width: `${(progress.current / progress.total) * 100}%`, background: "#E91E8C", borderRadius: 2, transition: "width 0.3s" }} />
+            <div style={{ height: "100%", width: `${(progress.current / progress.total) * 100}%`, background: "var(--accent-primary)", borderRadius: 2, transition: "width 0.3s" }} />
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: "#E91E8C", textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: "var(--app-font-heading)" }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: "var(--accent-primary)", textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: "var(--app-font-heading)" }}>
               {progress.label}
             </span>
             <span style={{ fontSize: 13, color: textMuted }}>

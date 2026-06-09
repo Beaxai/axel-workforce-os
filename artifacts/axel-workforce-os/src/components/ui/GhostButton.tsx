@@ -11,8 +11,8 @@ export default function GhostButton({ children, style, disabled, ...props }: Gho
       disabled={disabled}
       style={{
         background: "transparent",
-        color: "#E91E8C",
-        border: "1px solid #E91E8C",
+        color: "var(--accent-primary)",
+        border: "1px solid var(--accent-primary)",
         borderRadius: "10px",
         padding: "10px 20px",
         fontSize: "14px",
@@ -24,14 +24,14 @@ export default function GhostButton({ children, style, disabled, ...props }: Gho
       }}
       onMouseEnter={(e) => {
         if (!disabled) {
-          e.currentTarget.style.background = "#E91E8C";
+          e.currentTarget.style.background = "var(--accent-primary)";
           e.currentTarget.style.color = "#fff";
         }
       }}
       onMouseLeave={(e) => {
         if (!disabled) {
           e.currentTarget.style.background = "transparent";
-          e.currentTarget.style.color = "#E91E8C";
+          e.currentTarget.style.color = "var(--accent-primary)";
         }
       }}
     >
