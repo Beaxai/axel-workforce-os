@@ -25,7 +25,7 @@ export default function SectionHeader({ title, subtitle }: SectionHeaderProps) {
         <p
           style={{
             fontSize: "14px",
-            color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)",
+            color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.6)",
             marginTop: "4px",
           }}
         >

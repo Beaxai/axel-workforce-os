@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useAuthStore, ROLE_LABELS, ROLE_PATHS, type PartyRole } from "@/lib/auth-store";
 import { ROLE_NAV } from "@/lib/role-config";
+import { useThemeColors } from "@/lib/use-theme-colors";
 
 const ALL_ROLES: PartyRole[] = [
   "ADMIN", "UNDERWRITER", "CSA", "AGENT",
@@ -19,6 +20,7 @@ export default function DashboardLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout, switchRole } = useAuthStore();
+  const { isDark, bg, textPrimary, textMuted, textSecondary, borderColor, hoverBg, cardBg, dropdownBg } = useThemeColors();
   const [collapsed, setCollapsed] = useState(false);
   const [roleSwitcherOpen, setRoleSwitcherOpen] = useState(false);
 
@@ -38,17 +40,17 @@ export default function DashboardLayout() {
   };
 
   return (
-    <div className="min-h-screen flex" style={{ background: "#060608" }}>
+    <div className="min-h-screen flex" style={{ background: bg }}>
       <aside
         className={`${collapsed ? "w-16" : "w-60"} flex flex-col shrink-0 transition-all duration-200`}
         style={{
-          background: "rgba(255,255,255,0.03)",
-          borderRight: "1px solid rgba(255,255,255,0.08)",
+          background: cardBg,
+          borderRight: `1px solid ${borderColor}`,
         }}
       >
         <div
           className="h-14 flex items-center justify-between px-3"
-          style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}
+          style={{ borderBottom: `1px solid ${borderColor}` }}
         >
           {!collapsed && (
             <div className="flex items-center gap-2">
@@ -58,14 +60,14 @@ export default function DashboardLayout() {
               >
                 <Zap className="w-4 h-4 text-white" />
               </div>
-              <span className="text-sm font-bold text-white tracking-tight">Axel WOS</span>
+              <span className="text-sm font-bold tracking-tight" style={{ color: textPrimary }}>Axel WOS</span>
             </div>
           )}
           <button
             onClick={() => setCollapsed(!collapsed)}
             className="p-1.5 rounded-md transition-colors"
-            style={{ color: "rgba(255,255,255,0.4)" }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.06)")}
+            style={{ color: textMuted }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = hoverBg)}
             onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
           >
             {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
@@ -84,11 +86,11 @@ export default function DashboardLayout() {
                 to={item.path}
                 className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
                 style={{
-                  background: active ? "rgba(233,30,140,0.15)" : "transparent",
-                  color: active ? "var(--accent-primary)" : "rgba(255,255,255,0.6)",
+                  background: active ? "var(--accent-primary-soft)" : "transparent",
+                  color: active ? "var(--accent-primary)" : textSecondary,
                 }}
                 onMouseEnter={(e) => {
-                  if (!active) e.currentTarget.style.background = "rgba(255,255,255,0.06)";
+                  if (!active) e.currentTarget.style.background = hoverBg;
                 }}
                 onMouseLeave={(e) => {
                   if (!active) e.currentTarget.style.background = "transparent";
@@ -97,7 +99,7 @@ export default function DashboardLayout() {
               >
                 <item.icon
                   className="w-4 h-4 shrink-0"
-                  style={{ color: active ? "var(--accent-primary)" : "rgba(255,255,255,0.4)" }}
+                  style={{ color: active ? "var(--accent-primary)" : textMuted }}
                 />
                 {!collapsed && <span>{item.label}</span>}
               </Link>
@@ -107,7 +109,7 @@ export default function DashboardLayout() {
 
         <div
           className="p-3"
-          style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}
+          style={{ borderTop: `1px solid ${borderColor}` }}
         >
           {!collapsed && (
             <div className="relative mb-2">
@@ -115,9 +117,9 @@ export default function DashboardLayout() {
                 onClick={() => setRoleSwitcherOpen(!roleSwitcherOpen)}
                 className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors"
                 style={{
-                  background: "rgba(255,255,255,0.04)",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  color: "rgba(255,255,255,0.7)",
+                  background: cardBg,
+                  border: `1px solid ${borderColor}`,
+                  color: textSecondary,
                 }}
               >
                 <span>{ROLE_LABELS[user.role]}</span>
@@ -128,8 +130,8 @@ export default function DashboardLayout() {
                 <div
                   className="absolute bottom-full left-0 w-full mb-1 rounded-lg py-1 z-50"
                   style={{
-                    background: "rgba(20,20,24,0.98)",
-                    border: "1px solid rgba(255,255,255,0.12)",
+                    background: dropdownBg,
+                    border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)"}`,
                     backdropFilter: "blur(12px)",
                   }}
                 >
@@ -140,18 +142,18 @@ export default function DashboardLayout() {
                       className="w-full text-left px-3 py-1.5 text-xs transition-colors"
                       style={{
                         color:
-                          role === user.role ? "var(--accent-primary)" : "rgba(255,255,255,0.6)",
-                        background: role === user.role ? "rgba(233,30,140,0.1)" : "transparent",
+                          role === user.role ? "var(--accent-primary)" : textSecondary,
+                        background: role === user.role ? "var(--accent-primary-soft)" : "transparent",
                       }}
                       onMouseEnter={(e) =>
                         (e.currentTarget.style.background =
                           role === user.role
-                            ? "rgba(233,30,140,0.15)"
-                            : "rgba(255,255,255,0.06)")
+                            ? "var(--accent-primary-soft)"
+                            : hoverBg)
                       }
                       onMouseLeave={(e) =>
                         (e.currentTarget.style.background =
-                          role === user.role ? "rgba(233,30,140,0.1)" : "transparent")
+                          role === user.role ? "var(--accent-primary-soft)" : "transparent")
                       }
                     >
                       {ROLE_LABELS[role]}
@@ -165,8 +167,8 @@ export default function DashboardLayout() {
           <button
             onClick={handleLogout}
             className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors w-full"
-            style={{ color: "rgba(255,255,255,0.5)" }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.06)")}
+            style={{ color: textMuted }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = hoverBg)}
             onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
           >
             <LogOut className="w-4 h-4" />
@@ -178,21 +180,21 @@ export default function DashboardLayout() {
       <main className="flex-1 overflow-auto">
         <div
           className="h-14 flex items-center px-6"
-          style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}
+          style={{ borderBottom: `1px solid ${borderColor}` }}
         >
           <div className="flex items-center gap-3">
             <div
               className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold"
-              style={{ background: "rgba(233,30,140,0.2)", color: "var(--accent-primary)" }}
+              style={{ background: "var(--accent-primary-soft)", color: "var(--accent-primary)" }}
             >
               {user.firstName[0]}
               {user.lastName[0]}
             </div>
             <div>
-              <p className="text-sm font-medium text-white">
+              <p className="text-sm font-medium" style={{ color: textPrimary }}>
                 {user.firstName} {user.lastName}
               </p>
-              <p className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
+              <p className="text-xs" style={{ color: textMuted }}>
                 {ROLE_LABELS[user.role]}
               </p>
             </div>

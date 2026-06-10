@@ -7,14 +7,25 @@ export function useThemeColors() {
   return {
     isDark,
     textPrimary: isDark ? "#fff" : "#111",
-    textSecondary: isDark ? "rgba(255,255,255,0.72)" : "rgba(0,0,0,0.6)",
-    textMuted: isDark ? "rgba(255,255,255,0.48)" : "rgba(0,0,0,0.45)",
+    textSecondary: isDark ? "rgba(255,255,255,0.72)" : "rgba(0,0,0,0.68)",
+    textMuted: isDark ? "rgba(255,255,255,0.48)" : "rgba(0,0,0,0.58)",
     bg: isDark ? "#060608" : "#f4f4f5",
     cardBg: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)",
     glassBg: isDark ? "rgba(255,255,255,0.035)" : "rgba(255,255,255,0.8)",
     borderColor: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.1)",
     hoverBg: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)",
     dropdownBg: isDark ? "rgba(30,30,35,0.95)" : "rgba(255,255,255,0.98)",
+
+    // Form surface + text tokens — mirror the CSS variables in index.css so the
+    // JS styling path and the CSS path read identical values per mode.
+    inputBg: isDark ? "rgba(255,255,255,0.05)" : "#ffffff",
+    inputBorder: isDark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.15)",
+    inputText: isDark ? "#fff" : "#111",
+    inputPlaceholder: isDark ? "rgba(255,255,255,0.40)" : "rgba(0,0,0,0.40)",
+    inputBgFocus: isDark ? "rgba(255,255,255,0.08)" : "#ffffff",
+    inputBorderFocus: isDark ? "#ff4ba6" : "#E91E8C",
+    labelText: isDark ? "rgba(255,255,255,0.72)" : "rgba(0,0,0,0.65)",
+    sectionHeading: isDark ? "rgba(255,255,255,0.85)" : "rgba(0,0,0,0.80)",
 
     // Brand accent tokens — mirror the CSS variables in index.css so the JS
     // styling path and the CSS path read identical values. Pink = primary

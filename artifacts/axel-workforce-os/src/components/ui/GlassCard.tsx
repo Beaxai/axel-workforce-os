@@ -6,15 +6,17 @@ interface GlassCardProps {
   className?: string;
   padding?: string;
   style?: CSSProperties;
+  onClick?: () => void;
 }
 
-export default function GlassCard({ children, className = "", padding = "20px", style }: GlassCardProps) {
+export default function GlassCard({ children, className = "", padding = "20px", style, onClick }: GlassCardProps) {
   const { theme } = useThemeStore();
   const isDark = theme === "dark";
 
   return (
     <div
       className={className}
+      onClick={onClick}
       style={{
         background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)",
         backdropFilter: "blur(12px)",

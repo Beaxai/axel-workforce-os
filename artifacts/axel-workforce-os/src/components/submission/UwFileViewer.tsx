@@ -5,9 +5,9 @@ import {
 } from "lucide-react";
 
 const glass: React.CSSProperties = {
-  background: "rgba(255,255,255,0.05)",
+  background: "hsl(var(--card))",
   backdropFilter: "blur(12px)",
-  border: "1px solid rgba(255,255,255,0.08)",
+  border: "1px solid hsl(var(--border))",
   borderRadius: 12,
 };
 const accent = "var(--accent-primary)";
@@ -164,7 +164,7 @@ export default function UwFileViewer({ dealId }: { dealId: string }) {
           alignItems: "center",
           justifyContent: "center",
           height: 300,
-          color: "rgba(255,255,255,0.4)",
+          color: "hsl(var(--muted-foreground))",
         }}
       >
         <Loader size={18} style={{ marginRight: 10 }} /> Loading underwriting file...
@@ -178,8 +178,8 @@ export default function UwFileViewer({ dealId }: { dealId: string }) {
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
         <Shield size={20} color={accent} />
         <div>
-          <h2 style={{ color: "#fff", fontSize: 18, fontWeight: 700, margin: 0 }}>Underwriting File</h2>
-          <p style={{ color: "rgba(255,255,255,0.35)", fontSize: 13, margin: "3px 0 0" }}>
+          <h2 style={{ color: "hsl(var(--foreground))", fontSize: 18, fontWeight: 700, margin: 0 }}>Underwriting File</h2>
+          <p style={{ color: "hsl(var(--muted-foreground))", fontSize: 13, margin: "3px 0 0" }}>
             All submission documents, loss history, and executed bind package
           </p>
         </div>
@@ -188,7 +188,7 @@ export default function UwFileViewer({ dealId }: { dealId: string }) {
       {signatureRequest && (
         <div style={{ ...glass, padding: "20px 24px", marginBottom: 16 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-            <h3 style={{ color: "#fff", fontSize: 14, fontWeight: 600, margin: 0 }}>Signature Status</h3>
+            <h3 style={{ color: "hsl(var(--foreground))", fontSize: 14, fontWeight: 600, margin: 0 }}>Signature Status</h3>
             <SignatureStatusBadge status={signatureRequest.status} />
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -201,8 +201,8 @@ export default function UwFileViewer({ dealId }: { dealId: string }) {
 
       {categoriesWithDocs.length === 0 ? (
         <div style={{ ...glass, padding: 40, textAlign: "center" }}>
-          <FileText size={32} color="rgba(255,255,255,0.15)" style={{ marginBottom: 12 }} />
-          <p style={{ color: "rgba(255,255,255,0.35)", fontSize: 14, margin: 0 }}>No documents available yet.</p>
+          <FileText size={32} color="hsl(var(--muted-foreground))" style={{ marginBottom: 12 }} />
+          <p style={{ color: "hsl(var(--muted-foreground))", fontSize: 14, margin: 0 }}>No documents available yet.</p>
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -226,13 +226,13 @@ export default function UwFileViewer({ dealId }: { dealId: string }) {
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <FileText size={15} color={accent} />
-                    <span style={{ color: "#fff", fontSize: 14, fontWeight: 500 }}>
+                    <span style={{ color: "hsl(var(--foreground))", fontSize: 14, fontWeight: 500 }}>
                       {DOC_CATEGORY_LABELS[cat] || cat}
                     </span>
                     <span
                       style={{
-                        background: "rgba(255,255,255,0.08)",
-                        color: "rgba(255,255,255,0.45)",
+                        background: "hsl(var(--muted))",
+                        color: "hsl(var(--muted-foreground))",
                         fontSize: 11,
                         padding: "2px 8px",
                         borderRadius: 10,
@@ -242,14 +242,14 @@ export default function UwFileViewer({ dealId }: { dealId: string }) {
                     </span>
                   </div>
                   {expanded ? (
-                    <ChevronUp size={15} color="rgba(255,255,255,0.3)" />
+                    <ChevronUp size={15} color="hsl(var(--muted-foreground))" />
                   ) : (
-                    <ChevronDown size={15} color="rgba(255,255,255,0.3)" />
+                    <ChevronDown size={15} color="hsl(var(--muted-foreground))" />
                   )}
                 </button>
 
                 {expanded && (
-                  <div style={{ padding: "0 20px 16px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                  <div style={{ padding: "0 20px 16px", borderTop: "1px solid hsl(var(--border))" }}>
                     <div style={{ display: "flex", flexDirection: "column", gap: 6, paddingTop: 12 }}>
                       {docs.map((doc, i) => (
                         <div
@@ -259,14 +259,14 @@ export default function UwFileViewer({ dealId }: { dealId: string }) {
                             alignItems: "center",
                             justifyContent: "space-between",
                             padding: "10px 14px",
-                            background: "rgba(255,255,255,0.03)",
+                            background: "hsl(var(--muted))",
                             borderRadius: 8,
-                            border: "1px solid rgba(255,255,255,0.06)",
+                            border: "1px solid hsl(var(--border))",
                           }}
                         >
                           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                            <FileText size={14} color="rgba(255,255,255,0.4)" />
-                            <span style={{ color: "rgba(255,255,255,0.8)", fontSize: 13 }}>
+                            <FileText size={14} color="hsl(var(--muted-foreground))" />
+                            <span style={{ color: "hsl(var(--foreground))", fontSize: 13 }}>
                               {doc.label}
                             </span>
                           </div>
@@ -278,9 +278,9 @@ export default function UwFileViewer({ dealId }: { dealId: string }) {
                               gap: 6,
                               padding: "6px 14px",
                               borderRadius: 6,
-                              border: "1px solid rgba(255,255,255,0.12)",
+                              border: "1px solid hsl(var(--border))",
                               background: "transparent",
-                              color: "rgba(255,255,255,0.6)",
+                              color: "hsl(var(--muted-foreground))",
                               cursor: "pointer",
                               fontSize: 12,
                             }}
@@ -304,7 +304,7 @@ export default function UwFileViewer({ dealId }: { dealId: string }) {
 
 function SignatureStatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; color: string; bg: string }> = {
-    pending: { label: "Pending", color: "rgba(255,255,255,0.4)", bg: "rgba(255,255,255,0.06)" },
+    pending: { label: "Pending", color: "#9ca3af", bg: "rgba(156,163,175,0.12)" },
     awaiting_signature: { label: "Awaiting Signatures", color: "#ffb74d", bg: "rgba(255,183,77,0.1)" },
     partially_signed: { label: "Partially Signed", color: "#64b5f6", bg: "rgba(100,181,246,0.1)" },
     signed: { label: "Fully Signed", color: "#4caf50", bg: "rgba(76,175,80,0.1)" },
@@ -338,20 +338,20 @@ function SignerRow({ signer }: { signer: { name: string; role: string; email: st
         alignItems: "center",
         justifyContent: "space-between",
         padding: "10px 16px",
-        background: "rgba(255,255,255,0.03)",
+        background: "hsl(var(--muted))",
         borderRadius: 8,
-        border: "1px solid rgba(255,255,255,0.06)",
+        border: "1px solid hsl(var(--border))",
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         {signer.status === "signed" ? (
           <CheckCircle size={14} color="#4caf50" />
         ) : (
-          <Clock size={14} color="rgba(255,255,255,0.3)" />
+          <Clock size={14} color="hsl(var(--muted-foreground))" />
         )}
         <div>
-          <p style={{ color: "#fff", fontSize: 13, fontWeight: 500, margin: 0 }}>{signer.name}</p>
-          <p style={{ color: "rgba(255,255,255,0.35)", fontSize: 11, margin: "2px 0 0" }}>
+          <p style={{ color: "hsl(var(--foreground))", fontSize: 13, fontWeight: 500, margin: 0 }}>{signer.name}</p>
+          <p style={{ color: "hsl(var(--muted-foreground))", fontSize: 11, margin: "2px 0 0" }}>
             {signer.role} · {signer.email}
           </p>
         </div>
@@ -363,15 +363,15 @@ function SignerRow({ signer }: { signer: { name: string; role: string; email: st
             fontWeight: 600,
             padding: "3px 10px",
             borderRadius: 12,
-            background: signer.status === "signed" ? "rgba(76,175,80,0.12)" : "rgba(255,255,255,0.06)",
-            color: signer.status === "signed" ? "#4caf50" : "rgba(255,255,255,0.4)",
-            border: `1px solid ${signer.status === "signed" ? "rgba(76,175,80,0.3)" : "rgba(255,255,255,0.08)"}`,
+            background: signer.status === "signed" ? "rgba(76,175,80,0.12)" : "hsl(var(--muted))",
+            color: signer.status === "signed" ? "#4caf50" : "hsl(var(--muted-foreground))",
+            border: `1px solid ${signer.status === "signed" ? "rgba(76,175,80,0.3)" : "hsl(var(--border))"}`,
           }}
         >
           {signer.status === "signed" ? "Signed" : "Awaiting"}
         </span>
         {signer.signed_at && (
-          <p style={{ color: "rgba(255,255,255,0.3)", fontSize: 11, margin: "4px 0 0" }}>
+          <p style={{ color: "hsl(var(--muted-foreground))", fontSize: 11, margin: "4px 0 0" }}>
             {new Date(signer.signed_at).toLocaleDateString("en-US", {
               month: "short",
               day: "numeric",

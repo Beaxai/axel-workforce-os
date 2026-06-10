@@ -84,7 +84,7 @@ export default function ClassCodeSearch({ value, description, onChange, state }:
       <div style={{ position: "relative" }}>
         <Search style={{
           position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)",
-          width: 14, height: 14, color: "#666", pointerEvents: "none",
+          width: 14, height: 14, color: "var(--input-placeholder)", pointerEvents: "none",
         }} />
         <input
           type="text"
@@ -95,17 +95,17 @@ export default function ClassCodeSearch({ value, description, onChange, state }:
             width: "100%",
             padding: "10px 32px 10px 30px",
             borderRadius: 10,
-            border: "1px solid rgba(255,255,255,0.08)",
-            background: "#1a1a26",
-            color: "#fff",
+            border: "1px solid var(--input-border)",
+            background: "var(--input-bg)",
+            color: "var(--input-text)",
             fontSize: 13,
             outline: "none",
           }}
           onFocus={(e) => {
-            e.currentTarget.style.borderColor = "var(--accent-primary)";
+            e.currentTarget.style.borderColor = "var(--input-border-focus)";
             if (query.length >= 1 && !value) setOpen(true);
           }}
-          onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)")}
+          onBlur={(e) => (e.currentTarget.style.borderColor = "var(--input-border)")}
         />
         {query && (
           <button
@@ -114,7 +114,7 @@ export default function ClassCodeSearch({ value, description, onChange, state }:
             style={{
               position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)",
               background: "none", border: "none", cursor: "pointer", padding: 2,
-              color: "rgba(255,255,255,0.3)", display: "flex",
+              color: "var(--input-placeholder)", display: "flex",
             }}
           >
             <X style={{ width: 14, height: 14 }} />
@@ -128,19 +128,19 @@ export default function ClassCodeSearch({ value, description, onChange, state }:
           left: 0,
           right: 0,
           marginTop: 4,
-          background: "#1a1a26",
-          border: "1px solid rgba(255,255,255,0.12)",
+          background: "hsl(var(--popover))",
+          border: "1px solid var(--input-border)",
           borderRadius: 10,
           maxHeight: 280,
           overflowY: "auto",
           zIndex: 100,
-          boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+          boxShadow: "var(--shadow-lg)",
         }}>
           {loading && (
-            <div style={{ padding: "12px 14px", color: "#888", fontSize: 13 }}>Searching...</div>
+            <div style={{ padding: "12px 14px", color: "var(--label-text)", fontSize: 13 }}>Searching...</div>
           )}
           {!loading && results.length === 0 && query.length >= 1 && (
-            <div style={{ padding: "12px 14px", color: "#666", fontSize: 13 }}>
+            <div style={{ padding: "12px 14px", color: "var(--input-placeholder)", fontSize: 13 }}>
               No class codes found for "{query}"
             </div>
           )}
@@ -155,9 +155,9 @@ export default function ClassCodeSearch({ value, description, onChange, state }:
                 gap: 8,
                 padding: "10px 14px",
                 border: "none",
-                borderBottom: "1px solid rgba(255,255,255,0.04)",
+                borderBottom: "1px solid var(--input-border)",
                 background: "transparent",
-                color: "#fff",
+                color: "var(--input-text)",
                 fontSize: 13,
                 textAlign: "left",
                 cursor: "pointer",
@@ -169,7 +169,7 @@ export default function ClassCodeSearch({ value, description, onChange, state }:
               <span style={{ color: "var(--accent-primary)", fontWeight: 600, flexShrink: 0, minWidth: 48 }}>
                 {item.classCode}
               </span>
-              <span style={{ color: "#ccc" }}>{item.description}</span>
+              <span style={{ color: "var(--label-text)" }}>{item.description}</span>
             </button>
           ))}
         </div>

@@ -21,7 +21,7 @@ Source of truth: `src/index.css` CSS vars, mirrored in `src/lib/use-theme-colors
 - **`--gradient-cta` (purple→pink) is the ONLY permitted gradient**, for the single primary CTA per screen.
 - shadcn HSL tokens `--primary`/`--ring`/`--sidebar-primary`/`--sidebar-ring`/`--chart-1` point to pink (`328 84% 52%`); `--chart-2` is purple (`262 83% 58%`); `--chart-3..5` are violet/magenta shades.
 
-**Why:** the hierarchy was deliberately INVERTED (Phase D1.1) from an earlier purple-primary/pink-brand-only model — older notes/PRs describing "purple primary, pink brand moments only" are obsolete.
+**Why:** the hierarchy was deliberately INVERTED from an earlier purple-primary/pink-brand-only model — older notes describing "purple primary, pink brand moments only" are obsolete.
 
 **How to apply (sweep invariant):** after any accent change, `#7C3AED` / `#E91E8C` / `rgba(124,58,237,…)` must appear ONLY in `index.css`, `use-theme-colors.ts`, and `AxelBadge.tsx`. `rgba(233,30,140,…)` (pink-soft) may appear inline. `#6D28D9` (purple) and `#1E6BE9` (WC blue) are allowed as categorical literals.
 

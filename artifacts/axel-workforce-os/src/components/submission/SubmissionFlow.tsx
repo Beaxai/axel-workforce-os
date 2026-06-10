@@ -69,7 +69,7 @@ export default function SubmissionFlow({
       if (data.questions) {
         setQuestions(data.questions);
         setQuestionSet(data.questionSet);
-        const uniqueSections = [...new Set(data.questions.map((q: Question) => q.section))];
+        const uniqueSections = [...new Set(data.questions.map((q: Question) => q.section))] as string[];
         setSections(uniqueSections);
       }
     } catch {
@@ -179,10 +179,10 @@ export default function SubmissionFlow({
     const err = errors[q.answerKey];
 
     const inputBase: React.CSSProperties = {
-      background: "#1a1a26",
-      border: `1px solid ${err ? "#ff4d4f" : "rgba(255,255,255,0.08)"}`,
+      background: "var(--input-bg)",
+      border: `1px solid ${err ? "#ff4d4f" : "var(--input-border)"}`,
       borderRadius: 10,
-      color: "#fff",
+      color: "var(--input-text)",
       padding: "10px 14px",
       width: "100%",
       fontSize: 14,
@@ -201,9 +201,9 @@ export default function SubmissionFlow({
               style={{
                 padding: "8px 24px",
                 borderRadius: 8,
-                border: `1px solid ${String(val) === opt ? accent : "rgba(255,255,255,0.08)"}`,
-                background: String(val) === opt ? `${accent}22` : "rgba(255,255,255,0.04)",
-                color: String(val) === opt ? accent : "rgba(255,255,255,0.7)",
+                border: `1px solid ${String(val) === opt ? accent : "var(--input-border)"}`,
+                background: String(val) === opt ? `${accent}22` : "hsl(var(--muted))",
+                color: String(val) === opt ? accent : "hsl(var(--foreground))",
                 cursor: "pointer",
                 fontSize: 14,
               }}
@@ -251,9 +251,9 @@ export default function SubmissionFlow({
                 style={{
                   padding: "6px 14px",
                   borderRadius: 20,
-                  border: `1px solid ${active ? accent : "rgba(255,255,255,0.08)"}`,
-                  background: active ? `${accent}22` : "rgba(255,255,255,0.04)",
-                  color: active ? accent : "rgba(255,255,255,0.7)",
+                  border: `1px solid ${active ? accent : "var(--input-border)"}`,
+                  background: active ? `${accent}22` : "hsl(var(--muted))",
+                  color: active ? accent : "hsl(var(--foreground))",
                   cursor: "pointer",
                   fontSize: 13,
                 }}
@@ -295,7 +295,7 @@ export default function SubmissionFlow({
           alignItems: "center",
           justifyContent: "center",
           height: 300,
-          color: "rgba(255,255,255,0.5)",
+          color: "hsl(var(--muted-foreground))",
         }}
       >
         Loading submission form...
@@ -332,12 +332,12 @@ export default function SubmissionFlow({
               marginBottom: 12,
             }}
           >
-            <h2 style={{ color: "#fff", fontSize: 20, fontWeight: 600, margin: 0 }}>
+            <h2 style={{ color: "hsl(var(--foreground))", fontSize: 20, fontWeight: 600, margin: 0 }}>
               {questionSet?.verticalLabel} Workers' Compensation Application
             </h2>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               {saving && (
-                <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 13 }}>Saving...</span>
+                <span style={{ color: "hsl(var(--muted-foreground))", fontSize: 13 }}>Saving...</span>
               )}
               {savedStatus === "saved" && (
                 <span
@@ -371,8 +371,8 @@ export default function SubmissionFlow({
                   onClick={onClose}
                   style={{
                     background: "none",
-                    border: "1px solid rgba(255,255,255,0.12)",
-                    color: "rgba(255,255,255,0.6)",
+                    border: "1px solid hsl(var(--border))",
+                    color: "hsl(var(--muted-foreground))",
                     borderRadius: 8,
                     padding: "6px 14px",
                     cursor: "pointer",
@@ -387,7 +387,7 @@ export default function SubmissionFlow({
 
           <div
             style={{
-              background: "rgba(255,255,255,0.08)",
+              background: "hsl(var(--muted))",
               borderRadius: 4,
               height: 4,
               overflow: "hidden",
@@ -417,16 +417,16 @@ export default function SubmissionFlow({
                     i === activeSection
                       ? accent
                       : i < activeSection
-                      ? "rgba(255,255,255,0.2)"
-                      : "rgba(255,255,255,0.06)"
+                      ? "hsl(var(--border))"
+                      : "hsl(var(--border))"
                   }`,
                   background: i === activeSection ? `${accent}22` : "transparent",
                   color:
                     i === activeSection
                       ? accent
                       : i < activeSection
-                      ? "rgba(255,255,255,0.6)"
-                      : "rgba(255,255,255,0.25)",
+                      ? "hsl(var(--foreground))"
+                      : "hsl(var(--muted-foreground))",
                   cursor: i < activeSection ? "pointer" : "default",
                   fontSize: 12,
                   fontWeight: i === activeSection ? 600 : 400,
@@ -441,21 +441,21 @@ export default function SubmissionFlow({
 
         <div
           style={{
-            background: "#13131f",
-            border: "1px solid rgba(255,255,255,0.08)",
+            background: "hsl(var(--card))",
+            border: "1px solid hsl(var(--border))",
             borderRadius: 12,
             padding: 28,
           }}
         >
           <h3
             style={{
-              color: "#fff",
+              color: "hsl(var(--foreground))",
               fontSize: 16,
               fontWeight: 600,
               marginTop: 0,
               marginBottom: 24,
               paddingBottom: 16,
-              borderBottom: "1px solid rgba(255,255,255,0.08)",
+              borderBottom: "1px solid hsl(var(--border))",
             }}
           >
             {currentSection}
@@ -467,7 +467,7 @@ export default function SubmissionFlow({
                 <label
                   style={{
                     display: "block",
-                    color: "rgba(255,255,255,0.85)",
+                    color: "hsl(var(--foreground))",
                     fontSize: 14,
                     marginBottom: 8,
                     fontWeight: 500,
@@ -481,7 +481,7 @@ export default function SubmissionFlow({
                 {q.helpText && (
                   <p
                     style={{
-                      color: "rgba(255,255,255,0.4)",
+                      color: "hsl(var(--muted-foreground))",
                       fontSize: 12,
                       marginBottom: 8,
                       marginTop: -4,
@@ -523,9 +523,9 @@ export default function SubmissionFlow({
               gap: 6,
               padding: "10px 20px",
               borderRadius: 8,
-              border: "1px solid rgba(255,255,255,0.12)",
+              border: "1px solid hsl(var(--border))",
               background: "transparent",
-              color: activeSection === 0 ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.7)",
+              color: activeSection === 0 ? "hsl(var(--muted-foreground))" : "hsl(var(--foreground))",
               cursor: activeSection === 0 ? "not-allowed" : "pointer",
               fontSize: 14,
             }}
@@ -543,9 +543,9 @@ export default function SubmissionFlow({
                 gap: 6,
                 padding: "10px 20px",
                 borderRadius: 8,
-                border: "1px solid rgba(255,255,255,0.12)",
+                border: "1px solid hsl(var(--border))",
                 background: "transparent",
-                color: "rgba(255,255,255,0.6)",
+                color: "hsl(var(--muted-foreground))",
                 cursor: "pointer",
                 fontSize: 14,
               }}

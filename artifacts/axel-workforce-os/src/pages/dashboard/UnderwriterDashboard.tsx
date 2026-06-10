@@ -14,7 +14,7 @@ export default function UnderwriterDashboard() {
   const pendingDeals = deals.filter((d: any) => ["NEW_LEAD", "QUOTING"].includes(d.stage));
 
   const textPrimary = isDark ? "#fff" : "#111";
-  const textMuted = isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.45)";
+  const textMuted = isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.58)";
   const textSecondary = isDark ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.55)";
   const borderSubtle = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)";
   const subtleBg = isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)";

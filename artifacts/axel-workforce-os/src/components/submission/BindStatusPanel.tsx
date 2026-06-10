@@ -101,8 +101,8 @@ export default function BindStatusPanel({
   return (
     <div
       style={{
-        background: "rgba(255,255,255,0.03)",
-        border: "1px solid rgba(255,255,255,0.07)",
+        background: "hsl(var(--card))",
+        border: "1px solid hsl(var(--border))",
         borderRadius: 10,
         padding: "16px 20px",
       }}
@@ -110,11 +110,11 @@ export default function BindStatusPanel({
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <FileSignature size={15} color={accent} />
-          <span style={{ color: "#fff", fontSize: 13, fontWeight: 600 }}>Bind & Signature Status</span>
+          <span style={{ color: "hsl(var(--foreground))", fontSize: 13, fontWeight: 600 }}>Bind & Signature Status</span>
         </div>
         <button
           onClick={loadData}
-          style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.3)", padding: 2 }}
+          style={{ background: "none", border: "none", cursor: "pointer", color: "hsl(var(--muted-foreground))", padding: 2 }}
         >
           <RefreshCw size={13} />
         </button>
@@ -135,8 +135,8 @@ export default function BindStatusPanel({
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    background: isComplete ? "#4caf50" : isCurrent ? accent : "rgba(255,255,255,0.08)",
-                    border: `2px solid ${isComplete ? "#4caf50" : isCurrent ? accent : "rgba(255,255,255,0.12)"}`,
+                    background: isComplete ? "#4caf50" : isCurrent ? accent : "hsl(var(--muted))",
+                    border: `2px solid ${isComplete ? "#4caf50" : isCurrent ? accent : "hsl(var(--border))"}`,
                     flexShrink: 0,
                   }}
                 >
@@ -145,12 +145,12 @@ export default function BindStatusPanel({
                   ) : isCurrent ? (
                     <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#fff" }} />
                   ) : (
-                    <div style={{ width: 8, height: 8, borderRadius: "50%", background: "rgba(255,255,255,0.2)" }} />
+                    <div style={{ width: 8, height: 8, borderRadius: "50%", background: "hsl(var(--muted-foreground))" }} />
                   )}
                 </div>
                 <span
                   style={{
-                    color: isComplete ? "#4caf50" : isCurrent ? "#fff" : "rgba(255,255,255,0.25)",
+                    color: isComplete ? "#4caf50" : isCurrent ? "hsl(var(--foreground))" : "hsl(var(--muted-foreground))",
                     fontSize: 10,
                     textAlign: "center",
                     marginTop: 4,
@@ -167,7 +167,7 @@ export default function BindStatusPanel({
                     flex: 1,
                     height: 2,
                     minWidth: 12,
-                    background: i < currentStageIndex ? "#4caf50" : "rgba(255,255,255,0.08)",
+                    background: i < currentStageIndex ? "#4caf50" : "hsl(var(--border))",
                     marginBottom: 16,
                     flexShrink: 0,
                   }}
@@ -190,19 +190,19 @@ export default function BindStatusPanel({
                   justifyContent: "space-between",
                   padding: "7px 12px",
                   marginBottom: 4,
-                  background: "rgba(255,255,255,0.03)",
+                  background: "hsl(var(--muted))",
                   borderRadius: 6,
-                  border: "1px solid rgba(255,255,255,0.05)",
+                  border: "1px solid hsl(var(--border))",
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   {signer.status === "signed" ? (
                     <CheckCircle size={12} color="#4caf50" />
                   ) : (
-                    <Clock size={12} color="rgba(255,255,255,0.3)" />
+                    <Clock size={12} color="hsl(var(--muted-foreground))" />
                   )}
-                  <span style={{ color: "rgba(255,255,255,0.7)", fontSize: 12 }}>{signer.name}</span>
-                  <span style={{ color: "rgba(255,255,255,0.3)", fontSize: 11 }}>{signer.role}</span>
+                  <span style={{ color: "hsl(var(--foreground))", fontSize: 12 }}>{signer.name}</span>
+                  <span style={{ color: "hsl(var(--muted-foreground))", fontSize: 11 }}>{signer.role}</span>
                 </div>
                 <span
                   style={{
@@ -276,7 +276,7 @@ export default function BindStatusPanel({
       )}
 
       {!bindPkg && !loading && bindStatus === "not_started" && (
-        <p style={{ color: "rgba(255,255,255,0.3)", fontSize: 13, textAlign: "center", margin: "8px 0 0" }}>
+        <p style={{ color: "hsl(var(--muted-foreground))", fontSize: 13, textAlign: "center", margin: "8px 0 0" }}>
           No bind package generated yet. Submit the application first.
         </p>
       )}

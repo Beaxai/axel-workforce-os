@@ -77,8 +77,8 @@ export default function RequestBindButton({
           padding: "12px 28px",
           borderRadius: 8,
           border: "none",
-          background: isReady ? accent : "rgba(255,255,255,0.08)",
-          color: isReady ? "#fff" : "rgba(255,255,255,0.3)",
+          background: isReady ? accent : "hsl(var(--muted))",
+          color: isReady ? "#fff" : "hsl(var(--muted-foreground))",
           cursor: isReady && !loading ? "pointer" : "not-allowed",
           fontSize: 15,
           fontWeight: 600,
@@ -92,7 +92,7 @@ export default function RequestBindButton({
         {loading ? "Submitting..." : "Request to Bind Coverage"}
       </button>
       {!isReady && !alreadyRequested && (
-        <p style={{ color: "rgba(255,255,255,0.35)", fontSize: 12, marginTop: 6 }}>
+        <p style={{ color: "hsl(var(--muted-foreground))", fontSize: 12, marginTop: 6 }}>
           Complete and submit the application before requesting bind.
         </p>
       )}

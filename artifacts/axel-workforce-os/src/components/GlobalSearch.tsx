@@ -21,7 +21,7 @@ export default function GlobalSearch({ onClose }: { onClose: () => void }) {
   const navigate = useNavigate();
   const { theme } = useThemeStore();
   const isDark = theme === "dark";
-  const debounceRef = useRef<NodeJS.Timeout>();
+  const debounceRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -48,7 +48,7 @@ export default function GlobalSearch({ onClose }: { onClose: () => void }) {
 
   const totalResults = results.deals.length + results.accounts.length + results.partners.length + results.resources.length;
   const textPrimary = isDark ? "#fff" : "#111";
-  const textMuted = isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.45)";
+  const textMuted = isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.58)";
 
   const partnerPath = (p: any) => {
     if (p.partnerType === "Agent") return `/network/agents/${p.id}`;
@@ -170,7 +170,7 @@ export default function GlobalSearch({ onClose }: { onClose: () => void }) {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div style={{ marginBottom: "16px" }}>
-      <p style={{ fontSize: "11px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: "rgba(255,255,255,0.35)", margin: "0 0 8px", padding: "0 4px" }}>{title}</p>
+      <p style={{ fontSize: "11px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: "hsl(var(--muted-foreground))", margin: "0 0 8px", padding: "0 4px" }}>{title}</p>
       <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>{children}</div>
     </div>
   );

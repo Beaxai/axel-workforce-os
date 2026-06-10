@@ -61,6 +61,22 @@ The platform enforces a strict design system:
 - **Layout:** Main content centered with `maxWidth: 1280px`, `margin: 0 auto`, padding `32px 40px`.
 - **Components:** A custom component library provides reusable UI elements adhering to the design system.
 
+**Theming & Definition of Done (light + dark):**
+The app supports dark (default) and light modes. The `.dark`/`.light` class is set on
+`document.documentElement` (in `AppShell.tsx`) from the persisted Zustand theme store,
+so any inline style using `var(--token)` re-resolves automatically when the toggle
+flips. There are two theming paths that MUST stay in sync: the CSS variables in
+`src/index.css` (`:root` = light, `.dark` = dark) and their JS mirror in
+`src/lib/use-theme-colors.ts`. Form surfaces and text use dedicated tokens
+(`--input-bg`, `--input-border`, `--input-text`, `--input-placeholder`,
+`--input-bg-focus`, `--input-border-focus`, `--label-text`, `--section-heading`).
+**Definition of Done:** every new view or component must be verified in BOTH light and
+dark mode before a phase closes — all phase acceptance tests implicitly include
+light-mode rendering. Never hardcode dark color literals (hex/rgba) in components;
+consume the tokens above (via `useThemeColors()` or `var(--…)`). The only permitted raw
+accent literals outside the token files remain pink/purple brand hexes, `#1E6BE9`, and
+`#ef4444` error red.
+
 **Layouts:**
 - **AppShell.tsx:** Main dashboard layout with a collapsible sidebar and top header.
 - **ProtectedRoute.tsx:** Handles authentication and role-based access.

@@ -104,7 +104,7 @@ export default function AgentRegister() {
 
               <div>
                 <label style={labelStyle}>License States</label>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", maxHeight: "120px", overflowY: "auto", padding: "10px", background: "rgba(255,255,255,0.03)", borderRadius: "8px", border: `1px solid ${borderColor}` }}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", maxHeight: "120px", overflowY: "auto", padding: "10px", background: cardBg, borderRadius: "8px", border: `1px solid ${borderColor}` }}>
                   {US_STATES.map((st) => (
                     <button key={st} onClick={() => toggleState(st)} type="button" style={{
                       padding: "4px 10px", borderRadius: "4px", fontSize: "12px", border: "none", cursor: "pointer",

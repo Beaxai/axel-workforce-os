@@ -2,7 +2,7 @@ import { useThemeColors } from "@/lib/use-theme-colors";
 import { useState } from "react";
 import { useQuoteFlowStore } from "@/lib/quote-flow-store";
 import { api } from "@/lib/api";
-import { CheckCircle, Loader2 } from "lucide-react";
+import { CheckCircle, Loader2, AlertTriangle } from "lucide-react";
 import { fromQuoteFlow } from "@workspace/cannabis-application";
 
 export default function FinalSubmission() {

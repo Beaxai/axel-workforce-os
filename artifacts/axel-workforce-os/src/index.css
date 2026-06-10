@@ -118,7 +118,7 @@
   --secondary: 210 40% 96%;
   --secondary-foreground: 222 47% 11%;
   --muted: 210 40% 96%;
-  --muted-foreground: 215 16% 47%;
+  --muted-foreground: 215 19% 40%;
   --accent: 210 40% 96%;
   --accent-foreground: 222 47% 11%;
   --destructive: 0 84% 60%;
@@ -130,6 +130,16 @@
   --chart-3: 270 70% 60%;
   --chart-4: 300 65% 55%;
   --chart-5: 245 60% 55%;
+
+  /* Form surface + text tokens — LIGHT values. Mirrored in lib/use-theme-colors.ts. */
+  --input-bg: #ffffff;
+  --input-border: rgba(0,0,0,0.15);
+  --input-text: #111;
+  --input-placeholder: rgba(0,0,0,0.40);
+  --input-bg-focus: #ffffff;
+  --input-border-focus: #E91E8C;
+  --label-text: rgba(0,0,0,0.65);
+  --section-heading: rgba(0,0,0,0.80);
 
   --app-font-sans: 'Inter', system-ui, sans-serif;
   --app-font-heading: 'Jost', 'Open Sans', system-ui, sans-serif;
@@ -225,6 +235,16 @@
   --chart-4: 300 65% 55%;
   --chart-5: 245 60% 55%;
 
+  /* Form surface + text tokens — DARK values. Mirrored in lib/use-theme-colors.ts. */
+  --input-bg: rgba(255,255,255,0.05);
+  --input-border: rgba(255,255,255,0.10);
+  --input-text: #fff;
+  --input-placeholder: rgba(255,255,255,0.40);
+  --input-bg-focus: rgba(255,255,255,0.08);
+  --input-border-focus: #ff4ba6;
+  --label-text: rgba(255,255,255,0.72);
+  --section-heading: rgba(255,255,255,0.85);
+
   /* Real elevation scale derived from the heavy-glass modal shadow */
   --shadow-2xs: 0 1px 2px 0 rgba(0,0,0,0.30);
   --shadow-xs:  0 1px 3px 0 rgba(0,0,0,0.35);
@@ -244,6 +264,13 @@
 
   body {
     @apply font-sans antialiased bg-background text-foreground;
+  }
+
+  /* Token-driven placeholder color for every native form control */
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--input-placeholder);
+    opacity: 1;
   }
 }
 

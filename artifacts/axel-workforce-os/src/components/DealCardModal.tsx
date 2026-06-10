@@ -231,7 +231,7 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
   const [showAllAppFields, setShowAllAppFields] = useState(false);
 
   const textPrimary = isDark ? "#fff" : "#111";
-  const textMuted = isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.45)";
+  const textMuted = isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.58)";
   const inputBg = isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)";
   const inputBorder = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)";
   const borderSubtle = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)";
@@ -1571,7 +1571,7 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
             <GlassCard padding="16px">
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px" }}>
                 <h3 style={{ fontSize: "14px", fontWeight: 600, color: textPrimary, margin: 0 }}>Documents</h3>
-                <Badge style={{ fontSize: "11px" }}>{dealDocuments.length}</Badge>
+                <Badge label={String(dealDocuments.length)} />
               </div>
               {dealDocuments.length === 0 ? (
                 <p style={{ fontSize: "13px", color: textMuted, margin: 0 }}>
@@ -1690,6 +1690,12 @@ function DetailField({ label, isDark, children }: { label: string; isDark: boole
 }
 
 function ProposalTabInline({ dealId }: { dealId: string }) {
+  const { theme } = useThemeStore();
+  const isDark = theme === "dark";
+  const propTextPrimary = isDark ? "#fff" : "#111";
+  const propTextMuted = isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.45)";
+  const propCardBg = isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)";
+  const propCardBorder = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.08)";
   const [proposal, setProposal] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -1735,7 +1741,7 @@ function ProposalTabInline({ dealId }: { dealId: string }) {
 
   if (loading) {
     return (
-      <div style={{ padding: "40px 20px", textAlign: "center", color: "rgba(255,255,255,0.4)", fontSize: 14 }}>
+      <div style={{ padding: "40px 20px", textAlign: "center", color: propTextMuted, fontSize: 14 }}>
         Loading proposal...
       </div>
     );
@@ -1744,9 +1750,9 @@ function ProposalTabInline({ dealId }: { dealId: string }) {
   if (!proposal) {
     return (
       <div style={{ padding: "40px 20px", textAlign: "center" }}>
-        <FileText style={{ width: 40, height: 40, color: "rgba(255,255,255,0.2)", marginBottom: 12 }} />
-        <p style={{ fontSize: 15, color: "#fff", margin: "0 0 8px" }}>No proposal yet</p>
-        <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", margin: "0 0 16px" }}>
+        <FileText style={{ width: 40, height: 40, color: isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.2)", marginBottom: 12 }} />
+        <p style={{ fontSize: 15, color: propTextPrimary, margin: "0 0 8px" }}>No proposal yet</p>
+        <p style={{ fontSize: 13, color: propTextMuted, margin: "0 0 16px" }}>
           Generate a proposal from the deal's quote data.
         </p>
         <button
@@ -1755,8 +1761,8 @@ function ProposalTabInline({ dealId }: { dealId: string }) {
           disabled={creating}
           style={{
             display: "inline-flex", alignItems: "center", gap: 8,
-            padding: "10px 22px", borderRadius: 8, border: "none",
-            background: "rgba(255,255,255,0.1)", color: "#fff", border: "1px solid rgba(255,255,255,0.2)", cursor: creating ? "not-allowed" : "pointer",
+            padding: "10px 22px", borderRadius: 8,
+            background: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.06)", color: propTextPrimary, border: `1px solid ${propCardBorder}`, cursor: creating ? "not-allowed" : "pointer",
             fontSize: 14, fontWeight: 600,
           }}
         >
@@ -1770,7 +1776,7 @@ function ProposalTabInline({ dealId }: { dealId: string }) {
   }
 
   const statusMap: Record<string, { label: string; color: string }> = {
-    draft: { label: "Draft", color: "rgba(255,255,255,0.5)" },
+    draft: { label: "Draft", color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)" },
     approved_proposal_requested: { label: "UW Submitted", color: "#ffb74d" },
     underwriting_notified: { label: "UW Notified", color: "#4caf50" },
     accepted: { label: "Accepted", color: "#4caf50" },
@@ -1782,10 +1788,10 @@ function ProposalTabInline({ dealId }: { dealId: string }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
-          <h3 style={{ fontSize: 16, fontWeight: 600, color: "#fff", margin: "0 0 2px" }}>
+          <h3 style={{ fontSize: 16, fontWeight: 600, color: propTextPrimary, margin: "0 0 2px" }}>
             {proposal.programName || "Workers' Comp Proposal"}
           </h3>
-          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", margin: 0 }}>
+          <p style={{ fontSize: 12, color: propTextMuted, margin: 0 }}>
             {proposal.carrierName || "Carrier TBD"} {"\u00b7"} {fmtDate(proposal.createdAt)}
           </p>
         </div>
@@ -1804,43 +1810,43 @@ function ProposalTabInline({ dealId }: { dealId: string }) {
           { label: "WFS PEPM", value: fmt(proposal.wfsMonthlyPepm) },
         ].map((c) => (
           <div key={c.label} style={{
-            background: "rgba(255,255,255,0.04)",
-            border: "1px solid rgba(255,255,255,0.06)",
+            background: propCardBg,
+            border: `1px solid ${propCardBorder}`,
             borderRadius: 8, padding: "12px 14px",
           }}>
-            <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 10, textTransform: "uppercase", margin: "0 0 4px", letterSpacing: "0.3px" }}>{c.label}</p>
-            <p style={{ color: "#fff", fontSize: 18, fontWeight: 700, margin: 0 }}>{c.value}</p>
+            <p style={{ color: propTextMuted, fontSize: 10, textTransform: "uppercase", margin: "0 0 4px", letterSpacing: "0.3px" }}>{c.label}</p>
+            <p style={{ color: propTextPrimary, fontSize: 18, fontWeight: 700, margin: 0 }}>{c.value}</p>
           </div>
         ))}
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-        <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 8, padding: "12px 14px" }}>
-          <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 10, textTransform: "uppercase", margin: "0 0 4px" }}>Total Monthly</p>
-          <p style={{ color: "#fff", fontSize: 18, fontWeight: 700, margin: 0 }}>{fmt(proposal.totalMonthly)}</p>
+        <div style={{ background: propCardBg, border: `1px solid ${propCardBorder}`, borderRadius: 8, padding: "12px 14px" }}>
+          <p style={{ color: propTextMuted, fontSize: 10, textTransform: "uppercase", margin: "0 0 4px" }}>Total Monthly</p>
+          <p style={{ color: propTextPrimary, fontSize: 18, fontWeight: 700, margin: 0 }}>{fmt(proposal.totalMonthly)}</p>
         </div>
-        <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 8, padding: "12px 14px" }}>
-          <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 10, textTransform: "uppercase", margin: "0 0 4px" }}>Total Annual</p>
-          <p style={{ color: "#fff", fontSize: 18, fontWeight: 700, margin: 0 }}>{fmt(proposal.totalAnnual)}</p>
+        <div style={{ background: propCardBg, border: `1px solid ${propCardBorder}`, borderRadius: 8, padding: "12px 14px" }}>
+          <p style={{ color: propTextMuted, fontSize: 10, textTransform: "uppercase", margin: "0 0 4px" }}>Total Annual</p>
+          <p style={{ color: propTextPrimary, fontSize: 18, fontWeight: 700, margin: 0 }}>{fmt(proposal.totalAnnual)}</p>
         </div>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
         <div>
-          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>Effective</span>
-          <p style={{ fontSize: 13, color: "#fff", margin: "2px 0 0", fontWeight: 500 }}>{fmtDate(proposal.effectiveDate)}</p>
+          <span style={{ fontSize: 11, color: propTextMuted }}>Effective</span>
+          <p style={{ fontSize: 13, color: propTextPrimary, margin: "2px 0 0", fontWeight: 500 }}>{fmtDate(proposal.effectiveDate)}</p>
         </div>
         <div>
-          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>Expiration</span>
-          <p style={{ fontSize: 13, color: "#fff", margin: "2px 0 0", fontWeight: 500 }}>{fmtDate(proposal.expirationDate)}</p>
+          <span style={{ fontSize: 11, color: propTextMuted }}>Expiration</span>
+          <p style={{ fontSize: 13, color: propTextPrimary, margin: "2px 0 0", fontWeight: 500 }}>{fmtDate(proposal.expirationDate)}</p>
         </div>
         <div>
-          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>EMod</span>
-          <p style={{ fontSize: 13, color: "#fff", margin: "2px 0 0", fontWeight: 500 }}>{proposal.emod ? `${proposal.emod}x` : "\u2014"}</p>
+          <span style={{ fontSize: 11, color: propTextMuted }}>EMod</span>
+          <p style={{ fontSize: 13, color: propTextPrimary, margin: "2px 0 0", fontWeight: 500 }}>{proposal.emod ? `${proposal.emod}x` : "\u2014"}</p>
         </div>
         <div>
-          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>Carrier</span>
-          <p style={{ fontSize: 13, color: "#fff", margin: "2px 0 0", fontWeight: 500 }}>{proposal.carrierName || "\u2014"}</p>
+          <span style={{ fontSize: 11, color: propTextMuted }}>Carrier</span>
+          <p style={{ fontSize: 13, color: propTextPrimary, margin: "2px 0 0", fontWeight: 500 }}>{proposal.carrierName || "\u2014"}</p>
         </div>
       </div>
     </div>

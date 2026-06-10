@@ -88,10 +88,10 @@ export default function LossHistoryUpload({ dealId }: LossHistoryUploadProps) {
   }
 
   const inputStyle: React.CSSProperties = {
-    background: "#1a1a26",
-    border: "1px solid rgba(255,255,255,0.08)",
+    background: "var(--input-bg)",
+    border: "1px solid var(--input-border)",
     borderRadius: 10,
-    color: "#fff",
+    color: "var(--input-text)",
     padding: "8px 12px",
     width: "100%",
     fontSize: 13,
@@ -102,16 +102,16 @@ export default function LossHistoryUpload({ dealId }: LossHistoryUploadProps) {
   return (
     <div
       style={{
-        background: "#13131f",
-        border: "1px solid rgba(255,255,255,0.08)",
+        background: "hsl(var(--card))",
+        border: "1px solid hsl(var(--border))",
         borderRadius: 12,
         padding: 24,
       }}
     >
-      <h3 style={{ color: "#fff", fontSize: 15, fontWeight: 600, margin: "0 0 6px" }}>
+      <h3 style={{ color: "hsl(var(--foreground))", fontSize: 15, fontWeight: 600, margin: "0 0 6px" }}>
         Loss Run Documents
       </h3>
-      <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 13, margin: "0 0 20px" }}>
+      <p style={{ color: "hsl(var(--muted-foreground))", fontSize: 13, margin: "0 0 20px" }}>
         Upload prior carrier loss runs (last 3 years). Required if client has prior WC coverage.
         PDFs only.
       </p>
@@ -119,7 +119,7 @@ export default function LossHistoryUpload({ dealId }: LossHistoryUploadProps) {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
         <div>
           <label
-            style={{ display: "block", color: "rgba(255,255,255,0.6)", fontSize: 12, marginBottom: 6 }}
+            style={{ display: "block", color: "var(--label-text)", fontSize: 12, marginBottom: 6 }}
           >
             Years Covered
           </label>
@@ -132,7 +132,7 @@ export default function LossHistoryUpload({ dealId }: LossHistoryUploadProps) {
         </div>
         <div>
           <label
-            style={{ display: "block", color: "rgba(255,255,255,0.6)", fontSize: 12, marginBottom: 6 }}
+            style={{ display: "block", color: "var(--label-text)", fontSize: 12, marginBottom: 6 }}
           >
             Notes (optional)
           </label>
@@ -159,25 +159,25 @@ export default function LossHistoryUpload({ dealId }: LossHistoryUploadProps) {
         }}
         onClick={() => fileInputRef.current?.click()}
         style={{
-          border: `2px dashed ${dragOver ? accent : "rgba(255,255,255,0.15)"}`,
+          border: `2px dashed ${dragOver ? accent : "hsl(var(--border))"}`,
           borderRadius: 10,
           padding: 32,
           textAlign: "center",
           cursor: "pointer",
-          background: dragOver ? `${accent}11` : "rgba(255,255,255,0.02)",
+          background: dragOver ? `${accent}11` : "hsl(var(--muted))",
           transition: "all 0.2s",
           marginBottom: 16,
         }}
       >
         <Upload
           size={24}
-          color={dragOver ? accent : "rgba(255,255,255,0.35)"}
+          color={dragOver ? accent : "hsl(var(--muted-foreground))"}
           style={{ marginBottom: 10 }}
         />
-        <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 14, margin: "0 0 4px" }}>
+        <p style={{ color: "hsl(var(--muted-foreground))", fontSize: 14, margin: "0 0 4px" }}>
           {uploading ? "Uploading..." : "Drop PDF here or click to browse"}
         </p>
-        <p style={{ color: "rgba(255,255,255,0.3)", fontSize: 12, margin: 0 }}>
+        <p style={{ color: "hsl(var(--muted-foreground))", fontSize: 12, margin: 0 }}>
           PDF files only - Max 25MB per file
         </p>
         <input
@@ -215,17 +215,17 @@ export default function LossHistoryUpload({ dealId }: LossHistoryUploadProps) {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                background: "rgba(255,255,255,0.04)",
+                background: "hsl(var(--muted))",
                 borderRadius: 8,
-                border: "1px solid rgba(255,255,255,0.08)",
+                border: "1px solid hsl(var(--border))",
                 padding: "10px 14px",
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <FileText size={16} color={accent} />
                 <div>
-                  <p style={{ color: "#fff", fontSize: 13, margin: 0 }}>{doc.fileName}</p>
-                  <p style={{ color: "rgba(255,255,255,0.35)", fontSize: 11, margin: 0 }}>
+                  <p style={{ color: "hsl(var(--foreground))", fontSize: 13, margin: 0 }}>{doc.fileName}</p>
+                  <p style={{ color: "hsl(var(--muted-foreground))", fontSize: 11, margin: 0 }}>
                     {doc.yearsCovered && `${doc.yearsCovered} \u00B7 `}
                     {formatBytes(doc.fileSizeBytes)}
                   </p>
@@ -238,7 +238,7 @@ export default function LossHistoryUpload({ dealId }: LossHistoryUploadProps) {
                   background: "none",
                   border: "none",
                   cursor: "pointer",
-                  color: "rgba(255,255,255,0.3)",
+                  color: "hsl(var(--muted-foreground))",
                   padding: 4,
                   display: "flex",
                   alignItems: "center",

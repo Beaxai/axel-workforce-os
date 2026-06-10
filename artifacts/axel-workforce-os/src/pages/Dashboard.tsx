@@ -88,8 +88,8 @@ export default function Dashboard() {
                   const stage = d.stage || "UNKNOWN";
                   acc[stage] = (acc[stage] || 0) + 1;
                   return acc;
-                }, {})
-              ).map(([stage, count]) => (
+                }, {} as Record<string, number>)
+              ).map(([stage, count]: [string, number]) => (
                 <div key={stage} className="flex items-center justify-between">
                   <span className="text-sm text-slate-600">{stage.replace(/_/g, " ")}</span>
                   <div className="flex items-center gap-2">

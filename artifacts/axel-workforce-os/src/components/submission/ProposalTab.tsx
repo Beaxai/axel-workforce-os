@@ -16,9 +16,9 @@ import { api } from "@/lib/api";
 
 const accent = "var(--accent-primary)";
 const glass: React.CSSProperties = {
-  background: "rgba(255,255,255,0.05)",
+  background: "hsl(var(--card))",
   backdropFilter: "blur(12px)",
-  border: "1px solid rgba(255,255,255,0.08)",
+  border: "1px solid hsl(var(--border))",
   borderRadius: "12px",
 };
 
@@ -152,7 +152,7 @@ export default function ProposalTab({ dealId, dealName }: ProposalTabProps) {
 
   if (loading) {
     return (
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 300, color: "rgba(255,255,255,0.4)" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 300, color: "hsl(var(--muted-foreground))" }}>
         <Loader size={20} style={{ marginRight: 10, animation: "spin 1s linear infinite" }} /> Loading proposal...
       </div>
     );
@@ -161,9 +161,9 @@ export default function ProposalTab({ dealId, dealName }: ProposalTabProps) {
   if (!proposal) {
     return (
       <div style={{ ...glass, padding: 40, textAlign: "center" }}>
-        <FileText size={32} color="rgba(255,255,255,0.2)" style={{ marginBottom: 12 }} />
-        <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 15, margin: "0 0 4px" }}>No proposal available yet.</p>
-        <p style={{ color: "rgba(255,255,255,0.25)", fontSize: 13, margin: "8px 0 24px" }}>
+        <FileText size={32} color="hsl(var(--muted-foreground))" style={{ marginBottom: 12 }} />
+        <p style={{ color: "hsl(var(--muted-foreground))", fontSize: 15, margin: "0 0 4px" }}>No proposal available yet.</p>
+        <p style={{ color: "hsl(var(--muted-foreground))", fontSize: 13, margin: "8px 0 24px" }}>
           Generate a proposal from the deal's existing quote data to see pricing and submit to underwriting.
         </p>
         <button
@@ -194,10 +194,10 @@ export default function ProposalTab({ dealId, dealName }: ProposalTabProps) {
     <div style={{ paddingBottom: 40 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
         <div>
-          <h2 style={{ color: "#fff", fontSize: 20, fontWeight: 700, margin: "0 0 4px" }}>
+          <h2 style={{ color: "hsl(var(--foreground))", fontSize: 20, fontWeight: 700, margin: "0 0 4px" }}>
             {proposal.programName || "Workers' Compensation Proposal"}
           </h2>
-          <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 14, margin: 0 }}>
+          <p style={{ color: "hsl(var(--muted-foreground))", fontSize: 14, margin: 0 }}>
             {proposal.carrierName || "Carrier TBD"} {"\u00b7"} Prepared {fmtDate(proposal.createdAt)}
           </p>
         </div>
@@ -232,17 +232,17 @@ export default function ProposalTab({ dealId, dealName }: ProposalTabProps) {
             style={{
               width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center",
               padding: "16px 24px", background: "none", border: "none", cursor: "pointer",
-              color: "rgba(255,255,255,0.7)", fontSize: 14, fontWeight: 500,
+              color: "hsl(var(--foreground))", fontSize: 14, fontWeight: 500,
             }}
           >
             Rating Breakdown
             {showBreakdown ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           </button>
           {showBreakdown && (
-            <div style={{ padding: "0 24px 20px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+            <div style={{ padding: "0 24px 20px", borderTop: "1px solid hsl(var(--border))" }}>
               <pre style={{
-                color: "rgba(255,255,255,0.5)", fontSize: 12,
-                background: "rgba(0,0,0,0.3)", borderRadius: 8,
+                color: "hsl(var(--muted-foreground))", fontSize: 12,
+                background: "hsl(var(--muted))", borderRadius: 8,
                 padding: 16, overflow: "auto", margin: "16px 0 0",
               }}>
                 {JSON.stringify(proposal.ratingBreakdown, null, 2)}
@@ -261,13 +261,13 @@ export default function ProposalTab({ dealId, dealName }: ProposalTabProps) {
             )}
             {uwStatus.status === "failed" && <AlertCircle size={16} color="#ff4d4f" />}
             <div>
-              <p style={{ color: "#fff", fontSize: 13, fontWeight: 500, margin: 0 }}>
+              <p style={{ color: "hsl(var(--foreground))", fontSize: 13, fontWeight: 500, margin: 0 }}>
                 {uwStatus.status === "sent" && `Underwriting package sent to ${uwStatus.emailSentTo?.[0] || "underwriting"} \u00b7 ${fmtDate(uwStatus.emailSentAt)}`}
                 {(uwStatus.status === "assembling" || uwStatus.status === "pending") && "Assembling underwriting package\u2026"}
                 {uwStatus.status === "failed" && "Package assembly failed \u2014 please notify the underwriting team manually."}
               </p>
               {uwStatus.status === "sent" && uwStatus.documents && (
-                <p style={{ color: "rgba(255,255,255,0.35)", fontSize: 12, margin: "3px 0 0" }}>
+                <p style={{ color: "hsl(var(--muted-foreground))", fontSize: 12, margin: "3px 0 0" }}>
                   {uwStatus.documents.length} documents included
                 </p>
               )}
@@ -279,10 +279,10 @@ export default function ProposalTab({ dealId, dealName }: ProposalTabProps) {
       <div style={{ ...glass, padding: 24 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
           <div>
-            <h3 style={{ color: "#fff", fontSize: 15, fontWeight: 600, margin: "0 0 4px" }}>
+            <h3 style={{ color: "hsl(var(--foreground))", fontSize: 15, fontWeight: 600, margin: "0 0 4px" }}>
               Request Approved Proposal
             </h3>
-            <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 13, margin: 0 }}>
+            <p style={{ color: "hsl(var(--muted-foreground))", fontSize: 13, margin: 0 }}>
               Sends the full submission package to the Axel underwriting team for market placement and approval.
             </p>
           </div>
@@ -333,12 +333,12 @@ export default function ProposalTab({ dealId, dealName }: ProposalTabProps) {
 function PricingCard({ label, value, isAccent }: { label: string; value: string; isAccent?: boolean }) {
   return (
     <div style={{
-      background: "rgba(255,255,255,0.04)",
-      border: `1px solid ${isAccent ? "rgba(233,30,140,0.25)" : "rgba(255,255,255,0.07)"}`,
+      background: "hsl(var(--muted))",
+      border: `1px solid ${isAccent ? "rgba(233,30,140,0.25)" : "hsl(var(--border))"}`,
       borderRadius: 10, padding: "16px 20px",
     }}>
-      <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 12, margin: "0 0 6px", textTransform: "uppercase", letterSpacing: "0.5px" }}>{label}</p>
-      <p style={{ color: isAccent ? accent : "#fff", fontSize: 22, fontWeight: 700, margin: 0 }}>{value}</p>
+      <p style={{ color: "hsl(var(--muted-foreground))", fontSize: 12, margin: "0 0 6px", textTransform: "uppercase", letterSpacing: "0.5px" }}>{label}</p>
+      <p style={{ color: isAccent ? accent : "hsl(var(--foreground))", fontSize: 22, fontWeight: 700, margin: 0 }}>{value}</p>
     </div>
   );
 }
@@ -346,17 +346,17 @@ function PricingCard({ label, value, isAccent }: { label: string; value: string;
 function DetailItem({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", gap: 6, color: "rgba(255,255,255,0.4)", fontSize: 12, marginBottom: 4 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, color: "hsl(var(--muted-foreground))", fontSize: 12, marginBottom: 4 }}>
         {icon} {label}
       </div>
-      <p style={{ color: "#fff", fontSize: 14, fontWeight: 500, margin: 0 }}>{value}</p>
+      <p style={{ color: "hsl(var(--foreground))", fontSize: 14, fontWeight: 500, margin: 0 }}>{value}</p>
     </div>
   );
 }
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; color: string; bg: string }> = {
-    draft: { label: "Draft", color: "rgba(255,255,255,0.4)", bg: "rgba(255,255,255,0.06)" },
+    draft: { label: "Draft", color: "#9ca3af", bg: "rgba(156,163,175,0.12)" },
     sent_to_client: { label: "Sent to Client", color: "#64b5f6", bg: "rgba(100,181,246,0.1)" },
     approved_proposal_requested: { label: "UW Submitted", color: "#ffb74d", bg: "rgba(255,183,77,0.1)" },
     underwriting_notified: { label: "UW Notified", color: "#4caf50", bg: "rgba(76,175,80,0.1)" },

@@ -1,1 +1,4 @@
+- [Light-mode theming + AA contrast](light-mode-theming.md) — two token sources (index.css + use-theme-colors.ts) must stay in sync; duplicated local `textMuted` at light 0.45 fails WCAG AA; locked brand accents fail AA by design.
+- [AxelBadge color prop + accent model](axel-badge-color-prop.md) — Badge `color` must be a named key or bare hex, never a CSS var; two-tier pink-primary / purple-support accent model.
+- [Quote-flow wizard state](quote-flow-wizard-state.md) — how the multi-step quote wizard persists state via Zustand.
 - [Drizzle push blocked](drizzle-push-blocked.md) — push hangs on pre-existing deals drift; apply schema via direct SQL DDL, keep Drizzle files as source of truth.

@@ -17,7 +17,7 @@ export default function AgentOnboarding() {
   const callCompleted = reg?.zoomCompletedAt || reg?.status === "CREDENTIALS_PENDING" || reg?.status === "ACTIVE";
 
   return (
-    <div style={{ minHeight: "100vh", background: "#060608", display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 20px" }}>
+    <div style={{ minHeight: "100vh", background: isDark ? "#060608" : "#f5f5f7", display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 20px" }}>
       <div style={{ width: "100%", maxWidth: "560px" }}>
         <div style={{ textAlign: "center", marginBottom: "32px" }}>
           <h1 style={{ fontSize: "28px", fontWeight: 700, color: textPrimary, margin: 0 }}>

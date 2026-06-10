@@ -69,7 +69,7 @@ export default function SubmissionPage() {
       <h1 style={{ color: textPrimary, fontSize: 22, fontWeight: 700, marginBottom: 6 }}>
         Underwriting Submission
       </h1>
-      <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 14, marginBottom: 28 }}>
+      <p style={{ color: textMuted, fontSize: 14, marginBottom: 28 }}>
         {dealName} — {verticalId.charAt(0).toUpperCase() + verticalId.slice(1)} Vertical
       </p>
 
@@ -78,7 +78,7 @@ export default function SubmissionPage() {
           display: "flex",
           gap: 4,
           marginBottom: 28,
-          borderBottom: "1px solid rgba(255,255,255,0.08)",
+          borderBottom: `1px solid ${borderColor}`,
           paddingBottom: 0,
         }}
       >
@@ -96,7 +96,7 @@ export default function SubmissionPage() {
               border: "none",
               borderBottom: `2px solid ${activeTab === tab.key ? accent : "transparent"}`,
               background: activeTab === tab.key ? "rgba(233,30,140,0.08)" : "transparent",
-              color: activeTab === tab.key ? accent : "rgba(255,255,255,0.5)",
+              color: activeTab === tab.key ? accent : textMuted,
               cursor: "pointer",
               fontSize: 14,
               fontWeight: activeTab === tab.key ? 600 : 400,
@@ -113,18 +113,18 @@ export default function SubmissionPage() {
         <div>
           <div
             style={{
-              background: "#13131f",
+              background: cardBg,
               border: `1px solid ${borderColor}`,
               borderRadius: 12,
               padding: 28,
               textAlign: "center",
             }}
           >
-            <FileText size={36} color="rgba(255,255,255,0.2)" style={{ marginBottom: 16 }} />
+            <FileText size={36} color={textMuted} style={{ marginBottom: 16 }} />
             <h3 style={{ color: textPrimary, fontSize: 16, fontWeight: 600, marginBottom: 8 }}>
               Workers' Compensation Application
             </h3>
-            <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 14, marginBottom: 20, maxWidth: 440, margin: "0 auto 20px" }}>
+            <p style={{ color: textMuted, fontSize: 14, marginBottom: 20, maxWidth: 440, margin: "0 auto 20px" }}>
               Complete the full underwriting application for this deal. The form includes business details,
               cannabis operations, locations, safety information, and loss history.
             </p>
@@ -136,7 +136,7 @@ export default function SubmissionPage() {
                 borderRadius: 8,
                 border: "none",
                 background: accent,
-                color: textPrimary,
+                color: "#fff",
                 cursor: "pointer",
                 fontSize: 15,
                 fontWeight: 600,
@@ -181,7 +181,7 @@ export default function SubmissionPage() {
         <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
           <div
             style={{
-              background: "#13131f",
+              background: cardBg,
               border: `1px solid ${borderColor}`,
               borderRadius: 12,
               padding: 28,
@@ -190,7 +190,7 @@ export default function SubmissionPage() {
             <h3 style={{ color: textPrimary, fontSize: 16, fontWeight: 600, marginBottom: 8 }}>
               Request to Bind
             </h3>
-            <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 14, marginBottom: 24 }}>
+            <p style={{ color: textMuted, fontSize: 14, marginBottom: 24 }}>
               Once the application is submitted and loss history documents are uploaded, you can
               request to bind the coverage. This will generate the bind document package.
             </p>

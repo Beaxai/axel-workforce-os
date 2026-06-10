@@ -7,8 +7,8 @@ import { ArrowLeft, Edit2, Check, X, UserX } from "lucide-react";
 import { useThemeStore } from "@/lib/theme-store";
 
 const inputStyle: React.CSSProperties = {
-  width: "100%", padding: "10px 14px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.1)",
-  background: "rgba(255,255,255,0.05)", color: "#fff", fontSize: "14px", outline: "none",
+  width: "100%", padding: "10px 14px", borderRadius: "8px", border: "1px solid var(--input-border)",
+  background: "var(--input-bg)", color: "var(--input-text)", fontSize: "14px", outline: "none",
 };
 
 export default function AgentDetail() {
@@ -33,13 +33,13 @@ export default function AgentDetail() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["partner", id] }); setEditing(false); },
   });
 
-  if (!agent) return <div style={{ color: "rgba(255,255,255,0.5)", padding: "40px" }}>Loading...</div>;
+  if (!agent) return <div style={{ color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.55)", padding: "40px" }}>Loading...</div>;
 
   const agentDeals = deals.filter((d: any) => d.producingAgentId === id);
   const reg = registrations.find((r: any) => r.partnerId === id);
 
   const textPrimary = isDark ? "#fff" : "#111";
-  const textMuted = isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.45)";
+  const textMuted = isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.58)";
   const textSecondary = isDark ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.55)";
 
   const startEdit = () => {

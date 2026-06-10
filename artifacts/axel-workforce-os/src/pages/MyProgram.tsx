@@ -44,7 +44,7 @@ export default function MyProgram() {
   }, [hasWC, hasPEO, hasASO]);
 
   const textPrimary = isDark ? "#fff" : "#111";
-  const textMuted = isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.45)";
+  const textMuted = isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.58)";
 
   const tabLabel: Record<TabKey, string> = {
     WC: "Workers' Comp",

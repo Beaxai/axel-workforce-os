@@ -13,8 +13,8 @@ const STATUS_COLORS: Record<string, string> = { Active: "#1EE97B", Pending: "#E9
 const US_STATES = ["AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY"];
 
 const inputStyle: React.CSSProperties = {
-  width: "100%", padding: "10px 14px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.1)",
-  background: "rgba(255,255,255,0.05)", color: "#fff", fontSize: "14px", outline: "none",
+  width: "100%", padding: "10px 14px", borderRadius: "8px", border: "1px solid var(--input-border)",
+  background: "var(--input-bg)", color: "var(--input-text)", fontSize: "14px", outline: "none",
 };
 
 export default function Network() {
@@ -58,7 +58,7 @@ export default function Network() {
   );
 
   const textPrimary = isDark ? "#fff" : "#111";
-  const textMuted = isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.45)";
+  const textMuted = isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.58)";
 
   return (
     <div style={{ maxWidth: "1200px" }}>
@@ -194,6 +194,8 @@ export default function Network() {
 }
 
 function AddPartnerModal({ partnerType, onClose, onSubmit }: { partnerType: string; onClose: () => void; onSubmit: (data: any) => void }) {
+  const { theme } = useThemeStore();
+  const isDark = theme === "dark";
   const [form, setForm] = useState<any>({ partnerType, name: "", agencyName: "", contactName: "", contactEmail: "", contactPhone: "", npn: "", licenseStates: [], notes: "", status: "Active", metadata: {} });
   const [selectedStates, setSelectedStates] = useState<string[]>([]);
   const [programName, setProgramName] = useState("");
@@ -211,38 +213,38 @@ function AddPartnerModal({ partnerType, onClose, onSubmit }: { partnerType: stri
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.5)" }} onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} style={{ width: "520px", maxHeight: "85vh", overflowY: "auto", background: "rgba(18,18,24,0.82)", backdropFilter: "blur(40px)", WebkitBackdropFilter: "blur(40px)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "16px", padding: "32px", boxShadow: "0 24px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06)" }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: "520px", maxHeight: "85vh", overflowY: "auto", background: isDark ? "rgba(18,18,24,0.82)" : "rgba(255,255,255,0.92)", backdropFilter: "blur(40px)", WebkitBackdropFilter: "blur(40px)", border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)"}`, borderRadius: "16px", padding: "32px", boxShadow: isDark ? "0 24px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06)" : "0 24px 80px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.8)" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "24px" }}>
-          <h2 style={{ fontSize: "20px", fontWeight: 600, color: "#fff", margin: 0 }}>Add {partnerType}</h2>
-          <button onClick={onClose} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.5)", cursor: "pointer" }}><X style={{ width: 20, height: 20 }} /></button>
+          <h2 style={{ fontSize: "20px", fontWeight: 600, color: isDark ? "#fff" : "#111", margin: 0 }}>Add {partnerType}</h2>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.55)", cursor: "pointer" }}><X style={{ width: 20, height: 20 }} /></button>
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
           <div>
-            <label style={{ fontSize: "13px", color: "rgba(255,255,255,0.5)", marginBottom: "4px", display: "block" }}>Name *</label>
+            <label style={{ fontSize: "13px", color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.55)", marginBottom: "4px", display: "block" }}>Name *</label>
             <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} style={inputStyle} />
           </div>
           {(partnerType === "Agent") && (
             <div>
-              <label style={{ fontSize: "13px", color: "rgba(255,255,255,0.5)", marginBottom: "4px", display: "block" }}>Agency Name</label>
+              <label style={{ fontSize: "13px", color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.55)", marginBottom: "4px", display: "block" }}>Agency Name</label>
               <input value={form.agencyName} onChange={(e) => setForm({ ...form, agencyName: e.target.value })} style={inputStyle} />
             </div>
           )}
           {(partnerType === "Agent") && (
             <div>
-              <label style={{ fontSize: "13px", color: "rgba(255,255,255,0.5)", marginBottom: "4px", display: "block" }}>NPN</label>
+              <label style={{ fontSize: "13px", color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.55)", marginBottom: "4px", display: "block" }}>NPN</label>
               <input value={form.npn} onChange={(e) => setForm({ ...form, npn: e.target.value })} style={inputStyle} />
             </div>
           )}
           {(partnerType === "Agent" || partnerType === "Carrier") && (
             <div>
-              <label style={{ fontSize: "13px", color: "rgba(255,255,255,0.5)", marginBottom: "4px", display: "block" }}>License States</label>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", maxHeight: "120px", overflowY: "auto", padding: "8px", background: "rgba(255,255,255,0.03)", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.08)" }}>
+              <label style={{ fontSize: "13px", color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.55)", marginBottom: "4px", display: "block" }}>License States</label>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", maxHeight: "120px", overflowY: "auto", padding: "8px", background: "var(--input-bg)", borderRadius: "8px", border: "1px solid var(--input-border)" }}>
                 {US_STATES.map((st) => (
                   <button key={st} onClick={() => toggleState(st)} style={{
                     padding: "4px 8px", borderRadius: "4px", fontSize: "12px", border: "none", cursor: "pointer",
-                    background: selectedStates.includes(st) ? "var(--accent-primary)" : "rgba(255,255,255,0.06)",
-                    color: selectedStates.includes(st) ? "#fff" : "rgba(255,255,255,0.5)",
+                    background: selectedStates.includes(st) ? "var(--accent-primary)" : isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)",
+                    color: selectedStates.includes(st) ? "#fff" : isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.55)",
                   }}>{st}</button>
                 ))}
               </div>
@@ -251,35 +253,35 @@ function AddPartnerModal({ partnerType, onClose, onSubmit }: { partnerType: stri
           {partnerType === "PEO" && (
             <>
               <div>
-                <label style={{ fontSize: "13px", color: "rgba(255,255,255,0.5)", marginBottom: "4px", display: "block" }}>Program Name</label>
+                <label style={{ fontSize: "13px", color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.55)", marginBottom: "4px", display: "block" }}>Program Name</label>
                 <input value={programName} onChange={(e) => setProgramName(e.target.value)} style={inputStyle} />
               </div>
               <div>
-                <label style={{ fontSize: "13px", color: "rgba(255,255,255,0.5)", marginBottom: "4px", display: "block" }}>Verticals Served</label>
+                <label style={{ fontSize: "13px", color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.55)", marginBottom: "4px", display: "block" }}>Verticals Served</label>
                 <input value={verticalsServed} onChange={(e) => setVerticalsServed(e.target.value)} style={inputStyle} />
               </div>
             </>
           )}
           {partnerType === "Vendor" && (
             <div>
-              <label style={{ fontSize: "13px", color: "rgba(255,255,255,0.5)", marginBottom: "4px", display: "block" }}>Category</label>
+              <label style={{ fontSize: "13px", color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.55)", marginBottom: "4px", display: "block" }}>Category</label>
               <input value={category} onChange={(e) => setCategory(e.target.value)} style={inputStyle} />
             </div>
           )}
           <div>
-            <label style={{ fontSize: "13px", color: "rgba(255,255,255,0.5)", marginBottom: "4px", display: "block" }}>Contact Name</label>
+            <label style={{ fontSize: "13px", color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.55)", marginBottom: "4px", display: "block" }}>Contact Name</label>
             <input value={form.contactName} onChange={(e) => setForm({ ...form, contactName: e.target.value })} style={inputStyle} />
           </div>
           <div>
-            <label style={{ fontSize: "13px", color: "rgba(255,255,255,0.5)", marginBottom: "4px", display: "block" }}>Contact Email</label>
+            <label style={{ fontSize: "13px", color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.55)", marginBottom: "4px", display: "block" }}>Contact Email</label>
             <input value={form.contactEmail} onChange={(e) => setForm({ ...form, contactEmail: e.target.value })} style={inputStyle} />
           </div>
           <div>
-            <label style={{ fontSize: "13px", color: "rgba(255,255,255,0.5)", marginBottom: "4px", display: "block" }}>Contact Phone</label>
+            <label style={{ fontSize: "13px", color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.55)", marginBottom: "4px", display: "block" }}>Contact Phone</label>
             <input value={form.contactPhone} onChange={(e) => setForm({ ...form, contactPhone: e.target.value })} style={inputStyle} />
           </div>
           <div>
-            <label style={{ fontSize: "13px", color: "rgba(255,255,255,0.5)", marginBottom: "4px", display: "block" }}>Notes</label>
+            <label style={{ fontSize: "13px", color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.55)", marginBottom: "4px", display: "block" }}>Notes</label>
             <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={3} style={{ ...inputStyle, resize: "vertical" }} />
           </div>
           <PinkButton onClick={handleSubmit} style={{ marginTop: "8px" }}>Add {partnerType}</PinkButton>

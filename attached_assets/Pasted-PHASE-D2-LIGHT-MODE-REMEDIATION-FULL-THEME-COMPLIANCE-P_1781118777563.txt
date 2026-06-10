@@ -1,0 +1,44 @@
+PHASE D2 — LIGHT MODE REMEDIATION (FULL THEME COMPLIANCE)
+Problem: light mode is broken. The canvas flips light but form components (quote flow especially) render dark-mode surfaces and text: dark input fields on white canvas, white/near-white labels and section headings that are unreadable, nav labels barely visible. Root cause: components hardcoding dark values or reading only one of the two theming paths (Tailwind .dark variables vs useThemeColors() inline) so they desync when the toggle flips. Fix light mode across the entire app, starting with the quote flow.
+1. Diagnose and inventory first
+
+Sweep all components under quote-flow/, submission/, register/, and any shared form primitives (inputs, selects, dropdowns, date pickers, checkboxes, labels, section headings) for: (a) hardcoded dark-mode colors (hex or rgba literals), (b) Tailwind dark-variable classes used without light counterparts, (c) components that never consume useThemeColors()/isDark
+Produce the inventory in your report before fixing: file, component, which failure type
+
+2. Form surface + text tokens
+The token set currently lacks dedicated form-surface values, which is why inputs improvised. Add to both token paths (index.css variables AND use-theme-colors.ts), following the existing dark/light pattern:
+--input-bg:        dark rgba(255,255,255,0.05)  / light #ffffff
+--input-border:    dark rgba(255,255,255,0.10)  / light rgba(0,0,0,0.15)
+--input-text:      dark #fff                    / light #111
+--input-placeholder: dark rgba(255,255,255,0.40) / light rgba(0,0,0,0.40)
+--input-bg-focus:  dark rgba(255,255,255,0.08)  / light #ffffff
+--label-text:      dark rgba(255,255,255,0.72)  / light rgba(0,0,0,0.65)
+--section-heading: dark rgba(255,255,255,0.85)  / light rgba(0,0,0,0.80)
+Focus ring on inputs: --accent-primary (pink), with --accent-primary-focus (#ff4ba6) in dark mode per the existing rule. Adjust exact light values if needed for contrast (see acceptance), but define them ONCE as tokens — no per-component improvisation.
+3. Migrate every form component to tokens
+
+All inputs, selects, dropdowns, textareas, date pickers, checkboxes, radio groups, and their labels/headings across the app consume the tokens above through the standard theme paths
+shadcn ui/ form primitives: verify their light-mode HSL variables produce correct light surfaces after the D1 repointing; fix any that still resolve to dark values in light mode
+Required-field asterisks: ensure legible in both modes (currently pink — fine — but confirm against light canvas)
+Progress indicator ("Step N of 5") and step labels ("BUSINESS DETAILS"): token-compliant in both modes
+
+4. Full-app light mode sweep
+Quote flow is the worst case, but audit and fix light mode on every major surface: all 8 dashboards, Pipeline kanban + DealCardModal, Marketplace cards, Accounts, login page, AppShell (nav labels, header, Sign Out). Glass recipes already define light counterparts — verify components actually use them.
+5. Contrast standard
+
+All text meets WCAG AA in both modes: 4.5:1 normal text, 3:1 large text and UI component boundaries (input borders against canvas)
+Verify programmatically (axe-core or equivalent) on: quote flow step 1, admin dashboard, pipeline, login — report the results, don't eyeball it
+
+6. Regression protection
+
+Add to the project's permanent definition of done (and replit.md): every new view or component must be verified in BOTH modes before a phase closes; all phase acceptance tests from now on implicitly include light-mode rendering
+Dev aid: if quick, add a keyboard shortcut or dev-toolbar toggle to flip themes for testing
+
+7. Acceptance tests — all must pass
+
+Quote flow, all 5 steps, light mode: every label, heading, input, placeholder, and control clearly legible; inputs render light surfaces; screenshot each step
+Toggle flips the ENTIRE page atomically — no component retains opposite-mode styling (the current failure mode)
+axe-core contrast checks pass on the four named views in both modes
+Dark mode visually unchanged from current state (regression screenshots of admin dashboard + quote flow step 1)
+Grep confirms no new hardcoded color literals outside token files
+Typecheck clean
