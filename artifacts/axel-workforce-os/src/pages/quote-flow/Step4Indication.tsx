@@ -176,11 +176,122 @@ export default function Step4Indication() {
   }
 
   if (ratingError) {
+    const isZipError = /zip/i.test(ratingError);
+    const resolutionSteps = isZipError
+      ? [
+          "Go back to Class Codes & Payroll.",
+          "For each California location, enter the 5-digit business ZIP code.",
+          "Return to this step to recalculate your indication.",
+        ]
+      : [
+          "Go back to Class Codes & Payroll.",
+          "Make sure every location has a state selected and at least one class code with annual payroll.",
+          "Return to this step to recalculate your indication.",
+        ];
     return (
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 80, gap: 16 }}>
-        <AlertTriangle style={{ width: 32, height: 32, color: "#FFB547" }} />
-        <p style={{ fontSize: 14, color: textPrimary, fontWeight: 600 }}>Rating Error</p>
-        <p style={{ fontSize: 13, color: textSecondary, textAlign: "center", maxWidth: 400 }}>{ratingError}</p>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "64px 24px", gap: 20 }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 20,
+            maxWidth: 560,
+            width: "100%",
+            padding: 32,
+            borderRadius: 16,
+            background: isDark ? "rgba(255,181,71,0.08)" : "rgba(255,181,71,0.14)",
+            border: "1px solid rgba(255,181,71,0.35)",
+            textAlign: "center",
+          }}
+        >
+          <div
+            style={{
+              width: 64,
+              height: 64,
+              borderRadius: "50%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "rgba(255,181,71,0.18)",
+              flexShrink: 0,
+            }}
+          >
+            <AlertTriangle style={{ width: 34, height: 34, color: "#FFB547" }} />
+          </div>
+          <h2 style={{ fontSize: 24, fontWeight: 800, color: textPrimary, margin: 0, lineHeight: 1.2 }}>
+            We couldn't calculate your indication
+          </h2>
+          <p style={{ fontSize: 16, color: textSecondary, margin: 0, lineHeight: 1.5, maxWidth: 460 }}>{ratingError}</p>
+          <div
+            style={{
+              width: "100%",
+              textAlign: "left",
+              borderRadius: 12,
+              padding: "18px 20px",
+              background: isDark ? "rgba(0,0,0,0.2)" : "rgba(255,255,255,0.6)",
+              border: `1px solid ${borderColor}`,
+            }}
+          >
+            <p
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                color: textMuted,
+                margin: "0 0 12px",
+                textTransform: "uppercase",
+                letterSpacing: "0.06em",
+                fontFamily: "var(--app-font-heading)",
+              }}
+            >
+              How to fix this
+            </p>
+            <ol style={{ margin: 0, paddingLeft: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 12 }}>
+              {resolutionSteps.map((step, i) => (
+                <li key={i} style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+                  <span
+                    style={{
+                      flexShrink: 0,
+                      width: 24,
+                      height: 24,
+                      borderRadius: "50%",
+                      background: "var(--accent-primary)",
+                      color: "#fff",
+                      fontSize: 13,
+                      fontWeight: 700,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    {i + 1}
+                  </span>
+                  <span style={{ fontSize: 15, color: textPrimary, lineHeight: 1.5 }}>{step}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              s.setPhase(1);
+              s.setStep(2);
+            }}
+            style={{
+              marginTop: 4,
+              padding: "12px 24px",
+              borderRadius: 10,
+              border: "none",
+              background: "var(--gradient-cta)",
+              color: "#fff",
+              fontSize: 15,
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            Back to Class Codes &amp; Payroll
+          </button>
+        </div>
       </div>
     );
   }
