@@ -28,3 +28,4 @@ export * from "./proposals";
 export * from "./signatures";
 export * from "./appetite";
 export * from "./ai-classify-cache";
+export * from "./ca-territorial-rates";

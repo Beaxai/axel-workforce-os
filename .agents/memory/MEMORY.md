@@ -1,2 +1,1 @@
-- [Quote-flow wizard rehydration](quote-flow-wizard-state.md) — QuoteWizard resets the Zustand store on mount only when nav `location.state` has vertical+coverageType; navigate WITHOUT state to resume an existing quote.
-- [AxelBadge color prop](axel-badge-color-prop.md) — Badge=AxelBadge color prop must be a NAMED color, never a CSS var (hex+alpha math).
+- [Drizzle push blocked](drizzle-push-blocked.md) — push hangs on pre-existing deals drift; apply schema via direct SQL DDL, keep Drizzle files as source of truth.

@@ -150,7 +150,7 @@ export default function LocationCard({ location, index, canRemove, stateOptions,
               placeholder="State"
             />
           </FieldLabel>
-          <FieldLabel label="ZIP">
+          <FieldLabel label="ZIP" required={loc.state?.toUpperCase() === "CA"}>
             <TextInput
               value={loc.zip || ""}
               onChange={(v) => s.updateLocation(loc.id, { zip: v })}

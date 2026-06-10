@@ -81,6 +81,19 @@ export default function Step4Indication() {
         return;
       }
 
+      const caMissingZip = locationsPayload.some(
+        (loc) => loc.state?.toUpperCase() === "CA" && (loc.zip || "").replace(/\D/g, "").length < 5,
+      );
+      if (caMissingZip) {
+        if (cancelled) return;
+        setRatingError(
+          "California locations require a valid 5-digit business ZIP code to determine the territorial rating factor. Please add a ZIP for each California location and try again.",
+        );
+        setRatingResult(null);
+        setLoading(false);
+        return;
+      }
+
       try {
         const res = await api.post<{ success: boolean; data: MultiLocationResult; error?: string }>("/rate/wc/multi", workforceProfile);
 

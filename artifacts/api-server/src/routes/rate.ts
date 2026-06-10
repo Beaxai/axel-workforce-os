@@ -15,9 +15,9 @@ import {
 const router: IRouter = Router();
 
 router.post("/wc", async (req, res) => {
-  const { state, classCode, annualPayroll, eMod = 1.0, scheduleRating = 1.0, isPEO = false, dealId } = req.body;
+  const { state, classCode, annualPayroll, eMod = 1.0, scheduleRating = 1.0, isPEO = false, zip, dealId } = req.body;
 
-  const input = { state, classCode: String(classCode), annualPayroll, eMod, scheduleRating, isPEO };
+  const input = { state, classCode: String(classCode), annualPayroll, eMod, scheduleRating, isPEO, zip };
   const errors = validateWCInput(input);
   if (errors.length > 0) return res.status(400).json({ success: false, error: errors.join("; ") });
 

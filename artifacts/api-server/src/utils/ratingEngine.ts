@@ -1,6 +1,42 @@
 import { db, wcRatesTable } from "@workspace/db";
-import { eq, and, desc } from "drizzle-orm";
-import { getCATerritoryMultiplier } from "./caTerritory";
+import { eq, and, desc, sql } from "drizzle-orm";
+import { resolveTerritory } from "./caTerritory";
+
+/**
+ * Canonicalize a class code for lookup. Codes are stored exactly as filed
+ * (zero-padded to 4 digits, e.g. "0035", or alphanumeric like "7227A"). A quote
+ * may arrive as "35", "0035", or "35.0" — all must resolve to the same stored
+ * code. We trim, drop a spreadsheet-style trailing ".0", and strip leading
+ * zeros (keeping at least one character so alphanumerics survive).
+ */
+export function normalizeClassCode(code: string | number): string {
+  let v = String(code ?? "").trim().toUpperCase();
+  v = v.replace(/\.0+$/, "");
+  v = v.replace(/^0+(?=.)/, "");
+  return v;
+}
+
+/**
+ * Most-recent WC rate row for a State + ClassCode, normalizing leading zeros on
+ * BOTH sides so "35" matches stored "0035". EffectiveDate is reference-only —
+ * we always take the newest row, never filter by date. Duplicate State+Code
+ * rows (cannabis descriptions) carry an identical rate, so limit(1) is correct.
+ */
+async function lookupWcRate(state: string, classCode: string | number) {
+  const norm = normalizeClassCode(classCode);
+  const [row] = await db
+    .select()
+    .from(wcRatesTable)
+    .where(
+      and(
+        eq(wcRatesTable.state, String(state).toUpperCase()),
+        sql`regexp_replace(upper(btrim(${wcRatesTable.classCode})), '^0+(?=.)', '') = ${norm}`,
+      ),
+    )
+    .orderBy(desc(wcRatesTable.effectiveDate))
+    .limit(1);
+  return row;
+}
 
 export interface WCPremiumInput {
   state: string;
@@ -110,6 +146,7 @@ export interface MultiLocationResult {
     subtotal: number;
     caTerritory?: number | null;
     caTerritoryMultiplier?: number;
+    caZipPrefix?: number | null;
     subtotalBeforeTerritory?: number;
   }>;
   totalGrossPremium: number;
@@ -133,12 +170,7 @@ export async function calculateMultiLocationWC(input: MultiLocationInput): Promi
 
     for (const cc of loc.classCodes) {
       try {
-        const [rateRow] = await db
-          .select()
-          .from(wcRatesTable)
-          .where(and(eq(wcRatesTable.state, loc.state.toUpperCase()), eq(wcRatesTable.classCode, String(cc.classCode))))
-          .orderBy(desc(wcRatesTable.effectiveDate))
-          .limit(1);
+        const rateRow = await lookupWcRate(loc.state, cc.classCode);
 
         if (!rateRow) {
           ccResults.push({
@@ -175,7 +207,7 @@ export async function calculateMultiLocationWC(input: MultiLocationInput): Promi
       }
     }
 
-    const { multiplier: territoryMultiplier, territory } = getCATerritoryMultiplier(loc.state, loc.zip || "");
+    const { multiplier: territoryMultiplier, territory, zipPrefix } = await resolveTerritory(loc.state, loc.zip);
     const subtotalBeforeTerritory = locSubtotal;
     const adjustedSubtotal = locSubtotal * territoryMultiplier;
     totalRaw += adjustedSubtotal;
@@ -189,6 +221,7 @@ export async function calculateMultiLocationWC(input: MultiLocationInput): Promi
     if (territory !== null) {
       locResult.caTerritory = territory;
       locResult.caTerritoryMultiplier = territoryMultiplier;
+      locResult.caZipPrefix = zipPrefix;
       locResult.subtotalBeforeTerritory = Math.round(subtotalBeforeTerritory * 100) / 100;
     }
 
@@ -216,12 +249,7 @@ export async function calculateMultiLocationWC(input: MultiLocationInput): Promi
 export async function calculateWCPremium(input: WCPremiumInput) {
   const { state, classCode, annualPayroll, eMod, scheduleRating, isPEO, zip } = input;
 
-  const [rateRow] = await db
-    .select()
-    .from(wcRatesTable)
-    .where(and(eq(wcRatesTable.state, state.toUpperCase()), eq(wcRatesTable.classCode, String(classCode))))
-    .orderBy(desc(wcRatesTable.effectiveDate))
-    .limit(1);
+  const rateRow = await lookupWcRate(state, classCode);
 
   if (!rateRow) {
     throw new Error(`No rate found for state ${state}, class code ${classCode}`);
@@ -231,7 +259,7 @@ export async function calculateWCPremium(input: WCPremiumInput) {
   const payrollPer100 = annualPayroll / 100;
   const rawPremium = payrollPer100 * baseRate * eMod * scheduleRating;
 
-  const { multiplier: territoryMultiplier, territory } = getCATerritoryMultiplier(state, zip || "");
+  const { multiplier: territoryMultiplier, territory, zipPrefix } = await resolveTerritory(state, zip);
   const adjustedPremium = rawPremium * territoryMultiplier;
 
   const minimumPremiumApplied = adjustedPremium < 500;
@@ -252,6 +280,7 @@ export async function calculateWCPremium(input: WCPremiumInput) {
       basePremiumBeforeTerritory: Math.round(rawPremium * 100) / 100,
       caTerritory: territory,
       caTerritoryMultiplier: territoryMultiplier,
+      caZipPrefix: zipPrefix,
       grossPremium: Math.round(grossPremium * 100) / 100,
       minimumPremiumApplied,
       peoDiscountApplied: isPEO,

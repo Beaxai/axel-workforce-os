@@ -1,0 +1,13 @@
+ZipPrefixMin,ZipPrefixMax,Territory,Counties,Multiplier
+900,918,1,Los Angeles,1.20
+919,922,2,San Diego (parts of Riverside/Imperial),0.90
+923,924,3,San Bernardino,1.05
+925,926,4,"Riverside, Orange",1.00
+927,931,5,"Orange, Riverside, Ventura, Santa Barbara",1.20
+932,938,6,"Tulare, King, Kern, Fresno, Madera, Monterey, Inyo, SLO",1.10
+939,951,7,"San Mateo, Alameda, Santa Clara, S.F., Marin, Contra Costa, Solano, Sonoma, Santa Cruz, Napa, Sacramento, Monterey",0.90
+952,953,8,"San Joaquin, Calaveras, Merced, Mariposa, Tuolumne, Stanislaus",1.00
+954,954,9,"Sonoma, Mendocino, Lake",0.90
+955,955,10,"Humboldt, Trinity, Del Norte",1.00
+956,958,11,"Placer, Yolo, Sacramento, El Dorado, Alpine, Sutter",0.95
+959,961,12,"Yuba, Colusa, Butte, Glenn, Plumas, Lassen, Shasta, Siskiyou, etc.",1.00
