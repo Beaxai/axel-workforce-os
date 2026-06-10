@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Info } from "lucide-react";
 import { useQuoteFlowStore } from "@/lib/quote-flow-store";
+import { useThemeColors } from "@/lib/use-theme-colors";
 import { FormSection, FieldLabel, TextInput, TextArea, YesNoToggle } from "@/components/quote-flow/FormFields";
 
 const QUESTIONS = [
@@ -34,6 +35,7 @@ export default function P2Step3GeneralInfo() {
   const s = useQuoteFlowStore();
   const q = s.generalQuestions;
   const details = s.generalQuestionsDetails;
+  const { isDark, textPrimary, textSecondary, textMuted } = useThemeColors();
 
   useEffect(() => {
     const missing = QUESTIONS.filter((question) => !q[question.id]);
@@ -66,11 +68,11 @@ export default function P2Step3GeneralInfo() {
             marginBottom: 12,
             borderRadius: 10,
             border: "1px solid rgba(255,181,71,0.25)",
-            background: "rgba(255,181,71,0.08)",
+            background: isDark ? "rgba(255,181,71,0.08)" : "rgba(255,181,71,0.18)",
           }}
         >
           <Info style={{ width: 16, height: 16, color: "#FFB547", flexShrink: 0, marginTop: 2 }} />
-          <div style={{ fontSize: 13, color: "#ddd", lineHeight: 1.5 }}>
+          <div style={{ fontSize: 13, color: textPrimary, lineHeight: 1.5 }}>
             All questions have been pre-answered <strong style={{ color: "#FFB547" }}>No</strong> by default. Please review each
             question below and change any answer to <strong style={{ color: "#FFB547" }}>Yes</strong> where it applies to your
             business.
@@ -83,12 +85,12 @@ export default function P2Step3GeneralInfo() {
               style={{
                 padding: "14px 16px",
                 borderRadius: 10,
-                background: i % 2 === 0 ? "rgba(255,255,255,0.02)" : "transparent",
+                background: i % 2 === 0 ? (isDark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)") : "transparent",
               }}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
-                <span style={{ fontSize: 14, color: "#ccc", flex: 1 }}>
-                  <span style={{ color: "#666", marginRight: 8 }}>{i + 1}.</span>
+                <span style={{ fontSize: 14, color: textSecondary, flex: 1 }}>
+                  <span style={{ color: textMuted, marginRight: 8 }}>{i + 1}.</span>
                   {question.text}
                 </span>
                 <YesNoToggle value={q[question.id] || ""} onChange={(v) => setQ(question.id, v)} />
