@@ -111,8 +111,8 @@ export default function Step3ExperienceMod() {
           </FieldLabel>
           <FieldLabel label="Loss Ratio">
             <div style={{
-              padding: "12px 14px", borderRadius: 10, background: "#1a1a26",
-              border: `1px solid ${borderColor}`, color: textPrimary, fontSize: 14,
+              padding: "12px 14px", borderRadius: 10, background: "var(--input-bg)",
+              border: "1px solid var(--input-border)", color: "var(--input-text)", fontSize: 14,
             }}>
               {lossRatio}%
             </div>
