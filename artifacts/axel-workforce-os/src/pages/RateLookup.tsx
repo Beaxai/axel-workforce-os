@@ -12,8 +12,8 @@ const US_STATES = [
 ];
 
 const inputStyle: React.CSSProperties = {
-  padding: "10px 14px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.1)",
-  background: "rgba(255,255,255,0.05)", color: "#fff", fontSize: "14px", outline: "none",
+  padding: "10px 14px", borderRadius: "8px", border: "1px solid var(--input-border)",
+  background: "var(--input-bg)", color: "var(--input-text)", fontSize: "14px", outline: "none",
 };
 
 export default function RateLookup() {
@@ -21,6 +21,10 @@ export default function RateLookup() {
   const isDark = theme === "dark";
   const textPrimary = isDark ? "#fff" : "#111";
   const textMuted = isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.58)";
+  const optionStyle: React.CSSProperties = {
+    background: "hsl(var(--popover))",
+    color: "hsl(var(--popover-foreground))",
+  };
 
   const [lookupState, setLookupState] = useState("");
   const [lookupCode, setLookupCode] = useState("");
@@ -75,8 +79,8 @@ export default function RateLookup() {
               onChange={(e) => setLookupState(e.target.value)}
               style={{ ...inputStyle, width: "140px", appearance: "auto" }}
             >
-              <option value="">Select...</option>
-              {US_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+              <option value="" style={optionStyle}>Select...</option>
+              {US_STATES.map((s) => <option key={s} value={s} style={optionStyle}>{s}</option>)}
             </select>
           </div>
           <div>
@@ -137,8 +141,8 @@ export default function RateLookup() {
               onChange={(e) => { setFilterState(e.target.value); setPage(1); }}
               style={{ ...inputStyle, width: "120px", fontSize: "13px", padding: "8px 10px", appearance: "auto" }}
             >
-              <option value="">All States</option>
-              {US_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+              <option value="" style={optionStyle}>All States</option>
+              {US_STATES.map((s) => <option key={s} value={s} style={optionStyle}>{s}</option>)}
             </select>
             <input
               value={filterCode}
