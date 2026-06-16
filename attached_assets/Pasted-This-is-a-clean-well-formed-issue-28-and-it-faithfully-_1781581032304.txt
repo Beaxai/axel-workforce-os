@@ -1,0 +1,18 @@
+This is a clean, well-formed issue (#28) — and it faithfully captures everything we landed on (better-auth + fallback, one users table, roles in `org_members`, middleware authz, drizzle push, no Supabase, React drift, all 8 acceptance tests + regressions). Let me do the one useful check I can add: verify the "Relevant files" list against the actual repo and flag anything missing.
+
+Validated against the repo — the issue is accurate and faithful to Curtis's specs. **All 21 listed files exist**, plus `supabase/` (to delete) and the drift memo. Nothing in the list is stale.
+
+Two small completeness notes (the list is illustrative, so these are additions, not errors):
+
+1. **The "12 RBAC holes" touch more route files than listed.** The issue names `deals`, `rate-tables`, `organizations`, `agent-registrations`, `webhooks` — but the role-hardening also hits these existing routers, which all need `requireRoles` too:
+   `commissions.ts`, `contacts.ts`, `employees.ts`, `implementation.ts`, `policies.ts`, `tasks.ts`, `workforce.ts`.
+   Net: **every** route file under `artifacts/api-server/src/routes/` gets an explicit role declaration — worth saying so the implementer doesn't stop at the 5 listed.
+
+2. **`/legacy` (the 12th hole) has no backend route file** — there's no `routes/legacy.ts`. It's a frontend-only route, so harden it with `allowedRoles` in `App.tsx`; there's nothing to add server-side for it.
+
+And a note on what's **not** in the list because it doesn't exist yet — these are the new files the phase creates:
+- `artifacts/api-server/src/lib/auth.ts` (better-auth config) + a session middleware (e.g. `src/middleware/require-auth.ts`)
+- `artifacts/api-server/src/routes/auth.ts` (mount/alias the handler)
+- new Drizzle schema files for the library's `account` / `session` / `verification` (+ reset-token) tables
+
+Bottom line: #28 is solid and ready to execute. Want me to append those two notes (all-routes + the new-files list) into the issue body or the build-prompt `.md` so the implementer has them, or leave the issue as-is?
