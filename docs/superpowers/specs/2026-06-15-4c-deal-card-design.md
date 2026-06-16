@@ -110,7 +110,7 @@ Default: **enhance the existing full-screen modal** (`DealCardModal` + `openDeal
 >
 > Requesting your OK on Approach C before build. If approved, §8 of the State Document should be updated to match.
 
-## 14. Acceptance tests (adapted from State Doc §8 for Approach A)
+## 14. Acceptance tests (adapted from State Doc §8 for Approach C)
 
 1. No orphaned submission fields vs the product-type/vertical question set (every field maps to one section).
 2. Payroll edit → KPI updates + stale banner appears + activity diff logged + account synced + banner clears after re-rate.
@@ -127,3 +127,16 @@ Default: **enhance the existing full-screen modal** (`DealCardModal` + `openDeal
 - Container: modal-now vs `/deals/:id` page (§11) — Brendan to confirm.
 - Curtis sign-off on Approach C (§13) — blocks build of the chosen layout (Approach B is the no-sign-off fallback).
 - Confirm 3.5 + 4A are complete before 4C implementation begins (§1).
+- **Header stage tracker: 6 macro phases vs the binding 10-stage pipeline.** The Stitch reference shows a condensed 6-phase tracker (Submission Pending → Indication → U/W Review → Approved/Declined → Binding → Implementation), but State Doc §11 defines the pipeline as 10 stages. Decide: (a) header = macro lifecycle tracker distinct from the 10-stage Kanban, or (b) header mirrors the real 10 stages. Touches a binding decision → Curtis.
+
+## 16. Design polish checklist (from design critique)
+
+Tracked from the 2026-06-15 design critique of the Approach C prototype. Items 1–2 applied in the prototype; all must hold in the real build.
+
+- [x] **Label contrast (AA).** Small metadata labels (stepper/KPI/rail/preview) must clear WCAG AA on `#060608` — floor at `rgba(255,255,255,0.55)` and ~10–11px. (Was failing at `0.38`/9px.) Mirrors the `.agents/memory/light-mode-theming.md` AA warning.
+- [x] **No color-only status.** "Complete" must use a shape (check glyph) or text, not a bare green dot — colorblind-safe and works with the calmer palette.
+- [ ] **Light mode.** Build + verify the light variant — it is half the Definition of Done and currently unbuilt.
+- [ ] **Restore "Modify" + clickable affordances** on rail pricing and completeness rows (functional parity with §5/§9; discoverability).
+- [ ] **Consistency.** Standardize radii to the system (`glass-card` 12 / `glass-panel` 16), use the two real glass recipes for inner cards, and Jost for section subheadings.
+- [ ] **Consider one semantic accent for out-of-range risk values** (e.g. ExMod > 1.10) — "color as state," not brand, so it stays within the token rules.
+- [ ] **Resolve the "Approved / Declined" node** — one node encoding two opposite outcomes is ambiguous; branch or make it state-dependent.
