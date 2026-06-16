@@ -1,45 +1,61 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useAuthStore, ROLE_LABELS, ROLE_PATHS, type PartyRole } from "@/lib/auth-store";
+import { useNavigate, useLocation } from "react-router-dom";
+import { ApiError } from "@workspace/api-client-react";
+import { useAuthStore, ROLE_PATHS, type PartyRole } from "@/lib/auth-store";
 import { useThemeStore } from "@/lib/theme-store";
 
-const DEMO_USERS: Record<PartyRole, { firstName: string; lastName: string; email: string }> = {
-  ADMIN: { firstName: "Sarah", lastName: "Mitchell", email: "sarah@axelwos.com" },
-  UNDERWRITER: { firstName: "James", lastName: "Chen", email: "james@axelwos.com" },
-  CSA: { firstName: "Maria", lastName: "Rodriguez", email: "maria@axelwos.com" },
-  AGENT: { firstName: "Robert", lastName: "Banks", email: "robert@broker.com" },
-  EMPLOYER: { firstName: "Lisa", lastName: "Thompson", email: "lisa@acmecorp.com" },
-  CARRIER: { firstName: "David", lastName: "Park", email: "david@carrier.com" },
-  PEO: { firstName: "Karen", lastName: "White", email: "karen@peopartner.com" },
-  VENDOR: { firstName: "Mike", lastName: "Johnson", email: "mike@vendor.com" },
-};
+const DEV_AUTH = import.meta.env.VITE_DEV_AUTH === "true";
 
-const ROLES: PartyRole[] = [
-  "ADMIN", "UNDERWRITER", "CSA", "AGENT",
-  "EMPLOYER", "CARRIER", "PEO", "VENDOR",
+// Quick-fill credentials for local exploration only (gated on VITE_DEV_AUTH).
+const DEV_USERS: { label: string; role: PartyRole; email: string }[] = [
+  { label: "Admin", role: "ADMIN", email: "sarah@axelwos.com" },
+  { label: "Underwriter", role: "UNDERWRITER", email: "james@axelwos.com" },
+  { label: "CSA", role: "CSA", email: "maria@axelwos.com" },
+  { label: "Agent", role: "AGENT", email: "robert@broker.com" },
+  { label: "Employer", role: "EMPLOYER", email: "lisa@acmecorp.com" },
+  { label: "Carrier", role: "CARRIER", email: "david@carrier.com" },
+  { label: "PEO", role: "PEO", email: "karen@peopartner.com" },
+  { label: "Vendor", role: "VENDOR", email: "mike@vendor.com" },
 ];
+
+const DEV_PASSWORD = "Password123!";
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const { login } = useAuthStore();
+  const location = useLocation();
+  const { signIn } = useAuthStore();
   const { theme } = useThemeStore();
-  const [selectedRole, setSelectedRole] = useState<PartyRole | null>(null);
-
   const isDark = theme === "dark";
 
-  const handleLogin = () => {
-    if (!selectedRole) return;
-    const demo = DEMO_USERS[selectedRole];
-    login({
-      id: crypto.randomUUID(),
-      email: demo.email,
-      firstName: demo.firstName,
-      lastName: demo.lastName,
-      role: selectedRole,
-      orgId: "axel-internal",
-      orgName: "Axel Workforce Solutions",
-    });
-    navigate(ROLE_PATHS[selectedRole]);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const fromPath = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password || submitting) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const user = await signIn(email.trim(), password);
+      navigate(fromPath || ROLE_PATHS[user.role], { replace: true });
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        setError("Invalid email or password.");
+      } else {
+        setError("Unable to sign in. Please try again.");
+      }
+      setSubmitting(false);
+    }
+  };
+
+  const quickFill = (devEmail: string) => {
+    setEmail(devEmail);
+    setPassword(DEV_PASSWORD);
+    setError(null);
   };
 
   const bg = isDark ? "#060608" : "#f4f4f5";
@@ -47,7 +63,18 @@ export default function LoginPage() {
   const textMuted = isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.58)";
   const borderColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)";
   const cardBg = isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)";
-  const subtleBg = isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)";
+
+  const inputStyle: React.CSSProperties = {
+    width: "100%",
+    padding: "12px 14px",
+    borderRadius: "12px",
+    fontSize: "14px",
+    color: "var(--input-text)",
+    background: "var(--input-bg)",
+    border: "1px solid var(--input-border)",
+    outline: "none",
+    transition: "border-color 0.15s, background 0.15s",
+  };
 
   return (
     <div
@@ -77,11 +104,12 @@ export default function LoginPage() {
             Axel Workforce OS
           </h1>
           <p style={{ fontSize: "14px", marginTop: "8px", color: textMuted }}>
-            Select your role to enter the platform
+            Sign in to your account
           </p>
         </div>
 
-        <div
+        <form
+          onSubmit={handleSubmit}
           style={{
             borderRadius: "16px",
             padding: "24px",
@@ -90,81 +118,69 @@ export default function LoginPage() {
             backdropFilter: "blur(12px)",
           }}
         >
-          <p
+          <label
             style={{
+              display: "block",
               fontSize: "12px",
               fontWeight: 500,
-              marginBottom: "12px",
-              color: textMuted,
+              marginBottom: "6px",
+              color: "var(--label-text)",
             }}
           >
-            SELECT PARTY ROLE
-          </p>
+            Email
+          </label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@company.com"
+            autoComplete="email"
+            style={{ ...inputStyle, marginBottom: "16px" }}
+            onFocus={(e) => {
+              e.currentTarget.style.borderColor = "var(--input-border-focus)";
+              e.currentTarget.style.background = "var(--input-bg-focus)";
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.borderColor = "var(--input-border)";
+              e.currentTarget.style.background = "var(--input-bg)";
+            }}
+          />
 
-          <div
+          <label
             style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "8px",
-              marginBottom: "24px",
+              display: "block",
+              fontSize: "12px",
+              fontWeight: 500,
+              marginBottom: "6px",
+              color: "var(--label-text)",
             }}
           >
-            {ROLES.map((role) => (
-              <button
-                key={role}
-                onClick={() => setSelectedRole(role)}
-                style={{
-                  padding: "12px",
-                  borderRadius: "12px",
-                  textAlign: "left",
-                  fontSize: "14px",
-                  fontWeight: 500,
-                  cursor: "pointer",
-                  transition: "all 0.15s",
-                  background:
-                    selectedRole === role ? "rgba(233,30,140,0.15)" : cardBg,
-                  border:
-                    selectedRole === role
-                      ? "1px solid rgba(233,30,140,0.4)"
-                      : `1px solid ${borderColor}`,
-                  color: selectedRole === role ? "var(--accent-primary)" : (isDark ? "rgba(255,255,255,0.7)" : "rgba(0,0,0,0.6)"),
-                }}
-              >
-                {ROLE_LABELS[role]}
-              </button>
-            ))}
-          </div>
+            Password
+          </label>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="••••••••"
+            autoComplete="current-password"
+            style={{ ...inputStyle, marginBottom: error ? "12px" : "20px" }}
+            onFocus={(e) => {
+              e.currentTarget.style.borderColor = "var(--input-border-focus)";
+              e.currentTarget.style.background = "var(--input-bg-focus)";
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.borderColor = "var(--input-border)";
+              e.currentTarget.style.background = "var(--input-bg)";
+            }}
+          />
 
-          {selectedRole && (
-            <div
-              style={{
-                borderRadius: "12px",
-                padding: "12px",
-                marginBottom: "16px",
-                background: subtleBg,
-                border: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}`,
-              }}
-            >
-              <p style={{ fontSize: "12px", color: textMuted }}>Signing in as</p>
-              <p
-                style={{
-                  fontSize: "14px",
-                  fontWeight: 500,
-                  color: textPrimary,
-                  marginTop: "2px",
-                }}
-              >
-                {DEMO_USERS[selectedRole].firstName} {DEMO_USERS[selectedRole].lastName}
-              </p>
-              <p style={{ fontSize: "12px", color: textMuted }}>
-                {DEMO_USERS[selectedRole].email}
-              </p>
-            </div>
+          {error && (
+            <p style={{ fontSize: "13px", color: "#ef4444", margin: "0 0 16px" }}>{error}</p>
           )}
 
           <button
-            onClick={handleLogin}
-            disabled={!selectedRole}
+            type="submit"
+            disabled={!email || !password || submitting}
             style={{
               width: "100%",
               padding: "12px",
@@ -173,32 +189,62 @@ export default function LoginPage() {
               fontWeight: 600,
               color: "#fff",
               border: "none",
-              cursor: selectedRole ? "pointer" : "not-allowed",
-              background: selectedRole ? "var(--gradient-cta)" : (isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"),
-              opacity: selectedRole ? 1 : 0.5,
+              cursor: !email || !password || submitting ? "not-allowed" : "pointer",
+              background:
+                !email || !password
+                  ? isDark
+                    ? "rgba(255,255,255,0.06)"
+                    : "rgba(0,0,0,0.06)"
+                  : "var(--gradient-cta)",
+              opacity: !email || !password ? 0.5 : 1,
               transition: "filter 0.15s",
             }}
             onMouseEnter={(e) => {
-              if (selectedRole) e.currentTarget.style.filter = "brightness(1.1)";
+              if (email && password && !submitting) e.currentTarget.style.filter = "brightness(1.1)";
             }}
             onMouseLeave={(e) => {
-              if (selectedRole) e.currentTarget.style.filter = "none";
+              e.currentTarget.style.filter = "none";
             }}
           >
-            Enter Platform
+            {submitting ? "Signing in…" : "Sign In"}
           </button>
-        </div>
+        </form>
 
-        <p
-          style={{
-            textAlign: "center",
-            fontSize: "12px",
-            marginTop: "24px",
-            color: isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.3)",
-          }}
-        >
-          Demo environment — all roles available for exploration
-        </p>
+        {DEV_AUTH && (
+          <div
+            style={{
+              marginTop: "20px",
+              padding: "16px",
+              borderRadius: "12px",
+              background: cardBg,
+              border: `1px dashed ${borderColor}`,
+            }}
+          >
+            <p style={{ fontSize: "11px", fontWeight: 600, color: textMuted, margin: "0 0 10px" }}>
+              DEV QUICK-FILL
+            </p>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
+              {DEV_USERS.map((u) => (
+                <button
+                  key={u.role}
+                  type="button"
+                  onClick={() => quickFill(u.email)}
+                  style={{
+                    padding: "8px",
+                    borderRadius: "8px",
+                    fontSize: "12px",
+                    cursor: "pointer",
+                    background: cardBg,
+                    border: `1px solid ${borderColor}`,
+                    color: isDark ? "rgba(255,255,255,0.7)" : "rgba(0,0,0,0.6)",
+                  }}
+                >
+                  {u.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

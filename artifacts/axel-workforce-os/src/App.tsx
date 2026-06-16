@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -68,11 +69,40 @@ function RootRedirect() {
   return <Navigate to="/login" replace />;
 }
 
+function HydrationGate({ children }: { children: React.ReactNode }) {
+  const { hydrated, hydrate } = useAuthStore();
+
+  useEffect(() => {
+    void hydrate();
+  }, [hydrate]);
+
+  if (!hydrated) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "var(--app-bg, #060608)",
+          color: "var(--accent-primary, #E91E8C)",
+          fontSize: "14px",
+        }}
+      >
+        Loading…
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+          <HydrationGate>
           <Routes>
             <Route path="/" element={<RootRedirect />} />
             <Route path="/login" element={<LoginPage />} />
@@ -256,7 +286,13 @@ function App() {
               <Route path="/resources/appetite" element={<AppetiteGuide />} />
             </Route>
 
-            <Route element={<AppLayout />}>
+            <Route
+              element={
+                <ProtectedRoute allowedRoles={["ADMIN"]}>
+                  <AppLayout />
+                </ProtectedRoute>
+              }
+            >
               <Route path="/legacy" element={<Dashboard />} />
               <Route path="/organizations" element={<OrganizationsPage />} />
               <Route path="/deals" element={<DealsPage />} />
@@ -274,6 +310,7 @@ function App() {
             <Route path="*" element={<NotFound />} />
           </Routes>
           <GlobalDealCardHost />
+          </HydrationGate>
         </BrowserRouter>
         <Toaster />
       </TooltipProvider>

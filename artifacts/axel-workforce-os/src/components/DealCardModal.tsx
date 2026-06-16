@@ -38,7 +38,8 @@ import {
 import BindStatusPanel from "@/components/submission/BindStatusPanel";
 import { AppetiteBadge } from "@/components/AppetiteBadge";
 import { sections as cannabisAppSections } from "@workspace/cannabis-application";
-import { PLACEHOLDER_USERS, CURRENT_USER, resolveActor } from "@/lib/users";
+import { useTeamMembers } from "@/lib/users";
+import { useAuthStore } from "@/lib/auth-store";
 import { getVerticalIcon } from "@/lib/vertical-icons";
 
 type CannabisAppPdfLink = { documentType: string; label: string; path: string };
@@ -61,12 +62,6 @@ const STAGES = [
   { num: 7, key: "CLIENT", label: "Client" },
   { num: 8, key: "LOST", label: "Lost" },
 ];
-
-const actorMeta = (extra: Record<string, unknown> = {}) => ({
-  userId: CURRENT_USER.id,
-  userName: CURRENT_USER.name,
-  ...extra,
-});
 
 function formatRelative(iso?: string): string {
   if (!iso) return "";
@@ -210,6 +205,14 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
   const { theme } = useThemeStore();
   const isDark = theme === "dark";
   const navigate = useNavigate();
+  const { members, resolveActor } = useTeamMembers();
+  const { user } = useAuthStore();
+
+  const actorMeta = (extra: Record<string, unknown> = {}) => ({
+    userId: user?.id ?? null,
+    userName: user ? `${user.firstName} ${user.lastName}`.trim() || user.email : "Unknown",
+    ...extra,
+  });
 
   const [deal, setDeal] = useState<Deal | null>(null);
   const [activity, setActivity] = useState<ActivityEntry[]>([]);
@@ -651,7 +654,7 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
         {(() => {
           const VerticalIcon = getVerticalIcon(deal?.vertical);
           const productLabel = deal?.productType === "PEO" ? "PEO" : deal?.productType === "ASO" ? "ASO" : "WC";
-          const assignees = PLACEHOLDER_USERS.slice(0, 3);
+          const assignees = members.slice(0, 3);
           const headcount = deal?.employeeCountFt ? Number(deal.employeeCountFt).toLocaleString() : "—";
           const payroll = deal?.annualPayroll && parseFloat(deal.annualPayroll) > 0
             ? `$${Math.round(Number(deal.annualPayroll)).toLocaleString()}`
@@ -1026,7 +1029,7 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
                           minWidth: "180px",
                         }}
                       >
-                        {PLACEHOLDER_USERS.map((u) => (
+                        {members.map((u) => (
                           <button
                             key={u.id}
                             onMouseDown={() => insertMention(u.name)}
@@ -1090,7 +1093,7 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
                         style={{ ...inputStyle, flex: "1 1 140px", cursor: "pointer", appearance: "auto" }}
                       >
                         <option value="" style={{ background: isDark ? "#141418" : "#fff" }}>Assign to</option>
-                        {PLACEHOLDER_USERS.map((u) => (
+                        {members.map((u) => (
                           <option key={u.id} value={u.id} style={{ background: isDark ? "#141418" : "#fff" }}>{u.name}</option>
                         ))}
                       </select>
@@ -1112,7 +1115,7 @@ export default function DealCardModal({ dealId, isOpen, onClose, onDealUpdated }
                     )}
                     {tasks.map((task) => {
                       const isComplete = task.status === "COMPLETED";
-                      const assignee = PLACEHOLDER_USERS.find((u) => u.id === task.assignedTo);
+                      const assignee = members.find((u) => u.id === task.assignedTo);
                       return (
                         <div
                           key={task.id}

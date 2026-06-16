@@ -1,34 +1,67 @@
-export interface PlaceholderUser {
+import { useMemo } from "react";
+import { useGetUsers, type UserSummary } from "@workspace/api-client-react";
+
+export interface TeamMember {
   id: string;
   name: string;
   avatarUrl: string;
 }
 
-export const PLACEHOLDER_USERS: PlaceholderUser[] = [
-  { id: "u1", name: "Alex Morgan",  avatarUrl: "https://i.pravatar.cc/96?img=15" },
-  { id: "u2", name: "Sarah Chen",   avatarUrl: "https://i.pravatar.cc/96?img=47" },
-  { id: "u3", name: "James Rivera", avatarUrl: "https://i.pravatar.cc/96?img=12" },
-  { id: "u4", name: "Priya Patel",  avatarUrl: "https://i.pravatar.cc/96?img=44" },
-];
-
-export const CURRENT_USER: PlaceholderUser = PLACEHOLDER_USERS[0];
-
-export function getUserById(id?: string | null): PlaceholderUser | undefined {
-  if (!id) return undefined;
-  return PLACEHOLDER_USERS.find((u) => u.id === id);
+function displayName(u: UserSummary): string {
+  const full = [u.firstName, u.lastName].filter(Boolean).join(" ").trim();
+  return full || u.email;
 }
 
-export function getUserByName(name?: string | null): PlaceholderUser | undefined {
-  if (!name) return undefined;
-  return PLACEHOLDER_USERS.find((u) => u.name === name);
+function avatarFor(u: UserSummary): string {
+  if (u.avatarUrl) return u.avatarUrl;
+  // Deterministic initials-based fallback avatar (no external PII).
+  const seed = encodeURIComponent(displayName(u));
+  return `https://api.dicebear.com/7.x/initials/svg?seed=${seed}`;
 }
 
-export function resolveActor(
-  createdBy?: string | null,
-  metadata?: Record<string, unknown> | null,
-): PlaceholderUser | undefined {
-  const meta = metadata || {};
-  const userId = typeof meta.userId === "string" ? meta.userId : undefined;
-  const userName = typeof meta.userName === "string" ? meta.userName : undefined;
-  return getUserById(userId) || getUserByName(userName) || getUserById(createdBy);
+function toTeamMember(u: UserSummary): TeamMember {
+  return { id: u.id, name: displayName(u), avatarUrl: avatarFor(u) };
+}
+
+/**
+ * Live team-member directory backed by GET /api/users.
+ * Returns members plus lookup helpers bound to the fetched data.
+ */
+export function useTeamMembers() {
+  const { data, isLoading, isError } = useGetUsers();
+
+  const members = useMemo<TeamMember[]>(
+    () => (data ?? []).map(toTeamMember),
+    [data]
+  );
+
+  const byId = useMemo(() => {
+    const map = new Map<string, TeamMember>();
+    for (const m of members) map.set(m.id, m);
+    return map;
+  }, [members]);
+
+  const byName = useMemo(() => {
+    const map = new Map<string, TeamMember>();
+    for (const m of members) map.set(m.name, m);
+    return map;
+  }, [members]);
+
+  const getById = (id?: string | null): TeamMember | undefined =>
+    id ? byId.get(id) : undefined;
+
+  const getByName = (name?: string | null): TeamMember | undefined =>
+    name ? byName.get(name) : undefined;
+
+  const resolveActor = (
+    createdBy?: string | null,
+    metadata?: Record<string, unknown> | null
+  ): TeamMember | undefined => {
+    const meta = metadata || {};
+    const userId = typeof meta.userId === "string" ? meta.userId : undefined;
+    const userName = typeof meta.userName === "string" ? meta.userName : undefined;
+    return getById(userId) || getByName(userName) || getById(createdBy);
+  };
+
+  return { members, isLoading, isError, getById, getByName, resolveActor };
 }

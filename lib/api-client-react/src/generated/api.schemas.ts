@@ -8,3 +8,72 @@
 export interface HealthStatus {
   status: string;
 }
+
+export interface UserSummary {
+  id: string;
+  email: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  avatarUrl?: string | null;
+}
+
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export type PartyRole = (typeof PartyRole)[keyof typeof PartyRole];
+
+export const PartyRole = {
+  ADMIN: "ADMIN",
+  UNDERWRITER: "UNDERWRITER",
+  CSA: "CSA",
+  AGENT: "AGENT",
+  EMPLOYER: "EMPLOYER",
+  CARRIER: "CARRIER",
+  PEO: "PEO",
+  VENDOR: "VENDOR",
+} as const;
+
+export interface RegisterRequest {
+  email: string;
+  /** @minLength 8 */
+  password: string;
+  firstName: string;
+  lastName: string;
+  role: PartyRole;
+  orgId?: string;
+}
+
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+export interface ResetPasswordRequest {
+  token: string;
+  /** @minLength 8 */
+  password: string;
+}
+
+export interface AuthUser {
+  id: string;
+  email: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  avatarUrl?: string | null;
+  role: PartyRole;
+  orgId?: string | null;
+  orgName?: string | null;
+}
+
+export interface AuthResponse {
+  user: AuthUser;
+}
+
+export interface OkResponse {
+  ok: boolean;
+}
+
+export interface ErrorResponse {
+  error: string;
+}

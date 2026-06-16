@@ -1,5 +1,6 @@
 import express, { type Express } from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import morgan from "morgan";
 import pinoHttp from "pino-http";
@@ -29,13 +30,35 @@ app.use(
     },
   }),
 );
-app.use(cors());
+// Credentialed CORS must use an explicit origin allowlist — never reflect
+// arbitrary origins. Allow the Replit dev preview domain, any published
+// domains, and same-origin / non-browser requests (no Origin header).
+const allowedOrigins = new Set<string>();
+for (const d of (process.env.REPLIT_DOMAINS ?? "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean)) {
+  allowedOrigins.add(`https://${d}`);
+}
+if (process.env.REPLIT_DEV_DOMAIN) {
+  allowedOrigins.add(`https://${process.env.REPLIT_DEV_DOMAIN}`);
+}
+app.use(
+  cors({
+    origin(origin, cb) {
+      if (!origin || allowedOrigins.has(origin)) return cb(null, true);
+      return cb(null, false);
+    },
+    credentials: true,
+  }),
+);
 
 import webhooksRouter from "./routes/webhooks";
 app.use("/webhooks", webhooksRouter);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 app.use("/api", router);
 

@@ -8,9 +8,131 @@
 import * as zod from "zod";
 
 /**
+ * @summary List users (team directory)
+ */
+export const GetUsersResponseItem = zod.object({
+  id: zod.string(),
+  email: zod.string(),
+  firstName: zod.string().nullish(),
+  lastName: zod.string().nullish(),
+  avatarUrl: zod.string().nullish(),
+});
+export const GetUsersResponse = zod.array(GetUsersResponseItem);
+
+/**
  * Returns server health status
  * @summary Health check
  */
 export const HealthCheckResponse = zod.object({
   status: zod.string(),
+});
+
+/**
+ * @summary Log in with email and password
+ */
+export const LoginBody = zod.object({
+  email: zod.string().email(),
+  password: zod.string(),
+});
+
+export const LoginResponse = zod.object({
+  user: zod.object({
+    id: zod.string(),
+    email: zod.string(),
+    firstName: zod.string().nullish(),
+    lastName: zod.string().nullish(),
+    avatarUrl: zod.string().nullish(),
+    role: zod.enum([
+      "ADMIN",
+      "UNDERWRITER",
+      "CSA",
+      "AGENT",
+      "EMPLOYER",
+      "CARRIER",
+      "PEO",
+      "VENDOR",
+    ]),
+    orgId: zod.string().nullish(),
+    orgName: zod.string().nullish(),
+  }),
+});
+
+/**
+ * @summary Log out the current session
+ */
+export const LogoutResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
+ * @summary Get the currently authenticated user
+ */
+export const GetCurrentUserResponse = zod.object({
+  user: zod.object({
+    id: zod.string(),
+    email: zod.string(),
+    firstName: zod.string().nullish(),
+    lastName: zod.string().nullish(),
+    avatarUrl: zod.string().nullish(),
+    role: zod.enum([
+      "ADMIN",
+      "UNDERWRITER",
+      "CSA",
+      "AGENT",
+      "EMPLOYER",
+      "CARRIER",
+      "PEO",
+      "VENDOR",
+    ]),
+    orgId: zod.string().nullish(),
+    orgName: zod.string().nullish(),
+  }),
+});
+
+/**
+ * @summary Create a new user (ADMIN only)
+ */
+export const registerUserBodyPasswordMin = 8;
+
+export const RegisterUserBody = zod.object({
+  email: zod.string().email(),
+  password: zod.string().min(registerUserBodyPasswordMin),
+  firstName: zod.string(),
+  lastName: zod.string(),
+  role: zod.enum([
+    "ADMIN",
+    "UNDERWRITER",
+    "CSA",
+    "AGENT",
+    "EMPLOYER",
+    "CARRIER",
+    "PEO",
+    "VENDOR",
+  ]),
+  orgId: zod.string().uuid().optional(),
+});
+
+/**
+ * @summary Request a password reset
+ */
+export const ForgotPasswordBody = zod.object({
+  email: zod.string().email(),
+});
+
+export const ForgotPasswordResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
+ * @summary Reset a password using a reset token
+ */
+export const resetPasswordBodyPasswordMin = 8;
+
+export const ResetPasswordBody = zod.object({
+  token: zod.string(),
+  password: zod.string().min(resetPasswordBodyPasswordMin),
+});
+
+export const ResetPasswordResponse = zod.object({
+  ok: zod.boolean(),
 });

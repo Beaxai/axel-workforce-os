@@ -10,7 +10,7 @@ import {
 import { useThemeStore } from "@/lib/theme-store";
 import { api } from "@/lib/api";
 import { openDealCard } from "@/components/DealCardModal";
-import { PLACEHOLDER_USERS } from "@/lib/users";
+import { useTeamMembers } from "@/lib/users";
 import { VERTICAL_ICONS } from "@/lib/vertical-icons";
 import {
   Plus,
@@ -131,6 +131,7 @@ function generateRefCode(): string {
 
 export default function Pipeline() {
   const { theme } = useThemeStore();
+  const { members } = useTeamMembers();
   const isDark = theme === "dark";
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
@@ -665,9 +666,9 @@ export default function Pipeline() {
                                 fontWeight: 600,
                                 color: "#fff",
                               }}
-                              title={PLACEHOLDER_USERS[i]?.name}
+                              title={members[i]?.name}
                             >
-                              {PLACEHOLDER_USERS[i]?.name.charAt(0)}
+                              {members[i]?.name.charAt(0)}
                             </div>
                           ))}
                         </div>
@@ -785,7 +786,7 @@ export default function Pipeline() {
               onBlur={blurHandler}
             >
               <option value="" style={{ background: isDark ? "#141418" : "#fff" }}>Select team member</option>
-              {PLACEHOLDER_USERS.map((u) => (
+              {members.map((u) => (
                 <option key={u.id} value={u.id} style={{ background: isDark ? "#141418" : "#fff" }}>{u.name}</option>
               ))}
             </select>
