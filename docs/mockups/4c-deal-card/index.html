@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Axel 4C Deal Card — Layout Options (A / B / C)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Jost:wght@500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.0.0/dist/tabler-icons.min.css" />
+<style>
+  body { margin:0; background:#0a0a0d; color:#f4f4f5; font-family:'Inter',system-ui,sans-serif; padding:32px 16px; }
+  .wrap { max-width:720px; margin:0 auto; }
+  h1 { font-family:'Jost',sans-serif; font-weight:600; letter-spacing:0.04em; font-size:22px; }
+  h2 { font-family:'Jost',sans-serif; font-weight:600; letter-spacing:0.04em; font-size:15px; color:#f4f4f5; margin:34px 0 4px; }
+  p.note { color:#9a9aa2; font-size:13px; line-height:1.6; margin:0 0 14px; }
+  .legend { color:#7a7a82; font-size:12px; margin-bottom:24px; }
+  .pin { color:#E91E8C; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Axel Workforce OS — Phase 4C deal card</h1>
+  <p class="legend">Layout options rendered in the real Axel tokens (canvas #060608, pink #E91E8C primary, purple #7C3AED support, Inter / Jost). Inspiration: owner Google Stitch layout. Spec: <span class="pin">docs/superpowers/specs/2026-06-15-4c-deal-card-design.md</span></p>
+
+  <h2>Approach A — sections get their own tab (recommended)</h2>
+  <p class="note">Overview = comms hub (shown). Right rail stays pricing + Approve/Decline. The six submission sections move to a roomy "Submission" sub-nav tab. Diverges from State Doc §8 → pending Curtis sign-off.</p>
+  <div style="min-height:540px;background:rgba(0,0,0,0.5);border-radius:14px;padding:18px;display:flex;align-items:flex-start;justify-content:center">
+  <div style="width:100%;max-width:640px;background:#060608;border:1px solid rgba(255,255,255,0.10);border-radius:16px;overflow:hidden;color:#f4f4f5">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.08)">
+      <div style="display:flex;align-items:center;gap:10px">
+        <i class="ti ti-star" style="color:#7C3AED;font-size:18px"></i>
+        <div><div style="font-size:15px;font-weight:500">Kona Cannabis, LLC</div>
+          <div style="display:flex;gap:6px;margin-top:3px">
+            <span style="font-size:11px;background:rgba(124,58,237,0.18);color:#c9b8f7;padding:1px 7px;border-radius:9999px">Cannabis</span>
+            <span style="font-size:11px;background:rgba(124,58,237,0.18);color:#c9b8f7;padding:1px 7px;border-radius:9999px">PEO</span>
+            <span style="font-size:11px;background:rgba(233,30,140,0.15);color:#f48bba;padding:1px 7px;border-radius:9999px">Effective 10/01/26</span>
+          </div>
+        </div>
+      </div>
+      <i class="ti ti-x" style="color:#9a9aa2;font-size:18px"></i>
+    </div>
+    <div style="display:flex;align-items:center;gap:5px;padding:9px 16px;border-bottom:1px solid rgba(255,255,255,0.06);font-size:10px;color:#6b6b73;overflow:hidden">
+      <span style="color:#3b3b42">New Lead</span><span style="color:#2c2c33">·</span>
+      <span style="color:#3b3b42">Qualified</span><span style="color:#2c2c33">·</span>
+      <span style="color:#E91E8C;font-weight:500">● Needs Analysis</span><span style="color:#2c2c33">·</span>
+      <span>Proposal</span><span style="color:#2c2c33">·</span><span>Negotiation</span><span style="color:#2c2c33">·</span>
+      <span>Committed</span><span style="color:#2c2c33">·</span><span>Bound</span><span style="color:#2c2c33">·</span><span>Client</span>
+    </div>
+    <div style="display:flex;gap:8px;padding:10px 16px;border-bottom:1px solid rgba(255,255,255,0.06)">
+      <div style="flex:1;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:7px 10px"><div style="font-size:9px;letter-spacing:0.06em;color:#7a7a82">LOCATIONS</div><div style="font-size:17px;font-weight:500">04</div></div>
+      <div style="flex:1;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:7px 10px"><div style="font-size:9px;letter-spacing:0.06em;color:#7a7a82">EMPLOYEES</div><div style="font-size:17px;font-weight:500">128</div></div>
+      <div style="flex:1;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:7px 10px"><div style="font-size:9px;letter-spacing:0.06em;color:#7a7a82">ANNUAL PAYROLL</div><div style="font-size:17px;font-weight:500;color:#E91E8C">$14.2M</div></div>
+      <div style="flex:1;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:7px 10px"><div style="font-size:9px;letter-spacing:0.06em;color:#7a7a82">EXMOD</div><div style="font-size:17px;font-weight:500;color:#eab308">1.00</div></div>
+    </div>
+    <div style="display:flex">
+      <div style="width:124px;flex-shrink:0;border-right:1px solid rgba(255,255,255,0.06);padding:8px 0">
+        <div style="display:flex;align-items:center;gap:8px;padding:7px 12px;border-left:2px solid #E91E8C;background:rgba(233,30,140,0.08);font-size:12px"><i class="ti ti-layout-dashboard" style="font-size:15px;color:#E91E8C"></i>Overview</div>
+        <div style="display:flex;align-items:center;gap:8px;padding:7px 12px;border-left:2px solid transparent;font-size:12px;color:#9a9aa2"><i class="ti ti-clipboard-list" style="font-size:15px"></i>Submission</div>
+        <div style="display:flex;align-items:center;gap:8px;padding:7px 12px;border-left:2px solid transparent;font-size:12px;color:#9a9aa2"><i class="ti ti-folder" style="font-size:15px"></i>Documents</div>
+        <div style="display:flex;align-items:center;gap:8px;padding:7px 12px;border-left:2px solid transparent;font-size:12px;color:#9a9aa2"><i class="ti ti-checkbox" style="font-size:15px"></i>Tasks</div>
+        <div style="display:flex;align-items:center;gap:8px;padding:7px 12px;border-left:2px solid transparent;font-size:12px;color:#9a9aa2"><i class="ti ti-calculator" style="font-size:15px"></i>Quote</div>
+        <div style="display:flex;align-items:center;gap:8px;padding:7px 12px;border-left:2px solid transparent;font-size:12px;color:#9a9aa2"><i class="ti ti-shield" style="font-size:15px"></i>Policy</div>
+      </div>
+      <div style="flex:1;min-width:0;padding:12px;display:flex;flex-direction:column;gap:10px">
+        <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-left:3px solid #E91E8C;border-radius:10px;padding:10px 12px">
+          <div style="display:flex;align-items:center;gap:7px;margin-bottom:5px"><div style="width:20px;height:20px;border-radius:50%;background:rgba(124,58,237,0.25);color:#c9b8f7;font-size:9px;display:flex;align-items:center;justify-content:center">SJ</div><span style="font-size:12px;font-weight:500">Sarah Jenkins</span><span style="font-size:10px;color:#7a7a82">Lead Underwriter · 10:24</span></div>
+          <div style="font-size:11px;color:#c4c4cc;line-height:1.5">Reviewed the initial submission. We're missing the loss runs for 2021–2023 — can you upload those so we can proceed with the primary quote?</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:9px 12px;display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:7px"><i class="ti ti-sparkles" style="font-size:15px;color:#7C3AED"></i><span style="font-size:11px;color:#c4c4cc">AI Engine — new quote variation calculated</span></div>
+          <span style="font-size:10px;color:#E91E8C;font-weight:500">Compare</span>
+        </div>
+        <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-left:3px solid #eab308;border-radius:10px;padding:10px 12px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><div style="display:flex;align-items:center;gap:7px"><i class="ti ti-alert-triangle" style="font-size:15px;color:#eab308"></i><span style="font-size:12px;font-weight:500">RFI: Safety protocol verification</span></div><span style="font-size:9px;background:rgba(234,179,8,0.18);color:#e7c14a;padding:1px 7px;border-radius:9999px">Blocking</span></div>
+          <div style="font-size:11px;color:#c4c4cc;line-height:1.5">Class 8810 eligibility requires validated fire-suppression logs.</div>
+          <div style="margin-top:6px;height:4px;background:rgba(255,255,255,0.08);border-radius:9999px;overflow:hidden"><div style="width:70%;height:100%;background:#eab308"></div></div>
+        </div>
+        <div style="margin-top:2px;display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:6px 8px 6px 12px">
+          <i class="ti ti-paperclip" style="font-size:15px;color:#7a7a82"></i><span style="flex:1;font-size:11px;color:#6b6b73">Type a message or request…</span>
+          <div style="width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#7C3AED,#E91E8C);display:flex;align-items:center;justify-content:center"><i class="ti ti-bolt" style="font-size:15px;color:#fff"></i></div>
+        </div>
+      </div>
+      <div style="width:158px;flex-shrink:0;border-left:1px solid rgba(255,255,255,0.06);padding:12px 12px 16px;display:flex;flex-direction:column;gap:10px">
+        <div><div style="font-size:9px;letter-spacing:0.06em;color:#7a7a82">WC PRICING — EST. PREMIUM</div><div style="font-size:20px;font-weight:500;margin-top:2px">$124,500</div><div style="margin-top:6px;text-align:center;font-size:11px;color:#c4c4cc;border:1px solid rgba(255,255,255,0.14);border-radius:8px;padding:5px">Modify</div></div>
+        <div style="border-top:1px solid rgba(255,255,255,0.06);padding-top:10px"><div style="font-size:9px;letter-spacing:0.06em;color:#7a7a82">WFS PRICING</div><div style="font-size:20px;font-weight:500;margin-top:2px">$15,200</div><div style="font-size:10px;color:#7a7a82;margin-top:1px">$150 / employee</div><div style="margin-top:6px;text-align:center;font-size:11px;color:#c4c4cc;border:1px solid rgba(255,255,255,0.14);border-radius:8px;padding:5px">Modify</div></div>
+        <div style="border-top:1px solid rgba(255,255,255,0.06);padding-top:10px;display:flex;flex-direction:column;gap:7px"><div style="text-align:center;font-size:12px;font-weight:500;color:#fff;background:linear-gradient(135deg,#7C3AED,#E91E8C);border-radius:8px;padding:7px">Approve</div><div style="text-align:center;font-size:12px;color:#c4c4cc;border:1px solid rgba(255,255,255,0.14);border-radius:8px;padding:6px">Decline</div></div>
+      </div>
+    </div>
+  </div>
+  </div>
+
+  <h2>Approach B — six section buttons in the right rail (spec-literal)</h2>
+  <p class="note">Stays on State Doc §8: sections live in the rail with completeness indicators. Pricing promoted into the KPI strip; Approve/Decline become header actions.</p>
+  <div style="min-height:520px;background:rgba(0,0,0,0.5);border-radius:14px;padding:18px;display:flex;align-items:flex-start;justify-content:center">
+  <div style="width:100%;max-width:640px;background:#060608;border:1px solid rgba(255,255,255,0.10);border-radius:16px;overflow:hidden;color:#f4f4f5">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.08)">
+      <div style="display:flex;align-items:center;gap:10px"><i class="ti ti-star" style="color:#7C3AED;font-size:18px"></i><div><div style="font-size:15px;font-weight:500">Kona Cannabis, LLC</div><div style="font-size:11px;color:#7a7a82;margin-top:2px">Cannabis · PEO · Effective 10/01/26</div></div></div>
+      <div style="display:flex;gap:7px"><span style="font-size:11px;font-weight:500;color:#fff;background:linear-gradient(135deg,#7C3AED,#E91E8C);border-radius:8px;padding:5px 12px">Approve</span><span style="font-size:11px;color:#c4c4cc;border:1px solid rgba(255,255,255,0.14);border-radius:8px;padding:5px 12px">Decline</span></div>
+    </div>
+    <div style="display:flex;gap:7px;padding:10px 16px;border-bottom:1px solid rgba(255,255,255,0.06)">
+      <div style="flex:1;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:6px 9px"><div style="font-size:9px;color:#7a7a82">LOCATIONS</div><div style="font-size:15px;font-weight:500">04</div></div>
+      <div style="flex:1;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:6px 9px"><div style="font-size:9px;color:#7a7a82">EMPLOYEES</div><div style="font-size:15px;font-weight:500">128</div></div>
+      <div style="flex:1;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:6px 9px"><div style="font-size:9px;color:#7a7a82">PAYROLL</div><div style="font-size:15px;font-weight:500">$14.2M</div></div>
+      <div style="flex:1;background:rgba(233,30,140,0.10);border:1px solid rgba(233,30,140,0.25);border-radius:10px;padding:6px 9px"><div style="font-size:9px;color:#f48bba">EST. PREMIUM</div><div style="font-size:15px;font-weight:500;color:#E91E8C">$124.5K</div></div>
+      <div style="flex:1;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:6px 9px"><div style="font-size:9px;color:#7a7a82">EXMOD</div><div style="font-size:15px;font-weight:500;color:#eab308">1.00</div></div>
+    </div>
+    <div style="display:flex">
+      <div style="width:110px;flex-shrink:0;border-right:1px solid rgba(255,255,255,0.06);padding:8px 0">
+        <div style="padding:7px 12px;border-left:2px solid #E91E8C;background:rgba(233,30,140,0.08);font-size:12px"><i class="ti ti-layout-dashboard" style="font-size:14px;color:#E91E8C;margin-right:6px"></i>Overview</div>
+        <div style="padding:7px 12px;border-left:2px solid transparent;font-size:12px;color:#9a9aa2"><i class="ti ti-folder" style="font-size:14px;margin-right:6px"></i>Docs</div>
+        <div style="padding:7px 12px;border-left:2px solid transparent;font-size:12px;color:#9a9aa2"><i class="ti ti-checkbox" style="font-size:14px;margin-right:6px"></i>Tasks</div>
+        <div style="padding:7px 12px;border-left:2px solid transparent;font-size:12px;color:#9a9aa2"><i class="ti ti-calculator" style="font-size:14px;margin-right:6px"></i>Quote</div>
+        <div style="padding:7px 12px;border-left:2px solid transparent;font-size:12px;color:#9a9aa2"><i class="ti ti-shield" style="font-size:14px;margin-right:6px"></i>Policy</div>
+      </div>
+      <div style="flex:1;min-width:0;padding:12px;display:flex;flex-direction:column;gap:9px">
+        <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-left:3px solid #E91E8C;border-radius:10px;padding:9px 11px">
+          <div style="display:flex;align-items:center;gap:7px;margin-bottom:4px"><div style="width:18px;height:18px;border-radius:50%;background:rgba(124,58,237,0.25);color:#c9b8f7;font-size:8px;display:flex;align-items:center;justify-content:center">SJ</div><span style="font-size:11px;font-weight:500">Sarah Jenkins</span><span style="font-size:9px;color:#7a7a82">UW · 10:24</span></div>
+          <div style="font-size:11px;color:#c4c4cc;line-height:1.5">Missing the loss runs for 2021–2023 — please upload so we can proceed.</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:8px 11px;display:flex;align-items:center;justify-content:space-between"><div style="display:flex;align-items:center;gap:7px"><i class="ti ti-sparkles" style="font-size:14px;color:#7C3AED"></i><span style="font-size:11px;color:#c4c4cc">AI Engine — new quote variation</span></div><span style="font-size:10px;color:#E91E8C">Compare</span></div>
+        <div style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:6px 8px 6px 11px"><i class="ti ti-paperclip" style="font-size:14px;color:#7a7a82"></i><span style="flex:1;font-size:11px;color:#6b6b73">Type a message…</span><div style="width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,#7C3AED,#E91E8C);display:flex;align-items:center;justify-content:center"><i class="ti ti-bolt" style="font-size:14px;color:#fff"></i></div></div>
+      </div>
+      <div style="width:188px;flex-shrink:0;border-left:1px solid rgba(255,255,255,0.06);padding:11px 12px 16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:9px"><span style="font-size:9px;letter-spacing:0.06em;color:#7a7a82">SUBMISSION</span><span style="font-size:10px;color:#22c55e;font-weight:500">3 / 6 complete</span></div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:7px 9px"><span style="font-size:11px"><i class="ti ti-building" style="font-size:13px;color:#7C3AED;margin-right:6px"></i>Business Info</span><i class="ti ti-circle-check" style="font-size:14px;color:#22c55e"></i></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:7px 9px"><span style="font-size:11px"><i class="ti ti-map-pin" style="font-size:13px;color:#7C3AED;margin-right:6px"></i>Locations</span><i class="ti ti-circle-check" style="font-size:14px;color:#22c55e"></i></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,0.04);border:1px solid rgba(234,179,8,0.3);border-radius:8px;padding:7px 9px"><span style="font-size:11px"><i class="ti ti-users" style="font-size:13px;color:#7C3AED;margin-right:6px"></i>Workforce</span><span style="font-size:9px;color:#e7c14a">2 missing</span></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:7px 9px"><span style="font-size:11px"><i class="ti ti-settings" style="font-size:13px;color:#7C3AED;margin-right:6px"></i>Operations</span><i class="ti ti-circle-check" style="font-size:14px;color:#22c55e"></i></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:7px 9px"><span style="font-size:11px"><i class="ti ti-history" style="font-size:13px;color:#7C3AED;margin-right:6px"></i>Loss History</span><span style="font-size:9px;color:#6b6b73">Not started</span></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,0.04);border:1px solid rgba(234,179,8,0.3);border-radius:8px;padding:7px 9px"><span style="font-size:11px"><i class="ti ti-file-description" style="font-size:13px;color:#7C3AED;margin-right:6px"></i>Coverage</span><span style="font-size:9px;color:#e7c14a">1 missing</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+
+  <h2>Approach C — hybrid rail (completeness summary + pricing + actions)</h2>
+  <p class="note">Right rail stacks a compact six-section completeness summary above WC/WFS pricing and Approve/Decline; the "Submission" tab (not shown) expands sections full-width for editing.</p>
+  <div style="min-height:560px;background:rgba(0,0,0,0.5);border-radius:14px;padding:18px;display:flex;align-items:flex-start;justify-content:center">
+  <div style="width:100%;max-width:640px;background:#060608;border:1px solid rgba(255,255,255,0.10);border-radius:16px;overflow:hidden;color:#f4f4f5">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.08)">
+      <div style="display:flex;align-items:center;gap:10px"><i class="ti ti-star" style="color:#7C3AED;font-size:18px"></i><div><div style="font-size:15px;font-weight:500">Kona Cannabis, LLC</div><div style="font-size:11px;color:#7a7a82;margin-top:2px">Cannabis · PEO · Effective 10/01/26</div></div></div>
+      <i class="ti ti-x" style="color:#9a9aa2;font-size:18px"></i>
+    </div>
+    <div style="display:flex;gap:8px;padding:10px 16px;border-bottom:1px solid rgba(255,255,255,0.06)">
+      <div style="flex:1;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:6px 10px"><div style="font-size:9px;color:#7a7a82">LOCATIONS</div><div style="font-size:16px;font-weight:500">04</div></div>
+      <div style="flex:1;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:6px 10px"><div style="font-size:9px;color:#7a7a82">EMPLOYEES</div><div style="font-size:16px;font-weight:500">128</div></div>
+      <div style="flex:1;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:6px 10px"><div style="font-size:9px;color:#7a7a82">ANNUAL PAYROLL</div><div style="font-size:16px;font-weight:500;color:#E91E8C">$14.2M</div></div>
+      <div style="flex:1;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:6px 10px"><div style="font-size:9px;color:#7a7a82">EXMOD</div><div style="font-size:16px;font-weight:500;color:#eab308">1.00</div></div>
+    </div>
+    <div style="display:flex">
+      <div style="width:110px;flex-shrink:0;border-right:1px solid rgba(255,255,255,0.06);padding:8px 0">
+        <div style="padding:7px 12px;border-left:2px solid #E91E8C;background:rgba(233,30,140,0.08);font-size:12px"><i class="ti ti-layout-dashboard" style="font-size:14px;color:#E91E8C;margin-right:6px"></i>Overview</div>
+        <div style="padding:7px 12px;border-left:2px solid transparent;font-size:12px;color:#9a9aa2"><i class="ti ti-clipboard-list" style="font-size:14px;margin-right:6px"></i>Submission</div>
+        <div style="padding:7px 12px;border-left:2px solid transparent;font-size:12px;color:#9a9aa2"><i class="ti ti-folder" style="font-size:14px;margin-right:6px"></i>Docs</div>
+        <div style="padding:7px 12px;border-left:2px solid transparent;font-size:12px;color:#9a9aa2"><i class="ti ti-checkbox" style="font-size:14px;margin-right:6px"></i>Tasks</div>
+        <div style="padding:7px 12px;border-left:2px solid transparent;font-size:12px;color:#9a9aa2"><i class="ti ti-calculator" style="font-size:14px;margin-right:6px"></i>Quote</div>
+      </div>
+      <div style="flex:1;min-width:0;padding:12px;display:flex;flex-direction:column;gap:9px">
+        <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-left:3px solid #E91E8C;border-radius:10px;padding:9px 11px">
+          <div style="display:flex;align-items:center;gap:7px;margin-bottom:4px"><div style="width:18px;height:18px;border-radius:50%;background:rgba(124,58,237,0.25);color:#c9b8f7;font-size:8px;display:flex;align-items:center;justify-content:center">SJ</div><span style="font-size:11px;font-weight:500">Sarah Jenkins</span><span style="font-size:9px;color:#7a7a82">UW · 10:24</span></div>
+          <div style="font-size:11px;color:#c4c4cc;line-height:1.5">Missing loss runs for 2021–2023 — please upload so we can proceed with the primary quote.</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:8px 11px;display:flex;align-items:center;justify-content:space-between"><div style="display:flex;align-items:center;gap:7px"><i class="ti ti-sparkles" style="font-size:14px;color:#7C3AED"></i><span style="font-size:11px;color:#c4c4cc">AI Engine — new quote variation</span></div><span style="font-size:10px;color:#E91E8C">Compare</span></div>
+        <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-left:3px solid #eab308;border-radius:10px;padding:9px 11px"><div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;align-items:center;gap:7px"><i class="ti ti-alert-triangle" style="font-size:14px;color:#eab308"></i><span style="font-size:11px;font-weight:500">RFI: Safety protocol</span></div><span style="font-size:9px;background:rgba(234,179,8,0.18);color:#e7c14a;padding:1px 6px;border-radius:9999px">Blocking</span></div></div>
+        <div style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:6px 8px 6px 11px"><i class="ti ti-paperclip" style="font-size:14px;color:#7a7a82"></i><span style="flex:1;font-size:11px;color:#6b6b73">Type a message…</span><div style="width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,#7C3AED,#E91E8C);display:flex;align-items:center;justify-content:center"><i class="ti ti-bolt" style="font-size:14px;color:#fff"></i></div></div>
+      </div>
+      <div style="width:184px;flex-shrink:0;border-left:1px solid rgba(255,255,255,0.06);padding:11px 12px 16px;display:flex;flex-direction:column;gap:10px">
+        <div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px"><span style="font-size:9px;letter-spacing:0.06em;color:#7a7a82">SUBMISSION</span><span style="font-size:10px;color:#22c55e;font-weight:500">3 / 6</span></div>
+          <div style="display:flex;flex-direction:column;gap:3px;font-size:11px">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:2px 0"><span style="color:#c4c4cc">Business Info</span><i class="ti ti-circle-check" style="font-size:13px;color:#22c55e"></i></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:2px 0"><span style="color:#c4c4cc">Locations</span><i class="ti ti-circle-check" style="font-size:13px;color:#22c55e"></i></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:2px 0"><span style="color:#c4c4cc">Workforce</span><span style="font-size:9px;color:#e7c14a">2 missing</span></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:2px 0"><span style="color:#c4c4cc">Operations</span><i class="ti ti-circle-check" style="font-size:13px;color:#22c55e"></i></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:2px 0"><span style="color:#c4c4cc">Loss History</span><span style="font-size:9px;color:#6b6b73">—</span></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:2px 0"><span style="color:#c4c4cc">Coverage</span><span style="font-size:9px;color:#e7c14a">1 missing</span></div>
+          </div>
+        </div>
+        <div style="border-top:1px solid rgba(255,255,255,0.06);padding-top:9px"><div style="font-size:9px;letter-spacing:0.06em;color:#7a7a82">WC EST. PREMIUM</div><div style="font-size:18px;font-weight:500">$124,500</div><div style="font-size:9px;letter-spacing:0.06em;color:#7a7a82;margin-top:6px">WFS PRICING</div><div style="font-size:18px;font-weight:500">$15,200 <span style="font-size:10px;color:#7a7a82">· $150/emp</span></div></div>
+        <div style="border-top:1px solid rgba(255,255,255,0.06);padding-top:9px;display:flex;flex-direction:column;gap:6px"><div style="text-align:center;font-size:12px;font-weight:500;color:#fff;background:linear-gradient(135deg,#7C3AED,#E91E8C);border-radius:8px;padding:7px">Approve</div><div style="text-align:center;font-size:12px;color:#c4c4cc;border:1px solid rgba(255,255,255,0.14);border-radius:8px;padding:6px">Decline</div></div>
+      </div>
+    </div>
+  </div>
+  </div>
+
+</div>
+</body>
+</html>

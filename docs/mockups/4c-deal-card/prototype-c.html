@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Axel 4C Deal Card — Approach C (restrained palette)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Jost:wght@500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.0.0/dist/tabler-icons.min.css" />
+<style>
+  :root{
+    --canvas:#060608; --accent:#E91E8C; --accent-hover:#d1187e; --accent-soft:rgba(233,30,140,0.10);
+    --text:#f4f4f5; --muted:rgba(255,255,255,0.48); --sec:rgba(255,255,255,0.72); --dim:rgba(255,255,255,0.38);
+    --line:rgba(255,255,255,0.07); --line2:rgba(255,255,255,0.10); --fill:rgba(255,255,255,0.04); --fill2:rgba(255,255,255,0.05);
+    --hover:rgba(255,255,255,0.06);
+    --st-ok:#4caf50; --st-warn:#c79a3a; --st-none:#5a5a62; --warn:#c79a3a;
+    --gradient:linear-gradient(135deg,#7C3AED,#E91E8C);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#0a0a0d;color:var(--text);font-family:'Inter',system-ui,sans-serif;padding:24px 16px}
+  .page{max-width:980px;margin:0 auto}
+  .hint{color:var(--dim);font-size:12px;margin:0 0 16px;line-height:1.6}
+  .hint b{color:var(--sec);font-weight:500}
+  .card{background:var(--canvas);border:1px solid var(--line2);border-radius:16px;overflow:hidden}
+  .head{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--line2)}
+  .co{font-size:16px;font-weight:500}
+  .badges{display:flex;gap:6px;margin-top:4px}
+  .badge{font-size:11px;padding:2px 8px;border-radius:9999px;background:var(--fill);color:var(--muted);border:1px solid var(--line)}
+  .stepper{display:flex;align-items:flex-start;padding:16px 18px 12px;border-bottom:1px solid var(--line)}
+  .step{flex:1;display:flex;flex-direction:column;align-items:center;position:relative;min-width:0}
+  .step::before{content:"";position:absolute;top:5px;left:-50%;width:100%;height:2px;background:var(--line2)}
+  .step:first-child::before{display:none}
+  .step.done::before,.step.current::before{background:rgba(255,255,255,0.22)}
+  .step .node{width:12px;height:12px;border-radius:50%;border:2px solid var(--st-none);background:var(--canvas);position:relative;z-index:1}
+  .step.done .node{background:var(--muted);border-color:var(--muted)}
+  .step.current .node{background:var(--accent);border-color:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
+  .step .lbl{font-size:9px;margin-top:8px;color:var(--dim);text-align:center;line-height:1.3;max-width:92px;text-transform:uppercase;letter-spacing:0.07em;font-weight:500}
+  .step.done .lbl{color:var(--muted)}
+  .step.current .lbl{color:var(--accent);font-weight:500}
+  .kpis{display:flex;gap:8px;padding:12px 18px;border-bottom:1px solid var(--line)}
+  .kpi{flex:1;background:var(--fill);border:1px solid var(--line);border-radius:10px;padding:8px 11px}
+  .kpi .l{font-size:9px;letter-spacing:0.06em;color:var(--dim)}
+  .kpi .v{font-size:18px;font-weight:500;margin-top:1px;color:var(--text)}
+  .body{display:flex;min-height:430px}
+  .nav{width:130px;flex-shrink:0;border-right:1px solid var(--line);padding:10px 0}
+  .nav button{display:flex;align-items:center;gap:9px;width:100%;text-align:left;background:none;border:none;border-left:2px solid transparent;color:var(--muted);font-family:inherit;font-size:12px;padding:8px 14px;cursor:pointer}
+  .nav button:hover{color:var(--text);background:rgba(255,255,255,0.03)}
+  .nav button.active{color:var(--text);border-left-color:var(--accent);background:var(--accent-soft)}
+  .nav button.active i{color:var(--accent)}
+  .nav i{font-size:16px;color:var(--dim)}
+  .content{flex:1;min-width:0;padding:14px;position:relative}
+  .rail{width:208px;flex-shrink:0;border-left:1px solid var(--line);padding:12px 14px 18px;display:flex;flex-direction:column;gap:12px}
+  .railhead{display:flex;align-items:center;justify-content:space-between;cursor:pointer}
+  .railhead .l{font-size:9px;letter-spacing:0.06em;color:var(--dim)}
+  .agg{font-size:10px;color:var(--muted);font-weight:500;display:flex;align-items:center;gap:4px}
+  .sumrow{display:flex;align-items:center;justify-content:space-between;padding:6px 8px;border-radius:8px;cursor:pointer;font-size:11.5px;color:var(--sec)}
+  .sumrow:hover{background:var(--hover)}
+  .sumrow .st{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:10px}
+  .dot{width:7px;height:7px;border-radius:50%;display:inline-block;flex-shrink:0}
+  .d-ok{background:var(--st-ok)} .d-warn{background:var(--st-warn)} .d-none{background:var(--st-none)}
+  .railsec{border-top:1px solid var(--line);padding-top:11px}
+  .railsec .l{font-size:9px;letter-spacing:0.06em;color:var(--dim)}
+  .railsec .v{font-size:18px;font-weight:500}
+  .railsec .sub{font-size:10px;color:var(--dim);margin-top:1px}
+  .btn{text-align:center;font-size:12px;border-radius:8px;padding:7px;cursor:pointer}
+  .btn-ghost{color:var(--sec);border:1px solid var(--line2);margin-top:6px}
+  .btn-ghost:hover{background:var(--hover)}
+  .btn-cta{font-weight:500;color:#fff;background:var(--gradient)}
+  .btn-cta:hover{filter:brightness(1.06)}
+  .feed{display:flex;flex-direction:column;gap:10px}
+  .msg{background:var(--fill2);border:1px solid var(--line2);border-radius:10px;padding:10px 12px}
+  .msg.warn{border-left:2px solid var(--warn)}
+  .msg .top{display:flex;align-items:center;gap:7px;margin-bottom:5px}
+  .av{width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,0.08);color:var(--sec);font-size:9px;display:flex;align-items:center;justify-content:center}
+  .msg .who{font-size:12px;font-weight:500}.msg .meta{font-size:10px;color:var(--dim)}
+  .msg .txt{font-size:11.5px;color:var(--sec);line-height:1.5}
+  .link{font-size:10px;color:var(--accent);font-weight:500;cursor:pointer}
+  .composer{display:flex;align-items:center;gap:8px;background:var(--fill);border:1px solid var(--line2);border-radius:10px;padding:6px 8px 6px 12px;margin-top:4px}
+  .composer span{flex:1;font-size:11.5px;color:var(--dim)}
+  .send{width:28px;height:28px;border-radius:8px;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#fff;cursor:pointer}
+  .send:hover{background:var(--accent-hover)}
+  .secgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .seccard{background:var(--fill2);border:1px solid var(--line2);border-radius:12px;padding:12px;cursor:pointer}
+  .seccard:hover{border-color:rgba(233,30,140,0.30)}
+  .seccard .h{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+  .seccard .name{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500}
+  .seccard .name i{color:var(--muted);font-size:16px}
+  .seccard .prev{font-size:11px;color:var(--dim);line-height:1.6}
+  .stat{font-size:10px;color:var(--muted);display:flex;align-items:center;gap:6px}
+  .banner{display:none;align-items:center;justify-content:space-between;gap:10px;background:rgba(199,154,58,0.10);border:1px solid rgba(199,154,58,0.30);border-radius:10px;padding:9px 12px;margin-bottom:12px}
+  .banner.show{display:flex}
+  .banner .t{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--warn)}
+  .banner button{font-size:11px;font-weight:500;color:#fff;background:var(--accent);border:none;border-radius:8px;padding:6px 12px;cursor:pointer}
+  .banner button:hover{background:var(--accent-hover)}
+  .placeholder{display:flex;align-items:center;justify-content:center;height:340px;color:var(--dim);font-size:13px;gap:8px}
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);display:none;align-items:center;justify-content:center;padding:20px;z-index:50}
+  .overlay.show{display:flex}
+  .panel{width:100%;max-width:460px;background:rgba(18,18,24,0.82);backdrop-filter:blur(40px);-webkit-backdrop-filter:blur(40px);border:1px solid rgba(255,255,255,0.12);border-radius:16px;box-shadow:0 24px 80px rgba(0,0,0,0.6);overflow:hidden}
+  .panel .ph{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line2)}
+  .panel .ph .t{display:flex;align-items:center;gap:9px;font-size:14px;font-weight:500}
+  .panel .ph i.tt{color:var(--muted);font-size:17px}
+  .panel .x{color:var(--muted);cursor:pointer;font-size:18px}
+  .panel .pb{padding:14px 16px;display:flex;flex-direction:column;gap:11px;max-height:60vh;overflow:auto}
+  .field{display:flex;flex-direction:column;gap:4px}
+  .field label{font-size:10px;letter-spacing:0.04em;color:var(--dim)}
+  .field .val{font-size:13px;color:var(--text)}
+  .field input{background:var(--fill);border:1px solid var(--line2);border-radius:8px;color:var(--text);font-family:inherit;font-size:13px;padding:8px 10px}
+  .field input:focus{outline:none;border-color:#ff4ba6;box-shadow:0 0 0 2px rgba(233,30,140,0.25)}
+  .pf{display:flex;justify-content:flex-end;gap:8px;padding:12px 16px;border-top:1px solid var(--line2)}
+  .pf button{font-family:inherit;font-size:12px;border-radius:8px;padding:7px 14px;cursor:pointer;border:none}
+  .pf .edit{color:var(--sec);background:none;border:1px solid var(--line2)}
+  .pf .save{color:#fff;background:var(--gradient);font-weight:500}
+  .collapsed .sumrow{display:none}
+  h1{font-family:'Jost',sans-serif;font-weight:600;letter-spacing:0.04em;font-size:20px;margin:0 0 4px}
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Phase 4C deal card — approach C (restrained palette)</h1>
+  <p class="hint">Calmer skin: neutral surfaces, color reserved for meaning. Pink only on active nav, current stage, links, focus, and the single Approve CTA. Status = small dots. Try: open <b>Submission</b>, click a section row, edit <b>Workforce → Annual payroll</b> and save to fire the re-rate banner; click <b>3 / 6</b> to collapse.</p>
+
+  <div class="card">
+    <div class="head">
+      <div style="display:flex;align-items:center;gap:10px">
+        <i class="ti ti-star" style="color:var(--muted);font-size:18px"></i>
+        <div><div class="co">Kona Cannabis, LLC</div>
+          <div class="badges"><span class="badge">Cannabis</span><span class="badge">PEO</span><span class="badge">Effective 10/01/26</span></div>
+        </div>
+      </div>
+      <i class="ti ti-x" style="color:var(--muted);font-size:18px;cursor:pointer"></i>
+    </div>
+
+    <div class="stepper" id="stepper"></div>
+
+    <div class="kpis">
+      <div class="kpi"><div class="l">LOCATIONS</div><div class="v">04</div></div>
+      <div class="kpi"><div class="l">EMPLOYEES</div><div class="v">128</div></div>
+      <div class="kpi"><div class="l">ANNUAL PAYROLL</div><div class="v" id="kpiPayroll">$14.2M</div></div>
+      <div class="kpi"><div class="l">EXMOD</div><div class="v">1.00</div></div>
+    </div>
+
+    <div class="body">
+      <div class="nav" id="nav">
+        <button class="active" data-tab="overview"><i class="ti ti-layout-dashboard"></i>Overview</button>
+        <button data-tab="submission"><i class="ti ti-clipboard-list"></i>Submission</button>
+        <button data-tab="documents"><i class="ti ti-folder"></i>Documents</button>
+        <button data-tab="tasks"><i class="ti ti-checkbox"></i>Tasks</button>
+        <button data-tab="quote"><i class="ti ti-calculator"></i>Quote</button>
+        <button data-tab="policy"><i class="ti ti-shield"></i>Policy</button>
+      </div>
+
+      <div class="content">
+        <div class="banner" id="banner"><div class="t"><i class="ti ti-alert-triangle"></i>Rating inputs changed — re-rate required</div><button onclick="clearReRate()">Re-rate</button></div>
+
+        <div id="tab-overview">
+          <div class="feed">
+            <div class="msg"><div class="top"><div class="av">SJ</div><span class="who">Sarah Jenkins</span><span class="meta">Lead Underwriter · 10:24</span></div><div class="txt">Reviewed the initial submission. We're missing the loss runs for 2021–2023 — can you upload those so we can proceed with the primary quote?</div></div>
+            <div class="msg" style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;align-items:center;gap:7px"><i class="ti ti-sparkles" style="color:var(--muted);font-size:15px"></i><span class="txt">AI Engine — new quote variation calculated</span></div><span class="link">Compare</span></div>
+            <div class="msg warn"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><div style="display:flex;align-items:center;gap:7px"><i class="ti ti-alert-triangle" style="color:var(--warn);font-size:15px"></i><span class="who">RFI: Safety protocol verification</span></div><span style="font-size:10px;color:var(--warn)">Blocking · 4h</span></div><div class="txt">Class 8810 eligibility requires validated fire-suppression logs.</div></div>
+            <div class="composer"><i class="ti ti-paperclip" style="color:var(--dim);font-size:15px"></i><span>Type a message or request…</span><div class="send"><i class="ti ti-bolt" style="font-size:15px"></i></div></div>
+          </div>
+        </div>
+
+        <div id="tab-submission" style="display:none"><div class="secgrid" id="secgrid"></div></div>
+        <div id="tab-documents" style="display:none"><div class="placeholder"><i class="ti ti-folder"></i>Documents — out of scope for this prototype</div></div>
+        <div id="tab-tasks" style="display:none"><div class="placeholder"><i class="ti ti-checkbox"></i>Tasks — out of scope for this prototype</div></div>
+        <div id="tab-quote" style="display:none"><div class="placeholder"><i class="ti ti-calculator"></i>Quote — out of scope for this prototype</div></div>
+        <div id="tab-policy" style="display:none"><div class="placeholder"><i class="ti ti-shield"></i>Policy — out of scope for this prototype</div></div>
+      </div>
+
+      <div class="rail" id="rail">
+        <div>
+          <div class="railhead" onclick="toggleSummary()"><span class="l">SUBMISSION</span><span class="agg" id="agg">3 / 6 <i class="ti ti-chevron-down" style="font-size:12px"></i></span></div>
+          <div id="summary" style="margin-top:7px"></div>
+        </div>
+        <div class="railsec"><div class="l">WC EST. PREMIUM</div><div class="v">$124,500</div>
+          <div class="l" style="margin-top:8px">WFS PRICING</div><div class="v">$15,200 <span class="sub">· $150/emp</span></div>
+        </div>
+        <div class="railsec"><div class="btn btn-cta">Approve</div><div class="btn btn-ghost">Decline</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay" onclick="if(event.target===this)closeEditor()">
+  <div class="panel">
+    <div class="ph"><div class="t"><i class="ti tt" id="ed-icon"></i><span id="ed-title"></span></div><i class="ti ti-x x" onclick="closeEditor()"></i></div>
+    <div class="pb" id="ed-body"></div>
+    <div class="pf"><button class="edit" id="ed-edit" onclick="toggleEdit()">Edit</button><button class="save" id="ed-save" style="display:none" onclick="saveEditor()">Save changes</button></div>
+  </div>
+</div>
+
+<script>
+const SECTIONS = {
+  business:{name:"Business Info",icon:"ti-building",status:"complete",ratingRelevant:false,fields:[["Legal name","Kona Cannabis, LLC"],["DBA","Kona Wellness"],["FEIN","88-1234567"],["Entity type","LLC"],["Years in business","6"],["Website","konacannabis.com"]]},
+  locations:{name:"Locations",icon:"ti-map-pin",status:"complete",ratingRelevant:true,fields:[["Primary address","412 Mauka Rd, Kailua-Kona, HI"],["States","HI, CA"],["# premises","4"]]},
+  workforce:{name:"Workforce",icon:"ti-users",status:"partial",missing:2,ratingRelevant:true,fields:[["Headcount","128"],["Annual payroll","$14,200,000"],["Class codes","8810, 8742"],["EMod","1.00"]]},
+  operations:{name:"Operations",icon:"ti-settings",status:"complete",ratingRelevant:false,fields:[["Description","Cultivation + retail dispensary"],["NAICS","453998"],["Safety programs","OSHA 10, fire suppression"]]},
+  loss:{name:"Loss History",icon:"ti-history",status:"none",ratingRelevant:false,fields:[["Prior carriers","—"],["Claims (3yr)","—"],["Loss runs","Not uploaded"]]},
+  coverage:{name:"Coverage / Program",icon:"ti-file-description",status:"partial",missing:1,ratingRelevant:false,fields:[["Quote type","PEO"],["Effective date","10/01/26"],["Structure","ASO+Captive"]]},
+};
+const ORDER=["business","locations","workforce","operations","loss","coverage"];
+let editing=false, currentKey=null;
+
+function dot(s){
+  if(s.status==="complete")return '<span class="dot d-ok"></span>';
+  if(s.status==="partial")return '<span>'+s.missing+' missing</span><span class="dot d-warn"></span>';
+  return '<span>Not started</span><span class="dot d-none"></span>';
+}
+function statLabel(s){
+  if(s.status==="complete")return '<span class="stat"><span class="dot d-ok"></span>Complete</span>';
+  if(s.status==="partial")return '<span class="stat"><span class="dot d-warn"></span>'+s.missing+' missing</span>';
+  return '<span class="stat"><span class="dot d-none"></span>Not started</span>';
+}
+function renderSummary(){
+  document.getElementById("summary").innerHTML=ORDER.map(k=>{const s=SECTIONS[k];
+    return '<div class="sumrow" onclick="openEditor(\''+k+'\')"><span>'+s.name+'</span><span class="st">'+dot(s)+'</span></div>';
+  }).join("");
+}
+function renderGrid(){
+  document.getElementById("secgrid").innerHTML=ORDER.map(k=>{const s=SECTIONS[k];
+    const prev=s.fields.slice(0,2).map(f=>f[0]+': '+f[1]).join('<br>');
+    return '<div class="seccard" onclick="openEditor(\''+k+'\')"><div class="h"><span class="name"><i class="ti '+s.icon+'"></i>'+s.name+'</span>'+statLabel(s)+'</div><div class="prev">'+prev+'</div></div>';
+  }).join("");
+}
+function switchTab(tab){
+  document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
+  ['overview','submission','documents','tasks','quote','policy'].forEach(t=>{
+    document.getElementById('tab-'+t).style.display=(t===tab)?'block':'none';
+  });
+}
+function openEditor(key){
+  currentKey=key; editing=false;
+  const s=SECTIONS[key];
+  document.getElementById('ed-title').textContent=s.name;
+  document.getElementById('ed-icon').className='ti tt '+s.icon;
+  renderEditorBody();
+  document.getElementById('ed-edit').style.display='inline-block';
+  document.getElementById('ed-edit').textContent='Edit';
+  document.getElementById('ed-save').style.display='none';
+  document.getElementById('overlay').classList.add('show');
+}
+function renderEditorBody(){
+  const s=SECTIONS[currentKey];
+  document.getElementById('ed-body').innerHTML=s.fields.map((f,i)=>{
+    const v=editing?'<input value="'+f[1].replace(/"/g,'&quot;')+'" data-i="'+i+'">':'<div class="val">'+f[1]+'</div>';
+    return '<div class="field"><label>'+f[0]+'</label>'+v+'</div>';
+  }).join("");
+}
+function toggleEdit(){
+  editing=true; renderEditorBody();
+  document.getElementById('ed-edit').style.display='none';
+  document.getElementById('ed-save').style.display='inline-block';
+}
+function saveEditor(){
+  const s=SECTIONS[currentKey]; let changed=false;
+  document.querySelectorAll('#ed-body input').forEach(inp=>{
+    const i=+inp.dataset.i; if(s.fields[i][1]!==inp.value){s.fields[i][1]=inp.value; changed=true;}
+  });
+  closeEditor(); renderSummary(); renderGrid();
+  if(changed && s.ratingRelevant){document.getElementById('banner').classList.add('show');}
+  if(changed && currentKey==='workforce'){
+    const pay=s.fields.find(f=>f[0]==='Annual payroll');
+    if(pay){const n=Number(pay[1].replace(/[^0-9.]/g,''));if(n)document.getElementById('kpiPayroll').textContent='$'+(n/1e6).toFixed(1)+'M';}
+  }
+}
+function closeEditor(){editing=false;document.getElementById('overlay').classList.remove('show');}
+function clearReRate(){document.getElementById('banner').classList.remove('show');}
+function toggleSummary(){
+  document.getElementById('rail').classList.toggle('collapsed');
+  const chev=document.querySelector('#agg i');
+  const col=document.getElementById('rail').classList.contains('collapsed');
+  chev.className='ti '+(col?'ti-chevron-right':'ti-chevron-down'); chev.style.fontSize='12px';
+}
+const STAGES=["Submission Pending","Indication","U/W Review","Approved / Declined","Binding","Implementation"];
+const CURRENT_STAGE=2;
+function renderStepper(){
+  document.getElementById('stepper').innerHTML=STAGES.map((s,i)=>{
+    const cls=i<CURRENT_STAGE?'done':(i===CURRENT_STAGE?'current':'');
+    return '<div class="step '+cls+'"><span class="node"></span><span class="lbl">'+s+'</span></div>';
+  }).join('');
+}
+document.getElementById('nav').addEventListener('click',e=>{const b=e.target.closest('button');if(b)switchTab(b.dataset.tab);});
+renderStepper(); renderSummary(); renderGrid();
+</script>
+</body>
+</html>
