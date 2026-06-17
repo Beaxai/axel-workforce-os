@@ -135,26 +135,34 @@ definitions and run `pnpm --filter db push`.
 > on `push`; resolving this drift is open work.
 
 **Database is Replit-managed PostgreSQL + Drizzle ORM — PERMANENT (binding decision #1).**
-**Supabase is removed from the spec: never introduce it, and the legacy `supabase/` folder is
-slated for deletion in Phase 3.5.** Authorization belongs in API middleware (not RLS); future file
+**Supabase is removed from the spec: never introduce it. The legacy `supabase/` folder was
+deleted in Phase 3.5 (commit `3a58ada`).** Authorization belongs in API middleware (not RLS); future file
 storage is S3/R2; realtime via polling/websockets if needed.
 
 ### Auth
-**Binding decision #1 specifies real session-based auth built in Express; Phase 3.5 is the active
-work order to implement it — and it is NOT yet built.** Current reality: auth is **client-side
-only**. `src/lib/auth-store.ts` is a Zustand store persisted to `localStorage` (`axel-auth`);
-`ProtectedRoute.tsx` checks only that client state and the allowed-role list. **There is no
-server-side auth middleware, session store, or per-route authorization** — every `/api/*` endpoint
-is currently reachable unauthenticated, and `cors()` is fully open with helmet CSP disabled. Do not
-treat current role-gating as a security boundary.
+**Real session-based auth is implemented (Phase 3.5, commit `3a58ada`)** — binding decision #1.
+Approach is a **hand-rolled** Express session layer (engineer's call, justified: better-auth was
+incompatible with the existing uuid-PK `users` table plus an `accounts` name clash — see
+`.agents/memory/auth-stack.md`). Details:
+- Passwords hashed with **bcryptjs** (cost 12), stored in a separate **`user_credentials`** table.
+- Opaque 32-byte `node:crypto` session tokens; only their **SHA-256 hash** is persisted (`sessions`
+  table). Cookie `axel_session` is `httpOnly` + `Secure` + **`sameSite=None`** (the Replit preview
+  runs in a cross-site iframe, so `Lax` drops the cookie).
+- **Roles stay in `org_members`** (not on the user row).
+- Endpoints in `artifacts/api-server/src/routes/auth.ts`: `POST /api/auth/login|logout|register`
+  (`register` is admin-invite only) + `GET /api/auth/me`, plus `forgot-password`/`reset-password`
+  (`password_reset_tokens` table; email delivery stubbed).
+- **`requireAuth`** (global gate) + **`requireRoles(...)`** per route in `routes/index.ts`. Public
+  `POST /api/agent-registrations` and `/webhooks` are mounted **before** the gate.
+- **CORS** uses an explicit origin allowlist (`REPLIT_DOMAINS`/`REPLIT_DEV_DOMAIN`) with
+  `credentials: true` — no origin reflection. Middleware/lib live in `src/lib/auth.ts` +
+  `src/middleware/require-auth.ts`.
+- 8 role users seeded via `src/scripts/seed-users.ts`; `PLACEHOLDER_USERS` removed; dev-only
+  quick-fill login gated behind `VITE_DEV_AUTH`.
 
-Phase 3.5 target (per the State Document): a maintained library (Lucia or Auth.js for Express —
-engineer's call, justify before building), email+password with bcrypt/argon2, **sessions stored in
-PostgreSQL** (`sessions` table), `httpOnly` + `secure` + `sameSite` cookies. Endpoints
-`POST /api/auth/login|logout|register`, `GET /api/auth/me`. Middleware rejects unauthenticated
-`/api/*` with 401 (except auth, public agent-registration, and webhook receivers); every route
-declares server-side `allowedRoles`. A dev-only role switcher sits behind `VITE_DEV_AUTH=true`,
-impossible to enable in production.
+**Open items (not yet closed):** the pre-existing typecheck errors were left as out-of-scope of that
+build (§6 requires zero — needs Curtis sign-off or a fix); and the formal §6 acceptance-test run +
+light/dark login screenshots are still pending.
 
 ## Design system (binding decision #2 — tokens only)
 

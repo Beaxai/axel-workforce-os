@@ -7,6 +7,11 @@ _Intake date: 2026-06-15 · Reviewer: Brendan Skrocki · Branch/commit: awf-os-b
 > prior intake written against `2f8801e` (the 3-commit bare scaffold) is now obsolete and has
 > been replaced by this one.
 
+> **Update — 2026-06-17:** Phase 3.5 (real auth + API hardening) has since been **implemented**
+> (commit `3a58ada`). The two HIGH risk flags below (no backend auth; open CORS) are **resolved**,
+> and `supabase/` is deleted. See `CLAUDE.md` → Auth and `.agents/memory/auth-stack.md`. Other
+> sections still reflect the 2026-06-15 snapshot.
+
 ## 1. What this is
 
 Axel Workforce OS is a multi-party, AI-enabled marketplace for **workers' compensation (WC)
@@ -71,14 +76,12 @@ multi-location endpoint `POST /api/rate/wc/multi`.
   push` after merges). Prior agent note (`.agents/memory/drizzle-push-blocked.md`): push currently
   **hangs on pre-existing `deals` drift** and the workaround has been to apply DDL via direct SQL
   while keeping the Drizzle files as source of truth — verify before relying on `push`.
-- **Auth:** ⚠ **Authentication is currently CLIENT-SIDE ONLY.** `src/lib/auth-store.ts` is a
-  Zustand store persisted to `localStorage` (`axel-auth`); `ProtectedRoute.tsx` checks only that
-  client state and the role list. A grep of `artifacts/api-server/src` for
-  `allowedRoles|requireAuth|session|bcrypt|argon|passport|lucia` returns **nothing** — there is
-  **no server-side auth middleware, no session store, no route-level authorization.** Every
-  `/api/*` endpoint is reachable unauthenticated. This is the documented Phase 3.5 work order
-  (real session-based Express auth, bcrypt/argon2, `sessions` table, httpOnly cookies) — **not yet
-  built.**
+- **Auth: ✅ RESOLVED (Phase 3.5, commit `3a58ada`, 2026-06-17).** Real server-side session auth is
+  now implemented — a hand-rolled layer: bcryptjs + `node:crypto` SHA-256 session tokens
+  (`user_credentials` + `sessions` tables), `requireAuth` + per-route `requireRoles` on every
+  `/api/*` route, httpOnly cookie, roles in `org_members`, login page + `/me` hydration. The earlier
+  client-side-only state and open API are gone. (Snapshot below describes the pre-3.5 state.) See
+  `CLAUDE.md` → Auth and `.agents/memory/auth-stack.md`.
 - **Integrations:** Anthropic AI via Replit Integrations (`AI_INTEGRATIONS_ANTHROPIC_API_KEY` /
   `_BASE_URL`) powers the AI Class Code Advisor and a cached classify layer (`ai_classify_cache`
   table + hourly purge). HelloSign for e-signatures is **stubbed** (`HELLOSIGN_API_KEY`,
@@ -88,13 +91,12 @@ multi-location endpoint `POST /api/rate/wc/multi`.
 
 ## 5. Risk flags
 
-- **HIGH — No backend authentication or authorization.** All `/api/*` routes are unauthenticated;
-  authz is enforced only in the React client, which is trivially bypassable (any client can call
-  the API directly, and `localStorage` role can be edited). This is the single largest gap. It is
-  the intended scope of Phase 3.5 but is currently unimplemented. Do not treat any current
-  role-gating as a security boundary.
-- **HIGH — CORS is fully open** (`app.use(cors())` with no origin allowlist) and **helmet CSP is
-  disabled** (`contentSecurityPolicy: false`). Combined with no auth, the API is wide open.
+- **~~HIGH~~ → ✅ RESOLVED (Phase 3.5, `3a58ada`) — backend authentication + authorization.** `/api/*`
+  is now gated by `requireAuth` + per-route `requireRoles`; the React client is no longer the
+  security boundary. (Was the single largest gap at intake.)
+- **~~HIGH~~ → ✅ RESOLVED (Phase 3.5) — CORS** now uses an explicit origin allowlist
+  (`REPLIT_DOMAINS`/`REPLIT_DEV_DOMAIN`) + `credentials: true`, no reflection. (helmet CSP is still
+  `contentSecurityPolicy: false` — minor, remains open.)
 - **MEDIUM — Drizzle `push` is blocked** by `deals` schema drift (per agent memory). Schema is
   being applied out-of-band via direct SQL DDL, which risks the Drizzle definitions diverging from
   the live DB. The documented "push is the workflow" rule is currently not fully operational.

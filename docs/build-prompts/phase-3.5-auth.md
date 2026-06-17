@@ -1,5 +1,14 @@
 # Phase 3.5 — Real Authentication + API Hardening — Replit build prompt
 
+> **✅ STATUS — IMPLEMENTED (2026-06-17, commit `3a58ada`).** This plan was executed in Replit. The
+> engineer took the documented **hand-rolled fallback** (better-auth was incompatible: uuid-PK
+> `users` + `accounts` name clash) and applied schema via **SQL DDL** (the `deals` push drift) —
+> both exactly as this prompt's flags anticipated. Credentials live in `user_credentials`; sessions
+> in `sessions`; cookie `sameSite=None` (Replit preview iframe) with a strict CORS allowlist.
+> **Open:** pre-existing typecheck errors left (§6 wants zero — Curtis sign-off); formal §6
+> acceptance-test run + screenshots pending. Body below retained as the original work order for
+> reference. See `.agents/memory/auth-stack.md` and issue #1.
+
 > **How to use:** paste this into Replit/Claude Code as the work order for Phase 3.5. It implements
 > State Document §6. Engineering decisions are pre-made (with justification) but flagged
 > "(decision — override if you disagree)". Execute in Replit — it has the DB, secrets, run button,

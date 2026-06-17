@@ -11,7 +11,7 @@ This designs the Phase 4C deal card: the deal card becomes "the platform's commu
 - **Phase 3.5 (auth)** — §8 role enforcement is server-side; requires real sessions + roles from 3.5.
 - **Phase 4A (Accounts)** — section→account sync and the `account_id` FK come from 4A; 4C "runs after 4A and uses its account-sync rules."
 
-This spec may be **written and mocked now**, but **implementation is gated on 3.5 + 4A landing.** Building 4C ahead of those is out of order and will require stubbing role + account-sync behavior.
+This spec may be **written and mocked now**, but **implementation is gated on 3.5 + 4A landing.** **Update 2026-06-17: 3.5 (auth) has landed (`3a58ada`); 4A (accounts) is still pending** — so 4C is still gated on 4A. Building 4C ahead of 4A is out of order and will require stubbing account-sync behavior.
 
 ## 2. Chosen direction
 
@@ -126,7 +126,7 @@ Default: **enhance the existing full-screen modal** (`DealCardModal` + `openDeal
 
 - Container: modal-now vs `/deals/:id` page (§11) — Brendan to confirm.
 - Curtis sign-off on Approach C (§13) — blocks build of the chosen layout (Approach B is the no-sign-off fallback).
-- Confirm 3.5 + 4A are complete before 4C implementation begins (§1).
+- ~~Confirm 3.5~~ + 4A are complete before 4C implementation begins (§1). **3.5 done (`3a58ada`); 4A still pending.**
 - **Header stage tracker: 6 macro phases vs the binding 10-stage pipeline.** The Stitch reference shows a condensed 6-phase tracker (Submission Pending → Indication → U/W Review → Approved/Declined → Binding → Implementation), but State Doc §11 defines the pipeline as 10 stages. Decide: (a) header = macro lifecycle tracker distinct from the 10-stage Kanban, or (b) header mirrors the real 10 stages. Touches a binding decision → Curtis.
 
 ## 16. Design polish checklist (from design critique)
