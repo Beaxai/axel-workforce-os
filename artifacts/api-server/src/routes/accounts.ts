@@ -86,6 +86,7 @@ router.get("/:id/activity", async (req, res) => {
 });
 
 router.post("/:id/activity", blockReadOnly, async (req, res) => {
+  if (!(await agentMayAccess(req, req.params.id))) return res.status(403).json({ error: "Insufficient permissions" });
   const parsed = insertActivityLogSchema.safeParse({
     entityType: "account",
     entityId: req.params.id,

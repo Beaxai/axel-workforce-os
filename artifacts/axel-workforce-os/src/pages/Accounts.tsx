@@ -25,15 +25,22 @@ const STAGE_COLOR: Record<string, string> = {
   Inactive: "gray",
 };
 
-const LEAD_STATUSES = ["New", "Contacted", "Qualified", "Unqualified"] as const;
+const LEAD_STATUSES = ["new", "working", "qualified", "dead"] as const;
+
+const LEAD_STATUS_LABEL: Record<string, string> = {
+  new: "New",
+  working: "Working",
+  qualified: "Qualified",
+  converted: "Converted",
+  dead: "Dead",
+};
 
 const LEAD_STATUS_COLOR: Record<string, string> = {
-  New: "blue",
-  Contacted: "purple",
-  Qualified: "green",
-  Unqualified: "gray",
+  new: "blue",
+  working: "purple",
+  qualified: "green",
   converted: "green",
-  Converted: "green",
+  dead: "gray",
 };
 
 const VERTICALS = ["Cannabis", "Construction", "Staffing", "Healthcare", "Hospitality", "Transportation", "Manufacturing", "Retail"];
@@ -61,6 +68,19 @@ interface Lead {
   source?: string;
   status?: string;
   convertedAccountId?: string;
+}
+
+interface ConvertedAccount {
+  id: string;
+  businessName?: string;
+  dba?: string;
+  fein?: string;
+  entityType?: string;
+  vertical?: string;
+  state?: string;
+  primaryContact?: string;
+  contactEmail?: string;
+  contactPhone?: string;
 }
 
 export default function Accounts() {
@@ -142,7 +162,7 @@ export default function Accounts() {
     if (!leadForm.companyName) return;
     setSaving(true);
     try {
-      await api.post("/leads", { ...leadForm, status: "New" });
+      await api.post("/leads", { ...leadForm, status: "new" });
       setShowCreateLead(false);
       setLeadForm({ companyName: "", contactName: "", email: "", phone: "", state: "", vertical: "", source: "" });
       fetchData();
@@ -159,9 +179,27 @@ export default function Accounts() {
   const handleConvert = async (lead: Lead, startSubmission: boolean) => {
     setConverting(lead.id);
     try {
-      await api.post(`/leads/${lead.id}/convert`, { startSubmission });
+      const res = await api.post<{ account?: ConvertedAccount }>(`/leads/${lead.id}/convert`, { startSubmission });
       if (startSubmission) {
-        navigate("/marketplace");
+        const account = res?.account;
+        const vertical = account?.vertical || lead.vertical;
+        if (vertical) {
+          const prefill: Record<string, unknown> = {};
+          if (account?.businessName) prefill.businessName = account.businessName;
+          if (account?.dba) prefill.dba = account.dba;
+          if (account?.fein) prefill.fein = account.fein;
+          if (account?.entityType) prefill.entityType = account.entityType;
+          if (account?.state) {
+            prefill.businessState = account.state;
+            prefill.primaryState = account.state;
+          }
+          if (account?.primaryContact) prefill.contactName = account.primaryContact;
+          if (account?.contactEmail) prefill.contactEmail = account.contactEmail;
+          if (account?.contactPhone) prefill.contactPhone = account.contactPhone;
+          navigate("/marketplace/quote/service-type", { state: { vertical, prefill } });
+        } else {
+          navigate("/marketplace");
+        }
       } else {
         await fetchData();
         setActiveTab("prospects");
@@ -256,7 +294,7 @@ export default function Accounts() {
                       )}
                     </div>
                   </div>
-                  <Badge label={isConverted ? "Converted" : (l.status || "New")} color={LEAD_STATUS_COLOR[l.status || "New"] || "gray"} />
+                  <Badge label={isConverted ? "Converted" : (LEAD_STATUS_LABEL[l.status || "new"] || "New")} color={LEAD_STATUS_COLOR[l.status || "new"] || "gray"} />
                 </div>
 
                 {(l.contactName || l.email || l.phone) && (
@@ -270,11 +308,11 @@ export default function Accounts() {
                 {!isConverted ? (
                   <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
                     <select
-                      value={l.status || "New"}
+                      value={l.status || "new"}
                       onChange={(e) => handleLeadStatus(l, e.target.value)}
                       style={{ ...inputStyle, width: "auto", padding: "6px 10px", fontSize: "12px", cursor: "pointer", appearance: "auto" }}
                     >
-                      {LEAD_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                      {LEAD_STATUSES.map((s) => <option key={s} value={s}>{LEAD_STATUS_LABEL[s]}</option>)}
                     </select>
                     <div style={{ marginLeft: "auto", display: "flex", gap: "8px" }}>
                       <GhostButton onClick={() => handleConvert(l, false)} disabled={converting === l.id} style={{ padding: "6px 12px", fontSize: "12px" }}>

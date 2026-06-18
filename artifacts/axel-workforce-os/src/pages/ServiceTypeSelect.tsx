@@ -35,7 +35,7 @@ const totalSteps = 19;
 export default function ServiceTypeSelect() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { vertical } = (location.state as { vertical?: string }) || {};
+  const { vertical, prefill } = (location.state as { vertical?: string; prefill?: Record<string, unknown> }) || {};
   const {
     isDark,
     textPrimary,
@@ -52,7 +52,7 @@ export default function ServiceTypeSelect() {
 
   const startWizard = (coverageType: "WC" | "PEO" | "ASO") => {
     navigate("/marketplace/quote/wizard", {
-      state: { vertical, coverageType },
+      state: { vertical, coverageType, prefill },
     });
   };
 

@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useQuoteFlowStore } from "@/lib/quote-flow-store";
+import { useQuoteFlowStore, type QuoteFlowState } from "@/lib/quote-flow-store";
 import Step1BusinessDetails from "./Step1BusinessDetails";
 import WorkforceProfile from "@/components/quote-flow/WorkforceProfile";
 import Step3ExperienceMod from "./Step3ExperienceMod";
@@ -22,14 +22,16 @@ export default function QuoteWizard() {
   const navigate = useNavigate();
   const store = useQuoteFlowStore();
 
-  const { vertical, coverageType } = (location.state as {
+  const { vertical, coverageType, prefill } = (location.state as {
     vertical?: string;
     coverageType?: string;
+    prefill?: Partial<QuoteFlowState>;
   }) || {};
 
   useEffect(() => {
     if (vertical && coverageType) {
       store.init(vertical, coverageType);
+      if (prefill) store.update(prefill);
     } else if (!store.vertical) {
       navigate("/marketplace", { replace: true });
     }
