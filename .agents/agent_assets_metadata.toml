@@ -1,5 +1,4 @@
 uploads = []
-outputs = []
 
 [[generated]]
 id = "daBDfxZX_4Fnto5MW-8aG"
@@ -12,3 +11,15 @@ id = "U-uedLhcAkFO8IY2wOkn8"
 uri = "file://artifacts/axel-workforce-os/public/images/verticals/all-other.png"
 type = "image"
 title = "generated_image"
+
+[[outputs]]
+id = "Zm6XnHzv6n8rFRZy3smwO"
+uri = "file://.local/screenshots/login-dark.jpg"
+type = "image"
+title = "Login — Dark (default)"
+
+[[outputs]]
+id = "8Lgvaup99jcys2zL31lH0"
+uri = "file://.local/screenshots/login-light.jpg"
+type = "image"
+title = "Login — Light"
