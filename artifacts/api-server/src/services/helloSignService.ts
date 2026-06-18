@@ -96,19 +96,22 @@ export async function sendBindPackageForSignature(bindPackageId: string) {
     .set({ bindStatus: "sent_for_signature" })
     .where(eq(dealsTable.id, bindPkg.dealId!));
 
-  await db.insert(activityLogTable).values({
-    dealId: bindPkg.dealId,
-    entityType: "deal",
-    entityId: bindPkg.dealId!,
-    eventType: "signature_request_sent",
-    description: `Bind documents sent for signature (${TEST_MODE ? "TEST MODE" : "HelloSign"}). Awaiting signatures from: ${signersPayload.map((s) => s.name).join(", ")}.`,
-    metadata: {
-      hellosign_signature_request_id: stubHsId,
-      signature_request_id: sigRecord.id,
-      signers: signersPayload.map((s) => ({ name: s.name, email: s.email, role: s.role })),
-      test_mode: TEST_MODE,
-    },
-  });
+  const sentLogDealId = bindPkg.dealId;
+  if (sentLogDealId) {
+    await db.insert(activityLogTable).values({
+      dealId: sentLogDealId,
+      entityType: "deal",
+      entityId: sentLogDealId,
+      eventType: "signature_request_sent",
+      description: `Bind documents sent for signature (${TEST_MODE ? "TEST MODE" : "HelloSign"}). Awaiting signatures from: ${signersPayload.map((s) => s.name).join(", ")}.`,
+      metadata: {
+        hellosign_signature_request_id: stubHsId,
+        signature_request_id: sigRecord.id,
+        signers: signersPayload.map((s) => ({ name: s.name, email: s.email, role: s.role })),
+        test_mode: TEST_MODE,
+      },
+    });
+  }
 
   return { signatureRequestId: sigRecord.id, helloSignId: stubHsId };
 }
@@ -152,16 +155,19 @@ export async function retrieveAndStoreSignedDocuments(helloSignRequestId: string
     })
     .where(eq(dealsTable.id, sigRecord.dealId!));
 
-  await db.insert(activityLogTable).values({
-    dealId: sigRecord.dealId,
-    entityType: "deal",
-    entityId: sigRecord.dealId!,
-    eventType: "bind_documents_signed",
-    description: "All bind documents have been signed by all parties. Deal is bound.",
-    metadata: {
-      hellosign_signature_request_id: helloSignRequestId,
-      signed_documents_path: storagePath,
-      signature_request_id: sigRecord.id,
-    },
-  });
+  const signedLogDealId = sigRecord.dealId;
+  if (signedLogDealId) {
+    await db.insert(activityLogTable).values({
+      dealId: signedLogDealId,
+      entityType: "deal",
+      entityId: signedLogDealId,
+      eventType: "bind_documents_signed",
+      description: "All bind documents have been signed by all parties. Deal is bound.",
+      metadata: {
+        hellosign_signature_request_id: helloSignRequestId,
+        signed_documents_path: storagePath,
+        signature_request_id: sigRecord.id,
+      },
+    });
+  }
 }

@@ -59,6 +59,8 @@ router.post("/hellosign", async (req: Request, res: Response) => {
       return;
     }
 
+    const logDealId = sigRecord.dealId;
+
     const updatedEvents = [
       ...((sigRecord.webhookEvents as any[]) || []),
       {
@@ -77,14 +79,16 @@ router.post("/hellosign", async (req: Request, res: Response) => {
             )?.signer_email_address
           : null;
 
-        await db.insert(activityLogTable).values({
-          dealId: sigRecord.dealId,
-          entityType: "deal",
-          entityId: sigRecord.dealId!,
-          eventType: "signature_viewed",
-          description: `Bind document package viewed${signerEmail ? " by " + signerEmail : ""}.`,
-          metadata: { hellosign_signature_request_id: helloSignId, signer_email: signerEmail },
-        });
+        if (logDealId) {
+          await db.insert(activityLogTable).values({
+            dealId: logDealId,
+            entityType: "deal",
+            entityId: logDealId,
+            eventType: "signature_viewed",
+            description: `Bind document package viewed${signerEmail ? " by " + signerEmail : ""}.`,
+            metadata: { hellosign_signature_request_id: helloSignId, signer_email: signerEmail },
+          });
+        }
         break;
       }
 
@@ -115,19 +119,21 @@ router.post("/hellosign", async (req: Request, res: Response) => {
 
         const signerName = updatedSigners.find((s: any) => s.signature_id === relatedSigId)?.name || "A signer";
 
-        await db.insert(activityLogTable).values({
-          dealId: sigRecord.dealId,
-          entityType: "deal",
-          entityId: sigRecord.dealId!,
-          eventType: "document_signed",
-          description: `${signerName} signed the bind documents. ${allSigned ? "All parties have signed." : "Awaiting remaining signatures."}`,
-          metadata: {
-            hellosign_signature_request_id: helloSignId,
-            signer_name: signerName,
-            all_signed: allSigned,
-            signers: updatedSigners,
-          },
-        });
+        if (logDealId) {
+          await db.insert(activityLogTable).values({
+            dealId: logDealId,
+            entityType: "deal",
+            entityId: logDealId,
+            eventType: "document_signed",
+            description: `${signerName} signed the bind documents. ${allSigned ? "All parties have signed." : "Awaiting remaining signatures."}`,
+            metadata: {
+              hellosign_signature_request_id: helloSignId,
+              signer_name: signerName,
+              all_signed: allSigned,
+              signers: updatedSigners,
+            },
+          });
+        }
         break;
       }
 
@@ -230,14 +236,16 @@ router.post("/hellosign", async (req: Request, res: Response) => {
           (s: any) => s.signature_id === event.event_metadata?.related_signature_id
         );
 
-        await db.insert(activityLogTable).values({
-          dealId: sigRecord.dealId,
-          entityType: "deal",
-          entityId: sigRecord.dealId!,
-          eventType: "signature_declined",
-          description: `Signature declined${decliner ? " by " + decliner.signer_name : ""}. Bind package has been reset — review and resend.`,
-          metadata: { hellosign_signature_request_id: helloSignId, decliner_email: decliner?.signer_email_address },
-        });
+        if (logDealId) {
+          await db.insert(activityLogTable).values({
+            dealId: logDealId,
+            entityType: "deal",
+            entityId: logDealId,
+            eventType: "signature_declined",
+            description: `Signature declined${decliner ? " by " + decliner.signer_name : ""}. Bind package has been reset — review and resend.`,
+            metadata: { hellosign_signature_request_id: helloSignId, decliner_email: decliner?.signer_email_address },
+          });
+        }
         break;
       }
 
@@ -256,14 +264,16 @@ router.post("/hellosign", async (req: Request, res: Response) => {
           .set({ bindStatus: "bind_requested" })
           .where(eq(dealsTable.id, sigRecord.dealId!));
 
-        await db.insert(activityLogTable).values({
-          dealId: sigRecord.dealId,
-          entityType: "deal",
-          entityId: sigRecord.dealId!,
-          eventType: "signature_expired",
-          description: "Signature request expired before all parties signed. Please resend.",
-          metadata: { hellosign_signature_request_id: helloSignId },
-        });
+        if (logDealId) {
+          await db.insert(activityLogTable).values({
+            dealId: logDealId,
+            entityType: "deal",
+            entityId: logDealId,
+            eventType: "signature_expired",
+            description: "Signature request expired before all parties signed. Please resend.",
+            metadata: { hellosign_signature_request_id: helloSignId },
+          });
+        }
         break;
       }
 

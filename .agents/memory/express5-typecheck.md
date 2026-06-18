@@ -40,6 +40,6 @@ need the change.
   `WEB_BASELINE` are the enforced ceilings — lower them when you fix errors.
 - Smoke the server through the shared proxy at `localhost:80` (never the service
   port): `/api/healthz` → 200, then `POST /api/auth/login` + `GET /api/auth/me`.
-- Seed users share password `Password123!` (or `SEED_USER_PASSWORD`); e.g.
+- Seed users share a common dev password (set via `SEED_USER_PASSWORD`); e.g.
   `sarah@axelwos.com` is an ADMIN. The `users` table has no `role` column at the
   shape psql expects — query via the auth API instead of guessing columns.
