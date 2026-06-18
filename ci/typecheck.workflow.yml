@@ -1,0 +1,40 @@
+name: Typecheck
+
+# Baseline-gated TypeScript check. Mirrors scripts/typecheck-baseline.sh:
+# fails only when NEW type errors are introduced beyond the known pre-existing
+# baseline (web must stay clean; api-server must not exceed its endemic count).
+#
+# NOTE: pushing this file to GitHub requires a token/credential with `workflow`
+# scope. The Replit-connected GitHub token does not have it, so commit/push this
+# via the Replit Version Control pane (or a PAT with `workflow` scope).
+
+on:
+  push:
+    branches:
+      - awf-os-brendy-sprint-1
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.26.1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Baseline-gated typecheck
+        run: bash scripts/typecheck-baseline.sh
