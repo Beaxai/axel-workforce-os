@@ -34,12 +34,8 @@ that only ever falls through to one `res.json(rows)`) do NOT error — leave the
 untouched to keep the diff minimal. Only the handlers with mixed return paths
 need the change.
 
-## Verification recipe for this branch
-- `pnpm run typecheck` must be 0 repo-wide (libs + all artifacts).
-- `bash scripts/typecheck-baseline.sh` gates regressions; `API_BASELINE` /
-  `WEB_BASELINE` are the enforced ceilings — lower them when you fix errors.
-- Smoke the server through the shared proxy at `localhost:80` (never the service
-  port): `/api/healthz` → 200, then `POST /api/auth/login` + `GET /api/auth/me`.
-- Seed users share a common dev password (set via `SEED_USER_PASSWORD`); e.g.
-  `sarah@axelwos.com` is an ADMIN. The `users` table has no `role` column at the
-  shape psql expects — query via the auth API instead of guessing columns.
+## Typecheck gate
+`bash scripts/typecheck-baseline.sh` gates regressions via `API_BASELINE` /
+`WEB_BASELINE` ceilings — when you fix errors, lower the ceilings so the gain is
+locked in. `pnpm run typecheck` is the canonical repo-wide check (libs + all
+artifacts) and must be 0.
