@@ -18,7 +18,7 @@ const blockReadOnly: RequestHandler = (req, res, next) => {
   if (req.user?.role === "UNDERWRITER") {
     return res.status(403).json({ error: "Read-only role" });
   }
-  next();
+  return next();
 };
 
 /** Account create/delete is reserved for ADMIN and CSA. AGENTs get accounts via lead conversion. */
@@ -27,7 +27,7 @@ const requireAccountManager: RequestHandler = (req, res, next) => {
   if (!req.user || !ACCOUNT_MANAGER_ROLES.includes(req.user.role)) {
     return res.status(403).json({ error: "Insufficient permissions" });
   }
-  next();
+  return next();
 };
 
 /** Restrict a deal query to the requesting AGENT's own/produced deals; ADMIN/CSA/UW see all. */
@@ -60,7 +60,7 @@ router.get("/", async (req, res) => {
 
   let query = db.select().from(accountsTable).orderBy(desc(accountsTable.createdAt)).$dynamic();
   if (conditions.length > 0) query = query.where(and(...conditions));
-  res.json(await query);
+  return res.json(await query);
 });
 
 router.get("/:id", async (req, res) => {
@@ -70,7 +70,7 @@ router.get("/:id", async (req, res) => {
     const ids = await agentAccountIds(req.user.id);
     if (!ids.includes(row.id)) return res.status(403).json({ error: "Insufficient permissions" });
   }
-  res.json(row);
+  return res.json(row);
 });
 
 /** An AGENT may only read an account's subresources when they own/produce a linked deal. */
@@ -83,7 +83,7 @@ async function agentMayAccess(req: { user?: { id: string; role: string } }, acco
 router.get("/:id/deals", async (req, res) => {
   if (!(await agentMayAccess(req, req.params.id))) return res.status(403).json({ error: "Insufficient permissions" });
   const rows = await db.select().from(dealsTable).where(dealScopeForAccount(req, req.params.id)).orderBy(desc(dealsTable.createdAt));
-  res.json(rows);
+  return res.json(rows);
 });
 
 router.get("/:id/policies", async (req, res) => {
@@ -92,13 +92,13 @@ router.get("/:id/policies", async (req, res) => {
   if (dealRows.length === 0) return res.json([]);
   const dealIds = dealRows.map((d) => d.id);
   const allPolicies = await db.select().from(policiesTable).where(inArray(policiesTable.dealId, dealIds));
-  res.json(allPolicies);
+  return res.json(allPolicies);
 });
 
 router.get("/:id/activity", async (req, res) => {
   if (!(await agentMayAccess(req, req.params.id))) return res.status(403).json({ error: "Insufficient permissions" });
   const rows = await db.select().from(activityLogTable).where(eq(activityLogTable.entityId, req.params.id)).orderBy(desc(activityLogTable.createdAt));
-  res.json(rows);
+  return res.json(rows);
 });
 
 router.post("/:id/activity", blockReadOnly, async (req, res) => {
@@ -111,14 +111,14 @@ router.post("/:id/activity", blockReadOnly, async (req, res) => {
   });
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues });
   const [row] = await db.insert(activityLogTable).values(parsed.data).returning();
-  res.status(201).json(row);
+  return res.status(201).json(row);
 });
 
 router.post("/", requireAccountManager, async (req, res) => {
   const parsed = insertAccountSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues });
   const [row] = await db.insert(accountsTable).values(parsed.data).returning();
-  res.status(201).json(row);
+  return res.status(201).json(row);
 });
 
 // Fields whose changes we surface on the account activity feed.
@@ -168,13 +168,13 @@ router.patch("/:id", blockReadOnly, async (req: Request<{ id: string }>, res: Re
     });
   }
 
-  res.json(row);
+  return res.json(row);
 });
 
 router.delete("/:id", requireAccountManager, async (req: Request<{ id: string }>, res: Response) => {
   const [row] = await db.delete(accountsTable).where(eq(accountsTable.id, req.params.id)).returning();
   if (!row) return res.status(404).json({ error: "Not found" });
-  res.json({ deleted: true });
+  return res.json({ deleted: true });
 });
 
 export default router;

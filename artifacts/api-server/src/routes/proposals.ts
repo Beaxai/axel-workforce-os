@@ -60,10 +60,10 @@ router.post("/", async (req, res) => {
       metadata: { proposal_id: proposal.id },
     });
 
-    res.json({ success: true, proposal });
+    return res.json({ success: true, proposal });
   } catch (err: any) {
     console.error("Create proposal error:", err);
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message });
   }
 });
 
@@ -131,14 +131,14 @@ router.post("/:proposalId/request-approved-proposal", async (req, res) => {
       console.error("UW package assembly failed:", err)
     );
 
-    res.json({
+    return res.json({
       success: true,
       uwPackageId: uwPackage.id,
       message: "Request received. Underwriting team will be notified shortly.",
     });
   } catch (err: any) {
     console.error("Request approved proposal error:", err);
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message });
   }
 });
 
@@ -230,10 +230,10 @@ router.post("/:dealId/create-from-quote", async (req, res) => {
       metadata: { proposal_id: proposal.id, quote_id: quote.id },
     });
 
-    res.json({ success: true, proposal });
+    return res.json({ success: true, proposal });
   } catch (err: any) {
     console.error("Create proposal from quote error:", err);
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message });
   }
 });
 

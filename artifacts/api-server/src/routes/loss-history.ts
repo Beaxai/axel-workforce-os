@@ -77,7 +77,7 @@ router.post("/:dealId/upload", upload.single("file"), async (req: Request<{ deal
     metadata: { storage_path: storagePath, years_covered: yearsCovered },
   });
 
-  res.json({ success: true, document: doc });
+  return res.json({ success: true, document: doc });
 });
 
 router.delete("/:dealId/:docId", async (req, res) => {
@@ -102,7 +102,7 @@ router.delete("/:dealId/:docId", async (req, res) => {
 
   await db.delete(lossHistoryDocumentsTable).where(eq(lossHistoryDocumentsTable.id, docId));
 
-  res.json({ success: true });
+  return res.json({ success: true });
 });
 
 export default router;

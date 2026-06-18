@@ -54,7 +54,7 @@ router.get("/:state/:classCode", async (req, res) => {
     });
   }
 
-  res.json(row);
+  return res.json(row);
 });
 
 router.post("/batch", async (req, res) => {
@@ -90,7 +90,7 @@ router.post("/batch", async (req, res) => {
     };
   });
 
-  res.json({ results });
+  return res.json({ results });
 });
 
 export default router;

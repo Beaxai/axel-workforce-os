@@ -88,10 +88,10 @@ Return ONLY the JSON array, no other text.`;
       }
     }
 
-    res.json({ success: true, data: suggestions, cached: false });
+    return res.json({ success: true, data: suggestions, cached: false });
   } catch (err: any) {
     req.log.error({ err }, "AI classify error");
-    res.status(500).json({ success: false, error: "AI classification failed" });
+    return res.status(500).json({ success: false, error: "AI classification failed" });
   }
 });
 

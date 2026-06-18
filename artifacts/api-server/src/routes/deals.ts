@@ -18,7 +18,7 @@ router.get("/", async (_req, res) => {
 router.get("/:id", async (req, res) => {
   const [row] = await db.select().from(dealsTable).where(eq(dealsTable.id, req.params.id));
   if (!row) return res.status(404).json({ error: "Not found" });
-  res.json(row);
+  return res.json(row);
 });
 
 router.post("/", async (req, res) => {
@@ -40,7 +40,7 @@ router.post("/", async (req, res) => {
     accountId = account.id;
   }
   const [row] = await db.insert(dealsTable).values({ ...parsed.data, accountId }).returning();
-  res.status(201).json(row);
+  return res.status(201).json(row);
 });
 
 router.patch("/:id", async (req, res) => {
@@ -48,13 +48,13 @@ router.patch("/:id", async (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues });
   const [row] = await db.update(dealsTable).set(parsed.data).where(eq(dealsTable.id, req.params.id)).returning();
   if (!row) return res.status(404).json({ error: "Not found" });
-  res.json(row);
+  return res.json(row);
 });
 
 router.delete("/:id", async (req, res) => {
   const [row] = await db.delete(dealsTable).where(eq(dealsTable.id, req.params.id)).returning();
   if (!row) return res.status(404).json({ error: "Not found" });
-  res.json({ deleted: true });
+  return res.json({ deleted: true });
 });
 
 router.get("/:id/quotes", async (req, res) => {
@@ -86,7 +86,7 @@ router.post("/:id/activity", async (req, res) => {
   const parsed = insertActivityLogSchema.safeParse({ ...req.body, dealId: req.params.id });
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues });
   const [row] = await db.insert(activityLogTable).values(parsed.data).returning();
-  res.status(201).json(row);
+  return res.status(201).json(row);
 });
 
 router.get("/:id/email", async (req, res) => {
@@ -106,7 +106,7 @@ router.post("/:id/email", async (req, res) => {
     companySlug,
     fileId: dealId.slice(0, 8),
   }).returning();
-  res.status(201).json(row);
+  return res.status(201).json(row);
 });
 
 export default router;

@@ -36,7 +36,7 @@ router.get("/class-codes/search", async (req, res) => {
     .orderBy(wcRatesTable.classCode)
     .limit(50);
 
-  res.json(rows);
+  return res.json(rows);
 });
 
 router.get("/class-codes/by-states", async (req, res) => {
@@ -53,7 +53,7 @@ router.get("/class-codes/by-states", async (req, res) => {
     .where(inArray(wcRatesTable.state, stateList))
     .orderBy(wcRatesTable.classCode);
 
-  res.json(rows.map((r) => r.classCode));
+  return res.json(rows.map((r) => r.classCode));
 });
 
 router.get("/stats", async (_req, res) => {
@@ -74,7 +74,7 @@ router.get("/lookup", async (req, res) => {
     .limit(1);
 
   if (!rate) return res.json({ found: false, state, classCode });
-  res.json({ found: true, ...rate });
+  return res.json({ found: true, ...rate });
 });
 
 router.get("/", async (req, res) => {

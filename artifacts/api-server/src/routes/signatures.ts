@@ -33,9 +33,9 @@ router.post("/send/:bindPackageId", async (req: Request<{ bindPackageId: string 
 
   try {
     const result = await sendBindPackageForSignature(bindPackageId);
-    res.json({ success: true, ...result });
+    return res.json({ success: true, ...result });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message });
   }
 });
 
@@ -62,7 +62,7 @@ router.get("/:dealId/signed-url", async (req: Request<{ dealId: string }>, res: 
     return res.status(404).json({ error: "Signed documents not yet available." });
   }
 
-  res.json({ signedUrl: null, storagePath: sigRecord.signedDocumentsPath });
+  return res.json({ signedUrl: null, storagePath: sigRecord.signedDocumentsPath });
 });
 
 router.post("/:dealId/resend", async (req: Request<{ dealId: string }>, res: Response) => {
@@ -89,7 +89,7 @@ router.post("/:dealId/resend", async (req: Request<{ dealId: string }>, res: Res
     },
   });
 
-  res.json({ success: true });
+  return res.json({ success: true });
 });
 
 export default router;

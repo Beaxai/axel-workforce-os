@@ -33,7 +33,7 @@ router.get("/:id", async (req, res) => {
   if (req.user?.role === "AGENT" && row.assignedTo !== req.user.id) {
     return res.status(403).json({ error: "Insufficient permissions" });
   }
-  res.json(row);
+  return res.json(row);
 });
 
 router.post("/", async (req, res) => {
@@ -42,7 +42,7 @@ router.post("/", async (req, res) => {
   // AGENTs always own the leads they create.
   const values = req.user?.role === "AGENT" ? { ...parsed.data, assignedTo: req.user.id } : parsed.data;
   const [row] = await db.insert(leadsTable).values(values).returning();
-  res.status(201).json(row);
+  return res.status(201).json(row);
 });
 
 router.patch("/:id", async (req, res) => {
@@ -58,7 +58,7 @@ router.patch("/:id", async (req, res) => {
     .set({ ...parsed.data, updatedAt: new Date() })
     .where(eq(leadsTable.id, req.params.id))
     .returning();
-  res.json(row);
+  return res.json(row);
 });
 
 router.delete("/:id", async (req, res) => {
@@ -68,7 +68,7 @@ router.delete("/:id", async (req, res) => {
     return res.status(403).json({ error: "Insufficient permissions" });
   }
   await db.delete(leadsTable).where(eq(leadsTable.id, req.params.id));
-  res.json({ deleted: true });
+  return res.json({ deleted: true });
 });
 
 /**
@@ -112,7 +112,7 @@ router.post("/:id/convert", async (req, res) => {
     metadata: { lead_id: lead.id },
   });
 
-  res.status(201).json({ account, created, alreadyConverted: false, startSubmission });
+  return res.status(201).json({ account, created, alreadyConverted: false, startSubmission });
 });
 
 export default router;

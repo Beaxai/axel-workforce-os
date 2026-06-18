@@ -12,7 +12,7 @@ router.get("/summaries", async (_req, res) => {
 router.get("/summaries/:orgId", async (req, res) => {
   const [row] = await db.select().from(workforceSummariesTable).where(eq(workforceSummariesTable.orgId, req.params.orgId));
   if (!row) return res.status(404).json({ error: "Not found" });
-  res.json(row);
+  return res.json(row);
 });
 
 router.get("/verticals", async (_req, res) => {

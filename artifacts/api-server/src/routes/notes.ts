@@ -13,7 +13,7 @@ router.post("/", async (req, res) => {
   const parsed = insertNoteSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues });
   const [row] = await db.insert(notesTable).values(parsed.data).returning();
-  res.status(201).json(row);
+  return res.status(201).json(row);
 });
 
 router.patch("/:id", async (req, res) => {
@@ -21,13 +21,13 @@ router.patch("/:id", async (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues });
   const [row] = await db.update(notesTable).set(parsed.data).where(eq(notesTable.id, req.params.id)).returning();
   if (!row) return res.status(404).json({ error: "Not found" });
-  res.json(row);
+  return res.json(row);
 });
 
 router.delete("/:id", async (req, res) => {
   const [row] = await db.delete(notesTable).where(eq(notesTable.id, req.params.id)).returning();
   if (!row) return res.status(404).json({ error: "Not found" });
-  res.json({ deleted: true });
+  return res.json({ deleted: true });
 });
 
 export default router;

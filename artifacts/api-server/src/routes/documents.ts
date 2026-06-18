@@ -16,7 +16,7 @@ router.post("/signed-url", async (req: Request, res: Response) => {
     return res.status(403).json({ error: "Document does not belong to this deal." });
   }
 
-  res.json({ signedUrl: null, storagePath: storage_path, message: "File storage not configured — path reference only." });
+  return res.json({ signedUrl: null, storagePath: storage_path, message: "File storage not configured — path reference only." });
 });
 
 router.post("/log-view", async (req: Request, res: Response) => {

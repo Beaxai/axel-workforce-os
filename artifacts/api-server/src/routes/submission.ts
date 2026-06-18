@@ -42,7 +42,7 @@ router.get("/question-set/:verticalId", async (req, res) => {
     .where(eq(submissionQuestionsTable.questionSetId, questionSet.id))
     .orderBy(asc(submissionQuestionsTable.displayOrder));
 
-  res.json({ questionSet, questions });
+  return res.json({ questionSet, questions });
 });
 
 router.get("/answers/:dealId", async (req, res) => {
@@ -169,7 +169,7 @@ router.post("/request-bind/:dealId", async (req, res) => {
     metadata: { bind_package_id: bindPackage.id, loss_history_included: hasLossHistory },
   });
 
-  res.json({
+  return res.json({
     success: true,
     bindPackageId: bindPackage.id,
     message: "Bind request received. Document package is being generated.",
@@ -399,7 +399,7 @@ router.post("/submit-for-approval", async (req, res) => {
     metadata: { deal_id: deal.id, reference_code: referenceCode },
   });
 
-  res.json({
+  return res.json({
     success: true,
     dealId: deal.id,
     documentCount: docRecords.length,
@@ -419,7 +419,7 @@ router.get("/applications/:dealId", async (req, res) => {
     .limit(1);
   if (!row) return res.status(404).json({ error: "No submission answers found for deal" });
   const parsed = cannabisApplicationAnswersSchema.safeParse(row.answers ?? {});
-  res.json({
+  return res.json({
     dealId,
     submissionId: row.id,
     answers: parsed.success ? parsed.data : row.answers,
@@ -446,10 +446,10 @@ router.get("/applications/:dealId/axel-cannabis-application.pdf", async (req, re
     const pdfBytes = await fillAxelCannabisApplication(row.answers ?? {});
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `inline; filename="axel-cannabis-application-${dealId}.pdf"`);
-    res.send(Buffer.from(pdfBytes));
+    return res.send(Buffer.from(pdfBytes));
   } catch (err) {
     req.log.error({ err, dealId }, "fillAxelCannabisApplication failed");
-    res.status(500).json({ error: "Failed to generate Axel Cannabis WC Application PDF" });
+    return res.status(500).json({ error: "Failed to generate Axel Cannabis WC Application PDF" });
   }
 });
 
@@ -466,10 +466,10 @@ router.get("/applications/:dealId/acord-130.pdf", async (req, res) => {
     const pdfBytes = await fillAcord130(row.answers ?? {});
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `inline; filename="acord-130-${dealId}.pdf"`);
-    res.send(Buffer.from(pdfBytes));
+    return res.send(Buffer.from(pdfBytes));
   } catch (err) {
     req.log.error({ err, dealId }, "fillAcord130 failed");
-    res.status(500).json({ error: "Failed to generate ACORD 130 PDF" });
+    return res.status(500).json({ error: "Failed to generate ACORD 130 PDF" });
   }
 });
 
@@ -486,10 +486,10 @@ router.get("/applications/:dealId/trean-supp.pdf", async (req, res) => {
     const pdfBytes = await fillTreanSupp(row.answers ?? {});
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `inline; filename="trean-cannabis-supp-${dealId}.pdf"`);
-    res.send(Buffer.from(pdfBytes));
+    return res.send(Buffer.from(pdfBytes));
   } catch (err) {
     req.log.error({ err, dealId }, "fillTreanSupp failed");
-    res.status(500).json({ error: "Failed to generate Trean Cannabis Supp PDF" });
+    return res.status(500).json({ error: "Failed to generate Trean Cannabis Supp PDF" });
   }
 });
 

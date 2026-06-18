@@ -17,7 +17,7 @@ router.get("/", async (req, res) => {
     db.select().from(resourcesTable).where(ilike(resourcesTable.title, pattern)).limit(10),
   ]);
 
-  res.json({ deals, accounts, partners, resources });
+  return res.json({ deals, accounts, partners, resources });
 });
 
 export default router;

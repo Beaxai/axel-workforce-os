@@ -54,9 +54,9 @@ router.post("/wc", async (req, res) => {
       }
     }
 
-    res.json({ success: true, data: breakdown });
+    return res.json({ success: true, data: breakdown });
   } catch (err: any) {
-    res.status(400).json({ success: false, error: err.message });
+    return res.status(400).json({ success: false, error: err.message });
   }
 });
 
@@ -102,9 +102,9 @@ router.post("/wc/multi", async (req, res) => {
       }
     }
 
-    res.json({ success: true, data: breakdown });
+    return res.json({ success: true, data: breakdown });
   } catch (err: any) {
-    res.status(400).json({ success: false, error: err.message });
+    return res.status(400).json({ success: false, error: err.message });
   }
 });
 
@@ -142,9 +142,9 @@ router.post("/wfs", async (req, res) => {
       }
     }
 
-    res.json({ success: true, data: breakdown });
+    return res.json({ success: true, data: breakdown });
   } catch (err: any) {
-    res.status(400).json({ success: false, error: err.message });
+    return res.status(400).json({ success: false, error: err.message });
   }
 });
 
@@ -219,9 +219,9 @@ router.post("/aso", async (req, res) => {
       }
     }
 
-    res.json({ success: true, data: { ...breakdown, ratingBreakdown } });
+    return res.json({ success: true, data: { ...breakdown, ratingBreakdown } });
   } catch (err: any) {
-    res.status(400).json({ success: false, error: err.message });
+    return res.status(400).json({ success: false, error: err.message });
   }
 });
 

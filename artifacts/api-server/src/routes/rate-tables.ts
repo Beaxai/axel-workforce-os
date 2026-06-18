@@ -28,7 +28,7 @@ router.post("/", async (req, res) => {
   } catch (err) {
     req.log.warn({ err }, "Failed to clear AI classify cache");
   }
-  res.status(201).json(row);
+  return res.status(201).json(row);
 });
 
 router.get("/pepm", async (_req, res) => {
