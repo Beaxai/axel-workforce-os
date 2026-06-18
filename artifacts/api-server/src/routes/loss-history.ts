@@ -1,4 +1,4 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request, type Response } from "express";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -46,7 +46,7 @@ router.get("/:dealId", async (req, res) => {
   res.json({ documents: rows });
 });
 
-router.post("/:dealId/upload", upload.single("file"), async (req, res) => {
+router.post("/:dealId/upload", upload.single("file"), async (req: Request<{ dealId: string }>, res: Response) => {
   const { dealId } = req.params;
   const { yearsCovered, notes } = req.body;
 

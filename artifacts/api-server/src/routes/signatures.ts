@@ -10,7 +10,7 @@ import { sendBindPackageForSignature } from "../services/helloSignService";
 
 const router = Router();
 
-router.post("/send/:bindPackageId", async (req: Request, res: Response) => {
+router.post("/send/:bindPackageId", async (req: Request<{ bindPackageId: string }>, res: Response) => {
   const { bindPackageId } = req.params;
 
   const [bindPkg] = await db
@@ -39,7 +39,7 @@ router.post("/send/:bindPackageId", async (req: Request, res: Response) => {
   }
 });
 
-router.get("/:dealId", async (req: Request, res: Response) => {
+router.get("/:dealId", async (req: Request<{ dealId: string }>, res: Response) => {
   const [data] = await db
     .select()
     .from(signatureRequestsTable)
@@ -50,7 +50,7 @@ router.get("/:dealId", async (req: Request, res: Response) => {
   res.json({ signatureRequest: data || null });
 });
 
-router.get("/:dealId/signed-url", async (req: Request, res: Response) => {
+router.get("/:dealId/signed-url", async (req: Request<{ dealId: string }>, res: Response) => {
   const [sigRecord] = await db
     .select()
     .from(signatureRequestsTable)
@@ -65,7 +65,7 @@ router.get("/:dealId/signed-url", async (req: Request, res: Response) => {
   res.json({ signedUrl: null, storagePath: sigRecord.signedDocumentsPath });
 });
 
-router.post("/:dealId/resend", async (req: Request, res: Response) => {
+router.post("/:dealId/resend", async (req: Request<{ dealId: string }>, res: Response) => {
   const { emailAddress } = req.body;
 
   const [sigRecord] = await db
@@ -80,7 +80,9 @@ router.post("/:dealId/resend", async (req: Request, res: Response) => {
 
   await db.insert(activityLogTable).values({
     dealId: req.params.dealId,
-    action: "signature_reminder_sent",
+    entityType: "deal",
+    entityId: req.params.dealId,
+    eventType: "signature_reminder_sent",
     description: `Signature reminder sent to ${emailAddress}.`,
     metadata: {
       hellosign_signature_request_id: sigRecord.hellosignSignatureRequestId,

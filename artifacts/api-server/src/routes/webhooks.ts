@@ -79,7 +79,9 @@ router.post("/hellosign", async (req: Request, res: Response) => {
 
         await db.insert(activityLogTable).values({
           dealId: sigRecord.dealId,
-          action: "signature_viewed",
+          entityType: "deal",
+          entityId: sigRecord.dealId!,
+          eventType: "signature_viewed",
           description: `Bind document package viewed${signerEmail ? " by " + signerEmail : ""}.`,
           metadata: { hellosign_signature_request_id: helloSignId, signer_email: signerEmail },
         });
@@ -115,7 +117,9 @@ router.post("/hellosign", async (req: Request, res: Response) => {
 
         await db.insert(activityLogTable).values({
           dealId: sigRecord.dealId,
-          action: "document_signed",
+          entityType: "deal",
+          entityId: sigRecord.dealId!,
+          eventType: "document_signed",
           description: `${signerName} signed the bind documents. ${allSigned ? "All parties have signed." : "Awaiting remaining signatures."}`,
           metadata: {
             hellosign_signature_request_id: helloSignId,
@@ -228,7 +232,9 @@ router.post("/hellosign", async (req: Request, res: Response) => {
 
         await db.insert(activityLogTable).values({
           dealId: sigRecord.dealId,
-          action: "signature_declined",
+          entityType: "deal",
+          entityId: sigRecord.dealId!,
+          eventType: "signature_declined",
           description: `Signature declined${decliner ? " by " + decliner.signer_name : ""}. Bind package has been reset — review and resend.`,
           metadata: { hellosign_signature_request_id: helloSignId, decliner_email: decliner?.signer_email_address },
         });
@@ -252,7 +258,9 @@ router.post("/hellosign", async (req: Request, res: Response) => {
 
         await db.insert(activityLogTable).values({
           dealId: sigRecord.dealId,
-          action: "signature_expired",
+          entityType: "deal",
+          entityId: sigRecord.dealId!,
+          eventType: "signature_expired",
           description: "Signature request expired before all parties signed. Please resend.",
           metadata: { hellosign_signature_request_id: helloSignId },
         });

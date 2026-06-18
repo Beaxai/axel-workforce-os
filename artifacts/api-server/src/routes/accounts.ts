@@ -1,4 +1,4 @@
-import { Router, type IRouter, type RequestHandler } from "express";
+import { Router, type IRouter, type RequestHandler, type Request, type Response } from "express";
 import { db, accountsTable, insertAccountSchema, dealsTable, policiesTable, activityLogTable, insertActivityLogSchema, PROSPECT_STAGES, CLIENT_TAB_STAGES } from "@workspace/db";
 import { eq, desc, ilike, or, and, inArray } from "drizzle-orm";
 
@@ -134,7 +134,7 @@ const TRACKED_FIELDS: Record<string, string> = {
   state: "State",
 };
 
-router.patch("/:id", blockReadOnly, async (req, res) => {
+router.patch("/:id", blockReadOnly, async (req: Request<{ id: string }>, res: Response) => {
   const parsed = insertAccountSchema.partial().safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues });
 
@@ -171,7 +171,7 @@ router.patch("/:id", blockReadOnly, async (req, res) => {
   res.json(row);
 });
 
-router.delete("/:id", requireAccountManager, async (req, res) => {
+router.delete("/:id", requireAccountManager, async (req: Request<{ id: string }>, res: Response) => {
   const [row] = await db.delete(accountsTable).where(eq(accountsTable.id, req.params.id)).returning();
   if (!row) return res.status(404).json({ error: "Not found" });
   res.json({ deleted: true });

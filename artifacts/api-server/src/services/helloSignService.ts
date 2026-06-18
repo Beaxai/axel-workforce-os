@@ -98,7 +98,9 @@ export async function sendBindPackageForSignature(bindPackageId: string) {
 
   await db.insert(activityLogTable).values({
     dealId: bindPkg.dealId,
-    action: "signature_request_sent",
+    entityType: "deal",
+    entityId: bindPkg.dealId!,
+    eventType: "signature_request_sent",
     description: `Bind documents sent for signature (${TEST_MODE ? "TEST MODE" : "HelloSign"}). Awaiting signatures from: ${signersPayload.map((s) => s.name).join(", ")}.`,
     metadata: {
       hellosign_signature_request_id: stubHsId,
@@ -152,7 +154,9 @@ export async function retrieveAndStoreSignedDocuments(helloSignRequestId: string
 
   await db.insert(activityLogTable).values({
     dealId: sigRecord.dealId,
-    action: "bind_documents_signed",
+    entityType: "deal",
+    entityId: sigRecord.dealId!,
+    eventType: "bind_documents_signed",
     description: "All bind documents have been signed by all parties. Deal is bound.",
     metadata: {
       hellosign_signature_request_id: helloSignRequestId,

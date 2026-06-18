@@ -33,7 +33,7 @@ router.post("/log-view", async (req: Request, res: Response) => {
   }
 });
 
-router.get("/bind-package/:dealId", async (req: Request, res: Response) => {
+router.get("/bind-package/:dealId", async (req: Request<{ dealId: string }>, res: Response) => {
   const [data] = await db
     .select()
     .from(bindDocumentPackagesTable)
