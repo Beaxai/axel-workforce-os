@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/axel-index";
 import { openDealCard } from "@/components/DealCardModal";
 import { useThemeStore } from "@/lib/theme-store";
+import { useThemeColors } from "@/lib/use-theme-colors";
 import { useAuthStore } from "@/lib/auth-store";
 import { api } from "@/lib/api";
 import { ArrowLeft, Clock, User } from "lucide-react";
@@ -98,7 +99,7 @@ export default function AccountDetail() {
   const [editForm, setEditForm] = useState({ businessName: "", vertical: "", state: "", annualPayroll: "", headcount: "", primaryContact: "", contactEmail: "", contactPhone: "", notes: "", clientStage: "Prospect" });
   const [noteText, setNoteText] = useState("");
 
-  const textPrimary = isDark ? "#fff" : "#111";
+  const { textPrimary } = useThemeColors();
   const textMuted = isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.58)";
   const inputBg = isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)";
   const inputBorder = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)";
@@ -293,7 +294,7 @@ export default function AccountDetail() {
                     <p style={{ fontSize: "13px", fontWeight: 500, color: textPrimary, margin: 0 }}>{p.policyNumber || "—"}</p>
                     <span style={{ fontSize: "11px", color: textMuted }}>{p.policyType} • Effective {p.effectiveDate || "—"}</span>
                   </div>
-                  <Badge label={p.status || "Active"} color={p.status === "Active" ? "#22c55e" : "#6b7280"} />
+                  <Badge label={p.status || "Active"} color={p.status === "Active" ? "green" : "gray"} />
                 </div>
               ))}
             </div>
@@ -386,10 +387,11 @@ export default function AccountDetail() {
 }
 
 function DetailRow({ label, value, isDark }: { label: string; value?: string | null; isDark: boolean }) {
+  const { textPrimary } = useThemeColors();
   return (
     <div>
       <span style={{ fontSize: "11px", fontWeight: 500, color: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.4)" }}>{label}</span>
-      <p style={{ fontSize: "13px", color: isDark ? "#fff" : "#111", margin: "2px 0 0" }}>{value || "—"}</p>
+      <p style={{ fontSize: "13px", color: textPrimary, margin: "2px 0 0" }}>{value || "—"}</p>
     </div>
   );
 }
