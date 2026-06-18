@@ -5,9 +5,11 @@ import {
   signatureRequestsTable,
   bindDocumentPackagesTable,
   dealsTable,
+  accountsTable,
   activityLogTable,
+  PROSPECT_STAGES,
 } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { retrieveAndStoreSignedDocuments } from "../services/helloSignService";
 
 const router = Router();
@@ -126,16 +128,7 @@ router.post("/hellosign", async (req: Request, res: Response) => {
       }
 
       case "signature_request_all_signed": {
-        // Bind is complete here: all parties have signed and the deal's bindStatus
-        // is "signed".
-        //
-        // TODO(P4/P5 — Implementations flow): binding does NOT yet write
-        // account.client_stage. The account is not auto-transitioned
-        // "Prospect" -> "New Client" on bind completion today; that transition
-        // currently happens only via the manual PATCH /accounts/:id stage edit
-        // path (see Phase 4A acceptance Test #5 caveat). When the Implementations
-        // flow is built, add the auto-transition (and a `stage_changed` activity
-        // log entry) at this point in the bind lifecycle.
+        // Bind is complete here: all parties have signed.
         await db
           .update(signatureRequestsTable)
           .set({
@@ -145,6 +138,64 @@ router.post("/hellosign", async (req: Request, res: Response) => {
           .where(eq(signatureRequestsTable.id, sigRecord.id));
 
         await retrieveAndStoreSignedDocuments(helloSignId);
+
+        // Auto-transition the linked account from a Prospect stage to "New Client"
+        // on bind completion, and log it to the account's activity feed. Mirrors
+        // the manual PATCH /accounts/:id stage_changed path; createdBy is null
+        // (system action). Only Prospect-stage accounts are advanced so an
+        // already-active client is never downgraded.
+        //
+        // Idempotent under duplicate `all_signed` delivery: the stage update is a
+        // single conditional UPDATE ... WHERE client_stage IN (prospect stages)
+        // RETURNING, run inside a transaction with the activity insert. A second
+        // delivery matches zero rows (stage is already "New Client"), so no
+        // duplicate row is written and no duplicate activity is logged.
+        const boundDealId = sigRecord.dealId;
+        if (boundDealId) {
+          const [deal] = await db
+            .select({ accountId: dealsTable.accountId })
+            .from(dealsTable)
+            .where(eq(dealsTable.id, boundDealId));
+
+          const accountId = deal?.accountId;
+          if (accountId) {
+            await db.transaction(async (tx) => {
+              const [account] = await tx
+                .select({ id: accountsTable.id, clientStage: accountsTable.clientStage })
+                .from(accountsTable)
+                .where(eq(accountsTable.id, accountId));
+              if (!account) return;
+              const fromStage = account.clientStage ?? "—";
+
+              const advanced = await tx
+                .update(accountsTable)
+                .set({ clientStage: "New Client", updatedAt: new Date() })
+                .where(
+                  and(
+                    eq(accountsTable.id, accountId),
+                    inArray(accountsTable.clientStage, [...PROSPECT_STAGES]),
+                  ),
+                )
+                .returning({ id: accountsTable.id });
+
+              if (advanced.length === 0) return; // already advanced or not a prospect
+
+              await tx.insert(activityLogTable).values({
+                dealId: boundDealId,
+                entityType: "account",
+                entityId: accountId,
+                eventType: "stage_changed",
+                description: `Stage changed from "${fromStage}" to "New Client" (deal bound).`,
+                metadata: {
+                  changes: [{ field: "clientStage", label: "Stage", from: fromStage, to: "New Client" }],
+                  trigger: "bind_completed",
+                  dealId: boundDealId,
+                },
+                createdBy: null,
+              });
+            });
+          }
+        }
         break;
       }
 
