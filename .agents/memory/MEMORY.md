@@ -1,3 +1,3 @@
-- [Account subresource IDOR](account-subresource-authz.md) — owner-scope checks must be repeated on every /:id subresource route, not just GET /:id.
-- [Theming literal convention](theming-literal-convention.md) — most pages use inline `isDark ? darkLit : lightLit`, not the token-only path replit.md describes.
-- [Express params typing](express-params-typing.md) — req.params.x widens to string|string[] on routes with middleware; coerce with String() for strict helpers.
+# Memory Index
+
+- [Express 5 route typing & noImplicitReturns](express5-typecheck.md) — TS2769/2345 = params are `string|string[]`, fix with `Request<{...}>`; TS7030 = add `return` to terminal res/next() in mixed-return handlers.
