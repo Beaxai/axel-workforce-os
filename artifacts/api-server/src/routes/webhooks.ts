@@ -126,6 +126,16 @@ router.post("/hellosign", async (req: Request, res: Response) => {
       }
 
       case "signature_request_all_signed": {
+        // Bind is complete here: all parties have signed and the deal's bindStatus
+        // is "signed".
+        //
+        // TODO(P4/P5 — Implementations flow): binding does NOT yet write
+        // account.client_stage. The account is not auto-transitioned
+        // "Prospect" -> "New Client" on bind completion today; that transition
+        // currently happens only via the manual PATCH /accounts/:id stage edit
+        // path (see Phase 4A acceptance Test #5 caveat). When the Implementations
+        // flow is built, add the auto-transition (and a `stage_changed` activity
+        // log entry) at this point in the bind lifecycle.
         await db
           .update(signatureRequestsTable)
           .set({
