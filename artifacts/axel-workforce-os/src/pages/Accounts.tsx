@@ -92,6 +92,7 @@ export default function Accounts() {
   const isReadOnly = role === "UNDERWRITER";
   const canUseLeads = role === "ADMIN" || role === "CSA" || role === "AGENT";
   const canCreate = !isReadOnly;
+  const canCreateAccount = role === "ADMIN" || role === "CSA";
 
   const TABS: { key: TabKey; label: string }[] = [
     ...(canUseLeads ? [{ key: "leads" as TabKey, label: "Leads" }] : []),
@@ -263,7 +264,7 @@ export default function Accounts() {
             New Lead
           </PinkButton>
         )}
-        {canCreate && activeTab !== "leads" && (
+        {canCreateAccount && activeTab !== "leads" && (
           <PinkButton onClick={() => setShowCreateAccount(true)} style={{ display: "flex", alignItems: "center", gap: "6px", marginLeft: "auto" }}>
             <Plus style={{ width: "16px", height: "16px" }} />
             New Account

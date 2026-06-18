@@ -4,13 +4,13 @@ description: The real prevailing theming pattern vs the token-only aspiration in
 ---
 
 replit.md states a strict "token-only, never hardcode color literals" rule, but in
-practice ~22 of 33 page files in `artifacts/axel-workforce-os/src/pages/` use the inline
+practice most page files in `artifacts/axel-workforce-os/src/pages/` use the inline
 pattern `const textPrimary = isDark ? "#fff" : "#111"` (and similar rgba pairs), reading
 `isDark` from the theme store. Only a handful use `var(--input-text)` / token vars.
 
 **Why this matters:** these inline literals DO render correctly in both light and dark
 (they branch on `isDark`), so they satisfy the functional light+dark Definition of Done.
-A full migration to CSS-variable tokens would be a codebase-wide refactor (22 files),
+A full migration to CSS-variable tokens would be a codebase-wide refactor,
 not something to bundle into a feature task.
 
 **How to apply:** new page code may follow the prevailing inline `isDark ? … : …`

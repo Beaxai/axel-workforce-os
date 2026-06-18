@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/axel-index";
 import { openDealCard } from "@/components/DealCardModal";
 import { useThemeStore } from "@/lib/theme-store";
+import { useAuthStore } from "@/lib/auth-store";
 import { api } from "@/lib/api";
 import { ArrowLeft, Clock, User } from "lucide-react";
 
@@ -85,6 +86,8 @@ export default function AccountDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { theme } = useThemeStore();
+  const role = useAuthStore((s) => s.user?.role);
+  const isReadOnly = role === "UNDERWRITER";
   const isDark = theme === "dark";
 
   const [account, setAccount] = useState<Account | null>(null);
@@ -215,9 +218,11 @@ export default function AccountDetail() {
           <GlassCard padding="20px">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
               <h3 style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, margin: 0 }}>Business Info</h3>
-              <GhostButton onClick={() => { if (editMode) handleSave(); else setEditMode(true); }} style={{ padding: "4px 12px", fontSize: "12px" }}>
-                {editMode ? "Save" : "Edit"}
-              </GhostButton>
+              {!isReadOnly && (
+                <GhostButton onClick={() => { if (editMode) handleSave(); else setEditMode(true); }} style={{ padding: "4px 12px", fontSize: "12px" }}>
+                  {editMode ? "Save" : "Edit"}
+                </GhostButton>
+              )}
             </div>
             {editMode ? (
               <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
@@ -357,19 +362,21 @@ export default function AccountDetail() {
                 </div>
               ))}
             </div>
-            <div style={{ display: "flex", gap: "8px" }}>
-              <input
-                type="text"
-                value={noteText}
-                onChange={(e) => setNoteText(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") handlePostNote(); }}
-                placeholder="Add a note..."
-                style={{ ...inputStyle, flex: 1 }}
-                onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent-primary)")}
-                onBlur={(e) => (e.currentTarget.style.borderColor = inputBorder)}
-              />
-              <PinkButton onClick={handlePostNote} style={{ padding: "8px 14px", fontSize: "13px" }}>Post</PinkButton>
-            </div>
+            {!isReadOnly && (
+              <div style={{ display: "flex", gap: "8px" }}>
+                <input
+                  type="text"
+                  value={noteText}
+                  onChange={(e) => setNoteText(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") handlePostNote(); }}
+                  placeholder="Add a note..."
+                  style={{ ...inputStyle, flex: 1 }}
+                  onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent-primary)")}
+                  onBlur={(e) => (e.currentTarget.style.borderColor = inputBorder)}
+                />
+                <PinkButton onClick={handlePostNote} style={{ padding: "8px 14px", fontSize: "13px" }}>Post</PinkButton>
+              </div>
+            )}
           </GlassCard>
         </div>
       </div>

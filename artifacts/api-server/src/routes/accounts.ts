@@ -21,6 +21,22 @@ const blockReadOnly: RequestHandler = (req, res, next) => {
   next();
 };
 
+/** Account create/delete is reserved for ADMIN and CSA. AGENTs get accounts via lead conversion. */
+const ACCOUNT_MANAGER_ROLES = ["ADMIN", "CSA"];
+const requireAccountManager: RequestHandler = (req, res, next) => {
+  if (!req.user || !ACCOUNT_MANAGER_ROLES.includes(req.user.role)) {
+    return res.status(403).json({ error: "Insufficient permissions" });
+  }
+  next();
+};
+
+/** Restrict a deal query to the requesting AGENT's own/produced deals; ADMIN/CSA/UW see all. */
+function dealScopeForAccount(req: { user?: { id: string; role: string } }, accountId: string) {
+  const base = eq(dealsTable.accountId, accountId);
+  if (req.user?.role !== "AGENT") return base;
+  return and(base, or(eq(dealsTable.ownerId, req.user.id), eq(dealsTable.producingAgentId, req.user.id)));
+}
+
 router.get("/", async (req, res) => {
   const search = req.query.search as string | undefined;
   const stage = req.query.stage as string | undefined; // single client_stage
@@ -66,13 +82,13 @@ async function agentMayAccess(req: { user?: { id: string; role: string } }, acco
 
 router.get("/:id/deals", async (req, res) => {
   if (!(await agentMayAccess(req, req.params.id))) return res.status(403).json({ error: "Insufficient permissions" });
-  const rows = await db.select().from(dealsTable).where(eq(dealsTable.accountId, req.params.id)).orderBy(desc(dealsTable.createdAt));
+  const rows = await db.select().from(dealsTable).where(dealScopeForAccount(req, req.params.id)).orderBy(desc(dealsTable.createdAt));
   res.json(rows);
 });
 
 router.get("/:id/policies", async (req, res) => {
   if (!(await agentMayAccess(req, req.params.id))) return res.status(403).json({ error: "Insufficient permissions" });
-  const dealRows = await db.select().from(dealsTable).where(eq(dealsTable.accountId, req.params.id));
+  const dealRows = await db.select().from(dealsTable).where(dealScopeForAccount(req, req.params.id));
   if (dealRows.length === 0) return res.json([]);
   const dealIds = dealRows.map((d) => d.id);
   const allPolicies = await db.select().from(policiesTable).where(inArray(policiesTable.dealId, dealIds));
@@ -98,7 +114,7 @@ router.post("/:id/activity", blockReadOnly, async (req, res) => {
   res.status(201).json(row);
 });
 
-router.post("/", blockReadOnly, async (req, res) => {
+router.post("/", requireAccountManager, async (req, res) => {
   const parsed = insertAccountSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues });
   const [row] = await db.insert(accountsTable).values(parsed.data).returning();
@@ -155,8 +171,7 @@ router.patch("/:id", blockReadOnly, async (req, res) => {
   res.json(row);
 });
 
-router.delete("/:id", blockReadOnly, async (req, res) => {
-  if (!(await agentMayAccess(req, req.params.id))) return res.status(403).json({ error: "Insufficient permissions" });
+router.delete("/:id", requireAccountManager, async (req, res) => {
   const [row] = await db.delete(accountsTable).where(eq(accountsTable.id, req.params.id)).returning();
   if (!row) return res.status(404).json({ error: "Not found" });
   res.json({ deleted: true });
