@@ -3,6 +3,7 @@ export * from "./users";
 export * from "./org-members";
 export * from "./auth";
 export * from "./accounts";
+export * from "./leads";
 export * from "./deals";
 export * from "./quotes";
 export * from "./policies";

@@ -11,7 +11,7 @@ export const dealsTable = pgTable("deals", {
   referenceCode: text("reference_code").unique().notNull(),
   businessName: text("business_name"),
   orgId: uuid("org_id").references(() => organizationsTable.id),
-  accountId: uuid("account_id").references(() => accountsTable.id),
+  accountId: uuid("account_id").references(() => accountsTable.id).notNull(),
   ownerId: uuid("owner_id").references(() => usersTable.id),
   producingAgentId: uuid("producing_agent_id").references(() => usersTable.id),
   referralPartnerId: uuid("referral_partner_id").references(() => usersTable.id),

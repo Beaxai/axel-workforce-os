@@ -12,10 +12,14 @@ import { useThemeStore } from "@/lib/theme-store";
 import { api } from "@/lib/api";
 import { ArrowLeft, Clock, User } from "lucide-react";
 
-const STATUS_COLORS: Record<string, string> = {
-  "Active Client": "#22c55e",
-  Prospect: "var(--accent-primary)",
-  Inactive: "#6b7280",
+const CLIENT_STAGES = ["Prospect", "Active Prospect", "New Client", "Active Client"] as const;
+
+const STAGE_COLOR: Record<string, string> = {
+  Prospect: "gray",
+  "Active Prospect": "purple",
+  "New Client": "blue",
+  "Active Client": "green",
+  Inactive: "gray",
 };
 
 const STAGES: Record<string, string> = {
@@ -32,11 +36,20 @@ const STAGES: Record<string, string> = {
 interface Account {
   id: string;
   businessName: string;
+  legalName?: string;
+  dba?: string;
+  fein?: string;
+  entityType?: string;
+  naics?: string;
+  productType?: string;
   vertical?: string;
   state?: string;
   annualPayroll?: string;
   headcount?: number;
-  accountStatus?: string;
+  emod?: string;
+  classCodes?: unknown[];
+  locations?: unknown[];
+  clientStage?: string;
   primaryContact?: string;
   contactEmail?: string;
   contactPhone?: string;
@@ -79,7 +92,7 @@ export default function AccountDetail() {
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [activity, setActivity] = useState<ActivityEntry[]>([]);
   const [editMode, setEditMode] = useState(false);
-  const [editForm, setEditForm] = useState({ businessName: "", vertical: "", state: "", annualPayroll: "", headcount: "", primaryContact: "", contactEmail: "", contactPhone: "", notes: "", accountStatus: "Prospect" });
+  const [editForm, setEditForm] = useState({ businessName: "", vertical: "", state: "", annualPayroll: "", headcount: "", primaryContact: "", contactEmail: "", contactPhone: "", notes: "", clientStage: "Prospect" });
   const [noteText, setNoteText] = useState("");
 
   const textPrimary = isDark ? "#fff" : "#111";
@@ -113,7 +126,7 @@ export default function AccountDetail() {
       contactEmail: a.contactEmail || "",
       contactPhone: a.contactPhone || "",
       notes: a.notes || "",
-      accountStatus: a.accountStatus || "Prospect",
+      clientStage: a.clientStage || "Prospect",
     });
   }, [id]);
 
@@ -160,7 +173,7 @@ export default function AccountDetail() {
       contactEmail: editForm.contactEmail || undefined,
       contactPhone: editForm.contactPhone || undefined,
       notes: editForm.notes || undefined,
-      accountStatus: editForm.accountStatus,
+      clientStage: editForm.clientStage,
     });
     setEditMode(false);
     fetchAccount();
@@ -192,7 +205,7 @@ export default function AccountDetail() {
         </GhostButton>
         <SectionHeader title={account.businessName} subtitle={`Account Detail`} />
         <div style={{ marginLeft: "auto" }}>
-          <Badge label={account.accountStatus || "Prospect"} color={STATUS_COLORS[account.accountStatus || "Prospect"] || "#6b7280"} />
+          <Badge label={account.clientStage || "Prospect"} color={STAGE_COLOR[account.clientStage || "Prospect"] || "gray"} />
         </div>
       </div>
 
@@ -215,11 +228,20 @@ export default function AccountDetail() {
                 <FieldInput label="Headcount" value={editForm.headcount} onChange={(v) => setEditForm(p => ({ ...p, headcount: v.replace(/[^0-9]/g, "") }))} inputStyle={inputStyle} isDark={isDark} />
               </div>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 16px" }}>
+                <DetailRow label="Legal Name" value={account.legalName} isDark={isDark} />
+                <DetailRow label="DBA" value={account.dba} isDark={isDark} />
+                <DetailRow label="FEIN" value={account.fein} isDark={isDark} />
+                <DetailRow label="Entity Type" value={account.entityType} isDark={isDark} />
                 <DetailRow label="Vertical" value={account.vertical} isDark={isDark} />
+                <DetailRow label="Product Type" value={account.productType} isDark={isDark} />
+                <DetailRow label="NAICS" value={account.naics} isDark={isDark} />
                 <DetailRow label="State" value={account.state} isDark={isDark} />
                 <DetailRow label="Annual Payroll" value={account.annualPayroll ? parseFloat(account.annualPayroll).toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0 }) : "—"} isDark={isDark} />
                 <DetailRow label="Headcount" value={account.headcount ? String(account.headcount) : "—"} isDark={isDark} />
+                <DetailRow label="Experience Mod" value={account.emod ? parseFloat(account.emod).toFixed(3) : "—"} isDark={isDark} />
+                <DetailRow label="Class Codes" value={account.classCodes?.length ? String(account.classCodes.length) : "—"} isDark={isDark} />
+                <DetailRow label="Locations" value={account.locations?.length ? String(account.locations.length) : "—"} isDark={isDark} />
               </div>
             )}
           </GlassCard>
@@ -295,13 +317,11 @@ export default function AccountDetail() {
           <GlassCard padding="20px">
             <h3 style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, margin: "0 0 14px" }}>Account Status</h3>
             {editMode ? (
-              <select value={editForm.accountStatus} onChange={(e) => setEditForm(p => ({ ...p, accountStatus: e.target.value }))} style={{ ...inputStyle, cursor: "pointer", appearance: "auto" }}>
-                <option value="Prospect">Prospect</option>
-                <option value="Active Client">Active Client</option>
-                <option value="Inactive">Inactive</option>
+              <select value={editForm.clientStage} onChange={(e) => setEditForm(p => ({ ...p, clientStage: e.target.value }))} style={{ ...inputStyle, cursor: "pointer", appearance: "auto" }}>
+                {CLIENT_STAGES.map((s) => <option key={s} value={s}>{s}</option>)}
               </select>
             ) : (
-              <Badge label={account.accountStatus || "Prospect"} color={STATUS_COLORS[account.accountStatus || "Prospect"] || "#6b7280"} />
+              <Badge label={account.clientStage || "Prospect"} color={STAGE_COLOR[account.clientStage || "Prospect"] || "gray"} />
             )}
           </GlassCard>
 

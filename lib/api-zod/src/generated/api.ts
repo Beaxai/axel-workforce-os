@@ -136,3 +136,309 @@ export const ResetPasswordBody = zod.object({
 export const ResetPasswordResponse = zod.object({
   ok: zod.boolean(),
 });
+
+/**
+ * @summary List leads
+ */
+export const GetLeadsQueryParams = zod.object({
+  search: zod.coerce.string().optional(),
+  status: zod.coerce.string().optional(),
+});
+
+export const GetLeadsResponseItem = zod.object({
+  id: zod.string(),
+  companyName: zod.string(),
+  contactName: zod.string().nullish(),
+  email: zod.string().nullish(),
+  phone: zod.string().nullish(),
+  state: zod.string().nullish(),
+  vertical: zod.string().nullish(),
+  source: zod.string().nullish(),
+  sourceDetail: zod.string().nullish(),
+  status: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  assignedTo: zod.string().nullish(),
+  convertedAccountId: zod.string().nullish(),
+  createdAt: zod.string().nullish(),
+  updatedAt: zod.string().nullish(),
+});
+export const GetLeadsResponse = zod.array(GetLeadsResponseItem);
+
+/**
+ * @summary Create a lead
+ */
+export const CreateLeadBody = zod.object({
+  companyName: zod.string(),
+  contactName: zod.string().nullish(),
+  email: zod.string().nullish(),
+  phone: zod.string().nullish(),
+  state: zod.string().nullish(),
+  vertical: zod.string().nullish(),
+  source: zod.string().nullish(),
+  sourceDetail: zod.string().nullish(),
+  status: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  assignedTo: zod.string().nullish(),
+});
+
+/**
+ * @summary Get a lead
+ */
+export const GetLeadParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const GetLeadResponse = zod.object({
+  id: zod.string(),
+  companyName: zod.string(),
+  contactName: zod.string().nullish(),
+  email: zod.string().nullish(),
+  phone: zod.string().nullish(),
+  state: zod.string().nullish(),
+  vertical: zod.string().nullish(),
+  source: zod.string().nullish(),
+  sourceDetail: zod.string().nullish(),
+  status: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  assignedTo: zod.string().nullish(),
+  convertedAccountId: zod.string().nullish(),
+  createdAt: zod.string().nullish(),
+  updatedAt: zod.string().nullish(),
+});
+
+/**
+ * @summary Update a lead
+ */
+export const UpdateLeadParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const UpdateLeadBody = zod.object({
+  companyName: zod.string(),
+  contactName: zod.string().nullish(),
+  email: zod.string().nullish(),
+  phone: zod.string().nullish(),
+  state: zod.string().nullish(),
+  vertical: zod.string().nullish(),
+  source: zod.string().nullish(),
+  sourceDetail: zod.string().nullish(),
+  status: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  assignedTo: zod.string().nullish(),
+});
+
+export const UpdateLeadResponse = zod.object({
+  id: zod.string(),
+  companyName: zod.string(),
+  contactName: zod.string().nullish(),
+  email: zod.string().nullish(),
+  phone: zod.string().nullish(),
+  state: zod.string().nullish(),
+  vertical: zod.string().nullish(),
+  source: zod.string().nullish(),
+  sourceDetail: zod.string().nullish(),
+  status: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  assignedTo: zod.string().nullish(),
+  convertedAccountId: zod.string().nullish(),
+  createdAt: zod.string().nullish(),
+  updatedAt: zod.string().nullish(),
+});
+
+/**
+ * @summary Delete a lead
+ */
+export const DeleteLeadParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const DeleteLeadResponse = zod.object({
+  deleted: zod.boolean(),
+});
+
+/**
+ * @summary Convert a lead into an account
+ */
+export const ConvertLeadParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const ConvertLeadBody = zod.object({
+  startSubmission: zod.boolean().optional(),
+});
+
+export const ConvertLeadResponse = zod.object({
+  account: zod.object({
+    id: zod.string(),
+    businessName: zod.string(),
+    legalName: zod.string().nullish(),
+    dba: zod.string().nullish(),
+    fein: zod.string().nullish(),
+    entityType: zod.string().nullish(),
+    naics: zod.string().nullish(),
+    vertical: zod.string().nullish(),
+    state: zod.string().nullish(),
+    productType: zod.string().nullish(),
+    annualPayroll: zod.string().nullish(),
+    headcount: zod.number().nullish(),
+    emod: zod.string().nullish(),
+    classCodes: zod.array(zod.unknown()).nullish(),
+    locations: zod.array(zod.unknown()).nullish(),
+    clientStage: zod.string().nullish(),
+    primaryContact: zod.string().nullish(),
+    contactEmail: zod.string().nullish(),
+    contactPhone: zod.string().nullish(),
+    notes: zod.string().nullish(),
+    assignedCsa: zod.string().nullish(),
+    createdAt: zod.string().nullish(),
+    updatedAt: zod.string().nullish(),
+  }),
+  created: zod.boolean().optional(),
+  alreadyConverted: zod.boolean().optional(),
+  startSubmission: zod.boolean().optional(),
+});
+
+/**
+ * @summary List accounts
+ */
+export const GetAccountsQueryParams = zod.object({
+  search: zod.coerce.string().optional(),
+  stage: zod.coerce.string().optional(),
+  tab: zod.enum(["prospects", "clients"]).optional(),
+});
+
+export const GetAccountsResponseItem = zod.object({
+  id: zod.string(),
+  businessName: zod.string(),
+  legalName: zod.string().nullish(),
+  dba: zod.string().nullish(),
+  fein: zod.string().nullish(),
+  entityType: zod.string().nullish(),
+  naics: zod.string().nullish(),
+  vertical: zod.string().nullish(),
+  state: zod.string().nullish(),
+  productType: zod.string().nullish(),
+  annualPayroll: zod.string().nullish(),
+  headcount: zod.number().nullish(),
+  emod: zod.string().nullish(),
+  classCodes: zod.array(zod.unknown()).nullish(),
+  locations: zod.array(zod.unknown()).nullish(),
+  clientStage: zod.string().nullish(),
+  primaryContact: zod.string().nullish(),
+  contactEmail: zod.string().nullish(),
+  contactPhone: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  assignedCsa: zod.string().nullish(),
+  createdAt: zod.string().nullish(),
+  updatedAt: zod.string().nullish(),
+});
+export const GetAccountsResponse = zod.array(GetAccountsResponseItem);
+
+/**
+ * @summary Create an account
+ */
+export const CreateAccountBody = zod.object({
+  businessName: zod.string(),
+  legalName: zod.string().nullish(),
+  dba: zod.string().nullish(),
+  fein: zod.string().nullish(),
+  entityType: zod.string().nullish(),
+  naics: zod.string().nullish(),
+  vertical: zod.string().nullish(),
+  state: zod.string().nullish(),
+  productType: zod.string().nullish(),
+  annualPayroll: zod.string().nullish(),
+  headcount: zod.number().nullish(),
+  emod: zod.string().nullish(),
+  clientStage: zod.string().nullish(),
+  primaryContact: zod.string().nullish(),
+  contactEmail: zod.string().nullish(),
+  contactPhone: zod.string().nullish(),
+  notes: zod.string().nullish(),
+});
+
+/**
+ * @summary Get an account
+ */
+export const GetAccountParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const GetAccountResponse = zod.object({
+  id: zod.string(),
+  businessName: zod.string(),
+  legalName: zod.string().nullish(),
+  dba: zod.string().nullish(),
+  fein: zod.string().nullish(),
+  entityType: zod.string().nullish(),
+  naics: zod.string().nullish(),
+  vertical: zod.string().nullish(),
+  state: zod.string().nullish(),
+  productType: zod.string().nullish(),
+  annualPayroll: zod.string().nullish(),
+  headcount: zod.number().nullish(),
+  emod: zod.string().nullish(),
+  classCodes: zod.array(zod.unknown()).nullish(),
+  locations: zod.array(zod.unknown()).nullish(),
+  clientStage: zod.string().nullish(),
+  primaryContact: zod.string().nullish(),
+  contactEmail: zod.string().nullish(),
+  contactPhone: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  assignedCsa: zod.string().nullish(),
+  createdAt: zod.string().nullish(),
+  updatedAt: zod.string().nullish(),
+});
+
+/**
+ * @summary Update an account
+ */
+export const UpdateAccountParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const UpdateAccountBody = zod.object({
+  businessName: zod.string(),
+  legalName: zod.string().nullish(),
+  dba: zod.string().nullish(),
+  fein: zod.string().nullish(),
+  entityType: zod.string().nullish(),
+  naics: zod.string().nullish(),
+  vertical: zod.string().nullish(),
+  state: zod.string().nullish(),
+  productType: zod.string().nullish(),
+  annualPayroll: zod.string().nullish(),
+  headcount: zod.number().nullish(),
+  emod: zod.string().nullish(),
+  clientStage: zod.string().nullish(),
+  primaryContact: zod.string().nullish(),
+  contactEmail: zod.string().nullish(),
+  contactPhone: zod.string().nullish(),
+  notes: zod.string().nullish(),
+});
+
+export const UpdateAccountResponse = zod.object({
+  id: zod.string(),
+  businessName: zod.string(),
+  legalName: zod.string().nullish(),
+  dba: zod.string().nullish(),
+  fein: zod.string().nullish(),
+  entityType: zod.string().nullish(),
+  naics: zod.string().nullish(),
+  vertical: zod.string().nullish(),
+  state: zod.string().nullish(),
+  productType: zod.string().nullish(),
+  annualPayroll: zod.string().nullish(),
+  headcount: zod.number().nullish(),
+  emod: zod.string().nullish(),
+  classCodes: zod.array(zod.unknown()).nullish(),
+  locations: zod.array(zod.unknown()).nullish(),
+  clientStage: zod.string().nullish(),
+  primaryContact: zod.string().nullish(),
+  contactEmail: zod.string().nullish(),
+  contactPhone: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  assignedCsa: zod.string().nullish(),
+  createdAt: zod.string().nullish(),
+  updatedAt: zod.string().nullish(),
+});

@@ -77,3 +77,115 @@ export interface OkResponse {
 export interface ErrorResponse {
   error: string;
 }
+
+export interface DeletedResponse {
+  deleted: boolean;
+}
+
+export interface Lead {
+  id: string;
+  companyName: string;
+  contactName?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  state?: string | null;
+  vertical?: string | null;
+  source?: string | null;
+  sourceDetail?: string | null;
+  status?: string | null;
+  notes?: string | null;
+  assignedTo?: string | null;
+  convertedAccountId?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+}
+
+export interface LeadInput {
+  companyName: string;
+  contactName?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  state?: string | null;
+  vertical?: string | null;
+  source?: string | null;
+  sourceDetail?: string | null;
+  status?: string | null;
+  notes?: string | null;
+  assignedTo?: string | null;
+}
+
+export interface Account {
+  id: string;
+  businessName: string;
+  legalName?: string | null;
+  dba?: string | null;
+  fein?: string | null;
+  entityType?: string | null;
+  naics?: string | null;
+  vertical?: string | null;
+  state?: string | null;
+  productType?: string | null;
+  annualPayroll?: string | null;
+  headcount?: number | null;
+  emod?: string | null;
+  classCodes?: unknown[] | null;
+  locations?: unknown[] | null;
+  clientStage?: string | null;
+  primaryContact?: string | null;
+  contactEmail?: string | null;
+  contactPhone?: string | null;
+  notes?: string | null;
+  assignedCsa?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+}
+
+export interface AccountInput {
+  businessName: string;
+  legalName?: string | null;
+  dba?: string | null;
+  fein?: string | null;
+  entityType?: string | null;
+  naics?: string | null;
+  vertical?: string | null;
+  state?: string | null;
+  productType?: string | null;
+  annualPayroll?: string | null;
+  headcount?: number | null;
+  emod?: string | null;
+  clientStage?: string | null;
+  primaryContact?: string | null;
+  contactEmail?: string | null;
+  contactPhone?: string | null;
+  notes?: string | null;
+}
+
+export interface ConvertLeadRequest {
+  startSubmission?: boolean;
+}
+
+export interface ConvertLeadResult {
+  account: Account;
+  created?: boolean;
+  alreadyConverted?: boolean;
+  startSubmission?: boolean;
+}
+
+export type GetLeadsParams = {
+  search?: string;
+  status?: string;
+};
+
+export type GetAccountsParams = {
+  search?: string;
+  stage?: string;
+  tab?: GetAccountsTab;
+};
+
+export type GetAccountsTab =
+  (typeof GetAccountsTab)[keyof typeof GetAccountsTab];
+
+export const GetAccountsTab = {
+  prospects: "prospects",
+  clients: "clients",
+} as const;

@@ -14,6 +14,7 @@ import {
 import { eq, and, desc, asc } from "drizzle-orm";
 import { cannabisApplicationAnswersSchema } from "@workspace/cannabis-application";
 import { fillAcord130, fillTreanSupp, fillAxelCannabisApplication } from "../services/applicationPdfService";
+import { findOrCreateAccount } from "../lib/accounts";
 
 const router: IRouter = Router();
 
@@ -217,10 +218,29 @@ router.post("/submit-for-approval", async (req, res) => {
 
   const referenceCode = `DL-${Date.now().toString(36).toUpperCase()}`;
 
+  // Every deal must belong to an account. Create one (or reuse a matching one)
+  // from the submission payload before inserting the deal.
+  const { account, created: accountCreated } = await findOrCreateAccount({
+    businessName,
+    fein,
+    state: businessState,
+    vertical,
+    entityType,
+    productType: coverageType,
+    annualPayroll: totalPayroll,
+    headcount: totalEmployees,
+    emod: experienceMod,
+    locations: workforceProfile?.locations ?? null,
+    primaryContact: contactName,
+    contactEmail,
+    contactPhone,
+  });
+
   const [deal] = await db
     .insert(dealsTable)
     .values({
       referenceCode,
+      accountId: account.id,
       businessName: businessName || "Unnamed Business",
       vertical: vertical || "Cannabis",
       productType: coverageType || "Workers' Compensation",
@@ -367,6 +387,16 @@ router.post("/submit-for-approval", async (req, res) => {
       loss_history_included: lossHistoryCount > 0,
       cannabis_application_persisted: !!parsedCannabisAnswers,
     },
+  });
+
+  await db.insert(activityLogTable).values({
+    entityType: "account",
+    entityId: account.id,
+    eventType: accountCreated ? "account_created" : "deal_linked",
+    description: accountCreated
+      ? `Account created from submission "${businessName || "Unnamed Business"}".`
+      : `New submission "${businessName || "Unnamed Business"}" linked to this account.`,
+    metadata: { deal_id: deal.id, reference_code: referenceCode },
   });
 
   res.json({

@@ -6,11 +6,21 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./account";
+export * from "./accountInput";
 export * from "./authResponse";
 export * from "./authUser";
+export * from "./convertLeadRequest";
+export * from "./convertLeadResult";
+export * from "./deletedResponse";
 export * from "./errorResponse";
 export * from "./forgotPasswordRequest";
+export * from "./getAccountsParams";
+export * from "./getAccountsTab";
+export * from "./getLeadsParams";
 export * from "./healthStatus";
+export * from "./lead";
+export * from "./leadInput";
 export * from "./loginRequest";
 export * from "./okResponse";
 export * from "./partyRole";

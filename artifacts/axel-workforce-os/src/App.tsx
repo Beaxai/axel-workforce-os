@@ -242,13 +242,22 @@ function App() {
 
             <Route
               element={
-                <ProtectedRoute allowedRoles={["ADMIN", "CSA"]}>
+                <ProtectedRoute allowedRoles={["ADMIN", "CSA", "UNDERWRITER", "AGENT"]}>
                   <AppShell />
                 </ProtectedRoute>
               }
             >
               <Route path="/accounts" element={<Accounts />} />
               <Route path="/accounts/:id" element={<AccountDetail />} />
+            </Route>
+
+            <Route
+              element={
+                <ProtectedRoute allowedRoles={["ADMIN", "CSA"]}>
+                  <AppShell />
+                </ProtectedRoute>
+              }
+            >
               <Route path="/implementations" element={<Implementations />} />
             </Route>
 

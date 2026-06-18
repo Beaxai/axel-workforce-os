@@ -16,6 +16,7 @@ import rateTablesRouter from "./rate-tables";
 import implementationRouter from "./implementation";
 import workforceRouter from "./workforce";
 import accountsRouter from "./accounts";
+import leadsRouter from "./leads";
 import partnersRouter from "./partners";
 import resourcesRouter from "./resources";
 import searchRouter from "./search";
@@ -72,6 +73,8 @@ router.use("/rate-tables", requireRoles("ADMIN"), rateTablesRouter);
 router.use("/implementation", requireRoles("ADMIN", "CSA"), implementationRouter);
 router.use("/workforce", requireRoles("ADMIN", "CSA", "AGENT"), workforceRouter);
 router.use("/accounts", requireRoles(...INTERNAL_SALES), accountsRouter);
+// Leads: ADMIN/CSA full, AGENT own-only (enforced inside). UNDERWRITER excluded.
+router.use("/leads", requireRoles("ADMIN", "CSA", "AGENT"), leadsRouter);
 router.use("/partners", requireRoles("ADMIN", "CSA", "PEO"), partnersRouter);
 router.use("/resources", requireRoles(), resourcesRouter); // any authenticated user
 router.use("/search", requireRoles(...INTERNAL_SALES), searchRouter);

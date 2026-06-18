@@ -1,8 +1,14 @@
 import { Router, type IRouter } from "express";
 import { db, dealsTable, insertDealSchema, quotesTable, contactsTable, notesTable, tasksTable, activityLogTable, insertActivityLogSchema, dealEmailAddressesTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
+import { z } from "zod/v4";
+import { findOrCreateAccount } from "../lib/accounts";
 
 const router: IRouter = Router();
+
+// account_id is NOT NULL in the DB; allow callers to omit it and we derive (or
+// create) the owning account from the deal payload.
+const createDealSchema = insertDealSchema.extend({ accountId: z.string().uuid().optional() });
 
 router.get("/", async (_req, res) => {
   const rows = await db.select().from(dealsTable).orderBy(desc(dealsTable.createdAt));
@@ -16,9 +22,24 @@ router.get("/:id", async (req, res) => {
 });
 
 router.post("/", async (req, res) => {
-  const parsed = insertDealSchema.safeParse(req.body);
+  const parsed = createDealSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues });
-  const [row] = await db.insert(dealsTable).values(parsed.data).returning();
+  let accountId = parsed.data.accountId;
+  if (!accountId) {
+    const { account } = await findOrCreateAccount({
+      businessName: parsed.data.businessName,
+      fein: parsed.data.fein,
+      state: parsed.data.state,
+      vertical: parsed.data.vertical,
+      entityType: parsed.data.entityType,
+      productType: parsed.data.productType,
+      annualPayroll: parsed.data.annualPayroll,
+      headcount: parsed.data.employeeCountFt,
+      emod: parsed.data.emod,
+    });
+    accountId = account.id;
+  }
+  const [row] = await db.insert(dealsTable).values({ ...parsed.data, accountId }).returning();
   res.status(201).json(row);
 });
 

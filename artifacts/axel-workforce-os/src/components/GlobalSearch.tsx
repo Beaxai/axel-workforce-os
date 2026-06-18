@@ -121,8 +121,8 @@ export default function GlobalSearch({ onClose }: { onClose: () => void }) {
                   key={a.id}
                   title={a.businessName}
                   subtitle={`${a.state || "—"} · ${a.vertical || "—"}`}
-                  badge={a.accountStatus}
-                  badgeColor={a.accountStatus === "Active Client" ? "green" : "yellow"}
+                  badge={a.clientStage}
+                  badgeColor={a.clientStage?.includes("Client") ? "green" : "yellow"}
                   isDark={isDark}
                   onClick={() => { onClose(); navigate(`/accounts/${a.id}`); }}
                 />

@@ -14,6 +14,10 @@ tags:
     description: Authentication operations
   - name: users
     description: User directory operations
+  - name: leads
+    description: Lead capture and conversion operations
+  - name: accounts
+    description: Account directory operations
 paths:
   /users:
     get:
@@ -158,6 +162,229 @@ paths:
                 $ref: "#/components/schemas/OkResponse"
         "400":
           description: Invalid or expired token
+  /leads:
+    get:
+      operationId: getLeads
+      tags: [leads]
+      summary: List leads
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of leads
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Lead"
+    post:
+      operationId: createLead
+      tags: [leads]
+      summary: Create a lead
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LeadInput"
+      responses:
+        "201":
+          description: Created lead
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lead"
+  /leads/{id}:
+    get:
+      operationId: getLead
+      tags: [leads]
+      summary: Get a lead
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Lead
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lead"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateLead
+      tags: [leads]
+      summary: Update a lead
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LeadInput"
+      responses:
+        "200":
+          description: Updated lead
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lead"
+    delete:
+      operationId: deleteLead
+      tags: [leads]
+      summary: Delete a lead
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeletedResponse"
+  /leads/{id}/convert:
+    post:
+      operationId: convertLead
+      tags: [leads]
+      summary: Convert a lead into an account
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConvertLeadRequest"
+      responses:
+        "201":
+          description: Converted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConvertLeadResult"
+        "200":
+          description: Already converted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConvertLeadResult"
+  /accounts:
+    get:
+      operationId: getAccounts
+      tags: [accounts]
+      summary: List accounts
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: stage
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: tab
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [prospects, clients]
+      responses:
+        "200":
+          description: List of accounts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Account"
+    post:
+      operationId: createAccount
+      tags: [accounts]
+      summary: Create an account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AccountInput"
+      responses:
+        "201":
+          description: Created account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Account"
+  /accounts/{id}:
+    get:
+      operationId: getAccount
+      tags: [accounts]
+      summary: Get an account
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Account"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateAccount
+      tags: [accounts]
+      summary: Update an account
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AccountInput"
+      responses:
+        "200":
+          description: Updated account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Account"
 components:
   schemas:
     HealthStatus:
@@ -300,3 +527,244 @@ components:
           type: string
       required:
         - error
+    DeletedResponse:
+      type: object
+      properties:
+        deleted:
+          type: boolean
+      required:
+        - deleted
+    Lead:
+      type: object
+      properties:
+        id:
+          type: string
+        companyName:
+          type: string
+        contactName:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        state:
+          type: string
+          nullable: true
+        vertical:
+          type: string
+          nullable: true
+        source:
+          type: string
+          nullable: true
+        sourceDetail:
+          type: string
+          nullable: true
+        status:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        assignedTo:
+          type: string
+          nullable: true
+        convertedAccountId:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          nullable: true
+        updatedAt:
+          type: string
+          nullable: true
+      required:
+        - id
+        - companyName
+    LeadInput:
+      type: object
+      properties:
+        companyName:
+          type: string
+        contactName:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        state:
+          type: string
+          nullable: true
+        vertical:
+          type: string
+          nullable: true
+        source:
+          type: string
+          nullable: true
+        sourceDetail:
+          type: string
+          nullable: true
+        status:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        assignedTo:
+          type: string
+          nullable: true
+      required:
+        - companyName
+    Account:
+      type: object
+      properties:
+        id:
+          type: string
+        businessName:
+          type: string
+        legalName:
+          type: string
+          nullable: true
+        dba:
+          type: string
+          nullable: true
+        fein:
+          type: string
+          nullable: true
+        entityType:
+          type: string
+          nullable: true
+        naics:
+          type: string
+          nullable: true
+        vertical:
+          type: string
+          nullable: true
+        state:
+          type: string
+          nullable: true
+        productType:
+          type: string
+          nullable: true
+        annualPayroll:
+          type: string
+          nullable: true
+        headcount:
+          type: integer
+          nullable: true
+        emod:
+          type: string
+          nullable: true
+        classCodes:
+          type: array
+          nullable: true
+          items: {}
+        locations:
+          type: array
+          nullable: true
+          items: {}
+        clientStage:
+          type: string
+          nullable: true
+        primaryContact:
+          type: string
+          nullable: true
+        contactEmail:
+          type: string
+          nullable: true
+        contactPhone:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        assignedCsa:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          nullable: true
+        updatedAt:
+          type: string
+          nullable: true
+      required:
+        - id
+        - businessName
+    AccountInput:
+      type: object
+      properties:
+        businessName:
+          type: string
+        legalName:
+          type: string
+          nullable: true
+        dba:
+          type: string
+          nullable: true
+        fein:
+          type: string
+          nullable: true
+        entityType:
+          type: string
+          nullable: true
+        naics:
+          type: string
+          nullable: true
+        vertical:
+          type: string
+          nullable: true
+        state:
+          type: string
+          nullable: true
+        productType:
+          type: string
+          nullable: true
+        annualPayroll:
+          type: string
+          nullable: true
+        headcount:
+          type: integer
+          nullable: true
+        emod:
+          type: string
+          nullable: true
+        clientStage:
+          type: string
+          nullable: true
+        primaryContact:
+          type: string
+          nullable: true
+        contactEmail:
+          type: string
+          nullable: true
+        contactPhone:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+      required:
+        - businessName
+    ConvertLeadRequest:
+      type: object
+      properties:
+        startSubmission:
+          type: boolean
+    ConvertLeadResult:
+      type: object
+      properties:
+        account:
+          $ref: "#/components/schemas/Account"
+        created:
+          type: boolean
+        alreadyConverted:
+          type: boolean
+        startSubmission:
+          type: boolean
+      required:
+        - account
