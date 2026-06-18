@@ -9,6 +9,7 @@ Axel Workforce OS is a full-stack workforce management platform designed to opti
 I prefer detailed explanations.
 I want iterative development.
 Ask before making major changes.
+When I ask for a report, give it to me directly in chat inside a single copy-friendly Markdown code block (do not build in-app report pages).
 
 ## System Architecture
 
