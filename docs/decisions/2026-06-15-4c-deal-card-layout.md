@@ -52,11 +52,20 @@ Side-by-side mockup of B and C in the real Axel brand: `docs/mockups/4c-deal-car
 
 ---
 
-## Resolution — 2026-06-22
+## Resolution — 2026-06-22 (SUPERSEDED same day — see Override)
 
-**Chosen: B (§8 as written).** Build the spec-literal layout — six submission sections as
-completeness buttons in the right rail, WC/WFS pricing promoted into the KPI strip, Approve/Decline
-as header actions. **No State Document change required** (this is why B was the no-doc-change path).
-Decided by Brendan; explicitly accepting iteration later (the B↔C switch is front-end-only — no
-data/API/schema migration — so this is reversible at low cost). Build prompt:
-`docs/build-prompts/phase-4c-deal-card.md`.
+**Initially chosen: B (§8 as written)** — six section buttons in the right rail, pricing in the KPI
+strip, Approve/Decline as header actions; decided by Brendan as the no-doc-change path.
+
+## Override — 2026-06-22: build the Stitch design (Curtis)
+
+**Superseded by Curtis: build the deal card to his Stitch design** (`stitch-reference/`), which is
+neither B nor C as framed — it's a **collaboration-hub** layout: rail = **WC/WFS pricing + Approve/
+Decline**, the **six sections on a Submission tab**, an **Overview comms hub** (messages/RFI/AI), and a
+**6-phase macro tracker** in the header. §8's *functional* requirements are unchanged and move to the
+Submission tab. Two rulings: (1) the 6-phase tracker is **display-only**; the binding **10-stage
+pipeline (§11) is untouched**; (2) the hub is **UI now, AI/RFI logic deferred to P6**.
+
+This supersedes §8's "buttons in rail" wording — replacement §8 text drafted for Curtis in
+[`2026-06-22-4c-stitch-section8-update.md`](2026-06-22-4c-stitch-section8-update.md). Build prompt
+rewritten: `docs/build-prompts/phase-4c-deal-card.md`. Honors "apply Curtis's exact designs."

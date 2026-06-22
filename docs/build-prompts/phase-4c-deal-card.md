@@ -1,139 +1,142 @@
-# Phase 4C — Deal Card Submission Panel — Replit build prompt
+# Phase 4C — Deal Card "Collaboration Hub" (Stitch layout) — Replit build prompt
 
 > **How to use:** paste the kickoff into Replit/Claude Code; it points the agent at this file.
-> **This prompt is the State Document §8 work order, restated 1:1.** Execute in Replit (DB + secrets
-> live there).
+> Execute in Replit (DB + secrets live there).
 >
-> **Source of truth:** [`docs/STATE_DOCUMENT_v2.1.md`](../STATE_DOCUMENT_v2.1.md) **§8** — build exactly
-> that. The owner instructions are [`docs/PROJECT_INSTRUCTIONS.md`](../PROJECT_INSTRUCTIONS.md). Where
-> anything here differs from §8, **§8 wins.** §8's six-buttons-in-the-rail layout is "Option B" in the
-> earlier B/C discussion, chosen 2026-06-22 ([`2026-06-15-4c-deal-card-layout.md`](../decisions/2026-06-15-4c-deal-card-layout.md)).
+> **Owner decision (2026-06-22):** Curtis wants the deal card built to **his Stitch design**
+> (`docs/mockups/4c-deal-card/stitch-reference/` — `screen.png` + `code.html`). The Stitch **layout
+> supersedes §8's "six section buttons in the rail" wording**; **§8's functional requirements
+> (sections, completeness, editor overlays, re-rate, sync, roles, API) still hold** and move to the
+> **Submission tab**. The replacement §8 text for the State Document is drafted in
+> [`docs/decisions/2026-06-22-4c-stitch-section8-update.md`](../decisions/2026-06-22-4c-stitch-section8-update.md)
+> for Curtis to paste in — until he does, **this prompt + the Stitch are the build target.**
 >
-> **Dependencies (both landed):** Phase 3.5 auth + Phase 4A Accounts. 4C is **unblocked** and uses 4A's
-> real account-sync rules (not stubs).
+> **Source docs:** State Document [`§8`](../STATE_DOCUMENT_v2.1.md) (functional spec) + the Stitch
+> (layout). **Dependencies (landed):** Phase 3.5 auth + Phase 4A Accounts.
 
-## Guardrails (binding decisions — flag to Curtis before touching, do not redesign around)
+## Two owner rulings baked into this build (2026-06-22)
 
+1. **The 6-phase header tracker is a DISPLAY-ONLY macro lifecycle indicator.** It does **NOT** replace
+   the binding **10-stage pipeline** (§11), which stays exactly as-is in the Kanban. Map the deal's
+   real pipeline stage → one of the 6 macro phases for the header only.
+2. **The collaboration hub is UI-now, logic-later.** Build the hub layout, the **static activity/message
+   feed** (from the existing `activity_log`), and a working **composer** that posts a persisted
+   message/note. The **AI quote-variation engine** and **RFI blocking/countdown logic** are **deferred
+   to P6** — render them as static placeholders from data if present; do not build the live engines.
+
+## Guardrails (binding decisions — flag before touching, do not redesign around)
+
+- **Tokens only — re-skin the Stitch to the Axel brand.** The Stitch export uses `#E6007E` pink,
+  `#00C875` green, `#FFCB00` amber — **these are NOT the brand.** Use Axel tokens: `--accent-primary`
+  **#E91E8C** (interactive, gradient end), `--accent-support` **#7C3AED** (chips/secondary),
+  `--gradient-cta` **only** on the single primary CTA (the **Approve** button), canvas **#060608** dark
+  / **#f4f4f5** light, semantic green `#22c55e` / amber `#eab308` / red `#ef4444`. Inter body, Jost
+  all-caps subheads. **Two glass recipes only:** `glass-card` (blur 12) for hub cards; **`glass-panel`
+  (blur 40) for the section editor overlays.** No hardcoded accent hex outside the token files
+  (`src/index.css` + `src/lib/use-theme-colors.ts`, kept in sync). **Verify light AND dark.**
 - **Schema:** Replit PostgreSQL + Drizzle is permanent — **no Supabase**. Drizzle is source of truth;
-  apply changes via **explicit SQL DDL, not a blanket `drizzle-kit push`** (the `deals` drift hangs/risks
-  a TRUNCATE). The likely change is a narrow `deals.rating_stale boolean default false` `ALTER`.
-- **Auth (3.5) + Accounts (4A) are implemented.** Reuse `requireAuth` + per-route `requireRoles`
-  (`routes/index.ts`, `middleware/require-auth.ts`; roles in `org_members`) and the 4A account-sync +
-  activity-log helpers. Authorization in API middleware, not RLS.
-- **Rating engine is display/flag only here (binding #3):** WC = `(Payroll÷100)×ClassCodeRate×EMod×
-  ScheduleRating`, **$500 min**; PEO **10% bundled WC discount (WC component only)**; WFS PEPM =
-  `(annual payroll×2%)÷12`; **every calc stores `rating_breakdown` JSON**; most recent rate per
-  State+ClassCode, EffectiveDate never filters. 4C **flags** staleness and routes re-rate through the
-  existing quote flow — it does not change the math.
-- **Design = tokens only:** pink `#E91E8C` `--accent-primary` (all interactive), purple `#7C3AED`
-  `--accent-support` (chips/secondary), `--gradient-cta` only on a single CTA per view. Inter body /
-  Jost headings. **Two glass recipes only** — `glass-card` (blur 12) and `glass-panel` (blur 40); the
-  **section editor overlay is `glass-panel`/heavy-glass (blur 40)**. No hardcoded accent hex outside the
-  token files (`src/index.css` + `src/lib/use-theme-colors.ts`, kept in sync). Canvas `#060608` dark /
-  `#f4f4f5` light. **Verify BOTH light and dark** (Definition of Done).
-- **Stitch is a LAYOUT reference, not color or scope:** `docs/mockups/4c-deal-card/stitch-reference/`
-  (and the "Approach B" panel in `index.html`) inform structure/visual rhythm only. The Stitch export's
-  colors are generic Material blue/green — **re-skin to Axel tokens.** Where the Stitch diverges from
-  §8 (see "Out of scope" below), **§8 governs.**
-- **API changes** update `lib/api-spec/openapi.yaml` → regenerate **Orval hooks + Zod**; never hand-edit
+  apply changes via **explicit SQL DDL, not a blanket `drizzle-kit push`** (the `deals` drift hangs).
+  Likely change: a narrow `deals.rating_stale boolean default false` `ALTER`.
+- **Auth (3.5) + Accounts (4A) implemented.** Reuse `requireAuth` + per-route `requireRoles` and the 4A
+  account-sync + activity-log helpers. Authorization in API middleware, not RLS.
+- **Rating engine is display/flag only (binding #3):** 4C shows pricing from the stored
+  `rating_breakdown` and flags staleness; it does not change the math. Re-rate routes through the
+  existing quote flow.
+- **API changes** update `lib/api-spec/openapi.yaml` → regenerate **Orval/Zod**; never hand-edit
   `generated/`.
 - **Git:** commit to `awf-os-brendy-sprint-1` (or a sub-branch). **Never merge/PR to `main`.**
 - **Audit actual files, never agent memory.** Stack: React 19.1 + Vite + TS, Express 5, Drizzle.
 
 ---
 
-## §8 work order — build exactly this
+## Layout — build the Stitch, re-skinned (see `stitch-reference/screen.png` + `code.html`)
 
-> The deal card is the platform's communication hub and must hold ALL submission data, sectioned and
-> editable. Replaces the flat "Deal Details" rail. Runs after 4A (uses its account-sync rules).
+- **Left sub-nav:** Overview · Submission · Documents · Tasks · Quote · Policy (active item = pink).
+- **Header:** company name + badges (vertical, product/PEO, license, **Effective date**) + deal-team
+  avatars (reuse the 4B-less avatar/initials pattern; photos TODO).
+- **Macro lifecycle tracker** (band under header): 6 phases — **Submission Pending → Indication → U/W
+  Review → Approved/Declined → Binding → Implementation** — current phase in `--accent-primary`.
+  **Display-only; mapped from the real 10-stage pipeline (ruling #1). Do not alter the pipeline.**
+- **KPI strip (4 cards):** Locations · Employees · Annual Payroll · ExMod. (Payroll/headcount live here,
+  per §8 — removed from anywhere else.)
+- **Overview tab = Collaboration Hub:** day-grouped activity/message timeline (user messages in
+  `glass-card`, system/AI events, RFI cards), left timeline rail, and a **sticky composer** ("Type a
+  message or request…", attach + send). UI + static feed + working composer now; **AI/RFI logic → P6
+  (ruling #2).**
+- **Right rail:** **WC Pricing** (Total Est. Premium from `rating_breakdown` + Modify), **WFS Pricing**
+  (amount + per-employee + Modify), **Submission Actions** (**Approve** = the single `--gradient-cta`;
+  **Decline** = outline). Modify enters the existing quote/rate flow.
+- **Submission tab = the six §8 sections** (the Stitch doesn't draw this tab — build it from §8 below),
+  full-width, each with a completeness indicator; click opens the heavy-glass editor overlay.
 
-### 1. Right rail redesign
-- **Summary block (top):** business name, quote-type badge, state(s), requested effective date.
-  **Remove payroll/headcount from the rail — the KPI strip owns them.**
-- **Six section buttons**, each a **`glass-card` row** with icon, name, and completeness indicator:
-  - **Business Info** — legal name, DBA, FEIN, entity type, years in business, website, contacts
-  - **Locations** — addresses, states, premises, multi-location per the rating model
-  - **Workforce** — headcount + payroll by class code and state, EMod, class list
-  - **Operations** — description, NAICS, safety programs, question-set detail
-  - **Loss History** — prior carriers, periods, claims, loss-run docs
-  - **Coverage/Program** — quote type, effective/expiration, structure, PEO/ASO selections
-- Section fields **derive from the existing submission schema** (`submission_questions`/`answers` +
-  `lib/cannabis-application` canonical schema) — **every captured field maps to exactly one section;
-  no parallel field list.**
+## §8 functional core (unchanged — lives on the Submission tab + drives the rail/KPIs)
 
-### 2. Completeness
-- Per section: **complete / partial ("N missing") / not started**; required-field sets derive from the
-  submission question config **per product type and vertical**; aggregate **"Submission 4/6 complete"**
-  in the panel header; **computed server-side** in the deal payload.
+- **Six sections:** Business Info · Locations · Workforce · Operations · Loss History · Coverage/Program.
+  Fields **derive from the existing submission schema** (`submission_questions`/`answers` +
+  `lib/cannabis-application`) — every field maps to **exactly one** section; no parallel list.
+- **Completeness:** per section complete / partial ("N missing") / not started; required-field sets per
+  **product type + vertical**; aggregate in the panel header; **computed server-side** in the deal payload.
+- **Section editor overlays:** click → **heavy-glass overlay (`glass-panel`, blur 40)**, view + inline
+  **Edit**; **Zod validation** (FEIN format; class codes must exist in `wc_rates` for the state); saves
+  write to the **same records the rating engine + 4A account read** — single source of truth.
+- **Re-rate flag:** rating-relevant edits (payroll, headcount, class codes, EMod, state, locations) set
+  **`deals.rating_stale`**; persistent **"Rating inputs changed — re-rate required"** banner with a
+  Re-rate action; clears on successful re-rate; non-rating edits don't trigger it.
+- **Activity + sync:** every save logs a **field-level diff** to the activity feed (multi-field = one
+  expandable entry) and **syncs company-level fields to the linked account** (4A rules).
+- **Role-aware access (server-enforced):** ADMIN/CSA edit all; **UNDERWRITER view all, edit none**
+  (Request Info); AGENT edit all on **own** deals; **EMPLOYER** edit Business Info/Locations/Workforce/
+  Operations on own deal, **Loss History view-only**, internal notes never rendered; **CARRIER/PEO**
+  view-only. UI hides unusable affordances; the **server is the boundary**.
+- **API:** `GET` sectioned payload + completeness; `PATCH` per section with role + field validation.
+  **Approve/Decline** endpoints (new, see below). Update `openapi.yaml` → regenerate Orval/Zod. SQL DDL.
 
-### 3. Section editor overlays
-- Click opens a **heavy-glass overlay (blur 40px)**, view mode with inline **Edit**; **Zod validation
-  from the generated schemas**; saves write to the **SAME records the rating engine and account profile
-  read** — single source of truth.
-- **Re-rate flag:** rating-relevant changes (payroll, headcount, class codes, EMod, state, locations)
-  set **`rating_stale`** on the deal; persistent banner **"Rating inputs changed — re-rate required"**
-  with a **Re-rate** action into the quote flow; **clears on successful re-rate**; non-rating edits do
-  not trigger it.
-- Every save **logs to the activity feed** with user, section, field-level diff; multi-field saves log
-  **one expandable entry**; company-level edits **sync to the linked account** and its activity feed
-  (4A rules).
+## New scope vs §8 (from the Stitch, owner-approved — build these)
 
-### 4. Role-aware access (server-enforced)
-- **ADMIN/CSA** edit all; **UNDERWRITER** view all, **edit none** (uses "Request Info"); **AGENT** edit
-  all on **own** deals; **EMPLOYER** edit Business Info / Locations / Workforce / Operations on own deal,
-  **Loss History view-only**, internal notes never rendered; **CARRIER/PEO** view-only relevant sections.
-  UI hides unusable edit affordances; the **server is the enforcement boundary**.
+- **Submission Actions — Approve / Decline** (rail): **role-gated UNDERWRITER/ADMIN**; both **log to
+  activity**; **Approve** advances the deal **per the existing 10-stage pipeline rules** (does not
+  bypass them; pipeline stops at Bind Order — binding triggers implementation per binding #4); Decline
+  records a reason. AGENT/others → **403**.
+- **Rail pricing** (WC Total Est. Premium + WFS + per-employee): **display from the stored
+  `rating_breakdown`**; Modify enters the existing quote/rate flow. (This overrides the earlier "pricing
+  in KPI strip" idea — pricing lives in the rail per the Stitch.)
+- **6-phase macro tracker** + **Collaboration Hub UI** + **composer** — per the two rulings above.
 
-### 5. API + codegen
-- **GET** sectioned submission payload + completeness. **PATCH per section** with role + field-level
-  validation (**FEIN format; class codes must exist in `wc_rates` for the state**). Update
-  `lib/api-spec/openapi.yaml` → regenerate **Orval/Zod**. Apply schema via **SQL DDL**.
+## Acceptance tests — all must pass (report pass/fail each)
 
----
-
-## Acceptance tests — §8's set; all must pass (report pass/fail each)
-
-1. **No orphaned submission fields** vs the product-type/vertical question set (every field maps to one
-   section).
-2. **Payroll edit** → KPI updates + **stale banner appears** + activity diff logged + **account synced**
-   + banner **clears after re-rate**.
+1. **No orphaned submission fields** vs the product-type/vertical question set (every field → one section).
+2. **Payroll edit** → KPI updates + **stale banner** + activity diff + **account synced** + banner
+   **clears after re-rate**.
 3. **Non-rating edit** → **no** stale banner.
-4. **Completeness states** correct per section + correct aggregate (server-computed).
-5. **UNDERWRITER `PATCH`** to any section → **403**.
-6. **EMPLOYER** section permissions enforced server-side (Loss History view-only; internal notes never
-   rendered).
-7. **Heavy-glass overlay + tokens only**, verified in **light AND dark**; **`pnpm typecheck` zero
-   errors** — report two ways (`scripts/typecheck-baseline.sh` 0/0 **and** `pnpm typecheck` exit 0); do
-   not "fix" unrelated pre-existing errors as part of this phase.
-8. _(Added regression — not §8, keep it:)_ the deal card still opens from the **pipeline** and from the
-   **4A account detail**, with the new rail rendering.
+4. **Completeness states** + aggregate correct, **server-computed**.
+5. **UNDERWRITER `PATCH`** to any section → **403**; **AGENT** calling **Approve/Decline** → **403**.
+6. **EMPLOYER** section permissions enforced (Loss History view-only; internal notes never rendered).
+7. **Approve** advances the deal per the 10-stage pipeline and logs; **Decline** records a reason + logs.
+8. **Macro tracker is display-only:** the deal's header phase reflects its real pipeline stage, and the
+   **pipeline Kanban still has all 10 stages** (binding §11 intact — verify nothing repointed it to 6).
+9. **Collaboration Hub:** activity feed renders from `activity_log`; the **composer posts a persisted
+   message**; **AI quote-variation + RFI are static placeholders** (no live engine) — confirm deferred.
+10. **Layout matches the Stitch, re-skinned to Axel tokens** (left nav, header, macro tracker, KPI strip,
+    Overview hub, rail pricing + Approve/Decline; the **Submission tab renders the six sections** with
+    completeness and a heavy-glass editor overlay).
+11. **Tokens only, verified light AND dark**; **`pnpm typecheck` zero errors** — report two ways
+    (`scripts/typecheck-baseline.sh` 0/0 **and** `pnpm typecheck` exit 0); don't touch pre-existing errors.
+12. **Regression:** the deal card still opens from the **pipeline** and the **4A account detail**.
 
----
+## Engineering notes (engineer's call, not owner-specified)
 
-## Out of scope for 4C (NOT in §8 — do not build; the Stitch shows some of these)
-
-§8 redesigns the **right rail + section editing only**. The Stitch mockup additionally shows items that
-**§8 does not include** — leave them alone in 4C:
-
-- **Approve / Decline actions** — not in §8. Do not add or relocate them; leave any existing card
-  behavior as-is.
-- **WC/WFS premium pricing placement** — §8 moves only **payroll/headcount** to the KPI strip. Do **not**
-  relocate or restyle premium pricing as part of 4C.
-- **Communication hub — RFI workflow, AI quote-variation engine, AI composer** — the "communication hub"
-  is framing; the actual RFI/AI features are **deferred to P6**. Do not build them now.
-- **Header stage tracker** — §8 doesn't touch the header. Do **NOT** introduce the Stitch's 6-macro-phase
-  tracker; the pipeline is **binding at 10 stages** (§11). If a header lifecycle indicator is ever wanted,
-  it's a separate binding decision for Curtis — flag, don't build.
-
-## Engineering notes (recommended, not §8 — engineer's call)
-
-- `DealCardModal.tsx` is large (~1,879 lines); splitting it while implementing §8 (e.g. shell / rail /
-  section-overlay / re-rate-banner) keeps each unit testable. Container stays the existing modal
-  (`openDealCard` / `GlobalDealCardHost`) so 4A's open path is preserved.
+- `DealCardModal.tsx` is large (~1,879 lines). Split it while building (shell / sub-nav / macro-tracker /
+  KPI strip / OverviewHub / SubmissionTab / SectionEditorOverlay / ReRateBanner / PricingRail /
+  SubmissionActions). Container stays the existing modal (`openDealCard`/`GlobalDealCardHost`) so 4A's
+  open path is preserved.
 
 ## Report back to Curtis (`docs/build-prompts/phase-4c-report.md`)
 
-- Pass/fail per §8 acceptance test; **typecheck two ways**; light + dark screenshots (in chat, **not**
-  committed) of the rail, a section editor overlay, and the stale/re-rate banner.
-- Schema added (and that it went via SQL DDL); new/changed API surface (OpenAPI/Orval/Zod regenerated).
-- Confirm the **out-of-scope** items were left untouched. Flag anything that touched a binding decision.
+- Pass/fail per acceptance test; **typecheck two ways**; light + dark screenshots (in chat, **not**
+  committed) of the Overview hub, the Submission tab + a section editor overlay, the rail, and the
+  stale/re-rate banner.
+- Confirm: macro tracker is display-only and the 10-stage pipeline is untouched; AI/RFI are deferred
+  (UI-only); pricing + Approve/Decline live in the rail.
+- Schema added (SQL DDL) + new API surface (OpenAPI/Orval/Zod regenerated). Flag any binding-decision touch.
+- Note for Curtis: paste the updated §8 text (`2026-06-22-4c-stitch-section8-update.md`) into the State
+  Document so the doc matches the build.
