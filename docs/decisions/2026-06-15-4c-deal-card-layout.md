@@ -48,4 +48,15 @@ Side-by-side mockup of B and C in the real Axel brand: `docs/mockups/4c-deal-car
 ## Decision
 
 - [ ] **Approve C** — I'll send you the exact replacement text for §8 to drop into the State Document, then it's locked.
-- [ ] **Keep B (§8 as written)** — I'll build the spec-literal version; no doc change needed.
+- [x] **Keep B (§8 as written)** — I'll build the spec-literal version; no doc change needed.
+
+---
+
+## Resolution — 2026-06-22
+
+**Chosen: B (§8 as written).** Build the spec-literal layout — six submission sections as
+completeness buttons in the right rail, WC/WFS pricing promoted into the KPI strip, Approve/Decline
+as header actions. **No State Document change required** (this is why B was the no-doc-change path).
+Decided by Brendan; explicitly accepting iteration later (the B↔C switch is front-end-only — no
+data/API/schema migration — so this is reversible at low cost). Build prompt:
+`docs/build-prompts/phase-4c-deal-card.md`.
