@@ -1,6 +1,11 @@
 # Codebase Intake: Axel Workforce OS
 _Intake date: 2026-06-15 · Reviewer: Brendan Skrocki · Branch/commit: awf-os-brendy-sprint-1 @ c4ff52a · Built with: Replit (PNPM_WORKSPACE stack)_
 
+> **Snapshot only — not a truth document.** The authoritative sources for this build are the **State
+> Document v2.1** and **Curtis's engineering instructions** (see `CLAUDE.md` → Source of truth). This
+> intake is a point-in-time code map to support decisions; where it conflicts with those documents,
+> the documents win.
+
 > **Scope:** Whole repo. This intake describes the **real, synced codebase** as of commit
 > `c4ff52a` — the documented build that previously lived only in the Replit workspace and was
 > pulled into Git on 2026-06-15 (247 commits, fast-forward from the old `2f8801e` scaffold). A

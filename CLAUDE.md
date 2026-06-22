@@ -4,13 +4,27 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Source of truth
 
-The **Axel Workforce OS Project State Document** (v2.1, owned by Curtis Prince / Beax.ai, handed to
-Brendan the lead engineer) is the single source of truth for platform state, binding architecture
-decisions, the design token system, and the queued phase work orders. Read it before any technical
-work. If it isn't in that doc, it didn't happen. Chat history is not shared between accounts — the
-doc is the only durable shared memory. The binding decisions below are distilled from it; the doc
-itself governs when they conflict. (The doc is **not** checked into this repo — request it if you
-need to diff against it.)
+**Two documents govern this build, and they are the only authoritative truth:**
+
+1. The **Axel Workforce OS Project State Document** (v2.1, owned by Curtis Prince / Beax.ai) — platform
+   state, binding architecture decisions, the design token system, and the queued phase work orders.
+2. **Curtis's engineering instructions to Brendan** (`Brendan_Claude_Project_Instructions`) — how this
+   build is to be run.
+
+Read them before any technical work. **If it isn't in those documents, it didn't happen.** Chat history
+is not shared between accounts — these docs are the only durable shared memory. Both are **owner
+documents**; where anything conflicts with them, **they win.** (Neither is checked into this repo —
+request them if you need to diff against them. Getting the State Document into `docs/` is an open item
+in `docs/decisions/revisit-log.md`.)
+
+> **Authority hierarchy (do not invert):** State Document + Curtis's instructions **govern** →
+> everything else in this repo is a *subordinate convenience snapshot* that exists only to help make
+> sound decisions faster: this `CLAUDE.md`, `INTAKE.md`, the `/adopt` dev-command scaffolding, the
+> `.agents/memory/` and cross-session memory notes, and any reconstructed acceptance tests. These may
+> drift; when they disagree with the two truth documents, the documents are correct and the local copy
+> is wrong. The binding decisions below are **distilled from** the State Document for convenience — the
+> doc itself governs when they conflict. The `/adopt` system is a helper, never an authority; it does
+> not override, reinterpret, or gate the owner's documents.
 
 > ✅ **As of 2026-06-15 the documented build is synced into Git** (commit `c4ff52a` on
 > `awf-os-brendy-sprint-1` — 247 commits fast-forwarded over the old 3-commit scaffold). The real
