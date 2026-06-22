@@ -1,27 +1,30 @@
 # Phase 4C — Replit kickoff (paste this into Replit)
 
-> Copy everything in the block below into Replit/Claude Code to start the Phase 4C build. It points
-> the agent at the full build prompt (`phase-4c-deal-card.md`) and restates the hard rules. Everything
-> referenced is already on `origin/awf-os-brendy-sprint-1`.
+> Copy the block below into Replit/Claude Code to start the Phase 4C build. It points the agent at the
+> full build prompt (`phase-4c-deal-card.md`), which is State Document §8 restated 1:1. Everything
+> referenced is already on `origin/awf-os-brendy-sprint-1` — pull first.
 
 ---
 
 Phase 4C — Deal Card Submission Panel. Build mode, on branch `awf-os-brendy-sprint-1` — never commit, merge, or PR to `main`.
 
-Read and follow `docs/build-prompts/phase-4c-deal-card.md` in full. Its source of truth for behavior is `docs/superpowers/specs/2026-06-15-4c-deal-card-design.md` — where the two disagree, the spec governs, except the layout, which is locked to Approach B.
+Read and follow `docs/build-prompts/phase-4c-deal-card.md` in full. It restates State Document §8 (`docs/STATE_DOCUMENT_v2.1.md` → Section 8) 1:1 — §8 is the source of truth; where anything disagrees, §8 wins.
 
-Before writing code, audit the actual files on this branch (don't trust memory or docs for exact figures). Then build the deal card per the prompt. Non-negotiables:
+Audit the actual files on this branch before writing code. Build exactly §8:
 
-- Layout = Approach B only: six submission sections as completeness buttons in the right rail; WC + WFS pricing in the KPI strip; Approve/Decline as header actions. No "Submission" sub-nav tab.
-- Comms is static in 4C: Overview = read-only activity feed + manual notes. Do NOT build RFIs, AI quote-variation, or the AI composer — those are deferred to P6.
-- Completeness is computed server-side; the client only renders it.
-- Roles are server-enforced: ADMIN/CSA edit all; UNDERWRITER edits none (PATCH → 403); AGENT edits own deals; EMPLOYER edits a subset (Loss History view-only); Approve/Decline = UNDERWRITER/ADMIN only.
-- Split the ~1,879-line `DealCardModal` into the components listed in the prompt.
-- Schema via explicit SQL DDL, not a blanket `drizzle-kit push` (the `deals` drift hangs). The likely change is a narrow `deals.rating_stale` boolean.
-- API changes: update `lib/api-spec/openapi.yaml` → regenerate Orval hooks + Zod. Never hand-edit anything under `generated/`.
-- Design: tokens only (pink primary / purple support / single `--gradient-cta`), Inter/Jost, the two glass recipes. Verify light AND dark.
-- One thing to STOP on: the header stage tracker is an unresolved binding decision (6 macro phases vs the real 10-stage pipeline). Build everything else; gate only the header stepper and ask Curtis before choosing.
+- Right rail: a summary block on top (business name, quote-type badge, state(s), effective date) + six section buttons as glass-card rows (Business Info, Locations, Workforce, Operations, Loss History, Coverage/Program), each with a completeness indicator. Remove payroll/headcount from the rail — the KPI strip owns them.
+- Section fields derive from the existing submission schema (submission_questions/answers + lib/cannabis-application) — every field maps to exactly one section; no parallel list.
+- Completeness (complete / N missing / not started + aggregate) is computed server-side.
+- Clicking a section opens a heavy-glass overlay (blur 40) with inline Edit and Zod validation; saves write to the same records the rating engine and the 4A account read.
+- Re-rate flag: rating-relevant edits (payroll, headcount, class codes, EMod, state, locations) set `rating_stale` on the deal and show a persistent "re-rate required" banner that clears after re-rate; non-rating edits don't.
+- Every save logs a field-level activity diff and syncs company-level fields to the linked account (4A rules).
+- Roles server-enforced: ADMIN/CSA edit all; UNDERWRITER edit none (PATCH → 403); AGENT edits own deals; EMPLOYER edits a subset (Loss History view-only); CARRIER/PEO view-only.
+- API: GET sectioned payload + completeness; PATCH per section with role + field validation (FEIN format, class code must exist in wc_rates for the state). Update openapi.yaml → regenerate Orval/Zod; never hand-edit generated/.
+- Schema via explicit SQL DDL, not a blanket drizzle-kit push (the likely change is a narrow deals.rating_stale boolean). No Supabase.
+- Design: tokens only (pink primary / purple support / single gradient CTA), Inter/Jost, the two glass recipes. Verify light AND dark.
 
-When done: run the 10 acceptance tests in the prompt and report pass/fail for each; run `pnpm typecheck` two ways (`scripts/typecheck-baseline.sh` 0/0 and `pnpm typecheck` exit 0); commit `docs/build-prompts/phase-4c-report.md` with the results; and push to `awf-os-brendy-sprint-1`. Put light + dark screenshots in chat — do not commit images.
+Do NOT build (not in §8 — the Stitch mockup shows some of these): Approve/Decline actions; relocating premium pricing; the comms hub / RFIs / AI quote-variation / AI composer (deferred to P6); the Stitch's 6-phase header tracker (pipeline is binding at 10 stages — flag to Curtis, don't build). The Stitch is a layout reference only — its blue/green colors are not the brand; re-skin to Axel tokens.
+
+When done: run §8's acceptance tests and report pass/fail each; run `pnpm typecheck` two ways (`scripts/typecheck-baseline.sh` 0/0 and `pnpm typecheck` exit 0); commit `docs/build-prompts/phase-4c-report.md`; push to `awf-os-brendy-sprint-1`. Screenshots (light + dark) in chat only — do not commit images.
 
 ---
