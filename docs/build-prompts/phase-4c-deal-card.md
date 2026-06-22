@@ -1,159 +1,204 @@
 # Phase 4C — Deal Card Submission Panel (Option B) — Replit build prompt
 
 > **How to use:** paste the kickoff into Replit/Claude Code; it points the agent at this file.
-> Implements State Document **§8**. Execute in Replit (DB + secrets live there). Phases 3.5 (auth)
-> and 4A (Accounts) are already landed, so role enforcement uses the existing `requireRoles` and the
-> linked-account sync uses the 4A `accounts`/activity plumbing.
+> Implements State Document **§8**. Execute in Replit (DB + secrets live there).
 >
-> **Layout decision is LOCKED to Option B** (spec-literal §8) — see
-> `docs/decisions/2026-06-15-4c-deal-card-layout.md`. Build B exactly; do **not** build the
-> Option C "Submission tab" variant. (B↔C is front-end-only and reversible later, so no need to
-> hedge — build B cleanly.)
+> **Source of truth for behavior:** [`docs/superpowers/specs/2026-06-15-4c-deal-card-design.md`](../superpowers/specs/2026-06-15-4c-deal-card-design.md).
+> Build **everything** in that spec, with the **Approach B** layout (the spec's documented fallback,
+> §2). This prompt restates the spec adapted to B and flags where B diverges from the C-authored
+> sections. **Where this prompt and the spec disagree, the spec governs** — except the layout, which
+> is locked to **B** per [`docs/decisions/2026-06-15-4c-deal-card-layout.md`](../decisions/2026-06-15-4c-deal-card-layout.md).
+>
+> **Dependencies (both landed):** Phase 3.5 auth (`3a58ada`) and Phase 4A Accounts. 4C is **unblocked** —
+> section→account sync uses the real 4A plumbing, not stubs.
 
 ## TL;DR
 
-Turn the deal card into the **submission + communication hub** per §8. In **Option B**:
+Turn the deal card into the submission hub per §8, **Approach B**:
 
-- The **six submission sections** live as **buttons with completeness indicators** in the deal card's
-  **right rail** (not a separate tab).
-- **WC + WFS pricing** is promoted into the **KPI strip** at the top of the card.
-- **Approve / Decline** are **header actions** (top-right of the card).
-- The center column is the **communication hub** (messages / RFI thread / AI-engine notices).
-- Editing a section, re-rating, approving, or declining **syncs to the linked account** (4A) and
-  **logs to the activity feed**; rating-input changes raise a **re-rate "stale" flag** on the quote.
+- **Right rail = the six submission sections as completeness *buttons*** (Business Info · Locations ·
+  Workforce · Operations · Loss History · Coverage/Program). Each button shows its completeness state;
+  clicking it opens that section's **heavy-glass editor overlay**.
+- **WC + WFS pricing** is promoted into the **KPI strip** (this is the B difference: in C it lived in
+  the rail).
+- **Approve / Decline** are **header actions** (the B difference: in C they lived in the rail).
+- **Overview = static activity/comms feed** (read-only system events + manual notes). **The AI
+  quote-variation engine, blocking RFIs with countdowns, and the AI composer are DEFERRED to P6**
+  (spec §2) — do **not** build them in 4C.
+- Section edits validate (Zod), **persist to the same records the rating engine + 4A account read**,
+  **sync company-level fields to the linked account**, **log a field-level diff to activity**, and —
+  for rating-relevant fields — **raise a re-rate stale flag**.
 
 ## Guardrails (binding decisions — do not revisit)
 
-- **Layout = Option B only.** Six sections as rail buttons + completeness; pricing in the KPI strip;
-  Approve/Decline in the header. No dedicated "Submission" left-nav tab.
-- **Auth is implemented (Phase 3.5).** Use the existing `requireAuth` + `requireRoles`
-  (`routes/index.ts`, `middleware/require-auth.ts`); roles live in `org_members`. Do not re-invent auth.
-- **Accounts/sync is implemented (Phase 4A).** Reuse the linked-account update + activity-log helpers;
-  do not create a parallel sync path. Deals already carry a non-null `account_id`.
-- **Schema:** Drizzle is source of truth; **apply changes via explicit SQL DDL, not a blanket
-  `drizzle-kit push`** (the `deals` drift hangs/risks a TRUNCATE — see
-  `.agents/memory/drizzle-push-blocked.md`). Most of 4C should need **no** schema change; if a
-  stale-flag column is added, do it as a narrow `ALTER`.
+- **Layout = Approach B only.** Sections = completeness buttons in the rail; pricing in the KPI strip;
+  Approve/Decline in the header. **No "Submission" sub-nav tab** (that's C). B↔C is front-end-only and
+  reversible later — build B cleanly, don't hedge.
+- **Comms scope is STATIC in 4C.** Overview = read-only activity feed + manual notes. RFI/AI/composer
+  → **P6**. Building them here is out of scope.
+- **Completeness is computed SERVER-SIDE** and returned in the deal payload; the client **renders**, it
+  does not compute required-field logic (spec §4). Required-field sets are keyed by **product type +
+  vertical**.
+- **Auth (3.5) + Accounts (4A) are implemented.** Reuse `requireAuth` + per-route `requireRoles`
+  (`routes/index.ts`, `middleware/require-auth.ts`; roles in `org_members`) and the 4A account-sync +
+  activity-log helpers. Do not re-invent either.
+- **Schema:** Drizzle is source of truth; apply changes via **explicit SQL DDL, not a blanket
+  `drizzle-kit push`** (the `deals` drift hangs/risks a TRUNCATE — `.agents/memory/drizzle-push-blocked.md`).
+  The likely change is a narrow `deals.rating_stale boolean default false` `ALTER` (spec §6).
 - **No Supabase** (deleted). Authorization in API middleware, not RLS.
-- **Rating engine (binding #3):** WC premium = `(Payroll ÷ 100) × ClassCodeRate × EMod ×
-  ScheduleRating`, **$500 min**; PEO deals get a **10% bundled WC discount on the WC component only**;
-  WFS PEPM = `(annual payroll × 2%) ÷ 12`. **Every calc stores a full `rating_breakdown` JSON.** Most
-  recent rate per State+ClassCode; `EffectiveDate` never filters. Do not alter these — 4C only
-  *displays* pricing and flags staleness; it does not change the math.
-- **Design system: tokens only** (pink `#E91E8C` primary / purple `#7C3AED` support / single
-  `--gradient-cta` on one CTA), Inter body / Jost all-caps subheads, the two glass recipes
-  (`.glass-card`, `.glass-panel`). No hardcoded accent hex outside token files. **Verify light AND dark.**
-- **API surface changes** update `lib/api-spec/openapi.yaml` → regenerate Orval hooks + Zod; never
-  hand-edit anything under `generated/`.
+- **Rating engine (binding #3) is display-only here.** WC premium = `(Payroll ÷ 100) × ClassCodeRate ×
+  EMod × ScheduleRating`, **$500 min**; PEO = **10% bundled WC discount on the WC component only**; WFS
+  PEPM = `(annual payroll × 2%) ÷ 12`; **every calc stores a full `rating_breakdown` JSON**; most recent
+  rate per State+ClassCode, `EffectiveDate` never filters. 4C **displays** pricing and **flags
+  staleness** — it does not change the math; re-rate routes through the existing quote flow.
+- **Design system: tokens only** — pink `#E91E8C` `--accent-primary` (interactive), purple `#7C3AED`
+  `--accent-support` (chips/secondary), `--gradient-cta` **only** on the single Approve CTA. Inter body /
+  Jost all-caps subheads. **Two glass recipes only** (`glass-card` blur 12 / `glass-panel` blur 40);
+  the section editor overlay is `glass-panel`. No hardcoded accent hex outside the token files
+  (`src/index.css` + `src/lib/use-theme-colors.ts`, kept in sync). **Verify light AND dark.**
+- **API changes** update `lib/api-spec/openapi.yaml` → regenerate **Orval hooks + Zod**; never
+  hand-edit `generated/`.
 - **Git:** commit to `awf-os-brendy-sprint-1` (or a sub-branch). **Never merge/PR to `main`.**
 - **Audit actual files, never memory.** Stack: React 19.1 + Vite + TS, Express 5, Drizzle.
 
-## 0. Current state (verify against code on this branch before building)
+## 0. Current state (verify against code before building)
 
-- **`DealCardModal.tsx`** is the existing deal viewer. It currently has tabs
-  `activity | quote | proposal | bind` (`TabKey`), a stage strip, and panels
-  (`ProposalPanel`, `BindStatusPanel`, etc.). 4C reshapes this card into the §8 hub.
-- **Submission sections are data-driven**, not hardcoded: `SubmissionFlow.tsx` loads questions from
-  the submission API and groups them by `q.section` (`uniqueSections`), with per-section
-  `validateSection` (required-field check) and a completed/active/locked step rail. **Reuse this
-  section + validation model** to compute each rail button's completeness — do not invent a second
-  source of truth for "what are the sections."
-- **The six sections** (per §8 / the 4C mockup): Business Info, Locations, Workforce, Operations,
-  Loss History, Coverage. Drive these from the actual submission question metadata, not a literal list.
-- **Pricing data** comes from the quote / `rating_breakdown` (WC) and the WFS PEPM calc; surface both
-  in the KPI strip.
-- **Reference mockup:** `docs/mockups/4c-deal-card/index.html` → **"Approach B"** (and the static
-  card in this repo). Match that arrangement in real tokens.
+- **`DealCardModal.tsx` is ~1,879 lines and MUST be split** as part of 4C (spec §10). It currently has
+  tabs `activity | quote | proposal | bind`, a stage strip, and panels (`ProposalPanel`,
+  `BindStatusPanel`, …). 4A opens deals via this modal (`openDealCard` / `GlobalDealCardHost`) — keep
+  that contract.
+- **Submission fields derive from the existing schema** (`submission_questions` / `submission_answers`
+  + the `@workspace/cannabis-application` canonical schema). Every captured field maps to **exactly
+  one** section — **no parallel field list**. `SubmissionFlow.tsx` groups questions by `q.section`;
+  reuse that section model, but move required-field/completeness computation **server-side**.
+- **Reference mockup:** `docs/mockups/4c-deal-card/index.html` → **"Approach B"**.
 
-## 1. Layout — Option B (build exactly this)
+## 1. Layout & IA — Approach B
 
-Reshape `DealCardModal` into the submission hub:
+- **Left sub-nav:** Overview · Documents · Tasks · Quote · Policy (active item = pink 2px left bar).
+  **No Submission tab.**
+- **Header:** company name + product/effective badges + the stage stepper (see the §15 open question on
+  6-macro vs 10-stage) + **Approve (`--gradient-cta`) / Decline** actions, role-gated.
+- **KPI strip (full width):** Locations · Employees · Annual Payroll · ExMod · **WC est. premium** ·
+  **WFS pricing** (+ per-employee). Pricing promoted here is the B difference.
+- **Right rail (persistent):** the **six sections as completeness buttons** — each shows name + status
+  (`complete` ✓ / `N missing` / `not started`) with the aggregate (`3 / 6`) in the rail header.
+  Clicking a button opens that section's editor overlay (§3). Required-field validation reflects the
+  **server-computed** completeness.
+- **Overview tab:** static activity/comms feed (system events + human notes), newest grouped by day.
 
-- **Header:** company name + product/vertical/effective badges on the left; **Approve** (gradient CTA)
-  and **Decline** (outline) on the right. Approve/Decline are **role-gated** (underwriter/admin) —
-  hide for roles that can't action.
-- **KPI strip:** Locations · Employees · Annual Payroll · **Est. Premium (WC)** · EMod. Premium cell
-  uses the pink-accented treatment (it is the promoted pricing). Include **WFS pricing** in the strip
-  or immediately beside WC premium.
-- **Left sub-nav:** Overview · Docs · Tasks · Quote · Policy (no "Submission" tab — that's Option C).
-- **Center column = communication hub:** message thread (UW ↔ agent), AI-engine notices
-  ("new quote variation — Compare"), **RFI items** with blocking/non-blocking state + progress, and a
-  composer ("Type a message…") with the single gradient send affordance.
-- **Right rail = the six submission sections as completeness buttons:** header `SUBMISSION  n / 6
-  complete`; each section a button showing its icon, name, and state (✓ complete green / "k missing"
-  amber / "Not started" gray). Clicking a button opens that section for editing (modal or inline
-  expander — keep editing usable; this is the known B trade-off). Required-field validation reuses the
-  `SubmissionFlow` `validateSection` logic.
+## 2. Component decomposition (spec §10, adapted to B)
 
-## 2. Functional requirements (§8)
+Split the modal into small, independently testable units:
 
-1. **Completeness:** `n / 6` and per-section state computed live from submission answers + required
-   fields. Editing a section updates its state and the rollup immediately.
-2. **Section editing:** open a section from its rail button, edit, save. Save **persists via the
-   submission API**, **syncs the linked account** where the field is a rating-environment field (4A),
-   and **logs to the deal activity feed**.
-3. **Re-rate stale flag:** when a rating input changes (payroll, class codes, EMod, locations, etc.),
-   mark the current quote **stale** and surface a visible "re-rate needed" indicator + a re-rate
-   action. Re-rating recomputes via the existing rating engine (no math changes) and clears the flag.
-   If persisting staleness needs a column, add `quotes.rating_stale boolean default false` via SQL DDL.
-4. **Pricing display:** WC est. premium (from `rating_breakdown`) and WFS pricing in the KPI strip;
-   keep them consistent with the stored breakdown (display only — do not recompute differently).
-5. **Approve / Decline:** underwriter/admin only; both **log to activity**; Approve advances the deal
-   per the existing stage model (do not bypass the pipeline rules — pipeline stops at Bind Order,
-   binding triggers implementation per binding #4). Decline records reason + logs.
-6. **Communication hub:** post/read messages and RFIs on the deal; persist + log; render newest-first.
-   (If a messages table doesn't yet exist, add a minimal one via SQL DDL or reuse the activity/notes
-   plumbing — keep it narrow and report what was chosen.)
-7. **Role-aware access:** server-enforced via `requireRoles`. AGENT sees only its own deals' cards and
-   **cannot** Approve/Decline; UNDERWRITER/ADMIN can action; EMPLOYER/CARRIER/PEO/VENDOR per existing
-   scoping. Hide unusable affordances in the UI but enforce on the server.
+- `DealCardShell` — sub-nav + header (badges, stage stepper, **Approve/Decline**) + **KPI strip with
+  WC/WFS pricing** + persistent right rail.
+- `OverviewTab` — static activity/comms feed (read-only + manual notes).
+- `SubmissionRail` — the six **section completeness buttons** + aggregate; opens `SectionEditorOverlay`.
+- `SectionEditorOverlay` — heavy `glass-panel` editor; view mode + inline Edit; Zod validation.
+- `ReRateBanner` — stale-flag banner + Re-rate action.
 
-## 3. API + codegen
+Structure so they can later lift into a `/deals/:id` route without a rewrite (§11 — container stays the
+existing modal for now; confirm with Brendan).
 
-- Add/extend endpoints for: section completeness/save (reuse submission routes where possible),
-  re-rate + stale flag, Approve/Decline, and deal messages/RFI. Update `lib/api-spec/openapi.yaml` →
-  regenerate **Orval hooks + Zod**. Apply any schema via **SQL DDL** (per guardrails). Do not hand-edit
-  `generated/`.
+## 3. Sections, completeness, editor, validation
 
-## 4. Acceptance tests — all must pass (report pass/fail each)
+- **Six sections:** Business Info · Locations · Workforce · Operations · Loss History · Coverage/Program.
+- **Completeness (server-side):** per section `complete` / `partial` ("N missing") / `not_started`,
+  plus aggregate; required-field sets keyed by **product type + vertical**; returned in the deal payload.
+- **Editor overlay:** click a section → `glass-panel` overlay, view mode with inline **Edit**.
+  **Field-level Zod validation using the generated schemas:** FEIN format; **class codes must exist in
+  `wc_rates` for the location's state**. Saves write to the **same records** the rating engine and the
+  4A account profile read — no shadow copies.
 
-> **Note:** these are reconstructed from §8 as described in the decision doc; the State Document v2.1
-> is not in the repo. Reconcile the exact §8 numbering against the doc when running, and report any
-> §8 item not covered here.
+## 4. Re-rate stale flag (spec §6)
 
-1. Opening a deal card shows the **six sections as rail buttons** with correct `n / 6` and per-section
-   state derived from real submission answers.
-2. **Pricing is in the KPI strip** (WC est. premium + WFS), values matching the stored
-   `rating_breakdown` for that quote.
-3. **Approve / Decline are header actions**, visible only to UNDERWRITER/ADMIN; an AGENT (and
-   EMPLOYER) cannot see/use them, and the server returns **403** if they call the endpoint directly.
-4. **Editing a section** persists, updates completeness live, **syncs the linked account** (4A) for
-   rating-environment fields, and **logs to the activity feed**.
-5. **Changing a rating input flags the quote stale**; re-rating recomputes via the existing engine,
-   stores a fresh `rating_breakdown`, and clears the flag.
-6. **Approve** advances the deal per the pipeline rules and logs; **Decline** records a reason and
-   logs. Neither bypasses the stage model.
-7. The **communication hub** posts and renders messages/RFIs on the deal, persisted and logged.
-8. **Design honored in light AND dark** (header, KPI strip, rail buttons, comms hub, a section
-   editor); **`pnpm typecheck` passes with zero errors** (`scripts/typecheck-baseline.sh` 0/0 and
-   `pnpm typecheck` exit 0). Report typecheck two ways; do not "fix" unrelated pre-existing errors as
-   part of this phase.
+- Rating-relevant edits — **payroll, headcount, class codes, EMod, state, locations** — set
+  **`deals.rating_stale = true`** (narrow SQL DDL `ALTER` if the column is absent).
+- Persistent **`ReRateBanner`**: "Rating inputs changed — re-rate required" + **Re-rate** action that
+  enters the existing quote flow; **clears on successful re-rate**.
+- **Non-rating edits** (website, contact name, …) do **not** set the flag.
 
-## 5. Files this phase touches
+## 5. Activity log + account sync (spec §7)
 
-- **Reshape** `artifacts/axel-workforce-os/src/components/DealCardModal.tsx` into the §8 hub
-  (header actions, KPI strip with pricing, comms-hub center, six-section rail).
-- **Reuse** `components/submission/SubmissionFlow.tsx` section + `validateSection` logic for
-  completeness; likely a small shared `useSubmissionSections(dealId)` helper.
-- **Extend** `routes/submission.ts` / `routes/quotes.ts` / `routes/deals.ts` for save, re-rate/stale,
-  approve/decline, messages. New narrow schema only if needed (`quotes.rating_stale`, a `deal_messages`
-  table) via SQL DDL, re-exported from `schema/index.ts`.
-- `lib/api-spec/openapi.yaml` + regenerated `generated/` (Orval + Zod).
+- Every save logs to the activity feed with **user, section, and field-level diff**; a multi-field save
+  logs **one expandable entry**.
+- **Company-level edits sync to the linked account** and its activity feed, per 4A rules.
 
-## 6. Report back to Curtis (`docs/build-prompts/phase-4c-report.md`)
+## 6. Role-aware access (server-enforced — spec §8)
 
-- Confirm **Option B** built as specified (rail buttons / KPI-strip pricing / header Approve-Decline).
+| Role | Section access |
+|------|----------------|
+| ADMIN / CSA | Edit all sections |
+| UNDERWRITER | **View all; edit none** (uses "Request Info") |
+| AGENT | Edit all sections on **own** deals |
+| EMPLOYER | Edit Business Info / Locations / Workforce / Operations on own deal; **Loss History view-only**; internal notes never rendered |
+| CARRIER / PEO | View-only on relevant sections |
+
+- **Approve / Decline** (the underwriting decision) are gated to **UNDERWRITER + ADMIN**; AGENT and
+  others cannot see or call them (server returns **403**). Confirm the exact Approve/Decline role set
+  against §8 if the doc specifies it.
+- UI hides unusable affordances, but the **server is the enforcement boundary** — no route ships
+  without explicit `allowedRoles`.
+
+## 7. API surface + codegen (spec §9)
+
+- `GET` deal submission payload: sectioned fields + **per-section + aggregate completeness**
+  (server-computed).
+- `PATCH` per section: role check + field-level validation (FEIN, class-code-in-`wc_rates`-for-state).
+- Approve / Decline endpoints (role-gated; log to activity; Approve advances the deal per the pipeline
+  rules — pipeline stops at Bind Order, binding triggers implementation per binding #4; Decline records
+  a reason).
+- Update `lib/api-spec/openapi.yaml` → regenerate **Orval hooks + Zod**. Apply schema via **SQL DDL**.
+
+## 8. Acceptance tests — all must pass (adapted from spec §14 for B; report pass/fail each)
+
+1. **No orphaned submission fields** vs the product-type/vertical question set (every field maps to one
+   section).
+2. **Payroll edit** → KPI updates + **stale banner appears** + activity diff logged + **account synced**
+   + banner **clears after re-rate**.
+3. **Non-rating edit** → **no** stale banner.
+4. **Completeness states** (complete / N missing / not started) correct per section; **aggregate**
+   correct; values come from the **server**.
+5. **UNDERWRITER `PATCH`** to any section → **403**.
+6. **EMPLOYER** section permissions enforced server-side (Loss History view-only; internal notes never
+   rendered).
+7. **(B layout)** The right rail shows the **six sections as completeness buttons** with correct states
+   + aggregate; clicking a button opens the **`glass-panel` section editor**; rail completeness updates
+   after an edit. **(No Submission tab.)**
+8. **(B layout)** **WC est. premium + WFS pricing render in the KPI strip**; **Approve/Decline are
+   header actions**, visible only to UNDERWRITER/ADMIN; an AGENT calling the endpoint gets **403**.
+9. **Design honored in light AND dark**; **`pnpm typecheck` passes with zero errors** (report two ways:
+   `scripts/typecheck-baseline.sh` 0/0 **and** `pnpm typecheck` exit 0). Do not "fix" unrelated
+   pre-existing errors as part of this phase.
+10. **Regression:** the deal card still opens from the **pipeline** and from the **4A account detail**.
+
+## 9. Design polish (must hold in the real build — spec §16)
+
+- **Label contrast (AA):** small metadata labels (stepper/KPI/rail) clear WCAG AA on `#060608` — floor
+  `rgba(255,255,255,0.55)`, ~10–11px.
+- **No color-only status:** "complete" uses a check glyph or text, not a bare green dot.
+- **Light mode** built + verified (half the Definition of Done).
+- Standardize radii to the system; use the two real glass recipes for inner cards; Jost for section
+  subheadings.
+- Consider **one semantic accent** for out-of-range risk values (e.g. ExMod > 1.10) — "color as state,"
+  within token rules.
+
+## 10. Open question to resolve with Curtis BEFORE building the header (binding-decision process)
+
+- **Header stage tracker (spec §15):** the Stitch reference shows a condensed **6 macro phases**
+  (Submission Pending → Indication → U/W Review → Approved/Declined → Binding → Implementation), but
+  binding decision / §11 defines the pipeline as **10 stages**. This **touches a binding decision** —
+  do **not** silently pick one. Decide with Curtis: (a) header = a macro lifecycle tracker *distinct*
+  from the 10-stage Kanban, or (b) header mirrors the real 10 stages. Build the rest of 4C while this is
+  pending; gate only the header stepper on the answer.
+
+## 11. Report back to Curtis (`docs/build-prompts/phase-4c-report.md`)
+
+- Confirm **Approach B** built as specified (rail = section buttons / KPI-strip pricing / header
+  Approve-Decline; **no comms RFI/AI** — deferred to P6; **completeness server-side**).
 - Pass/fail per acceptance test; **typecheck two ways**; light + dark screenshots (in chat, **not**
-  committed) of the card, a section editor, and the stale/re-rate state.
-- Any schema added (and that it went via SQL DDL); the messages/RFI storage choice.
-- New/changed API surface (OpenAPI/Orval/Zod regenerated). Flag anything that touched a binding decision.
+  committed) of the card, a section editor overlay, and the stale/re-rate banner.
+- Schema added (and that it went via SQL DDL); the `DealCardModal` decomposition as actually built.
+- New/changed API surface (OpenAPI/Orval/Zod regenerated).
+- **Header stage-tracker decision** (§10) as resolved, and anything else that touched a binding decision.
