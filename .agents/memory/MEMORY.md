@@ -1,3 +1,2 @@
-# Memory Index
-
-- [Express 5 route typing & noImplicitReturns](express5-typecheck.md) — TS2769/2345 = params are `string|string[]`, fix with `Request<{...}>`; TS7030 = add `return` to terminal res/next() in mixed-return handlers.
+- [Deal access control](deal-access-control.md) — external-party deal reads must fail closed; null-org deals are never visible to CARRIER/PEO/VENDOR.
+- [api-server dev workflow](api-server-dev-workflow.md) — restart the api-server workflow after any backend src edit or routes serve stale/404.

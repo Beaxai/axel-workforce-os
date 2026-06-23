@@ -19,9 +19,12 @@ import type {
 import type {
   Account,
   AccountInput,
+  ActivityFeedResponse,
   AuthResponse,
   ConvertLeadRequest,
   ConvertLeadResult,
+  DealSubmissionResponse,
+  DeclineRequest,
   DeletedResponse,
   ErrorResponse,
   ForgotPasswordRequest,
@@ -31,9 +34,15 @@ import type {
   Lead,
   LeadInput,
   LoginRequest,
+  MessageRequest,
+  MessageResponse,
   OkResponse,
+  RatingStaleClearedResponse,
   RegisterRequest,
   ResetPasswordRequest,
+  SectionPatchRequest,
+  SectionPatchResponse,
+  StageActionResponse,
   UserSummary,
 } from "./api.schemas";
 
@@ -1554,4 +1563,676 @@ export const useUpdateAccount = <
   TContext
 > => {
   return useMutation(getUpdateAccountMutationOptions(options));
+};
+
+/**
+ * @summary Sectioned submission fields + server-computed completeness
+ */
+export const getGetDealSubmissionUrl = (id: string) => {
+  return `/api/deal-card/${id}/submission`;
+};
+
+export const getDealSubmission = async (
+  id: string,
+  options?: RequestInit,
+): Promise<DealSubmissionResponse> => {
+  return customFetch<DealSubmissionResponse>(getGetDealSubmissionUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetDealSubmissionQueryKey = (id: string) => {
+  return [`/api/deal-card/${id}/submission`] as const;
+};
+
+export const getGetDealSubmissionQueryOptions = <
+  TData = Awaited<ReturnType<typeof getDealSubmission>>,
+  TError = ErrorType<void>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getDealSubmission>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetDealSubmissionQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getDealSubmission>>
+  > = ({ signal }) => getDealSubmission(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getDealSubmission>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetDealSubmissionQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getDealSubmission>>
+>;
+export type GetDealSubmissionQueryError = ErrorType<void>;
+
+/**
+ * @summary Sectioned submission fields + server-computed completeness
+ */
+
+export function useGetDealSubmission<
+  TData = Awaited<ReturnType<typeof getDealSubmission>>,
+  TError = ErrorType<void>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getDealSubmission>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetDealSubmissionQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Edit one submission section (role + field validation enforced)
+ */
+export const getPatchDealSectionUrl = (
+  id: string,
+  section:
+    | "business"
+    | "locations"
+    | "workforce"
+    | "operations"
+    | "loss"
+    | "coverage",
+) => {
+  return `/api/deal-card/${id}/submission/${section}`;
+};
+
+export const patchDealSection = async (
+  id: string,
+  section:
+    | "business"
+    | "locations"
+    | "workforce"
+    | "operations"
+    | "loss"
+    | "coverage",
+  sectionPatchRequest: SectionPatchRequest,
+  options?: RequestInit,
+): Promise<SectionPatchResponse> => {
+  return customFetch<SectionPatchResponse>(
+    getPatchDealSectionUrl(id, section),
+    {
+      ...options,
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(sectionPatchRequest),
+    },
+  );
+};
+
+export const getPatchDealSectionMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof patchDealSection>>,
+    TError,
+    {
+      id: string;
+      section:
+        | "business"
+        | "locations"
+        | "workforce"
+        | "operations"
+        | "loss"
+        | "coverage";
+      data: BodyType<SectionPatchRequest>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof patchDealSection>>,
+  TError,
+  {
+    id: string;
+    section:
+      | "business"
+      | "locations"
+      | "workforce"
+      | "operations"
+      | "loss"
+      | "coverage";
+    data: BodyType<SectionPatchRequest>;
+  },
+  TContext
+> => {
+  const mutationKey = ["patchDealSection"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof patchDealSection>>,
+    {
+      id: string;
+      section:
+        | "business"
+        | "locations"
+        | "workforce"
+        | "operations"
+        | "loss"
+        | "coverage";
+      data: BodyType<SectionPatchRequest>;
+    }
+  > = (props) => {
+    const { id, section, data } = props ?? {};
+
+    return patchDealSection(id, section, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PatchDealSectionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof patchDealSection>>
+>;
+export type PatchDealSectionMutationBody = BodyType<SectionPatchRequest>;
+export type PatchDealSectionMutationError = ErrorType<void>;
+
+/**
+ * @summary Edit one submission section (role + field validation enforced)
+ */
+export const usePatchDealSection = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof patchDealSection>>,
+    TError,
+    {
+      id: string;
+      section:
+        | "business"
+        | "locations"
+        | "workforce"
+        | "operations"
+        | "loss"
+        | "coverage";
+      data: BodyType<SectionPatchRequest>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof patchDealSection>>,
+  TError,
+  {
+    id: string;
+    section:
+      | "business"
+      | "locations"
+      | "workforce"
+      | "operations"
+      | "loss"
+      | "coverage";
+    data: BodyType<SectionPatchRequest>;
+  },
+  TContext
+> => {
+  return useMutation(getPatchDealSectionMutationOptions(options));
+};
+
+/**
+ * @summary Role-filtered collaboration feed
+ */
+export const getGetDealCardActivityUrl = (id: string) => {
+  return `/api/deal-card/${id}/activity`;
+};
+
+export const getDealCardActivity = async (
+  id: string,
+  options?: RequestInit,
+): Promise<ActivityFeedResponse> => {
+  return customFetch<ActivityFeedResponse>(getGetDealCardActivityUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetDealCardActivityQueryKey = (id: string) => {
+  return [`/api/deal-card/${id}/activity`] as const;
+};
+
+export const getGetDealCardActivityQueryOptions = <
+  TData = Awaited<ReturnType<typeof getDealCardActivity>>,
+  TError = ErrorType<unknown>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getDealCardActivity>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetDealCardActivityQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getDealCardActivity>>
+  > = ({ signal }) => getDealCardActivity(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getDealCardActivity>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetDealCardActivityQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getDealCardActivity>>
+>;
+export type GetDealCardActivityQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Role-filtered collaboration feed
+ */
+
+export function useGetDealCardActivity<
+  TData = Awaited<ReturnType<typeof getDealCardActivity>>,
+  TError = ErrorType<unknown>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getDealCardActivity>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetDealCardActivityQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Persist a composer message to the activity feed
+ */
+export const getPostDealCardMessageUrl = (id: string) => {
+  return `/api/deal-card/${id}/messages`;
+};
+
+export const postDealCardMessage = async (
+  id: string,
+  messageRequest: MessageRequest,
+  options?: RequestInit,
+): Promise<MessageResponse> => {
+  return customFetch<MessageResponse>(getPostDealCardMessageUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(messageRequest),
+  });
+};
+
+export const getPostDealCardMessageMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postDealCardMessage>>,
+    TError,
+    { id: string; data: BodyType<MessageRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof postDealCardMessage>>,
+  TError,
+  { id: string; data: BodyType<MessageRequest> },
+  TContext
+> => {
+  const mutationKey = ["postDealCardMessage"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof postDealCardMessage>>,
+    { id: string; data: BodyType<MessageRequest> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return postDealCardMessage(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PostDealCardMessageMutationResult = NonNullable<
+  Awaited<ReturnType<typeof postDealCardMessage>>
+>;
+export type PostDealCardMessageMutationBody = BodyType<MessageRequest>;
+export type PostDealCardMessageMutationError = ErrorType<void>;
+
+/**
+ * @summary Persist a composer message to the activity feed
+ */
+export const usePostDealCardMessage = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postDealCardMessage>>,
+    TError,
+    { id: string; data: BodyType<MessageRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof postDealCardMessage>>,
+  TError,
+  { id: string; data: BodyType<MessageRequest> },
+  TContext
+> => {
+  return useMutation(getPostDealCardMessageMutationOptions(options));
+};
+
+/**
+ * @summary Approve the submission (UNDERWRITER / ADMIN only)
+ */
+export const getApproveDealUrl = (id: string) => {
+  return `/api/deal-card/${id}/approve`;
+};
+
+export const approveDeal = async (
+  id: string,
+  options?: RequestInit,
+): Promise<StageActionResponse> => {
+  return customFetch<StageActionResponse>(getApproveDealUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getApproveDealMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof approveDeal>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof approveDeal>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["approveDeal"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof approveDeal>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return approveDeal(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ApproveDealMutationResult = NonNullable<
+  Awaited<ReturnType<typeof approveDeal>>
+>;
+
+export type ApproveDealMutationError = ErrorType<void>;
+
+/**
+ * @summary Approve the submission (UNDERWRITER / ADMIN only)
+ */
+export const useApproveDeal = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof approveDeal>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof approveDeal>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getApproveDealMutationOptions(options));
+};
+
+/**
+ * @summary Decline the submission (UNDERWRITER / ADMIN only)
+ */
+export const getDeclineDealUrl = (id: string) => {
+  return `/api/deal-card/${id}/decline`;
+};
+
+export const declineDeal = async (
+  id: string,
+  declineRequest: DeclineRequest,
+  options?: RequestInit,
+): Promise<StageActionResponse> => {
+  return customFetch<StageActionResponse>(getDeclineDealUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(declineRequest),
+  });
+};
+
+export const getDeclineDealMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof declineDeal>>,
+    TError,
+    { id: string; data: BodyType<DeclineRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof declineDeal>>,
+  TError,
+  { id: string; data: BodyType<DeclineRequest> },
+  TContext
+> => {
+  const mutationKey = ["declineDeal"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof declineDeal>>,
+    { id: string; data: BodyType<DeclineRequest> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return declineDeal(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeclineDealMutationResult = NonNullable<
+  Awaited<ReturnType<typeof declineDeal>>
+>;
+export type DeclineDealMutationBody = BodyType<DeclineRequest>;
+export type DeclineDealMutationError = ErrorType<void>;
+
+/**
+ * @summary Decline the submission (UNDERWRITER / ADMIN only)
+ */
+export const useDeclineDeal = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof declineDeal>>,
+    TError,
+    { id: string; data: BodyType<DeclineRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof declineDeal>>,
+  TError,
+  { id: string; data: BodyType<DeclineRequest> },
+  TContext
+> => {
+  return useMutation(getDeclineDealMutationOptions(options));
+};
+
+/**
+ * @summary Clear the rating-stale flag after a successful re-rate
+ */
+export const getClearRatingStaleUrl = (id: string) => {
+  return `/api/deal-card/${id}/clear-rating-stale`;
+};
+
+export const clearRatingStale = async (
+  id: string,
+  options?: RequestInit,
+): Promise<RatingStaleClearedResponse> => {
+  return customFetch<RatingStaleClearedResponse>(getClearRatingStaleUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getClearRatingStaleMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof clearRatingStale>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof clearRatingStale>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["clearRatingStale"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof clearRatingStale>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return clearRatingStale(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ClearRatingStaleMutationResult = NonNullable<
+  Awaited<ReturnType<typeof clearRatingStale>>
+>;
+
+export type ClearRatingStaleMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Clear the rating-stale flag after a successful re-rate
+ */
+export const useClearRatingStale = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof clearRatingStale>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof clearRatingStale>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getClearRatingStaleMutationOptions(options));
 };

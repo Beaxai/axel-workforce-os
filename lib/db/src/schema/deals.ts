@@ -53,6 +53,7 @@ export const dealsTable = pgTable("deals", {
   bindStatus: text("bind_status").default("not_started"),
   boundAt: timestamp("bound_at", { withTimezone: true }),
   signedDocumentsPath: text("signed_documents_path"),
+  ratingStale: boolean("rating_stale").default(false),
 });
 
 export const insertDealSchema = createInsertSchema(dealsTable).omit({ id: true, createdAt: true });

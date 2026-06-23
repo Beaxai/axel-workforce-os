@@ -5,6 +5,141 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export type SubmissionFieldType =
+  (typeof SubmissionFieldType)[keyof typeof SubmissionFieldType];
+
+export const SubmissionFieldType = {
+  text: "text",
+  number: "number",
+  date: "date",
+  boolean: "boolean",
+  array: "array",
+} as const;
+
+export interface SubmissionField {
+  key: string;
+  label: string;
+  type: SubmissionFieldType;
+  value?: unknown | null;
+  required: boolean;
+  ratingRelevant: boolean;
+  readOnly: boolean;
+}
+
+export type SubmissionSectionKey =
+  (typeof SubmissionSectionKey)[keyof typeof SubmissionSectionKey];
+
+export const SubmissionSectionKey = {
+  business: "business",
+  locations: "locations",
+  workforce: "workforce",
+  operations: "operations",
+  loss: "loss",
+  coverage: "coverage",
+} as const;
+
+export type SubmissionSectionStatus =
+  (typeof SubmissionSectionStatus)[keyof typeof SubmissionSectionStatus];
+
+export const SubmissionSectionStatus = {
+  complete: "complete",
+  partial: "partial",
+  not_started: "not_started",
+} as const;
+
+export interface SubmissionSection {
+  key: SubmissionSectionKey;
+  label: string;
+  icon: string;
+  status: SubmissionSectionStatus;
+  missing: number;
+  fields: SubmissionField[];
+}
+
+export type DealSubmissionResponseDeal = { [key: string]: unknown };
+
+export type DealSubmissionResponseAccount = { [key: string]: unknown } | null;
+
+export type DealSubmissionResponseAccess = { [key: string]: boolean };
+
+export interface DealSubmissionResponse {
+  deal: DealSubmissionResponseDeal;
+  account?: DealSubmissionResponseAccount;
+  sections: SubmissionSection[];
+  aggregateComplete: number;
+  total: number;
+  access: DealSubmissionResponseAccess;
+  canApprove: boolean;
+}
+
+export type SectionPatchRequestFields = { [key: string]: unknown };
+
+export interface SectionPatchRequest {
+  fields: SectionPatchRequestFields;
+}
+
+export interface SectionDiff {
+  field: string;
+  label: string;
+  from?: unknown | null;
+  to?: unknown | null;
+}
+
+export type SectionPatchResponseDeal = { [key: string]: unknown };
+
+export interface SectionPatchResponse {
+  success: boolean;
+  changed?: boolean;
+  ratingStale?: boolean | null;
+  diffs?: SectionDiff[];
+  sections?: SubmissionSection[];
+  aggregateComplete?: number;
+  total?: number;
+  deal?: SectionPatchResponseDeal;
+}
+
+export type ActivityEntryMetadata = { [key: string]: unknown } | null;
+
+export interface ActivityEntry {
+  id: string;
+  dealId?: string | null;
+  entityType: string;
+  entityId: string;
+  eventType: string;
+  description: string;
+  metadata?: ActivityEntryMetadata;
+  createdBy?: string | null;
+  createdAt?: string | null;
+}
+
+export interface ActivityFeedResponse {
+  activity: ActivityEntry[];
+}
+
+export interface MessageRequest {
+  message: string;
+  internal?: boolean;
+}
+
+export interface MessageResponse {
+  success: boolean;
+  entry: ActivityEntry;
+}
+
+export interface DeclineRequest {
+  reason: string;
+}
+
+export interface StageActionResponse {
+  success: boolean;
+  stage: string;
+}
+
+export interface RatingStaleClearedResponse {
+  success: boolean;
+  ratingStale: boolean;
+}
+
 export interface HealthStatus {
   status: string;
 }

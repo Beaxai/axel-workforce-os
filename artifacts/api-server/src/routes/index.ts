@@ -29,6 +29,7 @@ import signaturesRouter from "./signatures";
 import documentsRouter from "./documents";
 import appetiteRouter from "./appetite";
 import aiRouter from "./ai";
+import dealCardRouter from "./deal-card";
 import { requireAuth, requireRoles } from "../middleware/require-auth";
 
 const router: IRouter = Router();
@@ -87,6 +88,12 @@ router.use("/signatures", requireRoles("ADMIN", "CSA", "UNDERWRITER"), signature
 router.use("/documents", requireRoles(...INTERNAL_SALES), documentsRouter);
 router.use("/appetite", requireRoles("ADMIN", "CSA", "UNDERWRITER"), appetiteRouter);
 router.use("/ai", requireRoles(...INTERNAL_SALES), aiRouter);
+// Deal Card hub (Phase 4C): broad role gate; §8 access matrix enforced inside.
+router.use(
+  "/deal-card",
+  requireRoles("ADMIN", "CSA", "AGENT", "UNDERWRITER", "EMPLOYER", "CARRIER", "PEO", "VENDOR"),
+  dealCardRouter,
+);
 router.use("/bind-packages", requireRoles(...INTERNAL_SALES), (req, res, next) => {
   req.url = "/bind-package" + req.url;
   documentsRouter(req, res, next);

@@ -442,3 +442,203 @@ export const UpdateAccountResponse = zod.object({
   createdAt: zod.string().nullish(),
   updatedAt: zod.string().nullish(),
 });
+
+/**
+ * @summary Sectioned submission fields + server-computed completeness
+ */
+export const GetDealSubmissionParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const GetDealSubmissionResponse = zod.object({
+  deal: zod.record(zod.string(), zod.unknown()),
+  account: zod.record(zod.string(), zod.unknown()).nullish(),
+  sections: zod.array(
+    zod.object({
+      key: zod.enum([
+        "business",
+        "locations",
+        "workforce",
+        "operations",
+        "loss",
+        "coverage",
+      ]),
+      label: zod.string(),
+      icon: zod.string(),
+      status: zod.enum(["complete", "partial", "not_started"]),
+      missing: zod.number(),
+      fields: zod.array(
+        zod.object({
+          key: zod.string(),
+          label: zod.string(),
+          type: zod.enum(["text", "number", "date", "boolean", "array"]),
+          value: zod.unknown().nullish(),
+          required: zod.boolean(),
+          ratingRelevant: zod.boolean(),
+          readOnly: zod.boolean(),
+        }),
+      ),
+    }),
+  ),
+  aggregateComplete: zod.number(),
+  total: zod.number(),
+  access: zod.record(zod.string(), zod.boolean()),
+  canApprove: zod.boolean(),
+});
+
+/**
+ * @summary Edit one submission section (role + field validation enforced)
+ */
+export const PatchDealSectionParams = zod.object({
+  id: zod.coerce.string(),
+  section: zod.enum([
+    "business",
+    "locations",
+    "workforce",
+    "operations",
+    "loss",
+    "coverage",
+  ]),
+});
+
+export const PatchDealSectionBody = zod.object({
+  fields: zod.record(zod.string(), zod.unknown()),
+});
+
+export const PatchDealSectionResponse = zod.object({
+  success: zod.boolean(),
+  changed: zod.boolean().optional(),
+  ratingStale: zod.boolean().nullish(),
+  diffs: zod
+    .array(
+      zod.object({
+        field: zod.string(),
+        label: zod.string(),
+        from: zod.unknown().nullish(),
+        to: zod.unknown().nullish(),
+      }),
+    )
+    .optional(),
+  sections: zod
+    .array(
+      zod.object({
+        key: zod.enum([
+          "business",
+          "locations",
+          "workforce",
+          "operations",
+          "loss",
+          "coverage",
+        ]),
+        label: zod.string(),
+        icon: zod.string(),
+        status: zod.enum(["complete", "partial", "not_started"]),
+        missing: zod.number(),
+        fields: zod.array(
+          zod.object({
+            key: zod.string(),
+            label: zod.string(),
+            type: zod.enum(["text", "number", "date", "boolean", "array"]),
+            value: zod.unknown().nullish(),
+            required: zod.boolean(),
+            ratingRelevant: zod.boolean(),
+            readOnly: zod.boolean(),
+          }),
+        ),
+      }),
+    )
+    .optional(),
+  aggregateComplete: zod.number().optional(),
+  total: zod.number().optional(),
+  deal: zod.record(zod.string(), zod.unknown()).optional(),
+});
+
+/**
+ * @summary Role-filtered collaboration feed
+ */
+export const GetDealCardActivityParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const GetDealCardActivityResponse = zod.object({
+  activity: zod.array(
+    zod.object({
+      id: zod.string(),
+      dealId: zod.string().nullish(),
+      entityType: zod.string(),
+      entityId: zod.string(),
+      eventType: zod.string(),
+      description: zod.string(),
+      metadata: zod.record(zod.string(), zod.unknown()).nullish(),
+      createdBy: zod.string().nullish(),
+      createdAt: zod.string().nullish(),
+    }),
+  ),
+});
+
+/**
+ * @summary Persist a composer message to the activity feed
+ */
+export const PostDealCardMessageParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const PostDealCardMessageBody = zod.object({
+  message: zod.string(),
+  internal: zod.boolean().optional(),
+});
+
+export const PostDealCardMessageResponse = zod.object({
+  success: zod.boolean(),
+  entry: zod.object({
+    id: zod.string(),
+    dealId: zod.string().nullish(),
+    entityType: zod.string(),
+    entityId: zod.string(),
+    eventType: zod.string(),
+    description: zod.string(),
+    metadata: zod.record(zod.string(), zod.unknown()).nullish(),
+    createdBy: zod.string().nullish(),
+    createdAt: zod.string().nullish(),
+  }),
+});
+
+/**
+ * @summary Approve the submission (UNDERWRITER / ADMIN only)
+ */
+export const ApproveDealParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const ApproveDealResponse = zod.object({
+  success: zod.boolean(),
+  stage: zod.string(),
+});
+
+/**
+ * @summary Decline the submission (UNDERWRITER / ADMIN only)
+ */
+export const DeclineDealParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const DeclineDealBody = zod.object({
+  reason: zod.string(),
+});
+
+export const DeclineDealResponse = zod.object({
+  success: zod.boolean(),
+  stage: zod.string(),
+});
+
+/**
+ * @summary Clear the rating-stale flag after a successful re-rate
+ */
+export const ClearRatingStaleParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const ClearRatingStaleResponse = zod.object({
+  success: zod.boolean(),
+  ratingStale: zod.boolean(),
+});

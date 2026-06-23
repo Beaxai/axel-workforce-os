@@ -18,6 +18,8 @@ tags:
     description: Lead capture and conversion operations
   - name: accounts
     description: Account directory operations
+  - name: deal-card
+    description: Deal card collaboration hub operations (Phase 4C)
 paths:
   /users:
     get:
@@ -385,8 +387,356 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Account"
+  /deal-card/{id}/submission:
+    get:
+      operationId: getDealSubmission
+      tags: [deal-card]
+      summary: Sectioned submission fields + server-computed completeness
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deal submission payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DealSubmissionResponse"
+        "403":
+          description: Insufficient permissions
+        "404":
+          description: Not found
+  /deal-card/{id}/submission/{section}:
+    patch:
+      operationId: patchDealSection
+      tags: [deal-card]
+      summary: Edit one submission section (role + field validation enforced)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: section
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [business, locations, workforce, operations, loss, coverage]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SectionPatchRequest"
+      responses:
+        "200":
+          description: Updated section payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SectionPatchResponse"
+        "400":
+          description: Validation error
+        "403":
+          description: Insufficient permissions
+        "404":
+          description: Not found
+  /deal-card/{id}/activity:
+    get:
+      operationId: getDealCardActivity
+      tags: [deal-card]
+      summary: Role-filtered collaboration feed
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Activity feed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActivityFeedResponse"
+  /deal-card/{id}/messages:
+    post:
+      operationId: postDealCardMessage
+      tags: [deal-card]
+      summary: Persist a composer message to the activity feed
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageRequest"
+      responses:
+        "200":
+          description: Message persisted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "403":
+          description: Insufficient permissions
+  /deal-card/{id}/approve:
+    post:
+      operationId: approveDeal
+      tags: [deal-card]
+      summary: Approve the submission (UNDERWRITER / ADMIN only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Approved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StageActionResponse"
+        "403":
+          description: Insufficient permissions
+  /deal-card/{id}/decline:
+    post:
+      operationId: declineDeal
+      tags: [deal-card]
+      summary: Decline the submission (UNDERWRITER / ADMIN only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeclineRequest"
+      responses:
+        "200":
+          description: Declined
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StageActionResponse"
+        "403":
+          description: Insufficient permissions
+  /deal-card/{id}/clear-rating-stale:
+    post:
+      operationId: clearRatingStale
+      tags: [deal-card]
+      summary: Clear the rating-stale flag after a successful re-rate
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Cleared
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RatingStaleClearedResponse"
 components:
   schemas:
+    SubmissionField:
+      type: object
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        type:
+          type: string
+          enum: [text, number, date, boolean, array]
+        value:
+          nullable: true
+        required:
+          type: boolean
+        ratingRelevant:
+          type: boolean
+        readOnly:
+          type: boolean
+      required: [key, label, type, required, ratingRelevant, readOnly]
+    SubmissionSection:
+      type: object
+      properties:
+        key:
+          type: string
+          enum: [business, locations, workforce, operations, loss, coverage]
+        label:
+          type: string
+        icon:
+          type: string
+        status:
+          type: string
+          enum: [complete, partial, not_started]
+        missing:
+          type: integer
+        fields:
+          type: array
+          items:
+            $ref: "#/components/schemas/SubmissionField"
+      required: [key, label, icon, status, missing, fields]
+    DealSubmissionResponse:
+      type: object
+      properties:
+        deal:
+          type: object
+          additionalProperties: true
+        account:
+          type: object
+          nullable: true
+          additionalProperties: true
+        sections:
+          type: array
+          items:
+            $ref: "#/components/schemas/SubmissionSection"
+        aggregateComplete:
+          type: integer
+        total:
+          type: integer
+        access:
+          type: object
+          additionalProperties:
+            type: boolean
+        canApprove:
+          type: boolean
+      required: [deal, sections, aggregateComplete, total, access, canApprove]
+    SectionPatchRequest:
+      type: object
+      properties:
+        fields:
+          type: object
+          additionalProperties: true
+      required: [fields]
+    SectionDiff:
+      type: object
+      properties:
+        field:
+          type: string
+        label:
+          type: string
+        from:
+          nullable: true
+        to:
+          nullable: true
+      required: [field, label]
+    SectionPatchResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        changed:
+          type: boolean
+        ratingStale:
+          type: boolean
+          nullable: true
+        diffs:
+          type: array
+          items:
+            $ref: "#/components/schemas/SectionDiff"
+        sections:
+          type: array
+          items:
+            $ref: "#/components/schemas/SubmissionSection"
+        aggregateComplete:
+          type: integer
+        total:
+          type: integer
+        deal:
+          type: object
+          additionalProperties: true
+      required: [success]
+    ActivityEntry:
+      type: object
+      properties:
+        id:
+          type: string
+        dealId:
+          type: string
+          nullable: true
+        entityType:
+          type: string
+        entityId:
+          type: string
+        eventType:
+          type: string
+        description:
+          type: string
+        metadata:
+          type: object
+          nullable: true
+          additionalProperties: true
+        createdBy:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          nullable: true
+      required: [id, entityType, entityId, eventType, description]
+    ActivityFeedResponse:
+      type: object
+      properties:
+        activity:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActivityEntry"
+      required: [activity]
+    MessageRequest:
+      type: object
+      properties:
+        message:
+          type: string
+        internal:
+          type: boolean
+      required: [message]
+    MessageResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        entry:
+          $ref: "#/components/schemas/ActivityEntry"
+      required: [success, entry]
+    DeclineRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+      required: [reason]
+    StageActionResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        stage:
+          type: string
+      required: [success, stage]
+    RatingStaleClearedResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        ratingStale:
+          type: boolean
+      required: [success, ratingStale]
     HealthStatus:
       type: object
       properties:
