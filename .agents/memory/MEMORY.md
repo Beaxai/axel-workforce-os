@@ -1,2 +1,2 @@
-- [Deal access control](deal-access-control.md) — external-party deal reads must fail closed; null-org deals are never visible to CARRIER/PEO/VENDOR.
-- [api-server dev workflow](api-server-dev-workflow.md) — restart the api-server workflow after any backend src edit or routes serve stale/404.
+- [Git push workflow](git-push-workflow.md) — feature work ships to GitHub branch `awf-os-brendy-sprint-1` via the github connection token in code_execution; NEVER main.
+- [Deal card modal](deal-card-modal.md) — opens only via login + clicking a Pipeline deal (openDealCard event); no direct route, so static screenshots can't reach it — use the testing skill.
