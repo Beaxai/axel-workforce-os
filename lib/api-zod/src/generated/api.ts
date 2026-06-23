@@ -632,6 +632,106 @@ export const DeclineDealResponse = zod.object({
 });
 
 /**
+ * @summary Role-filtered RFI list with open-blocking count
+ */
+export const GetDealCardRfisParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const GetDealCardRfisResponse = zod.object({
+  rfis: zod.array(
+    zod.object({
+      id: zod.string(),
+      dealId: zod.string(),
+      subject: zod.string(),
+      detail: zod.string().nullish(),
+      status: zod.enum(["OPEN", "RESOLVED", "WAIVED"]),
+      blocking: zod.boolean(),
+      internal: zod.boolean(),
+      dueAt: zod.string().nullish(),
+      createdBy: zod.string().nullish(),
+      createdByName: zod.string().nullish(),
+      resolvedAt: zod.string().nullish(),
+      resolvedBy: zod.string().nullish(),
+      resolvedByName: zod.string().nullish(),
+      resolutionNote: zod.string().nullish(),
+      createdAt: zod.string().nullish(),
+    }),
+  ),
+  openBlocking: zod.number(),
+});
+
+/**
+ * @summary Raise an RFI (internal staff only)
+ */
+export const CreateDealCardRfiParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const CreateDealCardRfiBody = zod.object({
+  subject: zod.string(),
+  detail: zod.string().optional(),
+  blocking: zod.boolean().optional(),
+  internal: zod.boolean().optional(),
+  dueInHours: zod.number().optional(),
+});
+
+export const CreateDealCardRfiResponse = zod.object({
+  success: zod.boolean(),
+  rfi: zod.object({
+    id: zod.string(),
+    dealId: zod.string(),
+    subject: zod.string(),
+    detail: zod.string().nullish(),
+    status: zod.enum(["OPEN", "RESOLVED", "WAIVED"]),
+    blocking: zod.boolean(),
+    internal: zod.boolean(),
+    dueAt: zod.string().nullish(),
+    createdBy: zod.string().nullish(),
+    createdByName: zod.string().nullish(),
+    resolvedAt: zod.string().nullish(),
+    resolvedBy: zod.string().nullish(),
+    resolvedByName: zod.string().nullish(),
+    resolutionNote: zod.string().nullish(),
+    createdAt: zod.string().nullish(),
+  }),
+});
+
+/**
+ * @summary Resolve or waive an RFI (internal staff only)
+ */
+export const ResolveDealCardRfiParams = zod.object({
+  id: zod.coerce.string(),
+  rfiId: zod.coerce.string(),
+});
+
+export const ResolveDealCardRfiBody = zod.object({
+  status: zod.enum(["RESOLVED", "WAIVED"]).optional(),
+  note: zod.string().optional(),
+});
+
+export const ResolveDealCardRfiResponse = zod.object({
+  success: zod.boolean(),
+  rfi: zod.object({
+    id: zod.string(),
+    dealId: zod.string(),
+    subject: zod.string(),
+    detail: zod.string().nullish(),
+    status: zod.enum(["OPEN", "RESOLVED", "WAIVED"]),
+    blocking: zod.boolean(),
+    internal: zod.boolean(),
+    dueAt: zod.string().nullish(),
+    createdBy: zod.string().nullish(),
+    createdByName: zod.string().nullish(),
+    resolvedAt: zod.string().nullish(),
+    resolvedBy: zod.string().nullish(),
+    resolvedByName: zod.string().nullish(),
+    resolutionNote: zod.string().nullish(),
+    createdAt: zod.string().nullish(),
+  }),
+});
+
+/**
  * @summary Clear the rating-stale flag after a successful re-rate
  */
 export const ClearRatingStaleParams = zod.object({

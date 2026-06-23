@@ -20,9 +20,11 @@ import type {
   Account,
   AccountInput,
   ActivityFeedResponse,
+  ApproveBlockedResponse,
   AuthResponse,
   ConvertLeadRequest,
   ConvertLeadResult,
+  CreateRfiRequest,
   DealSubmissionResponse,
   DeclineRequest,
   DeletedResponse,
@@ -40,6 +42,9 @@ import type {
   RatingStaleClearedResponse,
   RegisterRequest,
   ResetPasswordRequest,
+  ResolveRfiRequest,
+  RfiListResponse,
+  RfiMutationResponse,
   SectionPatchRequest,
   SectionPatchResponse,
   StageActionResponse,
@@ -2000,7 +2005,7 @@ export const approveDeal = async (
 };
 
 export const getApproveDealMutationOptions = <
-  TError = ErrorType<void>,
+  TError = ErrorType<void | ApproveBlockedResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -2041,13 +2046,13 @@ export type ApproveDealMutationResult = NonNullable<
   Awaited<ReturnType<typeof approveDeal>>
 >;
 
-export type ApproveDealMutationError = ErrorType<void>;
+export type ApproveDealMutationError = ErrorType<void | ApproveBlockedResponse>;
 
 /**
  * @summary Approve the submission (UNDERWRITER / ADMIN only)
  */
 export const useApproveDeal = <
-  TError = ErrorType<void>,
+  TError = ErrorType<void | ApproveBlockedResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -2151,6 +2156,268 @@ export const useDeclineDeal = <
   TContext
 > => {
   return useMutation(getDeclineDealMutationOptions(options));
+};
+
+/**
+ * @summary Role-filtered RFI list with open-blocking count
+ */
+export const getGetDealCardRfisUrl = (id: string) => {
+  return `/api/deal-card/${id}/rfis`;
+};
+
+export const getDealCardRfis = async (
+  id: string,
+  options?: RequestInit,
+): Promise<RfiListResponse> => {
+  return customFetch<RfiListResponse>(getGetDealCardRfisUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetDealCardRfisQueryKey = (id: string) => {
+  return [`/api/deal-card/${id}/rfis`] as const;
+};
+
+export const getGetDealCardRfisQueryOptions = <
+  TData = Awaited<ReturnType<typeof getDealCardRfis>>,
+  TError = ErrorType<void>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getDealCardRfis>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetDealCardRfisQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getDealCardRfis>>> = ({
+    signal,
+  }) => getDealCardRfis(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getDealCardRfis>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetDealCardRfisQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getDealCardRfis>>
+>;
+export type GetDealCardRfisQueryError = ErrorType<void>;
+
+/**
+ * @summary Role-filtered RFI list with open-blocking count
+ */
+
+export function useGetDealCardRfis<
+  TData = Awaited<ReturnType<typeof getDealCardRfis>>,
+  TError = ErrorType<void>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getDealCardRfis>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetDealCardRfisQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Raise an RFI (internal staff only)
+ */
+export const getCreateDealCardRfiUrl = (id: string) => {
+  return `/api/deal-card/${id}/rfis`;
+};
+
+export const createDealCardRfi = async (
+  id: string,
+  createRfiRequest: CreateRfiRequest,
+  options?: RequestInit,
+): Promise<RfiMutationResponse> => {
+  return customFetch<RfiMutationResponse>(getCreateDealCardRfiUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createRfiRequest),
+  });
+};
+
+export const getCreateDealCardRfiMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createDealCardRfi>>,
+    TError,
+    { id: string; data: BodyType<CreateRfiRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createDealCardRfi>>,
+  TError,
+  { id: string; data: BodyType<CreateRfiRequest> },
+  TContext
+> => {
+  const mutationKey = ["createDealCardRfi"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createDealCardRfi>>,
+    { id: string; data: BodyType<CreateRfiRequest> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return createDealCardRfi(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateDealCardRfiMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createDealCardRfi>>
+>;
+export type CreateDealCardRfiMutationBody = BodyType<CreateRfiRequest>;
+export type CreateDealCardRfiMutationError = ErrorType<void>;
+
+/**
+ * @summary Raise an RFI (internal staff only)
+ */
+export const useCreateDealCardRfi = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createDealCardRfi>>,
+    TError,
+    { id: string; data: BodyType<CreateRfiRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createDealCardRfi>>,
+  TError,
+  { id: string; data: BodyType<CreateRfiRequest> },
+  TContext
+> => {
+  return useMutation(getCreateDealCardRfiMutationOptions(options));
+};
+
+/**
+ * @summary Resolve or waive an RFI (internal staff only)
+ */
+export const getResolveDealCardRfiUrl = (id: string, rfiId: string) => {
+  return `/api/deal-card/${id}/rfis/${rfiId}/resolve`;
+};
+
+export const resolveDealCardRfi = async (
+  id: string,
+  rfiId: string,
+  resolveRfiRequest: ResolveRfiRequest,
+  options?: RequestInit,
+): Promise<RfiMutationResponse> => {
+  return customFetch<RfiMutationResponse>(getResolveDealCardRfiUrl(id, rfiId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(resolveRfiRequest),
+  });
+};
+
+export const getResolveDealCardRfiMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof resolveDealCardRfi>>,
+    TError,
+    { id: string; rfiId: string; data: BodyType<ResolveRfiRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof resolveDealCardRfi>>,
+  TError,
+  { id: string; rfiId: string; data: BodyType<ResolveRfiRequest> },
+  TContext
+> => {
+  const mutationKey = ["resolveDealCardRfi"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof resolveDealCardRfi>>,
+    { id: string; rfiId: string; data: BodyType<ResolveRfiRequest> }
+  > = (props) => {
+    const { id, rfiId, data } = props ?? {};
+
+    return resolveDealCardRfi(id, rfiId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ResolveDealCardRfiMutationResult = NonNullable<
+  Awaited<ReturnType<typeof resolveDealCardRfi>>
+>;
+export type ResolveDealCardRfiMutationBody = BodyType<ResolveRfiRequest>;
+export type ResolveDealCardRfiMutationError = ErrorType<void>;
+
+/**
+ * @summary Resolve or waive an RFI (internal staff only)
+ */
+export const useResolveDealCardRfi = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof resolveDealCardRfi>>,
+    TError,
+    { id: string; rfiId: string; data: BodyType<ResolveRfiRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof resolveDealCardRfi>>,
+  TError,
+  { id: string; rfiId: string; data: BodyType<ResolveRfiRequest> },
+  TContext
+> => {
+  return useMutation(getResolveDealCardRfiMutationOptions(options));
 };
 
 /**

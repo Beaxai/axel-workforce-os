@@ -14,10 +14,12 @@ import {
   accountsTable,
   activityLogTable,
   lossHistoryDocumentsTable,
+  dealRfisTable,
   type Deal,
   type Account,
+  type DealRfi,
 } from "@workspace/db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and, sql } from "drizzle-orm";
 import { z } from "zod/v4";
 import {
   buildSections,
@@ -178,6 +180,151 @@ router.post("/:id/messages", async (req, res) => {
 });
 
 /* --------------------------------------------------------------------------
+ * RFIs (Request For Information) — blocking items raised on a deal.
+ *
+ * An OPEN + blocking RFI hard-blocks Approve server-side (see /approve). RFIs
+ * are created/resolved by internal staff only; external parties get a
+ * §8-filtered read (internal-only RFIs are hidden from them).
+ * ------------------------------------------------------------------------ */
+function visibleRfis(rows: DealRfi[], actor: DealCardActor): DealRfi[] {
+  if (INTERNAL_ROLES.has(actor.role)) return rows;
+  return rows.filter((r) => !r.internal);
+}
+
+async function loadRfis(dealId: string): Promise<DealRfi[]> {
+  return db
+    .select()
+    .from(dealRfisTable)
+    .where(eq(dealRfisTable.dealId, dealId))
+    .orderBy(desc(dealRfisTable.createdAt));
+}
+
+function openBlockingCount(rows: DealRfi[]): number {
+  return rows.filter((r) => r.status === "OPEN" && r.blocking).length;
+}
+
+// GET /deal-card/:id/rfis — role-filtered list + open-blocking count
+router.get("/:id/rfis", async (req, res) => {
+  const actor = actorFrom(req);
+  const deal = await loadDeal(req.params.id);
+  if (!deal) return res.status(404).json({ error: "Deal not found" });
+  if (!canViewDeal(deal, actor)) return res.status(403).json({ error: "Insufficient permissions" });
+
+  const rows = visibleRfis(await loadRfis(deal.id), actor);
+  return res.json({ rfis: rows, openBlocking: openBlockingCount(rows) });
+});
+
+// POST /deal-card/:id/rfis — internal staff raise an RFI
+const createRfiSchema = z.object({
+  subject: z.string().trim().min(1).max(200),
+  detail: z.string().trim().max(2000).optional(),
+  blocking: z.boolean().optional(),
+  internal: z.boolean().optional(),
+  dueInHours: z.number().int().min(1).max(24 * 30).optional(),
+});
+
+router.post("/:id/rfis", async (req, res) => {
+  const actor = actorFrom(req);
+  if (!INTERNAL_ROLES.has(actor.role)) {
+    return res.status(403).json({ error: "Only internal staff may raise an RFI" });
+  }
+  const parsed = createRfiSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid RFI", issues: parsed.error.issues });
+
+  const deal = await loadDeal(req.params.id);
+  if (!deal) return res.status(404).json({ error: "Deal not found" });
+  if (!canViewDeal(deal, actor)) return res.status(403).json({ error: "Insufficient permissions" });
+
+  const u = req.user!;
+  const author = [u.firstName, u.lastName].filter(Boolean).join(" ") || u.email;
+  const dueAt = parsed.data.dueInHours
+    ? new Date(Date.now() + parsed.data.dueInHours * 60 * 60 * 1000)
+    : null;
+  const blocking = parsed.data.blocking ?? true;
+
+  const [rfi] = await db
+    .insert(dealRfisTable)
+    .values({
+      dealId: deal.id,
+      subject: parsed.data.subject,
+      detail: parsed.data.detail ?? null,
+      blocking,
+      internal: !!parsed.data.internal,
+      dueAt,
+      createdBy: actor.id,
+      createdByName: author,
+    })
+    .returning();
+
+  await db.insert(activityLogTable).values({
+    dealId: deal.id,
+    entityType: "deal",
+    entityId: deal.id,
+    eventType: "rfi_raised",
+    description: `${author} raised an RFI: ${parsed.data.subject}${blocking ? " (blocking)" : ""}.`,
+    metadata: { author, role: actor.role, rfi_id: rfi.id, blocking, internal: !!parsed.data.internal },
+    createdBy: actor.id,
+  });
+
+  return res.json({ success: true, rfi });
+});
+
+// POST /deal-card/:id/rfis/:rfiId/resolve — internal staff resolve / waive
+const resolveRfiSchema = z.object({
+  status: z.enum(["RESOLVED", "WAIVED"]).optional(),
+  note: z.string().trim().max(2000).optional(),
+});
+
+router.post("/:id/rfis/:rfiId/resolve", async (req, res) => {
+  const actor = actorFrom(req);
+  if (!INTERNAL_ROLES.has(actor.role)) {
+    return res.status(403).json({ error: "Only internal staff may resolve an RFI" });
+  }
+  const parsed = resolveRfiSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid request", issues: parsed.error.issues });
+
+  const deal = await loadDeal(req.params.id);
+  if (!deal) return res.status(404).json({ error: "Deal not found" });
+  if (!canViewDeal(deal, actor)) return res.status(403).json({ error: "Insufficient permissions" });
+
+  const [existing] = await db
+    .select()
+    .from(dealRfisTable)
+    .where(and(eq(dealRfisTable.id, req.params.rfiId), eq(dealRfisTable.dealId, deal.id)))
+    .limit(1);
+  if (!existing) return res.status(404).json({ error: "RFI not found" });
+  if (existing.status !== "OPEN") return res.status(409).json({ error: "RFI is already closed" });
+
+  const status = parsed.data.status ?? "RESOLVED";
+  const u = req.user!;
+  const author = [u.firstName, u.lastName].filter(Boolean).join(" ") || u.email;
+
+  const [rfi] = await db
+    .update(dealRfisTable)
+    .set({
+      status,
+      resolvedAt: new Date(),
+      resolvedBy: actor.id,
+      resolvedByName: author,
+      resolutionNote: parsed.data.note ?? null,
+    })
+    .where(eq(dealRfisTable.id, existing.id))
+    .returning();
+
+  await db.insert(activityLogTable).values({
+    dealId: deal.id,
+    entityType: "deal",
+    entityId: deal.id,
+    eventType: status === "WAIVED" ? "rfi_waived" : "rfi_resolved",
+    description: `${author} ${status === "WAIVED" ? "waived" : "resolved"} the RFI: ${existing.subject}.`,
+    metadata: { author, role: actor.role, rfi_id: existing.id, status },
+    createdBy: actor.id,
+  });
+
+  return res.json({ success: true, rfi });
+});
+
+/* --------------------------------------------------------------------------
  * PATCH /deal-card/:id/submission/:section — edit a section
  * ------------------------------------------------------------------------ */
 function coerce(key: string, type: string, value: unknown): { ok: true; value: unknown } | { ok: false; error: string } {
@@ -327,7 +474,29 @@ router.post("/:id/approve", async (req, res) => {
   const deal = await loadDeal(req.params.id);
   if (!deal) return res.status(404).json({ error: "Deal not found" });
 
-  await db.update(dealsTable).set({ stage: "APPROVED_QUOTED" }).where(eq(dealsTable.id, deal.id));
+  // Hard block: any OPEN blocking RFI prevents approval (server is the boundary).
+  // The update is guarded by a NOT EXISTS subquery so the check and the stage
+  // change are atomic — a blocking RFI created concurrently cannot slip through
+  // the gap between a read and a write (no TOCTOU race).
+  const updated = await db
+    .update(dealsTable)
+    .set({ stage: "APPROVED_QUOTED" })
+    .where(
+      and(
+        eq(dealsTable.id, deal.id),
+        sql`NOT EXISTS (SELECT 1 FROM ${dealRfisTable} WHERE ${dealRfisTable.dealId} = ${deal.id} AND ${dealRfisTable.status} = 'OPEN' AND ${dealRfisTable.blocking} = true)`,
+      ),
+    )
+    .returning({ id: dealsTable.id });
+
+  if (updated.length === 0) {
+    // No row updated: blocking RFI(s) exist. Re-read them for the response.
+    const blockingRfis = (await loadRfis(deal.id)).filter((r) => r.status === "OPEN" && r.blocking);
+    return res.status(409).json({
+      error: `Cannot approve — ${blockingRfis.length} blocking RFI${blockingRfis.length > 1 ? "s" : ""} still open.`,
+      blockingRfis: blockingRfis.map((r) => ({ id: r.id, subject: r.subject })),
+    });
+  }
 
   const u = req.user!;
   const author = [u.firstName, u.lastName].filter(Boolean).join(" ") || u.email;

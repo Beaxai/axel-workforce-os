@@ -14,6 +14,8 @@ interface PricingRailProps {
   wfsPepm: string | null;
   canApprove: boolean;
   busy: boolean;
+  openBlocking?: number;
+  approveError?: string | null;
   onApprove: () => void;
   onDecline: (reason: string) => void;
   onModify?: () => void;
@@ -32,6 +34,8 @@ export default function PricingRail({
   wfsPepm,
   canApprove,
   busy,
+  openBlocking = 0,
+  approveError,
   onApprove,
   onDecline,
   onModify,
@@ -39,6 +43,7 @@ export default function PricingRail({
   const c = useThemeColors();
   const [declining, setDeclining] = useState(false);
   const [reason, setReason] = useState("");
+  const blocked = openBlocking > 0;
 
   const heading: React.CSSProperties = {
     fontSize: 11, letterSpacing: "0.07em", textTransform: "uppercase", color: c.textMuted, fontWeight: 600,
@@ -88,13 +93,22 @@ export default function PricingRail({
           <span style={heading}>Submission Actions</span>
           {!declining ? (
             <>
+              {blocked && (
+                <div style={{ fontSize: 10.5, color: "#ef4444", lineHeight: 1.45, marginBottom: 2 }}>
+                  Blocked by {openBlocking} open RFI{openBlocking > 1 ? "s" : ""}. Resolve or waive {openBlocking > 1 ? "them" : "it"} to approve.
+                </div>
+              )}
               <button
                 onClick={onApprove}
-                disabled={busy}
-                style={{ width: "100%", textAlign: "center", fontSize: 13, borderRadius: 8, padding: 10, cursor: "pointer", fontWeight: 600, color: "#fff", background: "var(--gradient-cta)", border: "none" }}
+                disabled={busy || blocked}
+                title={blocked ? "Cannot approve while a blocking RFI is open" : undefined}
+                style={{ width: "100%", textAlign: "center", fontSize: 13, borderRadius: 8, padding: 10, cursor: busy || blocked ? "not-allowed" : "pointer", fontWeight: 600, color: "#fff", background: "var(--gradient-cta)", border: "none", opacity: blocked ? 0.5 : 1 }}
               >
                 {busy ? "Working\u2026" : "Approve"}
               </button>
+              {approveError && !blocked && (
+                <div style={{ fontSize: 10.5, color: "#ef4444", lineHeight: 1.45 }}>{approveError}</div>
+              )}
               <button
                 onClick={() => setDeclining(true)}
                 disabled={busy}

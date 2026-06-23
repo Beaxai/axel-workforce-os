@@ -5,6 +5,7 @@ export * from "./auth";
 export * from "./accounts";
 export * from "./leads";
 export * from "./deals";
+export * from "./rfis";
 export * from "./quotes";
 export * from "./policies";
 export * from "./commissions";

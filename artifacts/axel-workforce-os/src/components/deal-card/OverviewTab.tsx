@@ -1,23 +1,69 @@
 /**
- * Phase 4C — Overview = collaboration hub (Stitch layout, Axel tokens).
+ * Phase 4C / P6 — Overview = collaboration hub (Stitch layout, Axel tokens).
  *
  * A left timeline rail threads the day-grouped activity feed (real, from
- * activity_log) plus a sticky composer that persists a message. The AI
- * quote-variation row and the RFI blocking card are STATIC placeholders styled
- * to match the Stitch reference but deferred to P6 (ruling #2) — they carry an
- * explicit "preview" marker and perform no work.
+ * activity_log) plus a sticky composer that persists a message. The RFI blocking
+ * card is now LIVE (P6 iteration 1): real Request-For-Information items from
+ * deal_rfis with a ticking countdown, internal create/resolve controls, and a
+ * hard block on Approve enforced server-side. The AI quote-variation row remains
+ * a STATIC placeholder deferred to P6 iteration 2.
  */
-import { useMemo, useState } from "react";
-import { Sparkles, AlertTriangle, Paperclip, Zap } from "lucide-react";
-import type { ActivityRow } from "./types";
+import { useEffect, useMemo, useState } from "react";
+import { Sparkles, AlertTriangle, Paperclip, Zap, Plus, Check, CircleSlash } from "lucide-react";
+import type { ActivityRow, RfiRow } from "./types";
 import { STATUS_COLORS } from "./icons";
 import { useThemeColors } from "@/lib/use-theme-colors";
+
+export interface CreateRfiInput {
+  subject: string;
+  detail?: string;
+  blocking: boolean;
+  internal: boolean;
+  dueInHours?: number;
+}
 
 interface OverviewTabProps {
   activity: ActivityRow[];
   canPost: boolean;
   posting: boolean;
   onSend: (message: string) => void;
+  rfis: RfiRow[];
+  isInternal: boolean;
+  rfiBusy: boolean;
+  onCreateRfi: (input: CreateRfiInput) => void;
+  onResolveRfi: (rfiId: string, status: "RESOLVED" | "WAIVED", note?: string) => void;
+}
+
+/** Human countdown from now → dueAt. Returns label + urgency color. */
+function countdown(dueAt: string | null | undefined, now: number, c: ReturnType<typeof useThemeColors>): { label: string; color: string } {
+  if (!dueAt) return { label: "No deadline", color: c.textMuted };
+  const due = new Date(dueAt).getTime();
+  if (isNaN(due)) return { label: "No deadline", color: c.textMuted };
+  let ms = due - now;
+  const overdue = ms < 0;
+  ms = Math.abs(ms);
+  const d = Math.floor(ms / 86_400_000);
+  const h = Math.floor((ms % 86_400_000) / 3_600_000);
+  const m = Math.floor((ms % 3_600_000) / 60_000);
+  const s = Math.floor((ms % 60_000) / 1000);
+  let core: string;
+  if (d > 0) core = `${d}d ${h}h`;
+  else if (h > 0) core = `${h}h ${m}m`;
+  else if (m > 0) core = `${m}m ${s}s`;
+  else core = `${s}s`;
+  if (overdue) return { label: `Overdue by ${core}`, color: "#ef4444" };
+  const remainMs = due - now;
+  const color = remainMs < 4 * 3_600_000 ? "#ef4444" : remainMs < 24 * 3_600_000 ? STATUS_COLORS.partial : STATUS_COLORS.complete;
+  return { label: `${core} remaining`, color };
+}
+
+function progressPct(createdAt: string | null | undefined, dueAt: string | null | undefined, now: number): number | null {
+  if (!createdAt || !dueAt) return null;
+  const start = new Date(createdAt).getTime();
+  const end = new Date(dueAt).getTime();
+  if (isNaN(start) || isNaN(end) || end <= start) return null;
+  const pct = ((now - start) / (end - start)) * 100;
+  return Math.max(0, Math.min(100, pct));
 }
 
 function dayLabel(iso?: string | null): string {
@@ -54,9 +100,50 @@ function initials(name: string): string {
   return name.split(" ").map((p) => p[0]).filter(Boolean).slice(0, 2).join("").toUpperCase() || "?";
 }
 
-export default function OverviewTab({ activity, canPost, posting, onSend }: OverviewTabProps) {
+export default function OverviewTab({
+  activity, canPost, posting, onSend, rfis, isInternal, rfiBusy, onCreateRfi, onResolveRfi,
+}: OverviewTabProps) {
   const c = useThemeColors();
   const [text, setText] = useState("");
+  const [now, setNow] = useState(() => Date.now());
+
+  // RFI composer state (internal only)
+  const [showRfiForm, setShowRfiForm] = useState(false);
+  const [rfiSubject, setRfiSubject] = useState("");
+  const [rfiDetail, setRfiDetail] = useState("");
+  const [rfiBlocking, setRfiBlocking] = useState(true);
+  const [rfiInternal, setRfiInternal] = useState(false);
+  const [rfiDueHours, setRfiDueHours] = useState("24");
+
+  const openRfis = useMemo(() => rfis.filter((r) => r.status === "OPEN"), [rfis]);
+  const closedRfis = useMemo(() => rfis.filter((r) => r.status !== "OPEN"), [rfis]);
+  const hasAnyOpenDeadline = openRfis.some((r) => !!r.dueAt);
+
+  // Tick once a second only while there's an open RFI with a live deadline.
+  useEffect(() => {
+    if (!hasAnyOpenDeadline) return;
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [hasAnyOpenDeadline]);
+
+  const submitRfi = () => {
+    const subject = rfiSubject.trim();
+    if (!subject || rfiBusy) return;
+    const hours = parseInt(rfiDueHours, 10);
+    onCreateRfi({
+      subject,
+      detail: rfiDetail.trim() || undefined,
+      blocking: rfiBlocking,
+      internal: rfiInternal,
+      dueInHours: Number.isFinite(hours) && hours > 0 ? hours : undefined,
+    });
+    setRfiSubject("");
+    setRfiDetail("");
+    setRfiBlocking(true);
+    setRfiInternal(false);
+    setRfiDueHours("24");
+    setShowRfiForm(false);
+  };
 
   const groups = useMemo(() => {
     const map = new Map<string, ActivityRow[]>();
@@ -148,30 +235,152 @@ export default function OverviewTab({ activity, canPost, posting, onSend }: Over
           <div style={previewTag}>Preview — quote-variation engine arrives in a later phase.</div>
         </div>
 
-        {/* RFI blocking — static placeholder (P6) */}
-        <div style={{ position: "relative" }}>
-          {node(STATUS_COLORS.partial)}
-          <span style={{ ...dayPill, color: STATUS_COLORS.partial, marginBottom: 6 }}>Critical Pending</span>
-          <div style={{ ...card, borderLeft: `2px solid ${STATUS_COLORS.partial}`, marginTop: 6 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 5 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                <AlertTriangle style={{ width: 15, height: 15, color: STATUS_COLORS.partial }} />
-                <span style={{ fontSize: 12, fontWeight: 600, color: c.textPrimary }}>RFI: Safety Protocol Verification</span>
+        {/* RFIs — live (P6 iteration 1) */}
+        {(openRfis.length > 0 || closedRfis.length > 0 || isInternal) && (
+          <div style={{ position: "relative" }}>
+            {node(openRfis.length > 0 ? STATUS_COLORS.partial : c.textMuted)}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+              <span style={{ ...dayPill, color: openRfis.length > 0 ? STATUS_COLORS.partial : c.textMuted }}>
+                {openRfis.length > 0 ? `${openRfis.length} Open RFI${openRfis.length > 1 ? "s" : ""}` : "RFIs"}
+              </span>
+              {isInternal && (
+                <button
+                  onClick={() => setShowRfiForm((s) => !s)}
+                  style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "var(--accent-primary)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0 }}
+                >
+                  <Plus style={{ width: 13, height: 13 }} /> Request info
+                </button>
+              )}
+            </div>
+
+            {/* Internal RFI composer */}
+            {isInternal && showRfiForm && (
+              <div style={{ ...card, marginBottom: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+                <input
+                  value={rfiSubject}
+                  onChange={(e) => setRfiSubject(e.target.value)}
+                  placeholder="Subject (e.g. Safety protocol verification)"
+                  style={{ background: c.inputBg, border: `1px solid ${c.inputBorder}`, borderRadius: 8, color: c.inputText, fontFamily: "inherit", fontSize: 12, padding: "7px 9px" }}
+                />
+                <textarea
+                  value={rfiDetail}
+                  onChange={(e) => setRfiDetail(e.target.value)}
+                  placeholder="Details (optional)"
+                  rows={2}
+                  style={{ background: c.inputBg, border: `1px solid ${c.inputBorder}`, borderRadius: 8, color: c.inputText, fontFamily: "inherit", fontSize: 12, padding: "7px 9px", resize: "vertical" }}
+                />
+                <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                  <label style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: c.textSecondary, cursor: "pointer" }}>
+                    <input type="checkbox" checked={rfiBlocking} onChange={(e) => setRfiBlocking(e.target.checked)} style={{ accentColor: "var(--accent-primary)" }} />
+                    Blocking
+                  </label>
+                  <label style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: c.textSecondary, cursor: "pointer" }}>
+                    <input type="checkbox" checked={rfiInternal} onChange={(e) => setRfiInternal(e.target.checked)} style={{ accentColor: "var(--accent-primary)" }} />
+                    Internal only
+                  </label>
+                  <label style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: c.textSecondary }}>
+                    Due in
+                    <input
+                      type="number"
+                      min={1}
+                      value={rfiDueHours}
+                      onChange={(e) => setRfiDueHours(e.target.value)}
+                      style={{ width: 52, background: c.inputBg, border: `1px solid ${c.inputBorder}`, borderRadius: 6, color: c.inputText, fontFamily: "inherit", fontSize: 11, padding: "4px 6px" }}
+                    />
+                    h
+                  </label>
+                </div>
+                <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                  <button
+                    onClick={() => setShowRfiForm(false)}
+                    disabled={rfiBusy}
+                    style={{ fontSize: 11.5, borderRadius: 8, padding: "6px 12px", cursor: "pointer", color: c.textSecondary, border: `1px solid ${c.borderColor}`, background: "none", fontFamily: "inherit" }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={submitRfi}
+                    disabled={rfiBusy || !rfiSubject.trim()}
+                    style={{ fontSize: 11.5, borderRadius: 8, padding: "6px 12px", cursor: rfiSubject.trim() ? "pointer" : "not-allowed", color: "#fff", background: "var(--accent-primary)", border: "none", fontWeight: 600, fontFamily: "inherit", opacity: rfiSubject.trim() ? 1 : 0.5 }}
+                  >
+                    {rfiBusy ? "Saving\u2026" : "Raise RFI"}
+                  </button>
+                </div>
               </div>
-              <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: "0.05em", color: STATUS_COLORS.partial, background: c.hoverBg, borderRadius: 9999, padding: "2px 7px" }}>BLOCKING</span>
+            )}
+
+            {/* Open RFI cards */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {openRfis.map((r) => {
+                const cd = countdown(r.dueAt, now, c);
+                const pct = progressPct(r.createdAt, r.dueAt, now);
+                const accent = r.blocking ? cd.color : c.textMuted;
+                return (
+                  <div key={r.id} style={{ ...card, borderLeft: `2px solid ${accent}` }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 5, gap: 8 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
+                        <AlertTriangle style={{ width: 15, height: 15, color: accent, flexShrink: 0 }} />
+                        <span style={{ fontSize: 12, fontWeight: 600, color: c.textPrimary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          RFI: {r.subject}
+                        </span>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
+                        {r.internal && (
+                          <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.05em", color: c.textMuted, background: c.hoverBg, borderRadius: 9999, padding: "2px 6px" }}>INTERNAL</span>
+                        )}
+                        {r.blocking && (
+                          <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: "0.05em", color: STATUS_COLORS.partial, background: c.hoverBg, borderRadius: 9999, padding: "2px 7px" }}>BLOCKING</span>
+                        )}
+                      </div>
+                    </div>
+                    {r.detail && (
+                      <div style={{ fontSize: 11.5, color: c.textSecondary, lineHeight: 1.5, marginBottom: 8 }}>{r.detail}</div>
+                    )}
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      {pct != null && (
+                        <div style={{ flex: 1, height: 5, borderRadius: 9999, background: c.cardBg, overflow: "hidden", border: `1px solid ${c.borderColor}` }}>
+                          <div style={{ width: `${pct}%`, height: "100%", background: cd.color }} />
+                        </div>
+                      )}
+                      <span style={{ fontSize: 10, color: cd.color, whiteSpace: "nowrap", marginLeft: pct == null ? "auto" : 0 }}>{cd.label}</span>
+                    </div>
+                    {isInternal && (
+                      <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
+                        <button
+                          onClick={() => onResolveRfi(r.id, "RESOLVED")}
+                          disabled={rfiBusy}
+                          style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, borderRadius: 8, padding: "5px 10px", cursor: "pointer", color: "#fff", background: "var(--accent-primary)", border: "none", fontWeight: 500, fontFamily: "inherit" }}
+                        >
+                          <Check style={{ width: 12, height: 12 }} /> Resolve
+                        </button>
+                        <button
+                          onClick={() => onResolveRfi(r.id, "WAIVED")}
+                          disabled={rfiBusy}
+                          style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, borderRadius: 8, padding: "5px 10px", cursor: "pointer", color: c.textSecondary, border: `1px solid ${c.borderColor}`, background: "none", fontFamily: "inherit" }}
+                        >
+                          <CircleSlash style={{ width: 12, height: 12 }} /> Waive
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+              {/* Closed RFIs — muted single lines */}
+              {closedRfis.map((r) => (
+                <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 11, color: c.textMuted }}>
+                  {r.status === "WAIVED" ? <CircleSlash style={{ width: 12, height: 12 }} /> : <Check style={{ width: 12, height: 12, color: STATUS_COLORS.complete }} />}
+                  <span style={{ textDecoration: "line-through" }}>RFI: {r.subject}</span>
+                  <span>{"\u00b7"} {r.status === "WAIVED" ? "Waived" : "Resolved"}{r.resolvedByName ? ` by ${r.resolvedByName}` : ""}</span>
+                </div>
+              ))}
+
+              {openRfis.length === 0 && closedRfis.length === 0 && isInternal && !showRfiForm && (
+                <div style={{ fontSize: 11.5, color: c.textMuted }}>No RFIs raised. Use "Request info" to raise one.</div>
+              )}
             </div>
-            <div style={{ fontSize: 11.5, color: c.textSecondary, lineHeight: 1.5, marginBottom: 8 }}>
-              Sector requires validated fire-suppression logs for class 8810 eligibility.
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <div style={{ flex: 1, height: 5, borderRadius: 9999, background: c.cardBg, overflow: "hidden" }}>
-                <div style={{ width: "60%", height: "100%", background: STATUS_COLORS.partial }} />
-              </div>
-              <span style={{ fontSize: 10, color: STATUS_COLORS.partial, whiteSpace: "nowrap" }}>4h remaining</span>
-            </div>
-            <div style={previewTag}>Preview — RFI countdown + blocking logic arrives in a later phase.</div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Sticky composer */}

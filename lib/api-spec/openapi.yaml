@@ -509,6 +509,12 @@ paths:
                 $ref: "#/components/schemas/StageActionResponse"
         "403":
           description: Insufficient permissions
+        "409":
+          description: Blocked by one or more open blocking RFIs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApproveBlockedResponse"
   /deal-card/{id}/decline:
     post:
       operationId: declineDeal
@@ -535,6 +541,84 @@ paths:
                 $ref: "#/components/schemas/StageActionResponse"
         "403":
           description: Insufficient permissions
+  /deal-card/{id}/rfis:
+    get:
+      operationId: getDealCardRfis
+      tags: [deal-card]
+      summary: Role-filtered RFI list with open-blocking count
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: RFI list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RfiListResponse"
+        "403":
+          description: Insufficient permissions
+    post:
+      operationId: createDealCardRfi
+      tags: [deal-card]
+      summary: Raise an RFI (internal staff only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRfiRequest"
+      responses:
+        "200":
+          description: RFI created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RfiMutationResponse"
+        "403":
+          description: Insufficient permissions
+  /deal-card/{id}/rfis/{rfiId}/resolve:
+    post:
+      operationId: resolveDealCardRfi
+      tags: [deal-card]
+      summary: Resolve or waive an RFI (internal staff only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: rfiId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResolveRfiRequest"
+      responses:
+        "200":
+          description: RFI resolved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RfiMutationResponse"
+        "403":
+          description: Insufficient permissions
+        "409":
+          description: RFI already closed
   /deal-card/{id}/clear-rating-stale:
     post:
       operationId: clearRatingStale
@@ -729,6 +813,22 @@ components:
         stage:
           type: string
       required: [success, stage]
+    ApproveBlockedResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        blockingRfis:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              subject:
+                type: string
+            required: [id, subject]
+      required: [error, blockingRfis]
     RatingStaleClearedResponse:
       type: object
       properties:
@@ -737,6 +837,90 @@ components:
         ratingStale:
           type: boolean
       required: [success, ratingStale]
+    Rfi:
+      type: object
+      properties:
+        id:
+          type: string
+        dealId:
+          type: string
+        subject:
+          type: string
+        detail:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [OPEN, RESOLVED, WAIVED]
+        blocking:
+          type: boolean
+        internal:
+          type: boolean
+        dueAt:
+          type: string
+          nullable: true
+        createdBy:
+          type: string
+          nullable: true
+        createdByName:
+          type: string
+          nullable: true
+        resolvedAt:
+          type: string
+          nullable: true
+        resolvedBy:
+          type: string
+          nullable: true
+        resolvedByName:
+          type: string
+          nullable: true
+        resolutionNote:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          nullable: true
+      required: [id, dealId, subject, status, blocking, internal]
+    RfiListResponse:
+      type: object
+      properties:
+        rfis:
+          type: array
+          items:
+            $ref: "#/components/schemas/Rfi"
+        openBlocking:
+          type: integer
+      required: [rfis, openBlocking]
+    CreateRfiRequest:
+      type: object
+      properties:
+        subject:
+          type: string
+        detail:
+          type: string
+        blocking:
+          type: boolean
+        internal:
+          type: boolean
+        dueInHours:
+          type: integer
+      required: [subject]
+    ResolveRfiRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [RESOLVED, WAIVED]
+        note:
+          type: string
+    RfiMutationResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        rfi:
+          $ref: "#/components/schemas/Rfi"
+      required: [success, rfi]
     HealthStatus:
       type: object
       properties:

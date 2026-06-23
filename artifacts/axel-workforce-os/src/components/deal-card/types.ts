@@ -75,6 +75,31 @@ export interface ActivityRow {
   metadata?: Record<string, unknown> | null;
 }
 
+export type RfiStatus = "OPEN" | "RESOLVED" | "WAIVED";
+
+export interface RfiRow {
+  id: string;
+  dealId: string;
+  subject: string;
+  detail?: string | null;
+  status: RfiStatus;
+  blocking: boolean;
+  internal: boolean;
+  dueAt?: string | null;
+  createdBy?: string | null;
+  createdByName?: string | null;
+  resolvedAt?: string | null;
+  resolvedBy?: string | null;
+  resolvedByName?: string | null;
+  resolutionNote?: string | null;
+  createdAt?: string | null;
+}
+
+export interface RfiListResponse {
+  rfis: RfiRow[];
+  openBlocking: number;
+}
+
 export interface SectionPatchResponse {
   success: boolean;
   changed?: boolean;

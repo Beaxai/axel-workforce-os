@@ -135,9 +135,76 @@ export interface StageActionResponse {
   stage: string;
 }
 
+export type ApproveBlockedResponseBlockingRfisItem = {
+  id: string;
+  subject: string;
+};
+
+export interface ApproveBlockedResponse {
+  error: string;
+  blockingRfis: ApproveBlockedResponseBlockingRfisItem[];
+}
+
 export interface RatingStaleClearedResponse {
   success: boolean;
   ratingStale: boolean;
+}
+
+export type RfiStatus = (typeof RfiStatus)[keyof typeof RfiStatus];
+
+export const RfiStatus = {
+  OPEN: "OPEN",
+  RESOLVED: "RESOLVED",
+  WAIVED: "WAIVED",
+} as const;
+
+export interface Rfi {
+  id: string;
+  dealId: string;
+  subject: string;
+  detail?: string | null;
+  status: RfiStatus;
+  blocking: boolean;
+  internal: boolean;
+  dueAt?: string | null;
+  createdBy?: string | null;
+  createdByName?: string | null;
+  resolvedAt?: string | null;
+  resolvedBy?: string | null;
+  resolvedByName?: string | null;
+  resolutionNote?: string | null;
+  createdAt?: string | null;
+}
+
+export interface RfiListResponse {
+  rfis: Rfi[];
+  openBlocking: number;
+}
+
+export interface CreateRfiRequest {
+  subject: string;
+  detail?: string;
+  blocking?: boolean;
+  internal?: boolean;
+  dueInHours?: number;
+}
+
+export type ResolveRfiRequestStatus =
+  (typeof ResolveRfiRequestStatus)[keyof typeof ResolveRfiRequestStatus];
+
+export const ResolveRfiRequestStatus = {
+  RESOLVED: "RESOLVED",
+  WAIVED: "WAIVED",
+} as const;
+
+export interface ResolveRfiRequest {
+  status?: ResolveRfiRequestStatus;
+  note?: string;
+}
+
+export interface RfiMutationResponse {
+  success: boolean;
+  rfi: Rfi;
 }
 
 export interface HealthStatus {

@@ -17,7 +17,8 @@ import {
 import { api } from "@/lib/api";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { useAuthStore } from "@/lib/auth-store";
-import type { SectionView, SubmissionPayload, ActivityRow, SectionPatchResponse } from "./types";
+import type { SectionView, SubmissionPayload, ActivityRow, SectionPatchResponse, RfiRow, RfiListResponse } from "./types";
+import type { CreateRfiInput } from "./OverviewTab";
 import { PHASES, phaseIndex, isDeclined } from "./stage-map";
 import { STATUS_COLORS } from "./icons";
 import OverviewTab from "./OverviewTab";
@@ -97,13 +98,18 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
 
   const [payload, setPayload] = useState<SubmissionPayload | null>(null);
   const [activity, setActivity] = useState<ActivityRow[]>([]);
+  const [rfis, setRfis] = useState<RfiRow[]>([]);
+  const [openBlocking, setOpenBlocking] = useState(0);
+  const [rfiBusy, setRfiBusy] = useState(false);
   const [tab, setTab] = useState<TabKey>("overview");
   const [openSection, setOpenSection] = useState<string | null>(null);
   const [savingSection, setSavingSection] = useState(false);
   const [posting, setPosting] = useState(false);
   const [decisionBusy, setDecisionBusy] = useState(false);
+  const [approveError, setApproveError] = useState<string | null>(null);
 
-  const canPost = !!user && (INTERNAL.has(user.role) || user.role === "EMPLOYER");
+  const isInternal = !!user && INTERNAL.has(user.role);
+  const canPost = !!user && (isInternal || user.role === "EMPLOYER");
 
   const fetchSubmission = useCallback(async () => {
     try {
@@ -123,15 +129,30 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
     }
   }, [dealId]);
 
+  const fetchRfis = useCallback(async () => {
+    try {
+      const res = await api.get<RfiListResponse>(`/deal-card/${dealId}/rfis`);
+      setRfis(res.rfis || []);
+      setOpenBlocking(res.openBlocking || 0);
+    } catch {
+      setRfis([]);
+      setOpenBlocking(0);
+    }
+  }, [dealId]);
+
   useEffect(() => {
     if (!isOpen || !dealId) return;
     setPayload(null);
     setActivity([]);
+    setRfis([]);
+    setOpenBlocking(0);
+    setApproveError(null);
     setTab("overview");
     setOpenSection(null);
     fetchSubmission();
     fetchActivity();
-  }, [isOpen, dealId, fetchSubmission, fetchActivity]);
+    fetchRfis();
+  }, [isOpen, dealId, fetchSubmission, fetchActivity, fetchRfis]);
 
   const sections = payload?.sections ?? [];
   const deal = payload?.deal;
@@ -179,15 +200,53 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
 
   const handleApprove = async () => {
     setDecisionBusy(true);
+    setApproveError(null);
     try {
       await api.post(`/deal-card/${dealId}/approve`, {});
       await fetchSubmission();
       await fetchActivity();
       onDealUpdated?.();
+    } catch (e) {
+      // Server returns 409 with a human message when a blocking RFI is open.
+      let msg = "Could not approve.";
+      try {
+        const parsed = JSON.parse((e as Error).message);
+        if (typeof parsed === "string") msg = parsed;
+      } catch {
+        const raw = (e as Error).message;
+        if (raw && !raw.startsWith("API ")) msg = raw;
+      }
+      setApproveError(msg);
+      await fetchRfis();
+    } finally {
+      setDecisionBusy(false);
+    }
+  };
+
+  const handleCreateRfi = async (input: CreateRfiInput) => {
+    setRfiBusy(true);
+    try {
+      await api.post(`/deal-card/${dealId}/rfis`, input);
+      await fetchRfis();
+      await fetchActivity();
     } catch {
       /* ignore */
     } finally {
-      setDecisionBusy(false);
+      setRfiBusy(false);
+    }
+  };
+
+  const handleResolveRfi = async (rfiId: string, status: "RESOLVED" | "WAIVED", note?: string) => {
+    setRfiBusy(true);
+    try {
+      await api.post(`/deal-card/${dealId}/rfis/${rfiId}/resolve`, { status, note });
+      await fetchRfis();
+      await fetchActivity();
+      setApproveError(null);
+    } catch {
+      /* ignore */
+    } finally {
+      setRfiBusy(false);
     }
   };
 
@@ -332,7 +391,19 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
             ) : (
               <>
                 {tab === "submission" && <ReRateBanner show={!!deal?.ratingStale} onReRate={handleReRate} />}
-                {tab === "overview" && <OverviewTab activity={activity} canPost={canPost} posting={posting} onSend={handleSend} />}
+                {tab === "overview" && (
+                  <OverviewTab
+                    activity={activity}
+                    canPost={canPost}
+                    posting={posting}
+                    onSend={handleSend}
+                    rfis={rfis}
+                    isInternal={isInternal}
+                    rfiBusy={rfiBusy}
+                    onCreateRfi={handleCreateRfi}
+                    onResolveRfi={handleResolveRfi}
+                  />
+                )}
                 {tab === "submission" && <SubmissionTab sections={sections} aggregateComplete={payload.aggregateComplete} total={payload.total} onOpenSection={setOpenSection} />}
                 {tab === "documents" && <DocumentsTab dealId={dealId} />}
                 {tab === "tasks" && <TasksTab dealId={dealId} />}
@@ -351,6 +422,8 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
                 wfsPepm={(deal?.wfsPepmRate as string) ?? null}
                 canApprove={payload.canApprove}
                 busy={decisionBusy}
+                openBlocking={openBlocking}
+                approveError={approveError}
                 onApprove={handleApprove}
                 onDecline={handleDecline}
                 onModify={() => setTab("quote")}
