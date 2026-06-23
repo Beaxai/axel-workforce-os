@@ -188,17 +188,20 @@ Each scenario must differ from the current inputs in at least one lever. Return 
     const parsed = JSON.parse(jsonMatch[0]);
     if (!Array.isArray(parsed)) return [];
 
-    return parsed
+    return (parsed as unknown[])
       .slice(0, 3)
-      .map((s: any): ProposedScenario => ({
-        label: String(s.label || "Variation").slice(0, 40),
-        rationale: String(s.rationale || "").slice(0, 200),
-        levers: {
-          eMod: clampEMod(Number(s.eMod) || base.levers.eMod),
-          scheduleRating: clampSchedule(Number(s.scheduleRating) || base.levers.scheduleRating),
-          isPEO: parseBool(s.isPEO, base.levers.isPEO),
-        },
-      }))
+      .map((raw): ProposedScenario => {
+        const s = (raw ?? {}) as Record<string, unknown>;
+        return {
+          label: String(s.label || "Variation").slice(0, 40),
+          rationale: String(s.rationale || "").slice(0, 200),
+          levers: {
+            eMod: clampEMod(Number(s.eMod) || base.levers.eMod),
+            scheduleRating: clampSchedule(Number(s.scheduleRating) || base.levers.scheduleRating),
+            isPEO: parseBool(s.isPEO, base.levers.isPEO),
+          },
+        };
+      })
       .filter(
         (s) =>
           s.levers.eMod !== base.levers.eMod ||
