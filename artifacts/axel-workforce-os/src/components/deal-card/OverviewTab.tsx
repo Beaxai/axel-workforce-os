@@ -1,11 +1,14 @@
 /**
- * Phase 4C — Overview = collaboration hub. Day-grouped activity timeline + a
- * sticky composer that persists a message to the activity feed. The AI quote
- * variation + RFI blocking widgets are STATIC placeholders, deferred to P6
- * (ruling #2).
+ * Phase 4C — Overview = collaboration hub (Stitch layout, Axel tokens).
+ *
+ * A left timeline rail threads the day-grouped activity feed (real, from
+ * activity_log) plus a sticky composer that persists a message. The AI
+ * quote-variation row and the RFI blocking card are STATIC placeholders styled
+ * to match the Stitch reference but deferred to P6 (ruling #2) — they carry an
+ * explicit "preview" marker and perform no work.
  */
 import { useMemo, useState } from "react";
-import { Sparkles, AlertTriangle, Send, Paperclip } from "lucide-react";
+import { Sparkles, AlertTriangle, Paperclip, Zap } from "lucide-react";
 import type { ActivityRow } from "./types";
 import { STATUS_COLORS } from "./icons";
 import { useThemeColors } from "@/lib/use-theme-colors";
@@ -42,6 +45,11 @@ function authorOf(row: ActivityRow): string {
   return a || "System";
 }
 
+function roleOf(row: ActivityRow): string | null {
+  const r = (row.metadata as { role?: string } | null)?.role;
+  return r || null;
+}
+
 function initials(name: string): string {
   return name.split(" ").map((p) => p[0]).filter(Boolean).slice(0, 2).join("").toUpperCase() || "?";
 }
@@ -67,62 +75,104 @@ export default function OverviewTab({ activity, canPost, posting, onSend }: Over
     setText("");
   };
 
-  const msgBox: React.CSSProperties = {
-    background: c.cardBg,
-    border: `1px solid ${c.borderColor}`,
-    borderRadius: 10,
-    padding: "10px 12px",
+  const node = (color: string) => (
+    <span style={{ position: "absolute", left: -25, top: 2, width: 12, height: 12, borderRadius: "50%", background: color, boxShadow: `0 0 0 3px ${c.bg}` }} />
+  );
+
+  const card: React.CSSProperties = {
+    background: c.cardBg, border: `1px solid ${c.borderColor}`, borderRadius: 10, padding: "10px 12px",
+  };
+  const dayPill: React.CSSProperties = {
+    fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", color: c.textMuted,
+    background: c.cardBg, borderRadius: 9999, padding: "3px 10px", display: "inline-block",
+  };
+  const previewTag: React.CSSProperties = {
+    fontSize: 9.5, color: c.textMuted, marginTop: 6, fontStyle: "italic",
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      {/* Static AI placeholder (P6) */}
-      <div style={{ ...msgBox, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-          <Sparkles style={{ width: 15, height: 15, color: c.textMuted }} />
-          <span style={{ fontSize: 11.5, color: c.textSecondary }}>AI Engine — quote variations arrive in a later phase</span>
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <div style={{ position: "relative", marginLeft: 12, paddingLeft: 24, borderLeft: `2px solid ${c.borderColor}`, display: "flex", flexDirection: "column", gap: 14 }}>
+        {/* Today marker */}
+        <div style={{ position: "relative" }}>
+          {node(c.accentPrimary)}
+          <span style={dayPill}>Today</span>
         </div>
-        <span style={{ fontSize: 10, color: c.textMuted }}>Soon</span>
-      </div>
 
-      {/* Static RFI placeholder (P6) */}
-      <div style={{ ...msgBox, borderLeft: `2px solid ${STATUS_COLORS.partial}` }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-            <AlertTriangle style={{ width: 15, height: 15, color: STATUS_COLORS.partial }} />
-            <span style={{ fontSize: 12, fontWeight: 500, color: c.textPrimary }}>RFI workflow</span>
-          </div>
-          <span style={{ fontSize: 10, color: STATUS_COLORS.partial }}>Planned</span>
-        </div>
-        <div style={{ fontSize: 11.5, color: c.textSecondary, lineHeight: 1.5 }}>
-          Blocking requests-for-information with countdowns land in a later phase.
-        </div>
-      </div>
-
-      {/* Activity timeline grouped by day */}
-      {groups.length === 0 && (
-        <div style={{ padding: "24px 0", textAlign: "center", fontSize: 12, color: c.textMuted }}>No activity yet.</div>
-      )}
-      {groups.map(([day, rows]) => (
-        <div key={day} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <div style={{ fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", color: c.textMuted }}>{day}</div>
-          {rows.map((row) => {
-            const author = authorOf(row);
-            return (
-              <div key={row.id} style={msgBox}>
-                <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 5 }}>
-                  <div style={{ width: 20, height: 20, borderRadius: "50%", background: c.hoverBg, color: c.textSecondary, fontSize: 9, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    {initials(author)}
-                  </div>
-                  <span style={{ fontSize: 12, fontWeight: 500, color: c.textPrimary }}>{author}</span>
-                  <span style={{ fontSize: 10, color: c.textMuted }}>{timeLabel(row.createdAt)}</span>
-                </div>
-                <div style={{ fontSize: 11.5, color: c.textSecondary, lineHeight: 1.5 }}>{row.description}</div>
+        {/* Real activity feed grouped by day */}
+        {groups.length === 0 && (
+          <div style={{ position: "relative", fontSize: 12, color: c.textMuted }}>No activity yet.</div>
+        )}
+        {groups.map(([day, rows]) => (
+          <div key={day} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            {day !== "Today" && (
+              <div style={{ position: "relative" }}>
+                {node(c.textMuted)}
+                <span style={dayPill}>{day}</span>
               </div>
-            );
-          })}
+            )}
+            {rows.map((row) => {
+              const author = authorOf(row);
+              const role = roleOf(row);
+              return (
+                <div key={row.id} style={{ position: "relative" }}>
+                  {node(c.accentPrimary)}
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                    <div style={{ width: 22, height: 22, borderRadius: "50%", background: c.hoverBg, color: c.textSecondary, fontSize: 9, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      {initials(author)}
+                    </div>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: c.textPrimary }}>{author}</span>
+                    {role && <span style={{ fontSize: 10.5, color: c.textMuted }}>{role}</span>}
+                    <span style={{ fontSize: 10, color: c.textMuted }}>{"\u00b7"} {timeLabel(row.createdAt)}</span>
+                  </div>
+                  <div style={{ ...card, borderLeft: `2px solid var(--accent-primary)` }}>
+                    <div style={{ fontSize: 12, color: c.textSecondary, lineHeight: 1.55 }}>{row.description}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ))}
+
+        {/* AI quote-variation — static placeholder (P6) */}
+        <div style={{ position: "relative" }}>
+          {node(c.accentSupport)}
+          <div style={{ ...card, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+              <Sparkles style={{ width: 15, height: 15, color: c.accentSupport, flexShrink: 0 }} />
+              <span style={{ fontSize: 12, color: c.textPrimary }}>AI Engine: New Quote Variation</span>
+              <span style={{ fontSize: 10, color: c.textMuted, background: c.hoverBg, borderRadius: 9999, padding: "1px 7px", whiteSpace: "nowrap" }}>QR-4492-B</span>
+            </div>
+            <span style={{ fontSize: 10.5, color: c.textMuted, fontWeight: 600, letterSpacing: "0.04em" }}>COMPARE</span>
+          </div>
+          <div style={previewTag}>Preview — quote-variation engine arrives in a later phase.</div>
         </div>
-      ))}
+
+        {/* RFI blocking — static placeholder (P6) */}
+        <div style={{ position: "relative" }}>
+          {node(STATUS_COLORS.partial)}
+          <span style={{ ...dayPill, color: STATUS_COLORS.partial, marginBottom: 6 }}>Critical Pending</span>
+          <div style={{ ...card, borderLeft: `2px solid ${STATUS_COLORS.partial}`, marginTop: 6 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 5 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                <AlertTriangle style={{ width: 15, height: 15, color: STATUS_COLORS.partial }} />
+                <span style={{ fontSize: 12, fontWeight: 600, color: c.textPrimary }}>RFI: Safety Protocol Verification</span>
+              </div>
+              <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: "0.05em", color: STATUS_COLORS.partial, background: c.hoverBg, borderRadius: 9999, padding: "2px 7px" }}>BLOCKING</span>
+            </div>
+            <div style={{ fontSize: 11.5, color: c.textSecondary, lineHeight: 1.5, marginBottom: 8 }}>
+              Sector requires validated fire-suppression logs for class 8810 eligibility.
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ flex: 1, height: 5, borderRadius: 9999, background: c.cardBg, overflow: "hidden" }}>
+                <div style={{ width: "60%", height: "100%", background: STATUS_COLORS.partial }} />
+              </div>
+              <span style={{ fontSize: 10, color: STATUS_COLORS.partial, whiteSpace: "nowrap" }}>4h remaining</span>
+            </div>
+            <div style={previewTag}>Preview — RFI countdown + blocking logic arrives in a later phase.</div>
+          </div>
+        </div>
+      </div>
 
       {/* Sticky composer */}
       {canPost && (
@@ -146,14 +196,14 @@ export default function OverviewTab({ activity, canPost, posting, onSend }: Over
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); } }}
             placeholder="Type a message or request\u2026"
-            style={{ flex: 1, background: "transparent", border: "none", outline: "none", fontSize: 11.5, color: c.inputText, fontFamily: "inherit" }}
+            style={{ flex: 1, background: "transparent", border: "none", outline: "none", fontSize: 12, color: c.inputText, fontFamily: "inherit" }}
           />
           <button
             onClick={submit}
             disabled={posting || !text.trim()}
-            style={{ width: 28, height: 28, borderRadius: 8, background: "var(--accent-primary)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", border: "none", cursor: text.trim() ? "pointer" : "not-allowed", opacity: text.trim() ? 1 : 0.5, flexShrink: 0 }}
+            style={{ width: 30, height: 30, borderRadius: 8, background: "var(--gradient-cta)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", border: "none", cursor: text.trim() ? "pointer" : "not-allowed", opacity: text.trim() ? 1 : 0.5, flexShrink: 0 }}
           >
-            <Send style={{ width: 15, height: 15 }} />
+            <Zap style={{ width: 15, height: 15 }} />
           </button>
         </div>
       )}

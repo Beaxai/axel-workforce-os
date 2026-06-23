@@ -2,8 +2,8 @@
  * Phase 4C — Deal Card collaboration hub entry point.
  *
  * The deal card was rebuilt as a decomposed hub under `components/deal-card/`
- * (DealCardShell + OverviewTab, SubmissionTab, RailCompletenessSummary,
- * SectionEditorOverlay, ReRateBanner, PricingRail, plus supporting tabs). This
+ * (DealCardShell + OverviewTab, SubmissionTab, SectionEditorOverlay,
+ * ReRateBanner, PricingRail, plus supporting tabs). This
  * file preserves the public contract that the rest of the app depends on:
  *   - `<DealCardModal dealId isOpen onClose onDealUpdated />`
  *   - `openDealCard(dealId)` — dispatches the `open-deal-card` window event

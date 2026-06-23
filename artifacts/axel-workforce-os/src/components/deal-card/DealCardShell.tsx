@@ -1,25 +1,27 @@
 /**
- * Phase 4C — Deal Card collaboration hub shell.
+ * Phase 4C — Deal Card collaboration hub shell (Stitch layout, Axel tokens).
  *
- * Layout: header (company + badges + close) → 6-phase macro tracker → KPI strip
- * → body [ left sub-nav | tab content | right rail (completeness + pricing +
- * Approve/Decline) ]. The server computes section completeness and edit access;
- * this shell only renders + dispatches. Tokens only; verified light + dark.
+ * Layout: header (company + badges + deal-team avatars + close) → 6-phase macro
+ * tracker (display-only, mapped from the binding pipeline) → KPI strip → body
+ * [ left sub-nav | tab content | right rail (WC/WFS pricing + Approve/Decline) ].
+ * The server computes section completeness and edit access; this shell only
+ * renders + dispatches. Completeness lives on the Submission tab (per the
+ * 2026-06-22 Stitch §8 update). Tokens only; verified light + dark.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import {
-  X, Star, LayoutDashboard, ClipboardList, Folder, CheckSquare, Calculator, Shield,
+  X, Star, LayoutDashboard, ClipboardList, Folder, CheckSquare, Calculator, Shield, UserRound,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { useAuthStore } from "@/lib/auth-store";
 import type { SectionView, SubmissionPayload, ActivityRow, SectionPatchResponse } from "./types";
 import { PHASES, phaseIndex, isDeclined } from "./stage-map";
+import { STATUS_COLORS } from "./icons";
 import OverviewTab from "./OverviewTab";
 import SubmissionTab from "./SubmissionTab";
-import RailCompletenessSummary from "./RailCompletenessSummary";
 import PricingRail from "./PricingRail";
 import ReRateBanner from "./ReRateBanner";
 import SectionEditorOverlay from "./SectionEditorOverlay";
@@ -64,6 +66,28 @@ function fmtMoneyShort(v: unknown): string {
   if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}K`;
   return `$${n.toLocaleString()}`;
+}
+
+/** Decorative deal-team avatar cluster (Stitch header element). */
+function DealTeamAvatars() {
+  const c = useThemeColors();
+  const colors = [c.accentSupport, c.accentPrimary, c.accentSupportHover];
+  return (
+    <div style={{ display: "flex", alignItems: "center" }}>
+      {colors.map((bg, i) => (
+        <div
+          key={i}
+          style={{
+            width: 26, height: 26, borderRadius: "50%", background: bg,
+            border: `2px solid ${c.bg}`, marginLeft: i === 0 ? 0 : -8,
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}
+        >
+          <UserRound style={{ width: 13, height: 13, color: "#fff" }} />
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }: DealCardShellProps) {
@@ -198,13 +222,13 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
   const declined = isDeclined(stage);
   const effectiveDate = deal?.coverageEffectiveDate ? new Date(String(deal.coverageEffectiveDate)).toLocaleDateString() : null;
 
-  const badges = [deal?.vertical, deal?.productType, effectiveDate ? `Effective ${effectiveDate}` : null].filter(Boolean) as string[];
+  const badges = [deal?.vertical, deal?.productType].filter(Boolean) as string[];
 
   const kpis = [
-    { label: "LOCATIONS", value: fmtNum(fieldValue(sections, "locations", "numberOfLocations")) },
-    { label: "EMPLOYEES", value: fmtNum(fieldValue(sections, "workforce", "employeeCountFt")) },
-    { label: "ANNUAL PAYROLL", value: fmtMoneyShort(fieldValue(sections, "workforce", "annualPayroll")) },
-    { label: "EXMOD", value: (() => { const e = fieldValue(sections, "workforce", "emod"); return e == null || e === "" ? "\u2014" : String(e); })() },
+    { label: "LOCATIONS", value: fmtNum(fieldValue(sections, "locations", "numberOfLocations")), accent: false },
+    { label: "EMPLOYEES", value: fmtNum(fieldValue(sections, "workforce", "employeeCountFt")), accent: false },
+    { label: "ANNUAL PAYROLL", value: fmtMoneyShort(fieldValue(sections, "workforce", "annualPayroll")), accent: true },
+    { label: "EXMOD", value: (() => { const e = fieldValue(sections, "workforce", "emod"); return e == null || e === "" ? "\u2014" : String(e); })(), accent: true },
   ];
 
   const overlayBg = "rgba(0,0,0,0.5)";
@@ -227,29 +251,37 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
             <Star style={{ width: 18, height: 18, color: c.textMuted }} />
             <div>
               <div style={{ fontSize: 16, fontWeight: 500 }}>{deal?.businessName || "Deal"}</div>
-              {badges.length > 0 && (
-                <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
+              {(badges.length > 0 || effectiveDate) && (
+                <div style={{ display: "flex", gap: 6, marginTop: 4, flexWrap: "wrap" }}>
                   {badges.map((b) => (
                     <span key={b} style={{ fontSize: 11, padding: "2px 8px", borderRadius: 9999, background: c.cardBg, color: c.textMuted, border: `1px solid ${c.borderColor}` }}>{b}</span>
                   ))}
+                  {effectiveDate && (
+                    <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 9999, background: c.accentPrimarySoft, color: "var(--accent-primary)", border: `1px solid ${c.accentPrimarySoft}`, fontWeight: 600, letterSpacing: "0.03em", textTransform: "uppercase" }}>
+                      Effective {effectiveDate}
+                    </span>
+                  )}
                 </div>
               )}
             </div>
           </div>
-          <X onClick={onClose} style={{ width: 18, height: 18, color: c.textMuted, cursor: "pointer" }} />
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <DealTeamAvatars />
+            <X onClick={onClose} style={{ width: 18, height: 18, color: c.textMuted, cursor: "pointer" }} />
+          </div>
         </div>
 
-        {/* 6-phase macro tracker */}
+        {/* 6-phase macro tracker (display-only) */}
         <div style={{ display: "flex", alignItems: "flex-start", padding: "16px 18px 12px", borderBottom: `1px solid ${c.borderColor}` }}>
           {PHASES.map((label, i) => {
             const done = i < currentPhase;
             const current = i === currentPhase;
             const declinedNode = current && declined;
-            const nodeColor = declinedNode ? "#ef4444" : current ? "var(--accent-primary)" : done ? c.textMuted : c.borderColor;
-            const lblColor = declinedNode ? "#ef4444" : current ? "var(--accent-primary)" : c.textMuted;
+            const nodeColor = declinedNode ? "#ef4444" : current ? "var(--accent-primary)" : done ? STATUS_COLORS.complete : c.borderColor;
+            const lblColor = declinedNode ? "#ef4444" : current ? "var(--accent-primary)" : done ? STATUS_COLORS.complete : c.textMuted;
             return (
               <div key={label} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", position: "relative", minWidth: 0 }}>
-                {i > 0 && <div style={{ position: "absolute", top: 5, left: "-50%", width: "100%", height: 2, background: i <= currentPhase ? c.textMuted : c.borderColor }} />}
+                {i > 0 && <div style={{ position: "absolute", top: 5, left: "-50%", width: "100%", height: 2, background: i <= currentPhase ? STATUS_COLORS.complete : c.borderColor }} />}
                 <span style={{ width: 12, height: 12, borderRadius: "50%", border: `2px solid ${nodeColor}`, background: done || current ? nodeColor : c.bg, position: "relative", zIndex: 1, boxShadow: current ? `0 0 0 4px ${c.accentPrimarySoft}` : "none" }} />
                 <span style={{ fontSize: 10, marginTop: 8, color: lblColor, textAlign: "center", lineHeight: 1.3, maxWidth: 92, textTransform: "uppercase", letterSpacing: "0.07em", fontWeight: 500 }}>
                   {declinedNode ? "Declined" : label}
@@ -264,7 +296,7 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
           {kpis.map((k) => (
             <div key={k.label} style={{ flex: 1, background: c.cardBg, border: `1px solid ${c.borderColor}`, borderRadius: 10, padding: "8px 11px" }}>
               <div style={{ fontSize: 11, letterSpacing: "0.06em", color: c.textMuted }}>{k.label}</div>
-              <div style={{ fontSize: 18, fontWeight: 500, marginTop: 1 }}>{k.value}</div>
+              <div style={{ fontSize: 18, fontWeight: 500, marginTop: 1, color: k.accent ? "var(--accent-primary)" : c.textPrimary }}>{k.value}</div>
             </div>
           ))}
         </div>
@@ -301,7 +333,7 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
               <>
                 {tab === "submission" && <ReRateBanner show={!!deal?.ratingStale} onReRate={handleReRate} />}
                 {tab === "overview" && <OverviewTab activity={activity} canPost={canPost} posting={posting} onSend={handleSend} />}
-                {tab === "submission" && <SubmissionTab sections={sections} onOpenSection={setOpenSection} />}
+                {tab === "submission" && <SubmissionTab sections={sections} aggregateComplete={payload.aggregateComplete} total={payload.total} onOpenSection={setOpenSection} />}
                 {tab === "documents" && <DocumentsTab dealId={dealId} />}
                 {tab === "tasks" && <TasksTab dealId={dealId} />}
                 {tab === "quote" && <QuoteTab dealId={dealId} businessName={deal?.businessName || ""} productType={deal?.productType} onClose={onClose} />}
@@ -312,13 +344,7 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
 
           {/* Right rail */}
           {payload && (
-            <div style={{ width: 212, flexShrink: 0, borderLeft: `1px solid ${c.borderColor}`, padding: "12px 14px 18px", display: "flex", flexDirection: "column", gap: 12, overflow: "auto" }}>
-              <RailCompletenessSummary
-                sections={sections}
-                aggregateComplete={payload.aggregateComplete}
-                total={payload.total}
-                onOpenSection={(k) => { setTab("submission"); setOpenSection(k); }}
-              />
+            <div style={{ width: 224, flexShrink: 0, borderLeft: `1px solid ${c.borderColor}`, padding: "14px 14px 18px", display: "flex", flexDirection: "column", gap: 14, overflow: "auto" }}>
               <PricingRail
                 wcPremium={(deal?.wcPremium as string) ?? null}
                 wfsMonthly={null}
@@ -327,6 +353,7 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
                 busy={decisionBusy}
                 onApprove={handleApprove}
                 onDecline={handleDecline}
+                onModify={() => setTab("quote")}
               />
             </div>
           )}
