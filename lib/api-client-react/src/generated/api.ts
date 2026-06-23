@@ -41,6 +41,8 @@ import type {
   MessageRequest,
   MessageResponse,
   OkResponse,
+  PreviewVariationRequest,
+  PreviewVariationResponse,
   QuoteVariationsResponse,
   RatingStaleClearedResponse,
   RegisterRequest,
@@ -2679,4 +2681,95 @@ export const useApplyQuoteVariation = <
   TContext
 > => {
   return useMutation(getApplyQuoteVariationMutationOptions(options));
+};
+
+/**
+ * @summary Re-rate arbitrary levers without persisting (what-if panel, internal only)
+ */
+export const getPreviewQuoteVariationUrl = (id: string) => {
+  return `/api/deal-card/${id}/quote-variations/preview`;
+};
+
+export const previewQuoteVariation = async (
+  id: string,
+  previewVariationRequest: PreviewVariationRequest,
+  options?: RequestInit,
+): Promise<PreviewVariationResponse> => {
+  return customFetch<PreviewVariationResponse>(
+    getPreviewQuoteVariationUrl(id),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(previewVariationRequest),
+    },
+  );
+};
+
+export const getPreviewQuoteVariationMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof previewQuoteVariation>>,
+    TError,
+    { id: string; data: BodyType<PreviewVariationRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof previewQuoteVariation>>,
+  TError,
+  { id: string; data: BodyType<PreviewVariationRequest> },
+  TContext
+> => {
+  const mutationKey = ["previewQuoteVariation"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof previewQuoteVariation>>,
+    { id: string; data: BodyType<PreviewVariationRequest> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return previewQuoteVariation(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PreviewQuoteVariationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof previewQuoteVariation>>
+>;
+export type PreviewQuoteVariationMutationBody =
+  BodyType<PreviewVariationRequest>;
+export type PreviewQuoteVariationMutationError = ErrorType<void>;
+
+/**
+ * @summary Re-rate arbitrary levers without persisting (what-if panel, internal only)
+ */
+export const usePreviewQuoteVariation = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof previewQuoteVariation>>,
+    TError,
+    { id: string; data: BodyType<PreviewVariationRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof previewQuoteVariation>>,
+  TError,
+  { id: string; data: BodyType<PreviewVariationRequest> },
+  TContext
+> => {
+  return useMutation(getPreviewQuoteVariationMutationOptions(options));
 };

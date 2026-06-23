@@ -39,6 +39,8 @@ export * from "./messageRequest";
 export * from "./messageResponse";
 export * from "./okResponse";
 export * from "./partyRole";
+export * from "./previewVariationRequest";
+export * from "./previewVariationResponse";
 export * from "./quoteVariation";
 export * from "./quoteVariationSource";
 export * from "./quoteVariationsResponse";

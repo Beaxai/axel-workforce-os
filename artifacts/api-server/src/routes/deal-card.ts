@@ -381,6 +381,29 @@ async function loadQuote(dealId: string): Promise<QuoteRow | null> {
   return q ?? null;
 }
 
+/** Re-rate a quote's base inputs with an explicit lever set. Used by both the
+ * non-persisting what-if preview and the persisting apply path. */
+async function rateWithLevers(
+  base: VariationBaseInputs,
+  levers: { eMod: number; scheduleRating: number; isPEO: boolean },
+): Promise<{ premium: number; breakdown: unknown }> {
+  if (base.multi) {
+    const result = await calculateMultiLocationWC({ ...base.multi, ...levers });
+    return { premium: result.finalPremium, breakdown: result };
+  }
+  if (base.single) {
+    const result = await calculateWCPremium({
+      state: base.single.state,
+      classCode: base.single.classCode,
+      annualPayroll: base.single.annualPayroll,
+      zip: base.single.zip,
+      ...levers,
+    });
+    return { premium: result.result.wcPremium, breakdown: result };
+  }
+  throw new Error("Quote is missing inputs required to re-rate");
+}
+
 // GET /deal-card/:id/quote-variations — internal staff only
 router.get("/:id/quote-variations", async (req, res) => {
   const actor = actorFrom(req);
@@ -411,10 +434,50 @@ router.get("/:id/quote-variations", async (req, res) => {
 
   try {
     const { basePremium, variations, usedAi } = await generateQuoteVariations(base, ctx, storedPremium);
-    return res.json({ hasQuote: true, basePremium, variations, usedAi });
+    return res.json({ hasQuote: true, basePremium, baseLevers: base.levers, variations, usedAi });
   } catch (err) {
     req.log.error({ err }, "quote-variations generation failed");
     return res.status(500).json({ error: "Failed to generate quote variations" });
+  }
+});
+
+// POST /deal-card/:id/quote-variations/preview — re-rate arbitrary levers WITHOUT
+// persisting (the "what-if" panel). Internal staff only.
+const previewVariationSchema = z.object({
+  eMod: z.number().min(0.5).max(2.0),
+  scheduleRating: z.number().min(0.5).max(2.0),
+  isPEO: z.boolean(),
+});
+
+router.post("/:id/quote-variations/preview", async (req, res) => {
+  const actor = actorFrom(req);
+  if (!INTERNAL_ROLES.has(actor.role)) {
+    return res.status(403).json({ error: "Only internal staff may preview quote variations" });
+  }
+  const parsed = previewVariationSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid request", issues: parsed.error.issues });
+
+  const deal = await loadDeal(req.params.id);
+  if (!deal) return res.status(404).json({ error: "Deal not found" });
+  if (!canViewDeal(deal, actor)) return res.status(403).json({ error: "Insufficient permissions" });
+
+  const quote = await loadQuote(deal.id);
+  if (!quote) return res.status(409).json({ error: "Deal has no quote to vary" });
+
+  const base = baseInputsFromQuote(quote);
+  if (!base) return res.status(409).json({ error: "Quote is missing inputs required to re-rate" });
+
+  const basePremium = quote.wcPremium != null ? Number(quote.wcPremium) : 0;
+  const levers = { eMod: parsed.data.eMod, scheduleRating: parsed.data.scheduleRating, isPEO: parsed.data.isPEO };
+
+  try {
+    const { premium } = await rateWithLevers(base, levers);
+    const delta = premium - basePremium;
+    const deltaPct = basePremium > 0 ? Math.round((delta / basePremium) * 100) : 0;
+    return res.json({ premium, basePremium, delta, deltaPct, levers });
+  } catch (err) {
+    req.log.error({ err }, "quote-variation preview re-rate failed");
+    return res.status(400).json({ error: "Failed to re-rate the variation" });
   }
 });
 
@@ -453,23 +516,7 @@ router.post("/:id/quote-variations/apply", async (req, res) => {
   let premium: number;
   let breakdown: unknown;
   try {
-    if (base.multi) {
-      const result = await calculateMultiLocationWC({ ...base.multi, ...levers });
-      premium = result.finalPremium;
-      breakdown = result;
-    } else if (base.single) {
-      const result = await calculateWCPremium({
-        state: base.single.state,
-        classCode: base.single.classCode,
-        annualPayroll: base.single.annualPayroll,
-        zip: base.single.zip,
-        ...levers,
-      });
-      premium = result.result.wcPremium;
-      breakdown = result;
-    } else {
-      return res.status(409).json({ error: "Quote is missing inputs required to re-rate" });
-    }
+    ({ premium, breakdown } = await rateWithLevers(base, levers));
   } catch (err) {
     req.log.error({ err }, "quote-variation apply re-rate failed");
     return res.status(400).json({ error: "Failed to re-rate the variation" });

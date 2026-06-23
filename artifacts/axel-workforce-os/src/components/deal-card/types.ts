@@ -120,8 +120,17 @@ export interface QuoteVariation {
 export interface QuoteVariationsResponse {
   hasQuote: boolean;
   basePremium: number;
+  baseLevers?: VariationLevers;
   usedAi: boolean;
   variations: QuoteVariation[];
+}
+
+export interface PreviewVariationResponse {
+  premium: number;
+  basePremium: number;
+  delta: number;
+  deltaPct: number;
+  levers: VariationLevers;
 }
 
 export interface ApplyVariationResponse {

@@ -5,13 +5,12 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import type { QuoteVariation } from "./quoteVariation";
 import type { VariationLevers } from "./variationLevers";
 
-export interface QuoteVariationsResponse {
-  hasQuote: boolean;
+export interface PreviewVariationResponse {
+  premium: number;
   basePremium: number;
-  baseLevers?: VariationLevers;
-  usedAi: boolean;
-  variations: QuoteVariation[];
+  delta: number;
+  deltaPct: number;
+  levers: VariationLevers;
 }

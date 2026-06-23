@@ -8,9 +8,9 @@
  * hard block on Approve enforced server-side. The AI quote-variation row remains
  * a STATIC placeholder deferred to P6 iteration 2.
  */
-import { useEffect, useMemo, useState } from "react";
-import { Sparkles, AlertTriangle, Paperclip, Zap, Plus, Check, CircleSlash, X, ArrowRight } from "lucide-react";
-import type { ActivityRow, RfiRow, QuoteVariation } from "./types";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Sparkles, AlertTriangle, Paperclip, Zap, Plus, Check, CircleSlash, X, ArrowRight, SlidersHorizontal } from "lucide-react";
+import type { ActivityRow, RfiRow, QuoteVariation, VariationLevers, PreviewVariationResponse } from "./types";
 import { STATUS_COLORS } from "./icons";
 import { useThemeColors } from "@/lib/use-theme-colors";
 
@@ -34,12 +34,15 @@ interface OverviewTabProps {
   onResolveRfi: (rfiId: string, status: "RESOLVED" | "WAIVED", note?: string) => void;
   variations: QuoteVariation[];
   basePremium: number;
+  baseLevers: VariationLevers | null;
   varHasQuote: boolean;
   varUsedAi: boolean;
   varLoading: boolean;
   varApplying: string | null;
   onGenerateVariations: () => void;
   onApplyVariation: (v: QuoteVariation) => void;
+  onPreviewLevers: (levers: VariationLevers) => Promise<PreviewVariationResponse>;
+  onApplyLevers: (levers: VariationLevers, label: string) => void;
 }
 
 /** Human countdown from now → dueAt. Returns label + urgency color. */
@@ -108,10 +111,169 @@ function initials(name: string): string {
   return name.split(" ").map((p) => p[0]).filter(Boolean).slice(0, 2).join("").toUpperCase() || "?";
 }
 
+/**
+ * What-If lever panel (P6 iteration 2 follow-up). Internal staff manually tweak
+ * eMod, schedule rating, and the PEO toggle and see the re-rated premium live
+ * (debounced) before applying. Reuses the same apply endpoint as the AI cards.
+ */
+function WhatIfPanel({
+  basePremium, baseLevers, varApplying, onPreviewLevers, onApplyLevers,
+}: {
+  basePremium: number;
+  baseLevers: VariationLevers;
+  varApplying: string | null;
+  onPreviewLevers: (levers: VariationLevers) => Promise<PreviewVariationResponse>;
+  onApplyLevers: (levers: VariationLevers, label: string) => void;
+}) {
+  const c = useThemeColors();
+  const [levers, setLevers] = useState<VariationLevers>(baseLevers);
+  const [preview, setPreview] = useState<PreviewVariationResponse | null>(null);
+  const [previewing, setPreviewing] = useState(false);
+  const reqId = useRef(0);
+
+  const money = (n: number) =>
+    n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+
+  const dirty =
+    levers.eMod !== baseLevers.eMod ||
+    levers.scheduleRating !== baseLevers.scheduleRating ||
+    levers.isPEO !== baseLevers.isPEO;
+
+  const run = useCallback(
+    (next: VariationLevers) => {
+      const id = ++reqId.current;
+      setPreviewing(true);
+      onPreviewLevers(next)
+        .then((res) => {
+          if (reqId.current === id) setPreview(res);
+        })
+        .catch(() => {
+          if (reqId.current === id) setPreview(null);
+        })
+        .finally(() => {
+          if (reqId.current === id) setPreviewing(false);
+        });
+    },
+    [onPreviewLevers],
+  );
+
+  // Debounce preview calls while the operator drags the sliders. When the levers
+  // return to base (or are reset), invalidate any in-flight request so a late
+  // response can't flash a stale projected premium over the "current" state.
+  useEffect(() => {
+    if (!dirty) {
+      reqId.current++;
+      setPreview(null);
+      setPreviewing(false);
+      return;
+    }
+    const t = setTimeout(() => run(levers), 350);
+    return () => clearTimeout(t);
+  }, [levers, dirty, run]);
+
+  const shownPremium = preview ? preview.premium : basePremium;
+  const delta = preview ? preview.delta : 0;
+  const deltaPct = preview ? preview.deltaPct : 0;
+  const deltaColor = delta < 0 ? STATUS_COLORS.complete : delta > 0 ? "#ef4444" : c.textMuted;
+
+  const sliderRow = (
+    label: string,
+    key: "eMod" | "scheduleRating",
+  ) => (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
+        <span style={{ fontSize: 11, color: c.textSecondary }}>{label}</span>
+        <span style={{ fontSize: 12, fontWeight: 700, color: c.textPrimary, fontVariantNumeric: "tabular-nums" }}>
+          {levers[key].toFixed(2)}
+        </span>
+      </div>
+      <input
+        type="range"
+        min={0.5}
+        max={2.0}
+        step={0.01}
+        value={levers[key]}
+        onChange={(e) => setLevers((p) => ({ ...p, [key]: Number(e.target.value) }))}
+        style={{ width: "100%", accentColor: "var(--accent-primary)", cursor: "pointer" }}
+      />
+    </div>
+  );
+
+  return (
+    <div style={{ marginTop: 4, paddingTop: 12, borderTop: `1px solid ${c.borderColor}`, display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <SlidersHorizontal style={{ width: 14, height: 14, color: "var(--accent-primary)", flexShrink: 0 }} />
+        <span style={{ fontSize: 12, fontWeight: 600, color: c.textPrimary }}>Manual What-If</span>
+        <span style={{ fontSize: 10.5, color: c.textMuted }}>live preview \u00b7 not saved until applied</span>
+      </div>
+
+      {sliderRow("Experience mod (eMod)", "eMod")}
+      {sliderRow("Schedule rating", "scheduleRating")}
+
+      <label style={{ display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer" }}>
+        <span style={{ fontSize: 11, color: c.textSecondary }}>PEO placement</span>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={levers.isPEO}
+          onClick={() => setLevers((p) => ({ ...p, isPEO: !p.isPEO }))}
+          style={{
+            position: "relative", width: 38, height: 21, borderRadius: 9999, border: "none", cursor: "pointer",
+            background: levers.isPEO ? "var(--accent-primary)" : c.borderColor, transition: "background 0.15s ease", padding: 0,
+          }}
+        >
+          <span style={{ position: "absolute", top: 2, left: levers.isPEO ? 19 : 2, width: 17, height: 17, borderRadius: "50%", background: "#fff", transition: "left 0.15s ease", boxShadow: "0 1px 2px rgba(0,0,0,0.3)" }} />
+        </button>
+      </label>
+
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: c.bg, border: `1px solid ${c.borderColor}`, borderRadius: 8, padding: "9px 10px" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <span style={{ fontSize: 10, color: c.textMuted, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            {previewing ? "Calculating\u2026" : dirty ? "Projected WC premium" : "Current WC premium"}
+          </span>
+          {dirty && preview && (
+            <span style={{ fontSize: 10.5, fontWeight: 700, color: deltaColor }}>
+              {delta > 0 ? "+" : ""}{money(delta)} ({deltaPct > 0 ? "+" : ""}{deltaPct}%)
+            </span>
+          )}
+        </div>
+        <span style={{ fontSize: 15, fontWeight: 700, color: c.textPrimary, opacity: previewing ? 0.5 : 1, fontVariantNumeric: "tabular-nums" }}>
+          {money(shownPremium)}
+        </span>
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <button
+          type="button"
+          onClick={() => onApplyLevers(levers, "Manual what-if")}
+          disabled={!dirty || previewing || varApplying !== null}
+          style={{
+            fontSize: 12, fontWeight: 600, color: "#fff", background: "var(--gradient-cta)", border: "none", borderRadius: 8,
+            padding: "7px 16px", cursor: !dirty || previewing || varApplying !== null ? "default" : "pointer", fontFamily: "inherit",
+            opacity: !dirty || previewing || varApplying !== null ? 0.5 : 1,
+          }}
+        >
+          {varApplying === "what-if" ? "Applying\u2026" : "Apply to quote"}
+        </button>
+        {dirty && (
+          <button
+            type="button"
+            onClick={() => { setLevers(baseLevers); setPreview(null); }}
+            disabled={varApplying !== null}
+            style={{ fontSize: 11, color: c.textSecondary, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 600, letterSpacing: "0.04em", padding: 0 }}
+          >
+            RESET
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function OverviewTab({
   activity, canPost, posting, onSend, rfis, isInternal, rfiBusy, onCreateRfi, onResolveRfi,
-  variations, basePremium, varHasQuote, varUsedAi, varLoading, varApplying,
-  onGenerateVariations, onApplyVariation,
+  variations, basePremium, baseLevers, varHasQuote, varUsedAi, varLoading, varApplying,
+  onGenerateVariations, onApplyVariation, onPreviewLevers, onApplyLevers,
 }: OverviewTabProps) {
   const c = useThemeColors();
   const [text, setText] = useState("");
@@ -340,6 +502,16 @@ export default function OverviewTab({
                     })}
                   </div>
                 </>
+              )}
+
+              {generated && !varLoading && varHasQuote && baseLevers && (
+                <WhatIfPanel
+                  basePremium={basePremium}
+                  baseLevers={baseLevers}
+                  varApplying={varApplying}
+                  onPreviewLevers={onPreviewLevers}
+                  onApplyLevers={onApplyLevers}
+                />
               )}
             </div>
           </div>

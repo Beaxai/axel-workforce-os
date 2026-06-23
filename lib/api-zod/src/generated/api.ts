@@ -753,6 +753,13 @@ export const GetQuoteVariationsParams = zod.object({
 export const GetQuoteVariationsResponse = zod.object({
   hasQuote: zod.boolean(),
   basePremium: zod.number(),
+  baseLevers: zod
+    .object({
+      eMod: zod.number(),
+      scheduleRating: zod.number(),
+      isPEO: zod.boolean(),
+    })
+    .optional(),
   usedAi: zod.boolean(),
   variations: zod.array(
     zod.object({
@@ -789,6 +796,31 @@ export const ApplyQuoteVariationBody = zod.object({
 export const ApplyQuoteVariationResponse = zod.object({
   success: zod.boolean(),
   premium: zod.number(),
+  levers: zod.object({
+    eMod: zod.number(),
+    scheduleRating: zod.number(),
+    isPEO: zod.boolean(),
+  }),
+});
+
+/**
+ * @summary Re-rate arbitrary levers without persisting (what-if panel, internal only)
+ */
+export const PreviewQuoteVariationParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const PreviewQuoteVariationBody = zod.object({
+  eMod: zod.number(),
+  scheduleRating: zod.number(),
+  isPEO: zod.boolean(),
+});
+
+export const PreviewQuoteVariationResponse = zod.object({
+  premium: zod.number(),
+  basePremium: zod.number(),
+  delta: zod.number(),
+  deltaPct: zod.number(),
   levers: zod.object({
     eMod: zod.number(),
     scheduleRating: zod.number(),
