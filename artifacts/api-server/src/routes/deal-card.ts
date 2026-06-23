@@ -15,11 +15,22 @@ import {
   activityLogTable,
   lossHistoryDocumentsTable,
   dealRfisTable,
+  quotesTable,
   type Deal,
   type Account,
   type DealRfi,
 } from "@workspace/db";
 import { eq, desc, and, sql } from "drizzle-orm";
+import {
+  generateQuoteVariations,
+  type VariationBaseInputs,
+  type DealContext,
+} from "../utils/quoteVariations";
+import {
+  calculateWCPremium,
+  calculateMultiLocationWC,
+  type MultiLocationInput,
+} from "../utils/ratingEngine";
 import { z } from "zod/v4";
 import {
   buildSections,
@@ -322,6 +333,173 @@ router.post("/:id/rfis/:rfiId/resolve", async (req, res) => {
   });
 
   return res.json({ success: true, rfi });
+});
+
+/* --------------------------------------------------------------------------
+ * Quote variations (P6 iteration 2) — AI-proposed alternative pricing
+ * scenarios for a deal's CURRENT quote. Internal staff only. The AI picks
+ * which levers (eMod / schedule rating / PEO) to adjust; the real rating
+ * engine computes every premium so the numbers stay bindable.
+ * ------------------------------------------------------------------------ */
+type QuoteRow = typeof quotesTable.$inferSelect;
+
+/** Build rating-engine base inputs from a saved quote row, or null if unratable. */
+function baseInputsFromQuote(q: QuoteRow): VariationBaseInputs | null {
+  const levers = {
+    eMod: q.eMod != null ? Number(q.eMod) : 1.0,
+    scheduleRating: q.scheduleRating != null ? Number(q.scheduleRating) : 1.0,
+    isPEO: !!q.isPeo,
+  };
+
+  // Multi-location quote: workforceProfile holds the original locations payload.
+  const wp = q.workforceProfile as { locations?: unknown } | null;
+  if (wp && Array.isArray(wp.locations) && wp.locations.length > 0) {
+    return { multi: { locations: wp.locations as MultiLocationInput["locations"] }, levers };
+  }
+
+  // Single-location quote. Recover the ZIP from the stored rating breakdown
+  // (the rate engine persists its inputs there; CA pricing requires a ZIP).
+  if (q.state && q.classCode && q.annualPayroll != null) {
+    const bd = q.wcRatingBreakdown as { inputs?: { zip?: string } } | null;
+    const zip = bd?.inputs?.zip;
+    return {
+      single: {
+        state: q.state,
+        classCode: q.classCode,
+        annualPayroll: Number(q.annualPayroll),
+        zip: zip || undefined,
+      },
+      levers,
+    };
+  }
+
+  return null;
+}
+
+async function loadQuote(dealId: string): Promise<QuoteRow | null> {
+  const [q] = await db.select().from(quotesTable).where(eq(quotesTable.dealId, dealId)).limit(1);
+  return q ?? null;
+}
+
+// GET /deal-card/:id/quote-variations — internal staff only
+router.get("/:id/quote-variations", async (req, res) => {
+  const actor = actorFrom(req);
+  if (!INTERNAL_ROLES.has(actor.role)) {
+    return res.status(403).json({ error: "Only internal staff may view quote variations" });
+  }
+  const deal = await loadDeal(req.params.id);
+  if (!deal) return res.status(404).json({ error: "Deal not found" });
+  if (!canViewDeal(deal, actor)) return res.status(403).json({ error: "Insufficient permissions" });
+
+  const quote = await loadQuote(deal.id);
+  if (!quote) return res.json({ hasQuote: false, basePremium: 0, variations: [], usedAi: false });
+
+  const base = baseInputsFromQuote(quote);
+  if (!base) return res.json({ hasQuote: false, basePremium: 0, variations: [], usedAi: false });
+
+  const ctx: DealContext = {
+    businessName: deal.businessName,
+    vertical: deal.vertical,
+    productType: deal.productType,
+    annualPayroll: deal.annualPayroll != null ? Number(deal.annualPayroll) : null,
+    yearsInBusiness: deal.yearsInBusiness,
+    hasPriorCoverage: deal.hasPriorCoverage,
+    lapseInCoverage: deal.lapseInCoverage,
+  };
+
+  const storedPremium = quote.wcPremium != null ? Number(quote.wcPremium) : 0;
+
+  try {
+    const { basePremium, variations, usedAi } = await generateQuoteVariations(base, ctx, storedPremium);
+    return res.json({ hasQuote: true, basePremium, variations, usedAi });
+  } catch (err) {
+    req.log.error({ err }, "quote-variations generation failed");
+    return res.status(500).json({ error: "Failed to generate quote variations" });
+  }
+});
+
+// POST /deal-card/:id/quote-variations/apply — promote a variation into the quote
+const applyVariationSchema = z.object({
+  eMod: z.number().min(0.5).max(2.0).optional(),
+  scheduleRating: z.number().min(0.5).max(2.0).optional(),
+  isPEO: z.boolean().optional(),
+  label: z.string().trim().max(60).optional(),
+});
+
+router.post("/:id/quote-variations/apply", async (req, res) => {
+  const actor = actorFrom(req);
+  if (!INTERNAL_ROLES.has(actor.role)) {
+    return res.status(403).json({ error: "Only internal staff may apply a quote variation" });
+  }
+  const parsed = applyVariationSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid request", issues: parsed.error.issues });
+
+  const deal = await loadDeal(req.params.id);
+  if (!deal) return res.status(404).json({ error: "Deal not found" });
+  if (!canViewDeal(deal, actor)) return res.status(403).json({ error: "Insufficient permissions" });
+
+  const quote = await loadQuote(deal.id);
+  if (!quote) return res.status(409).json({ error: "Deal has no quote to vary" });
+
+  const base = baseInputsFromQuote(quote);
+  if (!base) return res.status(409).json({ error: "Quote is missing inputs required to re-rate" });
+
+  const levers = {
+    eMod: parsed.data.eMod ?? base.levers.eMod,
+    scheduleRating: parsed.data.scheduleRating ?? base.levers.scheduleRating,
+    isPEO: parsed.data.isPEO ?? base.levers.isPEO,
+  };
+
+  let premium: number;
+  let breakdown: unknown;
+  try {
+    if (base.multi) {
+      const result = await calculateMultiLocationWC({ ...base.multi, ...levers });
+      premium = result.finalPremium;
+      breakdown = result;
+    } else if (base.single) {
+      const result = await calculateWCPremium({
+        state: base.single.state,
+        classCode: base.single.classCode,
+        annualPayroll: base.single.annualPayroll,
+        zip: base.single.zip,
+        ...levers,
+      });
+      premium = result.result.wcPremium;
+      breakdown = result;
+    } else {
+      return res.status(409).json({ error: "Quote is missing inputs required to re-rate" });
+    }
+  } catch (err) {
+    req.log.error({ err }, "quote-variation apply re-rate failed");
+    return res.status(400).json({ error: "Failed to re-rate the variation" });
+  }
+
+  await db
+    .update(quotesTable)
+    .set({
+      eMod: String(levers.eMod),
+      scheduleRating: String(levers.scheduleRating),
+      isPeo: levers.isPEO,
+      wcPremium: String(premium),
+      wcRatingBreakdown: breakdown,
+      ratedAt: new Date(),
+    })
+    .where(eq(quotesTable.dealId, deal.id));
+
+  const u = req.user!;
+  const author = [u.firstName, u.lastName].filter(Boolean).join(" ") || u.email;
+  await db.insert(activityLogTable).values({
+    dealId: deal.id,
+    entityType: "deal",
+    entityId: deal.id,
+    eventType: "quote_variation_applied",
+    description: `${author} applied a quote variation${parsed.data.label ? ` (${parsed.data.label})` : ""}. New WC premium $${premium.toLocaleString()}.`,
+    metadata: { author, role: actor.role, levers, premium, label: parsed.data.label ?? null },
+    createdBy: actor.id,
+  });
+
+  return res.json({ success: true, premium, levers });
 });
 
 /* --------------------------------------------------------------------------

@@ -9,8 +9,8 @@
  * a STATIC placeholder deferred to P6 iteration 2.
  */
 import { useEffect, useMemo, useState } from "react";
-import { Sparkles, AlertTriangle, Paperclip, Zap, Plus, Check, CircleSlash } from "lucide-react";
-import type { ActivityRow, RfiRow } from "./types";
+import { Sparkles, AlertTriangle, Paperclip, Zap, Plus, Check, CircleSlash, X, ArrowRight } from "lucide-react";
+import type { ActivityRow, RfiRow, QuoteVariation } from "./types";
 import { STATUS_COLORS } from "./icons";
 import { useThemeColors } from "@/lib/use-theme-colors";
 
@@ -32,6 +32,14 @@ interface OverviewTabProps {
   rfiBusy: boolean;
   onCreateRfi: (input: CreateRfiInput) => void;
   onResolveRfi: (rfiId: string, status: "RESOLVED" | "WAIVED", note?: string) => void;
+  variations: QuoteVariation[];
+  basePremium: number;
+  varHasQuote: boolean;
+  varUsedAi: boolean;
+  varLoading: boolean;
+  varApplying: string | null;
+  onGenerateVariations: () => void;
+  onApplyVariation: (v: QuoteVariation) => void;
 }
 
 /** Human countdown from now → dueAt. Returns label + urgency color. */
@@ -102,10 +110,29 @@ function initials(name: string): string {
 
 export default function OverviewTab({
   activity, canPost, posting, onSend, rfis, isInternal, rfiBusy, onCreateRfi, onResolveRfi,
+  variations, basePremium, varHasQuote, varUsedAi, varLoading, varApplying,
+  onGenerateVariations, onApplyVariation,
 }: OverviewTabProps) {
   const c = useThemeColors();
   const [text, setText] = useState("");
   const [now, setNow] = useState(() => Date.now());
+  const [compare, setCompare] = useState<QuoteVariation | null>(null);
+  const [generated, setGenerated] = useState(false);
+
+  const runGenerate = () => {
+    setGenerated(true);
+    onGenerateVariations();
+  };
+
+  const money = (n: number) =>
+    n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+  const leverList = (v: QuoteVariation) => {
+    const parts: string[] = [];
+    parts.push(`eMod ${v.changes.eMod.toFixed(2)}`);
+    parts.push(`Sched ${v.changes.scheduleRating.toFixed(2)}`);
+    parts.push(v.changes.isPEO ? "PEO" : "No PEO");
+    return parts.join(" \u00b7 ");
+  };
 
   // RFI composer state (internal only)
   const [showRfiForm, setShowRfiForm] = useState(false);
@@ -221,19 +248,102 @@ export default function OverviewTab({
           </div>
         ))}
 
-        {/* AI quote-variation — static placeholder (P6) */}
-        <div style={{ position: "relative" }}>
-          {node(c.accentSupport)}
-          <div style={{ ...card, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-              <Sparkles style={{ width: 15, height: 15, color: c.accentSupport, flexShrink: 0 }} />
-              <span style={{ fontSize: 12, color: c.textPrimary }}>AI Engine: New Quote Variation</span>
-              <span style={{ fontSize: 10, color: c.textMuted, background: c.hoverBg, borderRadius: 9999, padding: "1px 7px", whiteSpace: "nowrap" }}>QR-4492-B</span>
+        {/* AI quote-variation — live (P6 iteration 2), internal staff only */}
+        {isInternal && (
+          <div style={{ position: "relative" }}>
+            {node(c.accentSupport)}
+            <div style={{ ...card, display: "flex", flexDirection: "column", gap: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                  <Sparkles style={{ width: 15, height: 15, color: c.accentSupport, flexShrink: 0 }} />
+                  <span style={{ fontSize: 12, fontWeight: 600, color: c.textPrimary }}>AI Quote Variations</span>
+                  {generated && varHasQuote && variations.length > 0 && (
+                    <span style={{ fontSize: 10, color: c.accentSupport, background: "var(--accent-support-soft)", borderRadius: 9999, padding: "1px 7px", whiteSpace: "nowrap" }}>
+                      {varUsedAi ? "AI" : "Heuristic"}
+                    </span>
+                  )}
+                </div>
+                {!varLoading && (
+                  <button
+                    onClick={runGenerate}
+                    style={{ fontSize: 11, color: "var(--accent-primary)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 600, letterSpacing: "0.04em", padding: 0 }}
+                  >
+                    {generated ? "REGENERATE" : "GENERATE"}
+                  </button>
+                )}
+              </div>
+
+              {!generated && (
+                <div style={{ fontSize: 11.5, color: c.textMuted, lineHeight: 1.5 }}>
+                  Let the AI engine propose alternative pricing scenarios from this deal's quote
+                  by adjusting experience mod, schedule rating, and PEO placement.
+                </div>
+              )}
+
+              {generated && varLoading && (
+                <div style={{ fontSize: 12, color: c.textMuted }}>Generating variations\u2026</div>
+              )}
+
+              {generated && !varLoading && !varHasQuote && (
+                <div style={{ fontSize: 11.5, color: c.textMuted, lineHeight: 1.5 }}>
+                  This deal has no rated quote yet. Run a quote from the Quote tab first, then
+                  generate variations here.
+                </div>
+              )}
+
+              {generated && !varLoading && varHasQuote && variations.length === 0 && (
+                <div style={{ fontSize: 11.5, color: c.textMuted, lineHeight: 1.5 }}>
+                  No alternative scenarios were proposed for this deal.
+                </div>
+              )}
+
+              {generated && !varLoading && varHasQuote && variations.length > 0 && (
+                <>
+                  <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", fontSize: 11, color: c.textMuted }}>
+                    <span>Current WC premium</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: c.textPrimary }}>{money(basePremium)}</span>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {variations.map((v) => {
+                      const down = v.delta < 0;
+                      const deltaColor = down ? STATUS_COLORS.complete : v.delta > 0 ? "#ef4444" : c.textMuted;
+                      return (
+                        <div key={v.id} style={{ background: c.bg, border: `1px solid ${c.borderColor}`, borderRadius: 8, padding: "9px 10px", display: "flex", flexDirection: "column", gap: 6 }}>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                            <span style={{ fontSize: 12, fontWeight: 600, color: c.textPrimary }}>{v.label}</span>
+                            <span style={{ fontSize: 12.5, fontWeight: 700, color: c.textPrimary }}>{money(v.premium)}</span>
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                            <span style={{ fontSize: 10.5, fontWeight: 700, color: deltaColor, background: c.hoverBg, borderRadius: 9999, padding: "1px 8px" }}>
+                              {v.delta > 0 ? "+" : ""}{money(v.delta)} ({v.deltaPct > 0 ? "+" : ""}{v.deltaPct}%)
+                            </span>
+                            <span style={{ fontSize: 10, color: c.textMuted }}>{leverList(v)}</span>
+                          </div>
+                          <div style={{ fontSize: 11, color: c.textSecondary, lineHeight: 1.5 }}>{v.rationale}</div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 2 }}>
+                            <button
+                              onClick={() => setCompare(v)}
+                              style={{ fontSize: 10.5, color: c.textSecondary, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 600, letterSpacing: "0.04em", padding: 0 }}
+                            >
+                              COMPARE
+                            </button>
+                            <button
+                              onClick={() => onApplyVariation(v)}
+                              disabled={varApplying !== null}
+                              style={{ fontSize: 10.5, color: "var(--accent-primary)", background: "none", border: "none", cursor: varApplying !== null ? "default" : "pointer", fontFamily: "inherit", fontWeight: 700, letterSpacing: "0.04em", padding: 0, opacity: varApplying !== null ? 0.6 : 1 }}
+                            >
+                              {varApplying === v.id ? "APPLYING\u2026" : "APPLY"}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
             </div>
-            <span style={{ fontSize: 10.5, color: c.textMuted, fontWeight: 600, letterSpacing: "0.04em" }}>COMPARE</span>
           </div>
-          <div style={previewTag}>Preview — quote-variation engine arrives in a later phase.</div>
-        </div>
+        )}
 
         {/* RFIs — live (P6 iteration 1) */}
         {(openRfis.length > 0 || closedRfis.length > 0 || isInternal) && (
@@ -414,6 +524,73 @@ export default function OverviewTab({
           >
             <Zap style={{ width: 15, height: 15 }} />
           </button>
+        </div>
+      )}
+
+      {/* Compare overlay — current quote vs. selected variation */}
+      {compare && (
+        <div
+          onClick={(e) => { if (e.target === e.currentTarget) setCompare(null); }}
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, zIndex: 60 }}
+        >
+          <div
+            style={{
+              width: "100%", maxWidth: 560,
+              background: "rgba(18,18,24,0.82)", backdropFilter: "blur(40px)", WebkitBackdropFilter: "blur(40px)",
+              color: c.textPrimary, border: `1px solid ${c.borderColor}`, borderRadius: 16,
+              boxShadow: "0 24px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06)",
+              padding: 20, fontFamily: "var(--app-font-sans)",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <Sparkles style={{ width: 16, height: 16, color: c.accentSupport }} />
+                <span style={{ fontSize: 14, fontWeight: 600 }}>Compare — {compare.label}</span>
+              </div>
+              <X onClick={() => setCompare(null)} style={{ width: 18, height: 18, color: c.textMuted, cursor: "pointer" }} />
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", gap: 12 }}>
+              {/* Current */}
+              <div style={{ background: c.cardBg, border: `1px solid ${c.borderColor}`, borderRadius: 10, padding: "12px 14px" }}>
+                <div style={{ fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", color: c.textMuted, marginBottom: 6 }}>Current</div>
+                <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>{money(basePremium)}</div>
+                <div style={{ fontSize: 11, color: c.textSecondary, lineHeight: 1.7 }}>
+                  Standard rating with the deal's current levers.
+                </div>
+              </div>
+
+              <ArrowRight style={{ width: 18, height: 18, color: c.textMuted }} />
+
+              {/* Variation */}
+              <div style={{ background: c.cardBg, border: `1px solid var(--accent-support)`, borderRadius: 10, padding: "12px 14px" }}>
+                <div style={{ fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", color: c.accentSupport, marginBottom: 6 }}>{compare.label}</div>
+                <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>{money(compare.premium)}</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: compare.delta < 0 ? STATUS_COLORS.complete : compare.delta > 0 ? "#ef4444" : c.textMuted, marginBottom: 8 }}>
+                  {compare.delta > 0 ? "+" : ""}{money(compare.delta)} ({compare.deltaPct > 0 ? "+" : ""}{compare.deltaPct}%)
+                </div>
+                <div style={{ fontSize: 11, color: c.textSecondary, lineHeight: 1.7 }}>{leverList(compare)}</div>
+              </div>
+            </div>
+
+            <div style={{ fontSize: 12, color: c.textSecondary, lineHeight: 1.55, marginTop: 14, marginBottom: 16 }}>{compare.rationale}</div>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button
+                onClick={() => setCompare(null)}
+                style={{ fontSize: 12, color: c.textSecondary, background: "none", border: `1px solid ${c.borderColor}`, borderRadius: 8, padding: "7px 14px", cursor: "pointer", fontFamily: "inherit" }}
+              >
+                Close
+              </button>
+              <button
+                onClick={() => { const v = compare; setCompare(null); onApplyVariation(v); }}
+                disabled={varApplying !== null}
+                style={{ fontSize: 12, fontWeight: 600, color: "#fff", background: "var(--gradient-cta)", border: "none", borderRadius: 8, padding: "7px 16px", cursor: varApplying !== null ? "default" : "pointer", fontFamily: "inherit", opacity: varApplying !== null ? 0.6 : 1 }}
+              >
+                {varApplying === compare.id ? "Applying\u2026" : "Apply this variation"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -17,7 +17,7 @@ import {
 import { api } from "@/lib/api";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { useAuthStore } from "@/lib/auth-store";
-import type { SectionView, SubmissionPayload, ActivityRow, SectionPatchResponse, RfiRow, RfiListResponse } from "./types";
+import type { SectionView, SubmissionPayload, ActivityRow, SectionPatchResponse, RfiRow, RfiListResponse, QuoteVariation, QuoteVariationsResponse, ApplyVariationResponse, VariationLevers } from "./types";
 import type { CreateRfiInput } from "./OverviewTab";
 import { PHASES, phaseIndex, isDeclined } from "./stage-map";
 import { STATUS_COLORS } from "./icons";
@@ -101,6 +101,12 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
   const [rfis, setRfis] = useState<RfiRow[]>([]);
   const [openBlocking, setOpenBlocking] = useState(0);
   const [rfiBusy, setRfiBusy] = useState(false);
+  const [variations, setVariations] = useState<QuoteVariation[]>([]);
+  const [basePremium, setBasePremium] = useState(0);
+  const [varHasQuote, setVarHasQuote] = useState(true);
+  const [varUsedAi, setVarUsedAi] = useState(false);
+  const [varLoading, setVarLoading] = useState(false);
+  const [varApplying, setVarApplying] = useState<string | null>(null);
   const [tab, setTab] = useState<TabKey>("overview");
   const [openSection, setOpenSection] = useState<string | null>(null);
   const [savingSection, setSavingSection] = useState(false);
@@ -140,6 +146,22 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
     }
   }, [dealId]);
 
+  const fetchVariations = useCallback(async () => {
+    setVarLoading(true);
+    try {
+      const res = await api.get<QuoteVariationsResponse>(`/deal-card/${dealId}/quote-variations`);
+      setVarHasQuote(res.hasQuote);
+      setBasePremium(res.basePremium || 0);
+      setVariations(res.variations || []);
+      setVarUsedAi(res.usedAi);
+    } catch {
+      setVariations([]);
+      setVarHasQuote(false);
+    } finally {
+      setVarLoading(false);
+    }
+  }, [dealId]);
+
   useEffect(() => {
     if (!isOpen || !dealId) return;
     setPayload(null);
@@ -147,6 +169,10 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
     setRfis([]);
     setOpenBlocking(0);
     setApproveError(null);
+    setVariations([]);
+    setBasePremium(0);
+    setVarHasQuote(true);
+    setVarUsedAi(false);
     setTab("overview");
     setOpenSection(null);
     fetchSubmission();
@@ -247,6 +273,22 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
       /* ignore */
     } finally {
       setRfiBusy(false);
+    }
+  };
+
+  const handleApplyVariation = async (v: QuoteVariation) => {
+    setVarApplying(v.id);
+    try {
+      const body: VariationLevers & { label: string } = { ...v.changes, label: v.label };
+      await api.post<ApplyVariationResponse>(`/deal-card/${dealId}/quote-variations/apply`, body);
+      await fetchVariations();
+      await fetchSubmission();
+      await fetchActivity();
+      onDealUpdated?.();
+    } catch {
+      /* ignore */
+    } finally {
+      setVarApplying(null);
     }
   };
 
@@ -402,6 +444,14 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
                     rfiBusy={rfiBusy}
                     onCreateRfi={handleCreateRfi}
                     onResolveRfi={handleResolveRfi}
+                    variations={variations}
+                    basePremium={basePremium}
+                    varHasQuote={varHasQuote}
+                    varUsedAi={varUsedAi}
+                    varLoading={varLoading}
+                    varApplying={varApplying}
+                    onGenerateVariations={fetchVariations}
+                    onApplyVariation={handleApplyVariation}
                   />
                 )}
                 {tab === "submission" && <SubmissionTab sections={sections} aggregateComplete={payload.aggregateComplete} total={payload.total} onOpenSection={setOpenSection} />}

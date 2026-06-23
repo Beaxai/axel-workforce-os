@@ -20,6 +20,8 @@ import type {
   Account,
   AccountInput,
   ActivityFeedResponse,
+  ApplyVariationRequest,
+  ApplyVariationResponse,
   ApproveBlockedResponse,
   AuthResponse,
   ConvertLeadRequest,
@@ -39,6 +41,7 @@ import type {
   MessageRequest,
   MessageResponse,
   OkResponse,
+  QuoteVariationsResponse,
   RatingStaleClearedResponse,
   RegisterRequest,
   ResetPasswordRequest,
@@ -2502,4 +2505,178 @@ export const useClearRatingStale = <
   TContext
 > => {
   return useMutation(getClearRatingStaleMutationOptions(options));
+};
+
+/**
+ * @summary AI-proposed alternative pricing scenarios for a deal's quote (internal only)
+ */
+export const getGetQuoteVariationsUrl = (id: string) => {
+  return `/api/deal-card/${id}/quote-variations`;
+};
+
+export const getQuoteVariations = async (
+  id: string,
+  options?: RequestInit,
+): Promise<QuoteVariationsResponse> => {
+  return customFetch<QuoteVariationsResponse>(getGetQuoteVariationsUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetQuoteVariationsQueryKey = (id: string) => {
+  return [`/api/deal-card/${id}/quote-variations`] as const;
+};
+
+export const getGetQuoteVariationsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getQuoteVariations>>,
+  TError = ErrorType<void>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getQuoteVariations>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetQuoteVariationsQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getQuoteVariations>>
+  > = ({ signal }) => getQuoteVariations(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getQuoteVariations>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetQuoteVariationsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getQuoteVariations>>
+>;
+export type GetQuoteVariationsQueryError = ErrorType<void>;
+
+/**
+ * @summary AI-proposed alternative pricing scenarios for a deal's quote (internal only)
+ */
+
+export function useGetQuoteVariations<
+  TData = Awaited<ReturnType<typeof getQuoteVariations>>,
+  TError = ErrorType<void>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getQuoteVariations>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetQuoteVariationsQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Promote a quote variation into the deal's saved quote (internal only)
+ */
+export const getApplyQuoteVariationUrl = (id: string) => {
+  return `/api/deal-card/${id}/quote-variations/apply`;
+};
+
+export const applyQuoteVariation = async (
+  id: string,
+  applyVariationRequest: ApplyVariationRequest,
+  options?: RequestInit,
+): Promise<ApplyVariationResponse> => {
+  return customFetch<ApplyVariationResponse>(getApplyQuoteVariationUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(applyVariationRequest),
+  });
+};
+
+export const getApplyQuoteVariationMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof applyQuoteVariation>>,
+    TError,
+    { id: string; data: BodyType<ApplyVariationRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof applyQuoteVariation>>,
+  TError,
+  { id: string; data: BodyType<ApplyVariationRequest> },
+  TContext
+> => {
+  const mutationKey = ["applyQuoteVariation"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof applyQuoteVariation>>,
+    { id: string; data: BodyType<ApplyVariationRequest> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return applyQuoteVariation(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ApplyQuoteVariationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof applyQuoteVariation>>
+>;
+export type ApplyQuoteVariationMutationBody = BodyType<ApplyVariationRequest>;
+export type ApplyQuoteVariationMutationError = ErrorType<void>;
+
+/**
+ * @summary Promote a quote variation into the deal's saved quote (internal only)
+ */
+export const useApplyQuoteVariation = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof applyQuoteVariation>>,
+    TError,
+    { id: string; data: BodyType<ApplyVariationRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof applyQuoteVariation>>,
+  TError,
+  { id: string; data: BodyType<ApplyVariationRequest> },
+  TContext
+> => {
+  return useMutation(getApplyQuoteVariationMutationOptions(options));
 };

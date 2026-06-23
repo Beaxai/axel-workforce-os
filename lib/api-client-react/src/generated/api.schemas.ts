@@ -207,6 +207,51 @@ export interface RfiMutationResponse {
   rfi: Rfi;
 }
 
+export interface VariationLevers {
+  eMod: number;
+  scheduleRating: number;
+  isPEO: boolean;
+}
+
+export type QuoteVariationSource =
+  (typeof QuoteVariationSource)[keyof typeof QuoteVariationSource];
+
+export const QuoteVariationSource = {
+  ai: "ai",
+  preset: "preset",
+} as const;
+
+export interface QuoteVariation {
+  id: string;
+  label: string;
+  rationale: string;
+  source: QuoteVariationSource;
+  changes: VariationLevers;
+  premium: number;
+  delta: number;
+  deltaPct: number;
+}
+
+export interface QuoteVariationsResponse {
+  hasQuote: boolean;
+  basePremium: number;
+  usedAi: boolean;
+  variations: QuoteVariation[];
+}
+
+export interface ApplyVariationRequest {
+  eMod?: number;
+  scheduleRating?: number;
+  isPEO?: boolean;
+  label?: string;
+}
+
+export interface ApplyVariationResponse {
+  success: boolean;
+  premium: number;
+  levers: VariationLevers;
+}
+
 export interface HealthStatus {
   status: string;
 }

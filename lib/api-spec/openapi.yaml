@@ -637,6 +637,54 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/RatingStaleClearedResponse"
+  /deal-card/{id}/quote-variations:
+    get:
+      operationId: getQuoteVariations
+      tags: [deal-card]
+      summary: AI-proposed alternative pricing scenarios for a deal's quote (internal only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Quote variations
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuoteVariationsResponse"
+        "403":
+          description: Insufficient permissions
+  /deal-card/{id}/quote-variations/apply:
+    post:
+      operationId: applyQuoteVariation
+      tags: [deal-card]
+      summary: Promote a quote variation into the deal's saved quote (internal only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApplyVariationRequest"
+      responses:
+        "200":
+          description: Variation applied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApplyVariationResponse"
+        "403":
+          description: Insufficient permissions
+        "409":
+          description: Deal has no quote to vary
 components:
   schemas:
     SubmissionField:
@@ -921,6 +969,72 @@ components:
         rfi:
           $ref: "#/components/schemas/Rfi"
       required: [success, rfi]
+    VariationLevers:
+      type: object
+      properties:
+        eMod:
+          type: number
+        scheduleRating:
+          type: number
+        isPEO:
+          type: boolean
+      required: [eMod, scheduleRating, isPEO]
+    QuoteVariation:
+      type: object
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        rationale:
+          type: string
+        source:
+          type: string
+          enum: [ai, preset]
+        changes:
+          $ref: "#/components/schemas/VariationLevers"
+        premium:
+          type: number
+        delta:
+          type: number
+        deltaPct:
+          type: number
+      required: [id, label, rationale, source, changes, premium, delta, deltaPct]
+    QuoteVariationsResponse:
+      type: object
+      properties:
+        hasQuote:
+          type: boolean
+        basePremium:
+          type: number
+        usedAi:
+          type: boolean
+        variations:
+          type: array
+          items:
+            $ref: "#/components/schemas/QuoteVariation"
+      required: [hasQuote, basePremium, usedAi, variations]
+    ApplyVariationRequest:
+      type: object
+      properties:
+        eMod:
+          type: number
+        scheduleRating:
+          type: number
+        isPEO:
+          type: boolean
+        label:
+          type: string
+    ApplyVariationResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        premium:
+          type: number
+        levers:
+          $ref: "#/components/schemas/VariationLevers"
+      required: [success, premium, levers]
     HealthStatus:
       type: object
       properties:

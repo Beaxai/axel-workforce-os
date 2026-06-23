@@ -100,6 +100,36 @@ export interface RfiListResponse {
   openBlocking: number;
 }
 
+export interface VariationLevers {
+  eMod: number;
+  scheduleRating: number;
+  isPEO: boolean;
+}
+
+export interface QuoteVariation {
+  id: string;
+  label: string;
+  rationale: string;
+  source: "ai" | "preset";
+  changes: VariationLevers;
+  premium: number;
+  delta: number;
+  deltaPct: number;
+}
+
+export interface QuoteVariationsResponse {
+  hasQuote: boolean;
+  basePremium: number;
+  usedAi: boolean;
+  variations: QuoteVariation[];
+}
+
+export interface ApplyVariationResponse {
+  success: boolean;
+  premium: number;
+  levers: VariationLevers;
+}
+
 export interface SectionPatchResponse {
   success: boolean;
   changed?: boolean;

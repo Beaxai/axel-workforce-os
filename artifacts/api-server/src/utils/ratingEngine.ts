@@ -269,7 +269,7 @@ export async function calculateWCPremium(input: WCPremiumInput) {
   const finalPremium = grossPremium - peoDiscount;
 
   return {
-    inputs: { state, classCode: String(classCode), annualPayroll, eMod, scheduleRating, isPEO },
+    inputs: { state, classCode: String(classCode), annualPayroll, eMod, scheduleRating, isPEO, zip },
     rateData: {
       baseRate,
       effectiveDate: rateRow.effectiveDate,

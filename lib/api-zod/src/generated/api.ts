@@ -742,3 +742,56 @@ export const ClearRatingStaleResponse = zod.object({
   success: zod.boolean(),
   ratingStale: zod.boolean(),
 });
+
+/**
+ * @summary AI-proposed alternative pricing scenarios for a deal's quote (internal only)
+ */
+export const GetQuoteVariationsParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const GetQuoteVariationsResponse = zod.object({
+  hasQuote: zod.boolean(),
+  basePremium: zod.number(),
+  usedAi: zod.boolean(),
+  variations: zod.array(
+    zod.object({
+      id: zod.string(),
+      label: zod.string(),
+      rationale: zod.string(),
+      source: zod.enum(["ai", "preset"]),
+      changes: zod.object({
+        eMod: zod.number(),
+        scheduleRating: zod.number(),
+        isPEO: zod.boolean(),
+      }),
+      premium: zod.number(),
+      delta: zod.number(),
+      deltaPct: zod.number(),
+    }),
+  ),
+});
+
+/**
+ * @summary Promote a quote variation into the deal's saved quote (internal only)
+ */
+export const ApplyQuoteVariationParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const ApplyQuoteVariationBody = zod.object({
+  eMod: zod.number().optional(),
+  scheduleRating: zod.number().optional(),
+  isPEO: zod.boolean().optional(),
+  label: zod.string().optional(),
+});
+
+export const ApplyQuoteVariationResponse = zod.object({
+  success: zod.boolean(),
+  premium: zod.number(),
+  levers: zod.object({
+    eMod: zod.number(),
+    scheduleRating: zod.number(),
+    isPEO: zod.boolean(),
+  }),
+});
