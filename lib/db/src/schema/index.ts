@@ -1,5 +1,6 @@
 export * from "./organizations";
 export * from "./users";
+export * from "./user-profiles";
 export * from "./org-members";
 export * from "./auth";
 export * from "./accounts";

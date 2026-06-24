@@ -7,6 +7,7 @@ import {
   orgMembersTable,
   userCredentialsTable,
   passwordResetTokensTable,
+  userProfilesTable,
 } from "@workspace/db";
 import {
   PARTY_ROLES,
@@ -76,11 +77,24 @@ router.post("/login", async (req, res) => {
     res.status(401).json({ error: "Invalid email or password" });
     return;
   }
+  // Status gate (Phase 4B): only `active` users may establish a session.
+  // `invited` accounts must complete the invite/reset flow first; `deactivated`
+  // accounts are blocked while their history is preserved. Checked AFTER the
+  // password compare so account status can't be probed by an attacker.
+  if (user.status && user.status !== "active") {
+    res.status(403).json({ error: "Your account is not active. Please contact an administrator." });
+    return;
+  }
   const authUser = await getAuthUserById(user.id);
   if (!authUser) {
     res.status(403).json({ error: "User has no assigned role" });
     return;
   }
+  // Stamp last login (Phase 4B). Upsert so users without a profile row still record it.
+  await db
+    .insert(userProfilesTable)
+    .values({ userId: user.id, lastLoginAt: new Date() })
+    .onConflictDoUpdate({ target: userProfilesTable.userId, set: { lastLoginAt: new Date() } });
   const { token } = await createSession(user.id, clientMeta(req));
   res.cookie(SESSION_COOKIE, token, cookieOptions());
   res.json({ user: authUser });

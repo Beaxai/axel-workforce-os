@@ -1,6 +1,14 @@
-import { Router, type IRouter } from "express";
-import { db, agentRegistrationsTable, insertAgentRegistrationSchema } from "@workspace/db";
+import { Router, type IRouter, type Request, type Response } from "express";
+import {
+  db,
+  agentRegistrationsTable,
+  insertAgentRegistrationSchema,
+  usersTable,
+  orgMembersTable,
+  userProfilesTable,
+} from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
+import { findUserByEmail, getAuthUserById } from "../lib/auth";
 
 const router: IRouter = Router();
 
@@ -56,6 +64,71 @@ router.patch("/:id", async (req, res) => {
   const [row] = await db.update(agentRegistrationsTable).set(updateData).where(eq(agentRegistrationsTable.id, req.params.id)).returning();
   if (!row) return res.status(404).json({ error: "Not found" });
   return res.json(row);
+});
+
+// POST /api/agent-registrations/:id/approve — ADMIN/CSA (mount-gated).
+// Atomically provisions an AGENT login from the registration: creates the user
+// (status `invited`, completes via reset flow) + AGENT org membership +
+// user_profiles (role_metadata seeded from the registration), then marks the
+// registration approved and links it to the new user. Idempotent on email:
+// reuses an existing user instead of creating a duplicate.
+router.post("/:id/approve", async (req: Request<{ id: string }>, res: Response) => {
+  const [reg] = await db
+    .select()
+    .from(agentRegistrationsTable)
+    .where(eq(agentRegistrationsTable.id, req.params.id));
+  if (!reg) return res.status(404).json({ error: "Not found" });
+  if (reg.userId) return res.status(409).json({ error: "Registration already linked to a user" });
+  if (!reg.email) return res.status(400).json({ error: "Registration is missing an email" });
+
+  const orgId = reg.partnerId ?? null;
+  const roleMetadata = {
+    agencyName: reg.agencyName ?? null,
+    licenseNumbers: reg.licenseNumbers ?? [],
+    statesLicensed: reg.statesLicensed ?? [],
+    linesOfAuthority: reg.linesOfAuthority ?? [],
+    eoCarrier: reg.eoCarrier ?? null,
+    eoExpiration: reg.eoExpirationDate ?? null,
+  };
+
+  const existing = await findUserByEmail(reg.email);
+
+  const userId = await db.transaction(async (tx) => {
+    let uid: string;
+    if (existing) {
+      uid = existing.id;
+    } else {
+      const [user] = await tx
+        .insert(usersTable)
+        .values({
+          email: reg.email!.toLowerCase().trim(),
+          firstName: reg.firstName ?? null,
+          lastName: reg.lastName ?? null,
+          phone: reg.phone ?? null,
+          status: "invited",
+        })
+        .returning();
+      uid = user.id;
+      await tx
+        .insert(orgMembersTable)
+        .values({ userId: uid, orgId, role: "AGENT", isPrimaryOrg: true });
+    }
+    await tx
+      .insert(userProfilesTable)
+      .values({ userId: uid, title: reg.title ?? null, roleMetadata })
+      .onConflictDoUpdate({
+        target: userProfilesTable.userId,
+        set: { roleMetadata, updatedAt: new Date() },
+      });
+    await tx
+      .update(agentRegistrationsTable)
+      .set({ status: "approved", userId: uid, reviewedAt: new Date() })
+      .where(eq(agentRegistrationsTable.id, reg.id));
+    return uid;
+  });
+
+  const authUser = await getAuthUserById(userId);
+  return res.status(201).json({ user: authUser, registrationId: reg.id });
 });
 
 export default router;

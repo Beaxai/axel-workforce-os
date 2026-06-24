@@ -53,6 +53,8 @@ import SubmissionPage from "@/pages/SubmissionPage";
 import ProposalScreen from "@/pages/ProposalScreen";
 import MyProgram from "@/pages/MyProgram";
 import ClientOnboarding from "@/pages/ClientOnboarding";
+import UserProfile from "@/pages/UserProfile";
+import AdminUsers from "@/pages/AdminUsers";
 import Welcome from "@/pages/Welcome";
 import NotFound from "@/pages/not-found";
 import { useAuthStore } from "@/lib/auth-store";
@@ -121,6 +123,7 @@ function App() {
               <Route path="/dashboard/admin" element={<AdminDashboard />} />
               <Route path="/dashboard/admin/*" element={<AdminDashboard />} />
               <Route path="/admin/rates" element={<RateLookup />} />
+              <Route path="/admin/users" element={<AdminUsers />} />
             </Route>
 
             <Route
@@ -249,6 +252,28 @@ function App() {
             >
               <Route path="/accounts" element={<Accounts />} />
               <Route path="/accounts/:id" element={<AccountDetail />} />
+              <Route path="/users/:id" element={<UserProfile />} />
+            </Route>
+
+            <Route
+              element={
+                <ProtectedRoute
+                  allowedRoles={[
+                    "ADMIN",
+                    "UNDERWRITER",
+                    "CSA",
+                    "AGENT",
+                    "EMPLOYER",
+                    "CARRIER",
+                    "PEO",
+                    "VENDOR",
+                  ]}
+                >
+                  <AppShell />
+                </ProtectedRoute>
+              }
+            >
+              <Route path="/profile" element={<UserProfile self />} />
             </Route>
 
             <Route

@@ -12,7 +12,7 @@ export const usersTable = pgTable("users", {
   mobile: text("mobile"),
   avatarUrl: text("avatar_url"),
   notificationPreference: text("notification_preference").default("EMAIL"),
-  status: text("status").default("PENDING_APPROVAL"),
+  status: text("status").default("active"),
   createdAt: timestamp("created_at", { withTimezone: true }).default(sql`now()`),
 });
 

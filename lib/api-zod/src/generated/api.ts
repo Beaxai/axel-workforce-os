@@ -20,6 +20,188 @@ export const GetUsersResponseItem = zod.object({
 export const GetUsersResponse = zod.array(GetUsersResponseItem);
 
 /**
+ * @summary Invite a new user (ADMIN). Creates user + membership + profile.
+ */
+export const InviteUserBody = zod.object({
+  email: zod.string().email(),
+  firstName: zod.string(),
+  lastName: zod.string(),
+  role: zod.enum([
+    "ADMIN",
+    "UNDERWRITER",
+    "CSA",
+    "AGENT",
+    "EMPLOYER",
+    "CARRIER",
+    "PEO",
+    "VENDOR",
+  ]),
+  orgId: zod.string().uuid().optional(),
+  title: zod.string().optional(),
+});
+
+/**
+ * @summary Get a user's full profile (record-level authz)
+ */
+export const GetUserProfileParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const GetUserProfileResponse = zod.object({
+  id: zod.string(),
+  email: zod.string(),
+  firstName: zod.string().nullish(),
+  lastName: zod.string().nullish(),
+  avatarUrl: zod.string().nullish(),
+  phone: zod.string().nullish(),
+  mobile: zod.string().nullish(),
+  status: zod.string().nullish(),
+  role: zod.string().nullish(),
+  orgId: zod.string().nullish(),
+  orgName: zod.string().nullish(),
+  title: zod.string().nullish(),
+  timezone: zod.string().nullish(),
+  dateJoined: zod.string().nullish(),
+  lastLoginAt: zod.string().nullish(),
+  roleSection: zod.object({
+    kind: zod.string(),
+    data: zod.record(zod.string(), zod.unknown()),
+  }),
+  bio: zod.string().nullish(),
+  internalNotes: zod.string().nullish(),
+  openTasks: zod
+    .array(
+      zod.object({
+        id: zod.string(),
+        taskName: zod.string(),
+        dueDate: zod.string().nullish(),
+        priority: zod.string().nullish(),
+      }),
+    )
+    .optional(),
+  activeDeals: zod
+    .array(
+      zod.object({
+        id: zod.string(),
+        referenceCode: zod.string(),
+        businessName: zod.string().nullish(),
+        stage: zod.string().nullish(),
+      }),
+    )
+    .optional(),
+});
+
+/**
+ * @summary Update a profile (self limited to contact fields; ADMIN full)
+ */
+export const UpdateUserProfileParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const UpdateUserProfileBody = zod.object({
+  phone: zod.string().nullish(),
+  mobile: zod.string().nullish(),
+  title: zod.string().nullish(),
+  timezone: zod.string().nullish(),
+  bio: zod.string().nullish(),
+  internalNotes: zod.string().nullish(),
+  roleMetadata: zod.record(zod.string(), zod.unknown()).optional(),
+});
+
+export const UpdateUserProfileResponse = zod.object({
+  id: zod.string(),
+  email: zod.string(),
+  firstName: zod.string().nullish(),
+  lastName: zod.string().nullish(),
+  avatarUrl: zod.string().nullish(),
+  phone: zod.string().nullish(),
+  mobile: zod.string().nullish(),
+  status: zod.string().nullish(),
+  role: zod.string().nullish(),
+  orgId: zod.string().nullish(),
+  orgName: zod.string().nullish(),
+  title: zod.string().nullish(),
+  timezone: zod.string().nullish(),
+  dateJoined: zod.string().nullish(),
+  lastLoginAt: zod.string().nullish(),
+  roleSection: zod.object({
+    kind: zod.string(),
+    data: zod.record(zod.string(), zod.unknown()),
+  }),
+  bio: zod.string().nullish(),
+  internalNotes: zod.string().nullish(),
+  openTasks: zod
+    .array(
+      zod.object({
+        id: zod.string(),
+        taskName: zod.string(),
+        dueDate: zod.string().nullish(),
+        priority: zod.string().nullish(),
+      }),
+    )
+    .optional(),
+  activeDeals: zod
+    .array(
+      zod.object({
+        id: zod.string(),
+        referenceCode: zod.string(),
+        businessName: zod.string().nullish(),
+        stage: zod.string().nullish(),
+      }),
+    )
+    .optional(),
+});
+
+/**
+ * @summary Activate or deactivate a user (ADMIN)
+ */
+export const UpdateUserStatusParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const UpdateUserStatusBody = zod.object({
+  status: zod.enum(["active", "deactivated"]),
+});
+
+export const UpdateUserStatusResponse = zod.object({
+  id: zod.string(),
+  email: zod.string(),
+  firstName: zod.string().nullish(),
+  lastName: zod.string().nullish(),
+  avatarUrl: zod.string().nullish(),
+});
+
+/**
+ * Server honors optional ?limit (default 25, max 100) and ?offset query params; they are omitted from the typed contract to avoid an orval path+query schema-name collision.
+ * @summary Paginated activity performed by a user (record-level authz)
+ */
+export const GetUserActivityParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const GetUserActivityResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.string(),
+      dealId: zod.string().nullish(),
+      entityType: zod.string().optional(),
+      eventType: zod.string().optional(),
+      description: zod.string().optional(),
+      createdAt: zod.string().nullish(),
+    }),
+  ),
+  limit: zod.number(),
+  offset: zod.number(),
+});
+
+/**
+ * @summary Approve a registration and provision an AGENT login (ADMIN/CSA)
+ */
+export const ApproveAgentRegistrationParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+/**
  * Returns server health status
  * @summary Health check
  */

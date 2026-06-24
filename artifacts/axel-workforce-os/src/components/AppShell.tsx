@@ -601,7 +601,10 @@ export default function AppShell() {
                       }}
                       onMouseEnter={(e) => (e.currentTarget.style.background = hoverBg)}
                       onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-                      onClick={() => setUserMenuOpen(false)}
+                      onClick={() => {
+                        setUserMenuOpen(false);
+                        if (item.label === "Profile") navigate("/profile");
+                      }}
                     >
                       <item.icon style={{ width: "14px", height: "14px" }} />
                       {item.label}

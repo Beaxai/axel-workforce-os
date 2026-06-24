@@ -60,7 +60,9 @@ const INTERNAL_SALES = ["ADMIN", "CSA", "AGENT", "UNDERWRITER"] as const;
 router.use("/organizations", requireRoles("ADMIN", "CSA"), organizationsRouter);
 // GET listing is team-directory reference data (assignee chips) for internal
 // staff; create/update/delete are ADMIN-only, guarded inside the router.
-router.use("/users", requireRoles(...INTERNAL_SALES), usersRouter);
+// Mounted for any authenticated user; per-route guards inside users.ts restrict
+// directory/CRUD to internal staff while profile/activity use record-level authz.
+router.use("/users", requireRoles(), usersRouter);
 router.use("/deals", requireRoles(...INTERNAL_SALES), dealsRouter);
 router.use("/quotes", requireRoles(...INTERNAL_SALES), quotesRouter);
 router.use("/policies", requireRoles("ADMIN", "CSA", "UNDERWRITER"), policiesRouter);

@@ -23,6 +23,7 @@ import type {
   ApplyVariationRequest,
   ApplyVariationResponse,
   ApproveBlockedResponse,
+  ApproveRegistrationResponse,
   AuthResponse,
   ConvertLeadRequest,
   ConvertLeadResult,
@@ -35,6 +36,7 @@ import type {
   GetAccountsParams,
   GetLeadsParams,
   HealthStatus,
+  InviteUserRequest,
   Lead,
   LeadInput,
   LoginRequest,
@@ -53,6 +55,10 @@ import type {
   SectionPatchRequest,
   SectionPatchResponse,
   StageActionResponse,
+  UpdateUserProfileRequest,
+  UpdateUserStatusRequest,
+  UserActivityResponse,
+  UserProfile,
   UserSummary,
 } from "./api.schemas";
 
@@ -131,6 +137,528 @@ export function useGetUsers<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Invite a new user (ADMIN). Creates user + membership + profile.
+ */
+export const getInviteUserUrl = () => {
+  return `/api/users/invite`;
+};
+
+export const inviteUser = async (
+  inviteUserRequest: InviteUserRequest,
+  options?: RequestInit,
+): Promise<AuthResponse> => {
+  return customFetch<AuthResponse>(getInviteUserUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(inviteUserRequest),
+  });
+};
+
+export const getInviteUserMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof inviteUser>>,
+    TError,
+    { data: BodyType<InviteUserRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof inviteUser>>,
+  TError,
+  { data: BodyType<InviteUserRequest> },
+  TContext
+> => {
+  const mutationKey = ["inviteUser"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof inviteUser>>,
+    { data: BodyType<InviteUserRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return inviteUser(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type InviteUserMutationResult = NonNullable<
+  Awaited<ReturnType<typeof inviteUser>>
+>;
+export type InviteUserMutationBody = BodyType<InviteUserRequest>;
+export type InviteUserMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Invite a new user (ADMIN). Creates user + membership + profile.
+ */
+export const useInviteUser = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof inviteUser>>,
+    TError,
+    { data: BodyType<InviteUserRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof inviteUser>>,
+  TError,
+  { data: BodyType<InviteUserRequest> },
+  TContext
+> => {
+  return useMutation(getInviteUserMutationOptions(options));
+};
+
+/**
+ * @summary Get a user's full profile (record-level authz)
+ */
+export const getGetUserProfileUrl = (id: string) => {
+  return `/api/users/${id}/profile`;
+};
+
+export const getUserProfile = async (
+  id: string,
+  options?: RequestInit,
+): Promise<UserProfile> => {
+  return customFetch<UserProfile>(getGetUserProfileUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetUserProfileQueryKey = (id: string) => {
+  return [`/api/users/${id}/profile`] as const;
+};
+
+export const getGetUserProfileQueryOptions = <
+  TData = Awaited<ReturnType<typeof getUserProfile>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getUserProfile>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetUserProfileQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getUserProfile>>> = ({
+    signal,
+  }) => getUserProfile(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getUserProfile>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetUserProfileQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getUserProfile>>
+>;
+export type GetUserProfileQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Get a user's full profile (record-level authz)
+ */
+
+export function useGetUserProfile<
+  TData = Awaited<ReturnType<typeof getUserProfile>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getUserProfile>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetUserProfileQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Update a profile (self limited to contact fields; ADMIN full)
+ */
+export const getUpdateUserProfileUrl = (id: string) => {
+  return `/api/users/${id}/profile`;
+};
+
+export const updateUserProfile = async (
+  id: string,
+  updateUserProfileRequest: UpdateUserProfileRequest,
+  options?: RequestInit,
+): Promise<UserProfile> => {
+  return customFetch<UserProfile>(getUpdateUserProfileUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateUserProfileRequest),
+  });
+};
+
+export const getUpdateUserProfileMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateUserProfile>>,
+    TError,
+    { id: string; data: BodyType<UpdateUserProfileRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateUserProfile>>,
+  TError,
+  { id: string; data: BodyType<UpdateUserProfileRequest> },
+  TContext
+> => {
+  const mutationKey = ["updateUserProfile"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateUserProfile>>,
+    { id: string; data: BodyType<UpdateUserProfileRequest> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateUserProfile(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateUserProfileMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateUserProfile>>
+>;
+export type UpdateUserProfileMutationBody = BodyType<UpdateUserProfileRequest>;
+export type UpdateUserProfileMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Update a profile (self limited to contact fields; ADMIN full)
+ */
+export const useUpdateUserProfile = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateUserProfile>>,
+    TError,
+    { id: string; data: BodyType<UpdateUserProfileRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateUserProfile>>,
+  TError,
+  { id: string; data: BodyType<UpdateUserProfileRequest> },
+  TContext
+> => {
+  return useMutation(getUpdateUserProfileMutationOptions(options));
+};
+
+/**
+ * @summary Activate or deactivate a user (ADMIN)
+ */
+export const getUpdateUserStatusUrl = (id: string) => {
+  return `/api/users/${id}/status`;
+};
+
+export const updateUserStatus = async (
+  id: string,
+  updateUserStatusRequest: UpdateUserStatusRequest,
+  options?: RequestInit,
+): Promise<UserSummary> => {
+  return customFetch<UserSummary>(getUpdateUserStatusUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateUserStatusRequest),
+  });
+};
+
+export const getUpdateUserStatusMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateUserStatus>>,
+    TError,
+    { id: string; data: BodyType<UpdateUserStatusRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateUserStatus>>,
+  TError,
+  { id: string; data: BodyType<UpdateUserStatusRequest> },
+  TContext
+> => {
+  const mutationKey = ["updateUserStatus"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateUserStatus>>,
+    { id: string; data: BodyType<UpdateUserStatusRequest> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateUserStatus(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateUserStatusMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateUserStatus>>
+>;
+export type UpdateUserStatusMutationBody = BodyType<UpdateUserStatusRequest>;
+export type UpdateUserStatusMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Activate or deactivate a user (ADMIN)
+ */
+export const useUpdateUserStatus = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateUserStatus>>,
+    TError,
+    { id: string; data: BodyType<UpdateUserStatusRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateUserStatus>>,
+  TError,
+  { id: string; data: BodyType<UpdateUserStatusRequest> },
+  TContext
+> => {
+  return useMutation(getUpdateUserStatusMutationOptions(options));
+};
+
+/**
+ * Server honors optional ?limit (default 25, max 100) and ?offset query params; they are omitted from the typed contract to avoid an orval path+query schema-name collision.
+ * @summary Paginated activity performed by a user (record-level authz)
+ */
+export const getGetUserActivityUrl = (id: string) => {
+  return `/api/users/${id}/activity`;
+};
+
+export const getUserActivity = async (
+  id: string,
+  options?: RequestInit,
+): Promise<UserActivityResponse> => {
+  return customFetch<UserActivityResponse>(getGetUserActivityUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetUserActivityQueryKey = (id: string) => {
+  return [`/api/users/${id}/activity`] as const;
+};
+
+export const getGetUserActivityQueryOptions = <
+  TData = Awaited<ReturnType<typeof getUserActivity>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getUserActivity>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetUserActivityQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getUserActivity>>> = ({
+    signal,
+  }) => getUserActivity(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getUserActivity>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetUserActivityQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getUserActivity>>
+>;
+export type GetUserActivityQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Paginated activity performed by a user (record-level authz)
+ */
+
+export function useGetUserActivity<
+  TData = Awaited<ReturnType<typeof getUserActivity>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getUserActivity>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetUserActivityQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Approve a registration and provision an AGENT login (ADMIN/CSA)
+ */
+export const getApproveAgentRegistrationUrl = (id: string) => {
+  return `/api/agent-registrations/${id}/approve`;
+};
+
+export const approveAgentRegistration = async (
+  id: string,
+  options?: RequestInit,
+): Promise<ApproveRegistrationResponse> => {
+  return customFetch<ApproveRegistrationResponse>(
+    getApproveAgentRegistrationUrl(id),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getApproveAgentRegistrationMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof approveAgentRegistration>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof approveAgentRegistration>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["approveAgentRegistration"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof approveAgentRegistration>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return approveAgentRegistration(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ApproveAgentRegistrationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof approveAgentRegistration>>
+>;
+
+export type ApproveAgentRegistrationMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Approve a registration and provision an AGENT login (ADMIN/CSA)
+ */
+export const useApproveAgentRegistration = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof approveAgentRegistration>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof approveAgentRegistration>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getApproveAgentRegistrationMutationOptions(options));
+};
 
 /**
  * Returns server health status

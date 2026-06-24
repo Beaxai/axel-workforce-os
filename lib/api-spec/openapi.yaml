@@ -35,6 +35,159 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/UserSummary"
+  /users/invite:
+    post:
+      operationId: inviteUser
+      tags: [users]
+      summary: Invite a new user (ADMIN). Creates user + membership + profile.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InviteUserRequest"
+      responses:
+        "201":
+          description: Invited
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "409":
+          description: Email already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /users/{id}/profile:
+    get:
+      operationId: getUserProfile
+      tags: [users]
+      summary: Get a user's full profile (record-level authz)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "403":
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateUserProfile
+      tags: [users]
+      summary: Update a profile (self limited to contact fields; ADMIN full)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserProfileRequest"
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "403":
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /users/{id}/status:
+    patch:
+      operationId: updateUserStatus
+      tags: [users]
+      summary: Activate or deactivate a user (ADMIN)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserStatusRequest"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserSummary"
+  /users/{id}/activity:
+    get:
+      operationId: getUserActivity
+      tags: [users]
+      summary: Paginated activity performed by a user (record-level authz)
+      description: >-
+        Server honors optional ?limit (default 25, max 100) and ?offset query
+        params; they are omitted from the typed contract to avoid an
+        orval path+query schema-name collision.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Activity slice
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserActivityResponse"
+        "403":
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /agent-registrations/{id}/approve:
+    post:
+      operationId: approveAgentRegistration
+      tags: [agent-registrations]
+      summary: Approve a registration and provision an AGENT login (ADMIN/CSA)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "201":
+          description: Approved and provisioned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApproveRegistrationResponse"
+        "409":
+          description: Already linked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /healthz:
     get:
       operationId: healthCheck
@@ -1470,3 +1623,225 @@ components:
           type: boolean
       required:
         - account
+    BookSummary:
+      type: object
+      properties:
+        dealCount:
+          type: integer
+        totalPremium:
+          type: number
+        boundCount:
+          type: integer
+        boundPremium:
+          type: number
+      required:
+        - dealCount
+        - totalPremium
+        - boundCount
+        - boundPremium
+    ProfileRoleSection:
+      type: object
+      properties:
+        kind:
+          type: string
+        data:
+          type: object
+          additionalProperties: true
+      required:
+        - kind
+        - data
+    ProfileOpenTask:
+      type: object
+      properties:
+        id:
+          type: string
+        taskName:
+          type: string
+        dueDate:
+          type: string
+          nullable: true
+        priority:
+          type: string
+          nullable: true
+      required:
+        - id
+        - taskName
+    ProfileActiveDeal:
+      type: object
+      properties:
+        id:
+          type: string
+        referenceCode:
+          type: string
+        businessName:
+          type: string
+          nullable: true
+        stage:
+          type: string
+          nullable: true
+      required:
+        - id
+        - referenceCode
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        firstName:
+          type: string
+          nullable: true
+        lastName:
+          type: string
+          nullable: true
+        avatarUrl:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        mobile:
+          type: string
+          nullable: true
+        status:
+          type: string
+          nullable: true
+        role:
+          type: string
+          nullable: true
+        orgId:
+          type: string
+          nullable: true
+        orgName:
+          type: string
+          nullable: true
+        title:
+          type: string
+          nullable: true
+        timezone:
+          type: string
+          nullable: true
+        dateJoined:
+          type: string
+          nullable: true
+        lastLoginAt:
+          type: string
+          nullable: true
+        roleSection:
+          $ref: "#/components/schemas/ProfileRoleSection"
+        bio:
+          type: string
+          nullable: true
+        internalNotes:
+          type: string
+          nullable: true
+        openTasks:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProfileOpenTask"
+        activeDeals:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProfileActiveDeal"
+      required:
+        - id
+        - email
+        - roleSection
+    UserActivityItem:
+      type: object
+      properties:
+        id:
+          type: string
+        dealId:
+          type: string
+          nullable: true
+        entityType:
+          type: string
+        eventType:
+          type: string
+        description:
+          type: string
+        createdAt:
+          type: string
+          nullable: true
+      required:
+        - id
+    UserActivityResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserActivityItem"
+        limit:
+          type: integer
+        offset:
+          type: integer
+      required:
+        - items
+        - limit
+        - offset
+    InviteUserRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        firstName:
+          type: string
+        lastName:
+          type: string
+        role:
+          $ref: "#/components/schemas/PartyRole"
+        orgId:
+          type: string
+          format: uuid
+        title:
+          type: string
+      required:
+        - email
+        - firstName
+        - lastName
+        - role
+    UpdateUserProfileRequest:
+      type: object
+      properties:
+        phone:
+          type: string
+          nullable: true
+        mobile:
+          type: string
+          nullable: true
+        title:
+          type: string
+          nullable: true
+        timezone:
+          type: string
+          nullable: true
+        bio:
+          type: string
+          nullable: true
+        internalNotes:
+          type: string
+          nullable: true
+        roleMetadata:
+          type: object
+          additionalProperties: true
+    UpdateUserStatusRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [active, deactivated]
+      required:
+        - status
+    ApproveRegistrationResponse:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/AuthUser"
+        registrationId:
+          type: string
+      required:
+        - registrationId

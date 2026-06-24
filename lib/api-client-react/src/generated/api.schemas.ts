@@ -433,6 +433,110 @@ export interface ConvertLeadResult {
   startSubmission?: boolean;
 }
 
+export interface BookSummary {
+  dealCount: number;
+  totalPremium: number;
+  boundCount: number;
+  boundPremium: number;
+}
+
+export type ProfileRoleSectionData = { [key: string]: unknown };
+
+export interface ProfileRoleSection {
+  kind: string;
+  data: ProfileRoleSectionData;
+}
+
+export interface ProfileOpenTask {
+  id: string;
+  taskName: string;
+  dueDate?: string | null;
+  priority?: string | null;
+}
+
+export interface ProfileActiveDeal {
+  id: string;
+  referenceCode: string;
+  businessName?: string | null;
+  stage?: string | null;
+}
+
+export interface UserProfile {
+  id: string;
+  email: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  avatarUrl?: string | null;
+  phone?: string | null;
+  mobile?: string | null;
+  status?: string | null;
+  role?: string | null;
+  orgId?: string | null;
+  orgName?: string | null;
+  title?: string | null;
+  timezone?: string | null;
+  dateJoined?: string | null;
+  lastLoginAt?: string | null;
+  roleSection: ProfileRoleSection;
+  bio?: string | null;
+  internalNotes?: string | null;
+  openTasks?: ProfileOpenTask[];
+  activeDeals?: ProfileActiveDeal[];
+}
+
+export interface UserActivityItem {
+  id: string;
+  dealId?: string | null;
+  entityType?: string;
+  eventType?: string;
+  description?: string;
+  createdAt?: string | null;
+}
+
+export interface UserActivityResponse {
+  items: UserActivityItem[];
+  limit: number;
+  offset: number;
+}
+
+export interface InviteUserRequest {
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: PartyRole;
+  orgId?: string;
+  title?: string;
+}
+
+export type UpdateUserProfileRequestRoleMetadata = { [key: string]: unknown };
+
+export interface UpdateUserProfileRequest {
+  phone?: string | null;
+  mobile?: string | null;
+  title?: string | null;
+  timezone?: string | null;
+  bio?: string | null;
+  internalNotes?: string | null;
+  roleMetadata?: UpdateUserProfileRequestRoleMetadata;
+}
+
+export type UpdateUserStatusRequestStatus =
+  (typeof UpdateUserStatusRequestStatus)[keyof typeof UpdateUserStatusRequestStatus];
+
+export const UpdateUserStatusRequestStatus = {
+  active: "active",
+  deactivated: "deactivated",
+} as const;
+
+export interface UpdateUserStatusRequest {
+  status: UpdateUserStatusRequestStatus;
+}
+
+export interface ApproveRegistrationResponse {
+  user?: AuthUser;
+  registrationId: string;
+}
+
 export type GetLeadsParams = {
   search?: string;
   status?: string;

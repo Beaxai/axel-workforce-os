@@ -15,6 +15,7 @@ import {
   usersTable,
   orgMembersTable,
   userCredentialsTable,
+  userProfilesTable,
 } from "@workspace/db";
 import { hashPassword, PARTY_ROLES, type PartyRole } from "../lib/auth";
 
@@ -48,13 +49,13 @@ async function upsertUser(seed: SeedUser): Promise<string> {
   if (existing[0]) {
     await db
       .update(usersTable)
-      .set({ firstName: seed.firstName, lastName: seed.lastName, status: "ACTIVE" })
+      .set({ firstName: seed.firstName, lastName: seed.lastName, status: "active" })
       .where(eq(usersTable.id, existing[0].id));
     return existing[0].id;
   }
   const [created] = await db
     .insert(usersTable)
-    .values({ email, firstName: seed.firstName, lastName: seed.lastName, status: "ACTIVE" })
+    .values({ email, firstName: seed.firstName, lastName: seed.lastName, status: "active" })
     .returning();
   return created.id;
 }
@@ -71,6 +72,53 @@ async function upsertCredential(userId: string, passwordHash: string) {
       .where(eq(userCredentialsTable.userId, userId));
   } else {
     await db.insert(userCredentialsTable).values({ userId, passwordHash });
+  }
+}
+
+// Role-specific profile demo data. `role_metadata` is the single jsonb bag for
+// fields with no first-class home (see user_profiles schema docs). AGENT
+// agency/license/E&O lives here as a fallback when no agent_registration is
+// linked by user_id; the book summary is always computed live from deals.
+const ROLE_PROFILES: Record<PartyRole, { title: string; roleMetadata: Record<string, unknown> }> = {
+  ADMIN: { title: "Platform Administrator", roleMetadata: { department: "Operations", territory: "National" } },
+  UNDERWRITER: {
+    title: "Senior Underwriter",
+    roleMetadata: { carrier: "Trean", lines: ["WC"], states: ["CA", "TX", "NY"], verticals: ["Cannabis", "Staffing"] },
+  },
+  CSA: { title: "Client Success Associate", roleMetadata: { department: "Client Success", territory: "West" } },
+  AGENT: {
+    title: "Producing Agent",
+    roleMetadata: {
+      agencyName: "Banks Insurance Group",
+      licenseNumbers: ["CA-0H12345"],
+      statesLicensed: ["CA", "NV"],
+      linesOfAuthority: ["P&C"],
+      eoCarrier: "CNA",
+      eoExpiration: "2026-12-31",
+    },
+  },
+  EMPLOYER: { title: "HR Director", roleMetadata: {} },
+  CARRIER: { title: "Carrier Representative", roleMetadata: { company: "Pacific Carrier", programs: ["WC"] } },
+  PEO: { title: "PEO Partner Manager", roleMetadata: { company: "Karen PEO Partners", programs: ["ASO", "PEO"] } },
+  VENDOR: { title: "Vendor Contact", roleMetadata: { company: "Johnson Vendor Co" } },
+};
+
+async function upsertProfile(userId: string, role: PartyRole) {
+  const profile = ROLE_PROFILES[role];
+  const existing = await db
+    .select()
+    .from(userProfilesTable)
+    .where(eq(userProfilesTable.userId, userId));
+  const values = {
+    title: profile.title,
+    timezone: "America/Los_Angeles",
+    roleMetadata: profile.roleMetadata,
+    updatedAt: new Date(),
+  };
+  if (existing[0]) {
+    await db.update(userProfilesTable).set(values).where(eq(userProfilesTable.userId, userId));
+  } else {
+    await db.insert(userProfilesTable).values({ userId, ...values });
   }
 }
 
@@ -98,6 +146,7 @@ async function main() {
     const userId = await upsertUser(seed);
     await upsertCredential(userId, passwordHash);
     await upsertMembership(userId, seed.role, seed.orgId);
+    await upsertProfile(userId, seed.role);
     // eslint-disable-next-line no-console
     console.log(`  ✓ ${seed.role.padEnd(12)} ${seed.email}`);
   }
