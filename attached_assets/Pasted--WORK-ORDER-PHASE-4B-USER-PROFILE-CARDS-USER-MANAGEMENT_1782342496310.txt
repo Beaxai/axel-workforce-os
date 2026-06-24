@@ -1,0 +1,171 @@
+# WORK ORDER — PHASE 4B: USER PROFILE CARDS + USER MANAGEMENT (REVISED)
+
+Branch: awf-os-brendy-sprint-1. Runs after 3.5 → 4A → 4C.
+Hard dependency: Phase 3.5 real users, org_members roles, admin-invite registration,
+password-reset machinery already exist.
+
+## GROUND RULES (do not violate — these are binding)
+- AUDIT CODE, NOT MEMORY (decision #5). Every "already exists" claim below was verified
+  against files on disk. If you find disagreement between this order and the code, the
+  CODE wins — stop and flag it, do not build around a wrong assumption.
+- SCHEMA CHANGES SHIP VIA `drizzle-kit push` (decision #1). `push` is whole-schema and
+  WILL hit the known `deals` drift prompt even when only adding a clean new table —
+  EXPECT to apply new DDL via direct SQL while keeping the Drizzle table files as the
+  source of truth. Do not introduce a migration-file flow. Do not introduce Supabase.
+- FLAG ANY NEW SCHEMA BEFORE BUILDING IT (decision #3). All net-new columns/tables are
+  named explicitly below; if you discover another field with no home, STOP and flag it —
+  do not invent a column silently.
+- SERVER-ENFORCED AUTHZ; UI ONLY MIRRORS. Every route declares allowedRoles AND, where
+  visibility is relationship-based, a record-level check. Never rely on hiding in the UI.
+- DESIGN SYSTEM = TOKENS ONLY (decision #2). Pink primary / purple support, the two glass
+  recipes, Inter/Jost. Every new view verified in BOTH light and dark before this phase
+  closes. No hardcoded accent hex outside token files.
+- API SURFACE CHANGES regenerate the contract: edit `lib/api-spec/openapi.yaml`, run
+  `pnpm --filter @workspace/api-spec codegen`, then implement the Express route + frontend
+  usage. Never hand-edit anything under a `generated/` dir.
+- DO NOT merge this with 4A account contacts. Contacts at prospect/client companies are a
+  separate concept and stay in the accounts module (`contacts` table). This phase is about
+  PLATFORM USERS only.
+
+## VERIFIED GROUND TRUTH (audited 2026-06-24)
+- `users` is intentionally thin: id, email, first_name, last_name, phone, mobile,
+  avatar_url, notification_preference, status (text, default "PENDING_APPROVAL"),
+  created_at. NO title/org/role/timezone/last_login. `status` is FREE TEXT — no enum/check.
+- ROLE lives in `org_members` (org_id + role + permissions jsonb + is_primary_org).
+  Do NOT move role onto users.
+- `/api/users` exists: GET `/` (all internal staff), GET `/:id`, ADMIN-only POST/PATCH/
+  DELETE — flat CRUD over the thin table. EXTEND it; do not rebuild.
+- `agent_registrations` + `agent_compliance` exist — reuse for the AGENT section; do not
+  duplicate license/EO fields.
+- `activity_log` exists and is DEAL-CENTRIC: deal_id, entity_type, entity_id, event_type,
+  description, metadata, created_by, created_at. It only captures deal-scoped events.
+- UI primitives available: `ui/avatar.tsx`, `ui/hover-card.tsx`, `AxelTooltip`. No
+  `/users/:id`, `/admin/users`, `/profile` routes and no shared mini-profile popover yet.
+
+────────────────────────────────────────────────────────────────────────
+## 1. DATA MODEL
+- New 1:1 `user_profiles` table (keep auth/identity lean rather than widening `users`):
+  user_id FK (PK), title, timezone, bio (internal-only), internal_notes (internal-only),
+  date_joined (default now), last_login_at (nullable timestamptz — see §1a).
+- ROLE-SPECIFIC METADATA goes in a SINGLE `role_metadata jsonb` column on `user_profiles`
+  — NOT a sparse column-per-role. This is the explicit decision for fields with no existing
+  home (UNDERWRITER carrier affiliation / lines / states / verticals; CSA department /
+  territory). Shape per role documented in code comments. If you believe a first-class
+  column is warranted instead, STOP and flag it before building — do not decide silently.
+- Role-specific data that DOES have a home is COMPOSED at read time, never re-stored:
+  - AGENT: agency/DBA, NPN, licenses + states, lines of authority, appointment/EO from
+    `agent_registrations`; compliance status from `agent_compliance`; book summary (see §2c).
+  - CARRIER/PEO/VENDOR reps: company (org), partnership role, programs serviced.
+  - EMPLOYER: linked account (4A), role at company, My Program visibility.
+- Avatar = initials + deterministic color. `avatar_url` photo upload stays TODO until file
+  storage (S3/R2, decision #1). DO NOT build uploads.
+
+### 1a. status migration — TREAT AS AN AUTH-PATH CHANGE (high risk)
+- Canonical status set becomes: `active | invited | deactivated`.
+- BEFORE anything else: grep the ENTIRE api-server for every reader of `status` and of the
+  literal `PENDING_APPROVAL` (the 3.5 login gate keys off status). List them in the PR.
+- Write a one-time BACKFILL mapping existing rows `PENDING_APPROVAL → invited` (and confirm
+  the 8 seeded users land on the right value). Include the backfill SQL in the PR.
+- Update the 3.5 login gate to the new values. This is an EDIT TO THE AUTH PATH — review it
+  as one. If the gate currently compares to a different literal, reconcile explicitly.
+
+### 1b. last_login_at — NET-NEW, and it IS an auth-path edit
+- This does NOT exist today (verified: no last_login column, no stamp in the login handler).
+- Add the column (§1) AND add a single UPDATE inside the EXISTING 3.5 login handler to stamp
+  it. Do not create a new auth endpoint. Label this in the PR as an auth-path edit so it gets
+  reviewed accordingly. Acceptance test 8 depends on it.
+
+────────────────────────────────────────────────────────────────────────
+## 2. API (server-enforced; openapi.yaml → Orval/Zod regenerated)
+
+### 2a. Read
+- GET `/api/users/:id/profile` — composed payload: identity + org + role badge +
+  role-specific section. Internal viewers ALSO get open tasks + active deals + internal_notes
+  + bio. Non-internal viewers NEVER receive internal_notes/bio (strip server-side, not in UI).
+- GET `/api/users/:id/activity` — paginated slice of `activity_log`.
+  DEFINE THE FILTER EXPLICITLY: this returns events the user PERFORMED → `created_by = :id`,
+  ordered by created_at desc. STATE THE LIMITATION in the response/docs: activity_log is
+  deal-scoped, so non-deal actions (login, profile edits, invites) do NOT appear here. (If
+  Curtis wants "events about the user" instead, that's `entity_type='user' AND entity_id=:id`
+  — flag it as a separate decision; do not silently merge both.)
+
+### 2b. Write
+- PATCH `/api/users/:id/profile` — ADMIN edits any profile incl. role_metadata. A user may
+  self-edit ONLY contact fields: phone, mobile (on `users`) + timezone (on `user_profiles`).
+  This is a CROSS-TABLE write — make it transactional and route fields explicitly. Role, org,
+  credentials, and status self-edit are rejected SERVER-SIDE with 403 (not merely hidden).
+  Password changes go through the existing 3.5 reset machinery — no new credential surface.
+- POST `/api/users/invite` — wraps 3.5 admin-invite registration (ADMIN-only); creates
+  users + org_members + user_profiles in ONE transaction (all-or-nothing).
+- PATCH `/api/users/:id/status` — ADMIN deactivate/reactivate. Deactivation blocks login
+  (enforced by the 3.5 status gate per §1a) while preserving ALL history. No hard delete.
+- Approved agent registration (existing flow) must create user + org_members + user_profiles
+  with agency/license data carried over, in one transaction.
+
+### 2c. AGENT book summary — define the join, don't hand-wave
+- Specify exactly: how an agent links to deals (confirm the actual FK/path in `deals` —
+  audit it; do not assume), WHICH premium field is summed, and over WHAT status set
+  (e.g., bound only vs all). Document the chosen definition in code. It's a LIVE aggregate
+  (COUNT + SUM) computed per profile view — fine at current scale; do not cache silently.
+  Acceptance test 3 verifies it matches the DB under this exact definition.
+
+────────────────────────────────────────────────────────────────────────
+## 3. AUTHORIZATION (record-level, beyond requireRoles)
+- `requireRoles` only does the COARSE role gate. Section 3 needs RELATIONSHIP checks it
+  cannot provide — implement a dedicated `canViewProfile(viewer, target)` helper:
+  - Internal (ADMIN/CSA/UNDERWRITER): see all profiles.
+  - AGENT: internal staff + users who share a deal with them.
+  - EMPLOYER: only assigned internal staff (403 on any unrelated profile).
+  - CARRIER/PEO/VENDOR: internal staff + shared-deal profiles.
+- Define the underlying queries once ("shares a deal", "assigned internal staff") and reuse.
+  Every profile/activity route runs BOTH the role gate AND `canViewProfile`. UI mirrors only.
+
+────────────────────────────────────────────────────────────────────────
+## 4. UI (tokens only; light + dark both verified)
+- Mini profile popover — ONE shared component, built on `ui/hover-card.tsx` + `ui/avatar.tsx`:
+  avatar, name, title, role badge, org, click-to-copy email/phone, "View full profile".
+  Replace USER-AVATAR tooltip/hover sites ONLY (deal team, activity feed, task assignee,
+  global search). DO NOT blanket-replace `AxelTooltip` — it's general-purpose and used
+  beyond avatars; touching non-avatar tooltips is out of scope.
+- Full profile page `/users/:id`: identity header, contact block, role-specific section,
+  activity tab (from `/activity`). Internal viewers also see open tasks + active deals.
+  Glass-panel (blur 40px) layout.
+- `/profile` (self): edit contact info + timezone + password; role/org/credentials/status
+  render READ-ONLY. Add `/users/:id` and `/profile` to `App.tsx` under `ProtectedRoute`.
+- `/admin/users` (ADMIN): searchable table (name, role, org, status, last login), invite
+  flow, edit role-specific fields, deactivate/reactivate. Glass-card rows.
+
+────────────────────────────────────────────────────────────────────────
+## 5. ACCEPTANCE TESTS — all must pass before the phase closes
+1. All 8 seeded users render complete, role-correct profiles (AGENT: agency + license +
+   compliance + book summary; UNDERWRITER: lines/states/verticals from role_metadata; etc.).
+2. Mini popover works from deal avatars, activity feed, task assignee, and global search —
+   single shared component; no old AVATAR tooltip remains (non-avatar tooltips untouched).
+3. AGENT book summary (count + premium) matches the DB under the §2c definition.
+4. EMPLOYER GET of an unrelated profile → 403; CARRIER/PEO see only internal + shared-deal
+   profiles — enforced by `canViewProfile`, verified server-side.
+5. Self-edit: phone/mobile/timezone PATCH persists (cross-table, transactional); self-edit
+   of role/org/status rejected server-side with 403, not merely hidden.
+6. ADMIN invite creates users + org_members + user_profiles atomically; approved agent
+   registration produces user + profile with agency/license carried over (atomically).
+7. status migration: backfill maps PENDING_APPROVAL → invited on all existing rows; ADMIN
+   deactivate blocks that user's login via the 3.5 gate with history intact; reactivate
+   restores access. PR lists every `status`/`PENDING_APPROVAL` reader that was updated.
+8. `last_login_at` updates on login (via the existing handler) and surfaces in `/admin/users`.
+9. Design system honored in BOTH light and dark (tokens, glass recipes, pink/purple). New
+   code adds ZERO new typecheck errors — `pnpm typecheck` shows no regressions vs the 3.5
+   baseline. (NOTE: 3.5 left pre-existing typecheck errors out of scope pending Curtis
+   sign-off; do NOT claim absolute zero — claim zero NEW errors and list the baseline.)
+
+────────────────────────────────────────────────────────────────────────
+## 6. FLAGS FOR CURTIS BEFORE BUILD
+- NET-NEW SCHEMA: `user_profiles` table + `role_metadata jsonb` + `last_login_at`. Ships via
+  `drizzle-kit push`; expect to apply via direct SQL due to the known `deals` drift, Drizzle
+  files remaining source of truth.
+- AUTH-PATH EDITS (review as such): (a) status value rename + backfill + 3.5 gate update;
+  (b) last_login_at stamp inside the existing login handler.
+- OPEN DECISIONS surfaced, not invented: activity feed = "performed by user" (vs "about
+  user"); role_metadata as jsonb (vs first-class columns); book-summary premium definition +
+  deal-link path (audit `deals` to confirm). Confirm these before build if you want a
+  different call.
+- This touches NO binding decision. Anything that would, is flagged here first.
