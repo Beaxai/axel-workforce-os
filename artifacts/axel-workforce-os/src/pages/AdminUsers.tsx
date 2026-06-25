@@ -133,7 +133,9 @@ export default function AdminUsers() {
     : users;
 
   async function handleToggleStatus(u: UserRow) {
-    const next = u.status === "deactivated" ? "active" : "deactivated";
+    // active is the only state we toggle OFF; both `invited` and `deactivated`
+    // toggle ON to `active` so admins can activate stuck invites directly.
+    const next = u.status === "active" ? "deactivated" : "active";
     try {
       await updateStatus.mutateAsync({ id: u.id, data: { status: next } });
       await load();
@@ -326,13 +328,14 @@ export default function AdminUsers() {
                       <td style={tdStyle}>{fmtLastLogin(u.lastLoginAt)}</td>
                       <td style={{ ...tdStyle, textAlign: "right" }}>
                         <GhostButton onClick={() => handleToggleStatus(u)} disabled={updateStatus.isPending}>
-                          {status === "deactivated" ? (
+                          {status === "active" ? (
                             <>
-                              <Check style={{ width: 13, height: 13, marginRight: 4 }} /> Reactivate
+                              <X style={{ width: 13, height: 13, marginRight: 4 }} /> Deactivate
                             </>
                           ) : (
                             <>
-                              <X style={{ width: 13, height: 13, marginRight: 4 }} /> Deactivate
+                              <Check style={{ width: 13, height: 13, marginRight: 4 }} />{" "}
+                              {status === "invited" ? "Activate" : "Reactivate"}
                             </>
                           )}
                         </GhostButton>

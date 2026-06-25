@@ -75,9 +75,19 @@ router.get("/", requireInternalSales, async (_req, res) => {
   );
 });
 
+// Canonical status set (Phase 4B). Generic admin user writes must not be able
+// to reintroduce mixed-case/non-canonical status values that the strict login
+// gate would then reject — so we layer this guard over insertUserSchema, which
+// types status loosely.
+const CANONICAL_STATUSES = ["active", "invited", "deactivated"] as const;
+const canonicalStatusSchema = z.enum(CANONICAL_STATUSES);
+
 router.post("/", requireAdmin, async (req, res) => {
   const parsed = insertUserSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues });
+  if (parsed.data.status !== undefined && !canonicalStatusSchema.safeParse(parsed.data.status).success) {
+    return res.status(400).json({ error: `status must be one of: ${CANONICAL_STATUSES.join(", ")}` });
+  }
   const [row] = await db.insert(usersTable).values(parsed.data).returning();
   return res.status(201).json(row);
 });
@@ -308,6 +318,9 @@ router.get("/:id", requireInternalSales, async (req: Request<{ id: string }>, re
 router.patch("/:id", requireAdmin, async (req: Request<{ id: string }>, res: Response) => {
   const parsed = insertUserSchema.partial().safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues });
+  if (parsed.data.status !== undefined && !canonicalStatusSchema.safeParse(parsed.data.status).success) {
+    return res.status(400).json({ error: `status must be one of: ${CANONICAL_STATUSES.join(", ")}` });
+  }
   const [row] = await db.update(usersTable).set(parsed.data).where(eq(usersTable.id, req.params.id)).returning();
   if (!row) return res.status(404).json({ error: "Not found" });
   return res.json(row);

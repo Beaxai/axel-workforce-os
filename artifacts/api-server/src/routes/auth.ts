@@ -210,6 +210,13 @@ router.post("/reset-password", async (req, res) => {
     .update(passwordResetTokensTable)
     .set({ usedAt: new Date() })
     .where(eq(passwordResetTokensTable.id, row.id));
+  // Completing a reset is the documented way an `invited` account becomes
+  // login-eligible. Promote invited → active (never override `deactivated`,
+  // which must stay blocked until an admin reactivates).
+  await db
+    .update(usersTable)
+    .set({ status: "active" })
+    .where(and(eq(usersTable.id, row.userId), eq(usersTable.status, "invited")));
   res.json({ ok: true });
 });
 
