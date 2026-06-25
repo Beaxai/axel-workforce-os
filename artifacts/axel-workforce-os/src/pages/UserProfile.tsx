@@ -62,6 +62,75 @@ function fmtMoney(n: number): string {
   return `$${Math.round(n).toLocaleString()}`;
 }
 
+type RoleFieldDef = { key: string; label: string; type: "text" | "list" };
+
+// Maps each role to its role_metadata-backed fields (mirrors the server's
+// buildRoleSection in api-server/src/lib/user-profiles.ts). The key/kind set
+// must stay in sync with that helper.
+const ROLE_FIELD_DEFS: Record<string, RoleFieldDef[]> = {
+  AGENT: [
+    { key: "agencyName", label: "Agency", type: "text" },
+    { key: "licenseNumbers", label: "License Numbers", type: "list" },
+    { key: "statesLicensed", label: "States Licensed", type: "list" },
+    { key: "linesOfAuthority", label: "Lines of Authority", type: "list" },
+    { key: "eoCarrier", label: "E&O Carrier", type: "text" },
+    { key: "eoExpiration", label: "E&O Expiration", type: "text" },
+  ],
+  UNDERWRITER: [
+    { key: "carrier", label: "Carrier", type: "text" },
+    { key: "lines", label: "Lines", type: "list" },
+    { key: "states", label: "States", type: "list" },
+    { key: "verticals", label: "Verticals", type: "list" },
+  ],
+  CSA: [
+    { key: "department", label: "Department", type: "text" },
+    { key: "territory", label: "Territory", type: "text" },
+  ],
+  ADMIN: [
+    { key: "department", label: "Department", type: "text" },
+    { key: "territory", label: "Territory", type: "text" },
+  ],
+  CARRIER: [
+    { key: "company", label: "Company", type: "text" },
+    { key: "programs", label: "Programs", type: "list" },
+  ],
+  PEO: [
+    { key: "company", label: "Company", type: "text" },
+    { key: "programs", label: "Programs", type: "list" },
+  ],
+  VENDOR: [
+    { key: "company", label: "Company", type: "text" },
+    { key: "programs", label: "Programs", type: "list" },
+  ],
+  EMPLOYER: [{ key: "linkedAccount", label: "Linked Account", type: "text" }],
+};
+
+const ROLE_SECTION_TITLE: Record<string, string> = {
+  AGENT: "AGENCY & LICENSING",
+  UNDERWRITER: "UNDERWRITING SCOPE",
+  CSA: "STAFF DETAILS",
+  ADMIN: "STAFF DETAILS",
+  CARRIER: "PARTNER DETAILS",
+  PEO: "PARTNER DETAILS",
+  VENDOR: "PARTNER DETAILS",
+  EMPLOYER: "EMPLOYER",
+};
+
+// EMPLOYER linkedAccount is derived from org membership server-side, so it is
+// never directly editable. All other role-metadata fields are admin-editable.
+function isRoleMetaEditable(kind: string): boolean {
+  return kind !== "EMPLOYER" && kind !== "UNKNOWN";
+}
+
+function fmtRoleValue(def: RoleFieldDef, data: Record<string, unknown>): string {
+  const v = data[def.key];
+  if (def.type === "list") {
+    return Array.isArray(v) && v.length > 0 ? v.map(String).join(", ") : "\u2014";
+  }
+  if (v === null || v === undefined || v === "") return "\u2014";
+  return String(v);
+}
+
 interface UserProfileProps {
   /** When true, resolve the id from the authenticated user (the /profile route). */
   self?: boolean;
@@ -92,6 +161,8 @@ export default function UserProfile({ self = false }: UserProfileProps) {
   const [pwForm, setPwForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
   const [pwError, setPwError] = useState<string | null>(null);
   const [pwSuccess, setPwSuccess] = useState(false);
+  // Role-metadata edit buffer: list fields held as comma-joined strings.
+  const [roleMetaForm, setRoleMetaForm] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (profile) {
@@ -103,6 +174,18 @@ export default function UserProfile({ self = false }: UserProfileProps) {
         bio: profile.bio ?? "",
         internalNotes: profile.internalNotes ?? "",
       });
+      const kind = (profile.roleSection?.kind ?? "").toUpperCase();
+      const data = (profile.roleSection?.data ?? {}) as Record<string, unknown>;
+      const defs = ROLE_FIELD_DEFS[kind] ?? [];
+      const next: Record<string, string> = {};
+      for (const def of defs) {
+        const v = data[def.key];
+        next[def.key] =
+          def.type === "list"
+            ? Array.isArray(v) ? v.map(String).join(", ") : ""
+            : v === null || v === undefined ? "" : String(v);
+      }
+      setRoleMetaForm(next);
     }
   }, [profile]);
 
@@ -132,11 +215,27 @@ export default function UserProfile({ self = false }: UserProfileProps) {
     display: "block",
   };
 
+  function buildRoleMetadata(): Record<string, unknown> | undefined {
+    const kind = (profile?.roleSection?.kind ?? "").toUpperCase();
+    const defs = ROLE_FIELD_DEFS[kind];
+    if (!defs || !isRoleMetaEditable(kind)) return undefined;
+    const meta: Record<string, unknown> = {};
+    for (const def of defs) {
+      const raw = (roleMetaForm[def.key] ?? "").trim();
+      if (def.type === "list") {
+        meta[def.key] = raw ? raw.split(",").map((s) => s.trim()).filter(Boolean) : [];
+      } else {
+        meta[def.key] = raw === "" ? null : raw;
+      }
+    }
+    return meta;
+  }
+
   async function handleSave() {
     if (!userId) return;
     const payload: UpdateUserProfileRequest = isSelf && !isAdmin
       ? { phone: form.phone, mobile: form.mobile, timezone: form.timezone }
-      : form;
+      : { ...form, roleMetadata: buildRoleMetadata() };
     await updateProfile.mutateAsync({ id: userId, data: payload });
     setEditMode(false);
     refetch();
@@ -209,10 +308,13 @@ export default function UserProfile({ self = false }: UserProfileProps) {
   const role = profile.role ?? "";
   const status = profile.status ?? "active";
   const roleData = (profile.roleSection?.data ?? {}) as Record<string, unknown>;
+  const roleKind = (profile.roleSection?.kind ?? "").toUpperCase();
+  const roleDefs = ROLE_FIELD_DEFS[roleKind] ?? [];
   const book =
-    profile.roleSection?.kind?.toUpperCase() === "AGENT"
+    roleKind === "AGENT"
       ? ((roleData.bookSummary as Record<string, unknown> | undefined) ?? null)
       : null;
+  const roleSectionEditable = canEditAdminFields && isRoleMetaEditable(roleKind);
 
   return (
     <div style={{ maxWidth: 1100, margin: "0 auto", padding: "32px 40px" }}>
@@ -467,6 +569,58 @@ export default function UserProfile({ self = false }: UserProfileProps) {
 
         {/* Right rail — role section */}
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+          {roleDefs.length > 0 && (
+            <GlassCard padding="24px">
+              <h2 className="font-heading" style={{ margin: "0 0 16px", fontSize: 13, color: c.sectionHeading }}>
+                {ROLE_SECTION_TITLE[roleKind] ?? "ROLE DETAILS"}
+              </h2>
+              {editMode && roleSectionEditable ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  {roleDefs.map((def) => (
+                    <div key={def.key}>
+                      <label style={labelStyle}>
+                        {def.label}
+                        {def.type === "list" ? " (comma-separated)" : ""}
+                      </label>
+                      <input
+                        style={inputStyle}
+                        value={roleMetaForm[def.key] ?? ""}
+                        onChange={(e) => setRoleMetaForm({ ...roleMetaForm, [def.key]: e.target.value })}
+                      />
+                    </div>
+                  ))}
+                  {roleKind === "AGENT" && (
+                    <p style={{ margin: 0, fontSize: 11, color: c.textMuted }}>
+                      Note: license & agency data sourced from an approved agent registration
+                      takes precedence over these fields.
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  {roleDefs.map((def) => (
+                    <div key={def.key}>
+                      <span
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 600,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.04em",
+                          color: c.textMuted,
+                        }}
+                      >
+                        {def.label}
+                      </span>
+                      <p style={{ margin: "2px 0 0", fontSize: 13, color: c.textPrimary, wordBreak: "break-word" }}>
+                        {fmtRoleValue(def, roleData)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </GlassCard>
+          )}
+
           {book && (
             <GlassCard padding="24px">
               <h2 className="font-heading" style={{ margin: "0 0 16px", fontSize: 13, color: c.sectionHeading }}>
