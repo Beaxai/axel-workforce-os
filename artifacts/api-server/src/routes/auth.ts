@@ -81,7 +81,7 @@ router.post("/login", async (req, res) => {
   // `invited` accounts must complete the invite/reset flow first; `deactivated`
   // accounts are blocked while their history is preserved. Checked AFTER the
   // password compare so account status can't be probed by an attacker.
-  if (user.status && user.status !== "active") {
+  if (user.status !== "active") {
     res.status(403).json({ error: "Your account is not active. Please contact an administrator." });
     return;
   }

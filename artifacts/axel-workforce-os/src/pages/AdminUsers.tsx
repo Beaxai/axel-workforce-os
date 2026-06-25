@@ -20,6 +20,15 @@ interface UserRow {
   lastName?: string | null;
   role?: string | null;
   status?: string | null;
+  orgName?: string | null;
+  lastLoginAt?: string | null;
+}
+
+function fmtLastLogin(v?: string | null): string {
+  if (!v) return "Never";
+  const d = new Date(v);
+  if (isNaN(d.getTime())) return "Never";
+  return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 }
 
 interface RegistrationRow {
@@ -80,6 +89,7 @@ export default function AdminUsers() {
   const [loading, setLoading] = useState(true);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
 
   const inviteUser = useInviteUser();
   const updateStatus = useUpdateUserStatus();
@@ -108,6 +118,19 @@ export default function AdminUsers() {
   const pendingRegs = registrations.filter(
     (r) => !r.userId && !/declin/i.test(r.status ?? ""),
   );
+
+  const q = search.trim().toLowerCase();
+  const filteredUsers = q
+    ? users.filter((u) => {
+        const name = `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim().toLowerCase();
+        return (
+          name.includes(q) ||
+          u.email.toLowerCase().includes(q) ||
+          (u.orgName ?? "").toLowerCase().includes(q) ||
+          (ROLE_LABEL[u.role ?? ""] ?? u.role ?? "").toLowerCase().includes(q)
+        );
+      })
+    : users;
 
   async function handleToggleStatus(u: UserRow) {
     const next = u.status === "deactivated" ? "active" : "deactivated";
@@ -210,10 +233,36 @@ export default function AdminUsers() {
 
       {/* Users table */}
       <GlassCard padding="0" style={{ overflow: "hidden" }}>
-        <div style={{ padding: "16px 20px", borderBottom: `1px solid ${c.borderColor}` }}>
+        <div
+          style={{
+            padding: "16px 20px",
+            borderBottom: `1px solid ${c.borderColor}`,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: 12,
+            flexWrap: "wrap",
+          }}
+        >
           <h2 className="font-heading" style={{ margin: 0, fontSize: 13, color: c.sectionHeading }}>
             TEAM MEMBERS
           </h2>
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search name, email, org, role…"
+            style={{
+              width: 280,
+              maxWidth: "100%",
+              padding: "8px 12px",
+              borderRadius: 8,
+              border: `1px solid ${c.inputBorder}`,
+              background: c.inputBg,
+              color: c.inputText,
+              fontSize: 13,
+              outline: "none",
+            }}
+          />
         </div>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -222,25 +271,27 @@ export default function AdminUsers() {
                 <th style={thStyle}>Name</th>
                 <th style={thStyle}>Email</th>
                 <th style={thStyle}>Role</th>
+                <th style={thStyle}>Organization</th>
                 <th style={thStyle}>Status</th>
+                <th style={thStyle}>Last Login</th>
                 <th style={{ ...thStyle, textAlign: "right" }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td style={tdStyle} colSpan={5}>
+                  <td style={tdStyle} colSpan={7}>
                     Loading…
                   </td>
                 </tr>
-              ) : users.length === 0 ? (
+              ) : filteredUsers.length === 0 ? (
                 <tr>
-                  <td style={tdStyle} colSpan={5}>
-                    No users found.
+                  <td style={tdStyle} colSpan={7}>
+                    {q ? `No users match "${search}".` : "No users found."}
                   </td>
                 </tr>
               ) : (
-                users.map((u) => {
+                filteredUsers.map((u) => {
                   const name = `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim() || u.email;
                   const role = u.role ?? "";
                   const status = u.status ?? "active";
@@ -268,9 +319,11 @@ export default function AdminUsers() {
                       <td style={tdStyle}>
                         {role ? <AxelBadge label={ROLE_LABEL[role] ?? role} color={ROLE_BADGE_COLOR[role] ?? "gray"} /> : "\u2014"}
                       </td>
+                      <td style={tdStyle}>{u.orgName || "\u2014"}</td>
                       <td style={tdStyle}>
                         <AxelBadge label={status} color={STATUS_COLOR[status] ?? "gray"} />
                       </td>
+                      <td style={tdStyle}>{fmtLastLogin(u.lastLoginAt)}</td>
                       <td style={{ ...tdStyle, textAlign: "right" }}>
                         <GhostButton onClick={() => handleToggleStatus(u)} disabled={updateStatus.isPending}>
                           {status === "deactivated" ? (

@@ -17,7 +17,8 @@ import {
 import { api } from "@/lib/api";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { useAuthStore } from "@/lib/auth-store";
-import type { SectionView, SubmissionPayload, ActivityRow, SectionPatchResponse, RfiRow, RfiListResponse, QuoteVariation, QuoteVariationsResponse, ApplyVariationResponse, PreviewVariationResponse, VariationLevers } from "./types";
+import type { SectionView, SubmissionPayload, ActivityRow, SectionPatchResponse, RfiRow, RfiListResponse, QuoteVariation, QuoteVariationsResponse, ApplyVariationResponse, PreviewVariationResponse, VariationLevers, DealTeamMember } from "./types";
+import UserMiniProfile from "@/components/user-profile/UserMiniProfile";
 import type { CreateRfiInput } from "./OverviewTab";
 import { PHASES, phaseIndex, isDeclined } from "./stage-map";
 import { STATUS_COLORS } from "./icons";
@@ -69,23 +70,53 @@ function fmtMoneyShort(v: unknown): string {
   return `$${n.toLocaleString()}`;
 }
 
-/** Decorative deal-team avatar cluster (Stitch header element). */
-function DealTeamAvatars() {
+function teamInitials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) return `${parts[0][0] ?? ""}${parts[1][0] ?? ""}`.toUpperCase();
+  return (parts[0]?.[0] ?? "?").toUpperCase();
+}
+
+/** Deal-team avatar cluster — each avatar opens the shared mini-profile popover. */
+function DealTeamAvatars({ team }: { team?: DealTeamMember[] }) {
   const c = useThemeColors();
   const colors = [c.accentSupport, c.accentPrimary, c.accentSupportHover];
+  if (!team || team.length === 0) {
+    return (
+      <div style={{ display: "flex", alignItems: "center" }}>
+        {colors.map((bg, i) => (
+          <div
+            key={i}
+            style={{
+              width: 26, height: 26, borderRadius: "50%", background: bg,
+              border: `2px solid ${c.bg}`, marginLeft: i === 0 ? 0 : -8,
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}
+          >
+            <UserRound style={{ width: 13, height: 13, color: "#fff" }} />
+          </div>
+        ))}
+      </div>
+    );
+  }
   return (
     <div style={{ display: "flex", alignItems: "center" }}>
-      {colors.map((bg, i) => (
-        <div
-          key={i}
-          style={{
-            width: 26, height: 26, borderRadius: "50%", background: bg,
-            border: `2px solid ${c.bg}`, marginLeft: i === 0 ? 0 : -8,
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}
-        >
-          <UserRound style={{ width: 13, height: 13, color: "#fff" }} />
-        </div>
+      {team.map((m, i) => (
+        <UserMiniProfile key={m.userId} userId={m.userId} align="end">
+          <button
+            type="button"
+            title={`${m.name} · ${m.relation}`}
+            style={{
+              width: 26, height: 26, borderRadius: "50%",
+              background: colors[i % colors.length],
+              border: `2px solid ${c.bg}`, marginLeft: i === 0 ? 0 : -8,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              cursor: "pointer", padding: 0,
+              fontSize: 10, fontWeight: 700, color: "#fff",
+            }}
+          >
+            {teamInitials(m.name)}
+          </button>
+        </UserMiniProfile>
       ))}
     </div>
   );
@@ -392,7 +423,7 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <DealTeamAvatars />
+            <DealTeamAvatars team={payload?.team} />
             <X onClick={onClose} style={{ width: 18, height: 18, color: c.textMuted, cursor: "pointer" }} />
           </div>
         </div>

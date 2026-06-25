@@ -7,11 +7,12 @@ import {
   useGetUserProfile,
   useGetUserActivity,
   useUpdateUserProfile,
+  useChangeUserPassword,
   getGetUserProfileQueryKey,
   getGetUserActivityQueryKey,
   type UpdateUserProfileRequest,
 } from "@workspace/api-client-react";
-import { ArrowLeft, Mail, Phone, Clock, Calendar, Briefcase, FileText } from "lucide-react";
+import { ArrowLeft, Mail, Phone, Clock, Calendar, Briefcase, FileText, KeyRound } from "lucide-react";
 
 const INTERNAL_ROLES = new Set(["ADMIN", "UNDERWRITER", "CSA"]);
 
@@ -84,9 +85,13 @@ export default function UserProfile({ self = false }: UserProfileProps) {
     query: { enabled: !!userId && isInternalViewer, queryKey: getGetUserActivityQueryKey(userId) },
   });
   const updateProfile = useUpdateUserProfile();
+  const changePassword = useChangeUserPassword();
 
   const [editMode, setEditMode] = useState(false);
   const [form, setForm] = useState<UpdateUserProfileRequest>({});
+  const [pwForm, setPwForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
+  const [pwError, setPwError] = useState<string | null>(null);
+  const [pwSuccess, setPwSuccess] = useState(false);
 
   useEffect(() => {
     if (profile) {
@@ -135,6 +140,37 @@ export default function UserProfile({ self = false }: UserProfileProps) {
     await updateProfile.mutateAsync({ id: userId, data: payload });
     setEditMode(false);
     refetch();
+  }
+
+  async function handleChangePassword() {
+    if (!userId) return;
+    setPwError(null);
+    setPwSuccess(false);
+    if (pwForm.newPassword.length < 8) {
+      setPwError("New password must be at least 8 characters.");
+      return;
+    }
+    if (pwForm.newPassword !== pwForm.confirmPassword) {
+      setPwError("Passwords do not match.");
+      return;
+    }
+    if (isSelf && !pwForm.currentPassword) {
+      setPwError("Enter your current password.");
+      return;
+    }
+    try {
+      await changePassword.mutateAsync({
+        id: userId,
+        data: {
+          newPassword: pwForm.newPassword,
+          ...(isSelf ? { currentPassword: pwForm.currentPassword } : {}),
+        },
+      });
+      setPwForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+      setPwSuccess(true);
+    } catch (e) {
+      setPwError(e instanceof Error ? e.message : "Failed to change password.");
+    }
   }
 
   if (!userId) {
@@ -319,6 +355,70 @@ export default function UserProfile({ self = false }: UserProfileProps) {
                   {profile.bio || "No bio provided."}
                 </p>
               )}
+            </GlassCard>
+          )}
+
+          {/* Change password (self or admin) */}
+          {canEdit && (
+            <GlassCard padding="24px">
+              <h2
+                className="font-heading"
+                style={{ margin: "0 0 16px", fontSize: 13, color: c.sectionHeading, display: "flex", alignItems: "center", gap: 8 }}
+              >
+                <KeyRound style={{ width: 14, height: 14 }} /> CHANGE PASSWORD
+              </h2>
+              <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 360 }}>
+                {isSelf && (
+                  <div>
+                    <label style={labelStyle}>Current password</label>
+                    <input
+                      type="password"
+                      autoComplete="current-password"
+                      style={inputStyle}
+                      value={pwForm.currentPassword}
+                      onChange={(e) => setPwForm({ ...pwForm, currentPassword: e.target.value })}
+                    />
+                  </div>
+                )}
+                <div>
+                  <label style={labelStyle}>New password</label>
+                  <input
+                    type="password"
+                    autoComplete="new-password"
+                    style={inputStyle}
+                    value={pwForm.newPassword}
+                    onChange={(e) => setPwForm({ ...pwForm, newPassword: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label style={labelStyle}>Confirm new password</label>
+                  <input
+                    type="password"
+                    autoComplete="new-password"
+                    style={inputStyle}
+                    value={pwForm.confirmPassword}
+                    onChange={(e) => setPwForm({ ...pwForm, confirmPassword: e.target.value })}
+                  />
+                </div>
+                {pwError && (
+                  <p style={{ margin: 0, fontSize: 13, color: "#ef4444" }}>{pwError}</p>
+                )}
+                {pwSuccess && (
+                  <p style={{ margin: 0, fontSize: 13, color: "var(--accent-primary)" }}>
+                    Password updated.
+                  </p>
+                )}
+                <div>
+                  <PinkButton onClick={handleChangePassword} disabled={changePassword.isPending}>
+                    {changePassword.isPending ? "Updating…" : "Update password"}
+                  </PinkButton>
+                </div>
+                {!isSelf && isAdmin && (
+                  <p style={{ margin: 0, fontSize: 12, color: c.textSecondary }}>
+                    As an admin you can reset this user's password without their current one.
+                  </p>
+                )}
+              </div>
             </GlassCard>
           )}
 

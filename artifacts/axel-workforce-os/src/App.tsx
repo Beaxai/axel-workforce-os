@@ -252,7 +252,6 @@ function App() {
             >
               <Route path="/accounts" element={<Accounts />} />
               <Route path="/accounts/:id" element={<AccountDetail />} />
-              <Route path="/users/:id" element={<UserProfile />} />
             </Route>
 
             <Route
@@ -274,6 +273,7 @@ function App() {
               }
             >
               <Route path="/profile" element={<UserProfile self />} />
+              <Route path="/users/:id" element={<UserProfile />} />
             </Route>
 
             <Route

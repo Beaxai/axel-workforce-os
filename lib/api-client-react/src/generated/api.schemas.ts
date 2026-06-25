@@ -532,10 +532,21 @@ export interface UpdateUserStatusRequest {
   status: UpdateUserStatusRequestStatus;
 }
 
+export interface ChangePasswordRequest {
+  /** Required when a user changes their own password; omitted for ADMIN resets. */
+  currentPassword?: string;
+  /** @minLength 8 */
+  newPassword: string;
+}
+
 export interface ApproveRegistrationResponse {
   user?: AuthUser;
   registrationId: string;
 }
+
+export type ChangeUserPassword200 = {
+  success: boolean;
+};
 
 export type GetLeadsParams = {
   search?: string;

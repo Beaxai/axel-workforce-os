@@ -8,6 +8,7 @@
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
     "seed:users": "tsx src/scripts/seed-users.ts",
+    "normalize:user-status": "tsx src/scripts/normalize-user-status.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

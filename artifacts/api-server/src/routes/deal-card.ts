@@ -16,11 +16,12 @@ import {
   lossHistoryDocumentsTable,
   dealRfisTable,
   quotesTable,
+  usersTable,
   type Deal,
   type Account,
   type DealRfi,
 } from "@workspace/db";
-import { eq, desc, and, sql } from "drizzle-orm";
+import { eq, desc, and, sql, inArray } from "drizzle-orm";
 import {
   generateQuoteVariations,
   type VariationBaseInputs,
@@ -114,6 +115,8 @@ router.get("/:id/submission", async (req, res) => {
   const access: Record<string, boolean> = {};
   for (const s of sections) access[s.key] = canEditSection(s.key as SectionKey, deal, actor);
 
+  const team = await loadDealTeam(deal);
+
   return res.json({
     deal,
     account,
@@ -121,9 +124,40 @@ router.get("/:id/submission", async (req, res) => {
     aggregateComplete,
     total,
     access,
+    team,
     canApprove: APPROVE_DECLINE_ROLES.has(actor.role),
   });
 });
+
+/** Resolve a deal's real team members (owner / producing agent / referral
+ * partner) to {userId, name, relation} so the UI can render avatars wired to
+ * the shared mini-profile popover. Order-stable; duplicates collapsed. */
+async function loadDealTeam(
+  deal: Deal,
+): Promise<Array<{ userId: string; name: string; relation: string }>> {
+  const slots: Array<{ id: string | null; relation: string }> = [
+    { id: deal.ownerId, relation: "Owner" },
+    { id: deal.producingAgentId, relation: "Producing Agent" },
+    { id: deal.referralPartnerId, relation: "Referral Partner" },
+  ];
+  const ids = [...new Set(slots.map((s) => s.id).filter((v): v is string => !!v))];
+  if (ids.length === 0) return [];
+  const users = await db
+    .select({ id: usersTable.id, firstName: usersTable.firstName, lastName: usersTable.lastName, email: usersTable.email })
+    .from(usersTable)
+    .where(inArray(usersTable.id, ids));
+  const byId = new Map(
+    users.map((u) => [u.id, `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim() || u.email]),
+  );
+  const seen = new Set<string>();
+  const team: Array<{ userId: string; name: string; relation: string }> = [];
+  for (const s of slots) {
+    if (!s.id || seen.has(s.id)) continue;
+    seen.add(s.id);
+    team.push({ userId: s.id, name: byId.get(s.id) ?? "User", relation: s.relation });
+  }
+  return team;
+}
 
 /* --------------------------------------------------------------------------
  * GET /deal-card/:id/activity — role-filtered collaboration feed

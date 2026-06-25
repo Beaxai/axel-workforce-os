@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { db, dealsTable, insertDealSchema, quotesTable, contactsTable, notesTable, tasksTable, activityLogTable, insertActivityLogSchema, dealEmailAddressesTable } from "@workspace/db";
-import { eq, desc } from "drizzle-orm";
+import { db, dealsTable, insertDealSchema, quotesTable, contactsTable, notesTable, tasksTable, activityLogTable, insertActivityLogSchema, dealEmailAddressesTable, usersTable } from "@workspace/db";
+import { eq, desc, inArray } from "drizzle-orm";
 import { z } from "zod/v4";
 import { findOrCreateAccount } from "../lib/accounts";
 
@@ -74,7 +74,24 @@ router.get("/:id/notes", async (req, res) => {
 
 router.get("/:id/tasks", async (req, res) => {
   const rows = await db.select().from(tasksTable).where(eq(tasksTable.dealId, req.params.id));
-  res.json(rows);
+  // Resolve assignee display names so the UI can show a real name + wire the
+  // mini-profile popover off the assignee user id (tasks.assigned_to is a FK).
+  const ids = [...new Set(rows.map((r) => r.assignedTo).filter((v): v is string => !!v))];
+  const users = ids.length
+    ? await db
+        .select({ id: usersTable.id, firstName: usersTable.firstName, lastName: usersTable.lastName, email: usersTable.email })
+        .from(usersTable)
+        .where(inArray(usersTable.id, ids))
+    : [];
+  const nameById = new Map(
+    users.map((u) => [u.id, `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim() || u.email]),
+  );
+  res.json(
+    rows.map((r) => ({
+      ...r,
+      assigneeName: r.assignedTo ? nameById.get(r.assignedTo) ?? null : null,
+    })),
+  );
 });
 
 router.get("/:id/activity", async (req, res) => {

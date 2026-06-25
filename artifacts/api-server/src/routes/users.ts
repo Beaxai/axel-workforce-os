@@ -4,16 +4,20 @@ import {
   usersTable,
   userProfilesTable,
   orgMembersTable,
+  organizationsTable,
   activityLogTable,
+  userCredentialsTable,
   insertUserSchema,
 } from "@workspace/db";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { requireRoles } from "../middleware/require-auth";
 import {
   PARTY_ROLES,
   getAuthUserById,
   findUserByEmail,
+  hashPassword,
+  verifyPassword,
   type AuthUser,
 } from "../lib/auth";
 import {
@@ -33,22 +37,42 @@ const requireAdmin = requireRoles("ADMIN");
  * ------------------------------------------------------------------ */
 router.get("/", requireInternalSales, async (_req, res) => {
   const rows = await db.select().from(usersTable);
-  // Enrich each row with its primary party role (lives on org_members, not
-  // users) so the admin directory can render role badges.
+  // Enrich each row with its primary party role + org name (both live on
+  // org_members / organizations, not users) and last_login_at (user_profiles)
+  // so the admin directory can render role badges, org, and last login.
   const memberships = await db
     .select({
       userId: orgMembersTable.userId,
       role: orgMembersTable.role,
       isPrimaryOrg: orgMembersTable.isPrimaryOrg,
+      orgName: organizationsTable.name,
     })
-    .from(orgMembersTable);
+    .from(orgMembersTable)
+    .leftJoin(organizationsTable, eq(orgMembersTable.orgId, organizationsTable.id));
   const roleByUser = new Map<string, string>();
+  const orgByUser = new Map<string, string>();
   for (const m of memberships) {
-    if (!m.userId || !m.role) continue;
-    const existing = roleByUser.get(m.userId);
-    if (!existing || m.isPrimaryOrg) roleByUser.set(m.userId, m.role.toUpperCase());
+    if (!m.userId) continue;
+    const isPrimary = m.isPrimaryOrg;
+    if (m.role && (isPrimary || !roleByUser.has(m.userId))) roleByUser.set(m.userId, m.role.toUpperCase());
+    if (m.orgName && (isPrimary || !orgByUser.has(m.userId))) orgByUser.set(m.userId, m.orgName);
   }
-  res.json(rows.map((r) => ({ ...r, role: roleByUser.get(r.id) ?? null })));
+  const ids = rows.map((r) => r.id);
+  const profiles = ids.length
+    ? await db
+        .select({ userId: userProfilesTable.userId, lastLoginAt: userProfilesTable.lastLoginAt })
+        .from(userProfilesTable)
+        .where(inArray(userProfilesTable.userId, ids))
+    : [];
+  const lastLoginByUser = new Map(profiles.map((p) => [p.userId, p.lastLoginAt]));
+  res.json(
+    rows.map((r) => ({
+      ...r,
+      role: roleByUser.get(r.id) ?? null,
+      orgName: orgByUser.get(r.id) ?? null,
+      lastLoginAt: lastLoginByUser.get(r.id) ?? null,
+    })),
+  );
 });
 
 router.post("/", requireAdmin, async (req, res) => {
@@ -222,6 +246,54 @@ router.patch("/:id/status", requireAdmin, async (req: Request<{ id: string }>, r
     .returning();
   if (!row) return res.status(404).json({ error: "Not found" });
   return res.json(row);
+});
+
+// PATCH /api/users/:id/password — self-service change (verifies current
+// password) or ADMIN reset (no current password required). Credentials live in
+// user_credentials, NOT users, so this is its own route separate from /profile.
+const passwordSchema = z
+  .object({
+    currentPassword: z.string().optional(),
+    newPassword: z.string().min(8),
+  });
+
+router.patch("/:id/password", async (req: Request<{ id: string }>, res: Response) => {
+  const viewer = req.user as AuthUser;
+  const targetId = req.params.id;
+  const isAdmin = viewer.role === "ADMIN";
+  const isSelf = viewer.id === targetId;
+  if (!isAdmin && !isSelf) {
+    return res.status(403).json({ error: "Insufficient permissions" });
+  }
+  const parsed = passwordSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues });
+
+  const [cred] = await db
+    .select()
+    .from(userCredentialsTable)
+    .where(eq(userCredentialsTable.userId, targetId));
+
+  // Self-editors must prove knowledge of the current password.
+  if (!isAdmin) {
+    if (!parsed.data.currentPassword) {
+      return res.status(400).json({ error: "Current password is required" });
+    }
+    const ok = cred
+      ? await verifyPassword(parsed.data.currentPassword, cred.passwordHash)
+      : false;
+    if (!ok) return res.status(403).json({ error: "Current password is incorrect" });
+  }
+
+  const passwordHash = await hashPassword(parsed.data.newPassword);
+  if (cred) {
+    await db
+      .update(userCredentialsTable)
+      .set({ passwordHash, updatedAt: new Date() })
+      .where(eq(userCredentialsTable.userId, targetId));
+  } else {
+    await db.insert(userCredentialsTable).values({ userId: targetId, passwordHash });
+  }
+  return res.json({ success: true });
 });
 
 /* ------------------------------------------------------------------ *

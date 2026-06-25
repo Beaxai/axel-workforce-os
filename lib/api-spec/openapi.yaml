@@ -136,6 +136,35 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/UserSummary"
+  /users/{id}/password:
+    patch:
+      operationId: changeUserPassword
+      tags: [users]
+      summary: Change a user's password (self with current password, or ADMIN reset)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangePasswordRequest"
+      responses:
+        "200":
+          description: Password updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                required:
+                  - success
   /users/{id}/activity:
     get:
       operationId: getUserActivity
@@ -1836,6 +1865,17 @@ components:
           enum: [active, deactivated]
       required:
         - status
+    ChangePasswordRequest:
+      type: object
+      properties:
+        currentPassword:
+          type: string
+          description: Required when a user changes their own password; omitted for ADMIN resets.
+        newPassword:
+          type: string
+          minLength: 8
+      required:
+        - newPassword
     ApproveRegistrationResponse:
       type: object
       properties:

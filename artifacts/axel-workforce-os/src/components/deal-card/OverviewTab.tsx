@@ -13,6 +13,7 @@ import { Sparkles, AlertTriangle, Paperclip, Zap, Plus, Check, CircleSlash, X, A
 import type { ActivityRow, RfiRow, QuoteVariation, VariationLevers, PreviewVariationResponse } from "./types";
 import { STATUS_COLORS } from "./icons";
 import { useThemeColors } from "@/lib/use-theme-colors";
+import UserMiniProfile from "@/components/user-profile/UserMiniProfile";
 
 export interface CreateRfiInput {
   subject: string;
@@ -394,10 +395,26 @@ export default function OverviewTab({
                 <div key={row.id} style={{ position: "relative" }}>
                   {node(c.accentPrimary)}
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                    <div style={{ width: 22, height: 22, borderRadius: "50%", background: c.hoverBg, color: c.textSecondary, fontSize: 9, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      {initials(author)}
-                    </div>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: c.textPrimary }}>{author}</span>
+                    {row.createdBy ? (
+                      <UserMiniProfile userId={row.createdBy}>
+                        <button
+                          type="button"
+                          style={{ display: "flex", alignItems: "center", gap: 8, background: "none", border: "none", padding: 0, cursor: "pointer" }}
+                        >
+                          <div style={{ width: 22, height: 22, borderRadius: "50%", background: c.hoverBg, color: c.textSecondary, fontSize: 9, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            {initials(author)}
+                          </div>
+                          <span style={{ fontSize: 12, fontWeight: 600, color: c.textPrimary }}>{author}</span>
+                        </button>
+                      </UserMiniProfile>
+                    ) : (
+                      <>
+                        <div style={{ width: 22, height: 22, borderRadius: "50%", background: c.hoverBg, color: c.textSecondary, fontSize: 9, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          {initials(author)}
+                        </div>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: c.textPrimary }}>{author}</span>
+                      </>
+                    )}
                     {role && <span style={{ fontSize: 10.5, color: c.textMuted }}>{role}</span>}
                     <span style={{ fontSize: 10, color: c.textMuted }}>{"\u00b7"} {timeLabel(row.createdAt)}</span>
                   </div>

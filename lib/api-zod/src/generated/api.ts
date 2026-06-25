@@ -172,6 +172,29 @@ export const UpdateUserStatusResponse = zod.object({
 });
 
 /**
+ * @summary Change a user's password (self with current password, or ADMIN reset)
+ */
+export const ChangeUserPasswordParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const changeUserPasswordBodyNewPasswordMin = 8;
+
+export const ChangeUserPasswordBody = zod.object({
+  currentPassword: zod
+    .string()
+    .optional()
+    .describe(
+      "Required when a user changes their own password; omitted for ADMIN resets.",
+    ),
+  newPassword: zod.string().min(changeUserPasswordBodyNewPasswordMin),
+});
+
+export const ChangeUserPasswordResponse = zod.object({
+  success: zod.boolean(),
+});
+
+/**
  * Server honors optional ?limit (default 25, max 100) and ?offset query params; they are omitted from the typed contract to avoid an orval path+query schema-name collision.
  * @summary Paginated activity performed by a user (record-level authz)
  */

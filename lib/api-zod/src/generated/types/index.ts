@@ -19,6 +19,8 @@ export * from "./approveRegistrationResponse";
 export * from "./authResponse";
 export * from "./authUser";
 export * from "./bookSummary";
+export * from "./changePasswordRequest";
+export * from "./changeUserPassword200";
 export * from "./convertLeadRequest";
 export * from "./convertLeadResult";
 export * from "./createRfiRequest";

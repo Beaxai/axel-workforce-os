@@ -56,6 +56,12 @@ export interface SubmissionDeal {
   [key: string]: unknown;
 }
 
+export interface DealTeamMember {
+  userId: string;
+  name: string;
+  relation: string;
+}
+
 export interface SubmissionPayload {
   deal: SubmissionDeal;
   account: Record<string, unknown> | null;
@@ -64,6 +70,7 @@ export interface SubmissionPayload {
   total: number;
   access: Record<string, boolean>;
   canApprove: boolean;
+  team?: DealTeamMember[];
 }
 
 export interface ActivityRow {
@@ -72,6 +79,7 @@ export interface ActivityRow {
   eventType: string;
   createdAt?: string | null;
   createdBy?: string | null;
+  createdByName?: string | null;
   metadata?: Record<string, unknown> | null;
 }
 

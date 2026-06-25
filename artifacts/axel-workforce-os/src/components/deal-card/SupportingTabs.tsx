@@ -12,6 +12,7 @@ import { PinkButton, GhostButton } from "@/components/ui/axel-index";
 import MultiLocationRatingPanel from "@/components/MultiLocationRatingPanel";
 import ProposalPanel from "@/components/ProposalPanel";
 import BindStatusPanel from "@/components/submission/BindStatusPanel";
+import UserMiniProfile from "@/components/user-profile/UserMiniProfile";
 
 /* ---------------------------------------------------------------- Documents */
 type DealDocument = { id: string; name: string; documentType: string; status: string; generatedAt?: string };
@@ -73,7 +74,7 @@ export function DocumentsTab({ dealId }: { dealId: string }) {
 }
 
 /* -------------------------------------------------------------------- Tasks */
-type TaskEntry = { id: string; taskName: string; assignedTo?: string; dueDate?: string; status?: string };
+type TaskEntry = { id: string; taskName: string; assignedTo?: string | null; assigneeName?: string | null; dueDate?: string; status?: string };
 
 export function TasksTab({ dealId }: { dealId: string }) {
   const c = useThemeColors();
@@ -144,8 +145,21 @@ export function TasksTab({ dealId }: { dealId: string }) {
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 13, color: c.textPrimary }}>{t.taskName}</div>
             {(t.assignedTo || t.dueDate) && (
-              <div style={{ fontSize: 11, color: c.textMuted }}>
-                {t.assignedTo}{t.assignedTo && t.dueDate ? " \u00b7 " : ""}{t.dueDate ? new Date(t.dueDate).toLocaleDateString() : ""}
+              <div style={{ fontSize: 11, color: c.textMuted, display: "flex", alignItems: "center", gap: 4 }}>
+                {t.assignedTo && t.assigneeName ? (
+                  <UserMiniProfile userId={t.assignedTo}>
+                    <button
+                      type="button"
+                      style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: 11, color: "var(--accent-primary)", fontWeight: 600 }}
+                    >
+                      {t.assigneeName}
+                    </button>
+                  </UserMiniProfile>
+                ) : t.assigneeName ? (
+                  <span>{t.assigneeName}</span>
+                ) : null}
+                {(t.assigneeName) && t.dueDate ? <span>{"\u00b7"}</span> : null}
+                {t.dueDate ? <span>{new Date(t.dueDate).toLocaleDateString()}</span> : null}
               </div>
             )}
           </div>

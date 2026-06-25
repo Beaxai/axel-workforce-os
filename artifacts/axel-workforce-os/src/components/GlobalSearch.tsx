@@ -5,6 +5,7 @@ import { GlassCard, AxelBadge } from "@/components/ui/axel-index";
 import { Search, X } from "lucide-react";
 import { useThemeStore } from "@/lib/theme-store";
 import { openDealCard } from "@/components/DealCardModal";
+import UserMiniProfile from "@/components/user-profile/UserMiniProfile";
 
 interface SearchResults {
   deals: any[];
@@ -133,15 +134,30 @@ export default function GlobalSearch({ onClose }: { onClose: () => void }) {
           {results.partners.length > 0 && (
             <Section title="Partners">
               {results.partners.map((p) => (
-                <ResultRow
+                <UserMiniProfile
                   key={p.id}
-                  title={p.name}
-                  subtitle={`${p.partnerType} · ${p.agencyName || "—"}`}
-                  badge={p.status}
-                  badgeColor={p.status === "Active" ? "green" : "yellow"}
-                  isDark={isDark}
-                  onClick={() => { onClose(); navigate(partnerPath(p)); }}
-                />
+                  align="start"
+                  inlineProfile={{
+                    firstName: p.contactName || p.name,
+                    email: p.contactEmail,
+                    phone: p.contactPhone,
+                    role: p.partnerType,
+                    orgName: p.agencyName,
+                  }}
+                  viewLabel="View partner"
+                  onView={() => { onClose(); navigate(partnerPath(p)); }}
+                >
+                  <div>
+                    <ResultRow
+                      title={p.name}
+                      subtitle={`${p.partnerType} · ${p.agencyName || "—"}`}
+                      badge={p.status}
+                      badgeColor={p.status === "Active" ? "green" : "yellow"}
+                      isDark={isDark}
+                      onClick={() => { onClose(); navigate(partnerPath(p)); }}
+                    />
+                  </div>
+                </UserMiniProfile>
               ))}
             </Section>
           )}
