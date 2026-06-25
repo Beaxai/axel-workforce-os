@@ -172,7 +172,7 @@ export const UpdateUserStatusResponse = zod.object({
 });
 
 /**
- * @summary Change a user's password (self with current password, or ADMIN reset)
+ * @summary Change a user's password (own account always requires current password; ADMIN reset of another user does not)
  */
 export const ChangeUserPasswordParams = zod.object({
   id: zod.coerce.string(),

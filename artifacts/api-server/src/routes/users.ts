@@ -258,8 +258,9 @@ router.patch("/:id/status", requireAdmin, async (req: Request<{ id: string }>, r
   return res.json(row);
 });
 
-// PATCH /api/users/:id/password — self-service change (verifies current
-// password) or ADMIN reset (no current password required). Credentials live in
+// PATCH /api/users/:id/password — self-service change always verifies the
+// current password (even for an ADMIN changing their OWN account); only an ADMIN
+// resetting ANOTHER user's password may skip it. Credentials live in
 // user_credentials, NOT users, so this is its own route separate from /profile.
 const passwordSchema = z
   .object({
@@ -283,8 +284,10 @@ router.patch("/:id/password", async (req: Request<{ id: string }>, res: Response
     .from(userCredentialsTable)
     .where(eq(userCredentialsTable.userId, targetId));
 
-  // Self-editors must prove knowledge of the current password.
-  if (!isAdmin) {
+  // Anyone changing their OWN password must prove knowledge of the current one,
+  // regardless of role. Only an ADMIN resetting ANOTHER user's password skips this.
+  const isAdminReset = isAdmin && !isSelf;
+  if (!isAdminReset) {
     if (!parsed.data.currentPassword) {
       return res.status(400).json({ error: "Current password is required" });
     }

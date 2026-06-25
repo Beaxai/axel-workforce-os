@@ -10,6 +10,27 @@ build-end; the State Document carries only the short STATUS line per phase.
 
 ---
 
+## Phase 4B — Re-review (close fresh-code-review rejection gaps)
+Branch: awf-os-brendy-sprint-1 · Date: 2026-06-25 · Result: PASS (1 security gap found + fixed)
+
+Architect re-review of T101–T104 against acceptance criteria: T101 (strict login gate + normalize script),
+T103 (UserMiniProfile popover + click-to-copy at 4 sites) and T104 (/admin/users completeness, /users/:id
+open to all authenticated roles, /profile password form) all PASS. One blocker found in T102 and fixed:
+
+- FIXED — `PATCH /api/users/:id/password` previously let an ADMIN change their OWN password via the admin-reset
+  path (no current password required). Now any self-change requires the current password regardless of role;
+  only an ADMIN resetting ANOTHER user's password may skip it. OpenAPI summary aligned + client regenerated.
+- Live re-verify (curl, post-restart):
+    1. PASS — admin self, wrong current password → 403 "Current password is incorrect".
+    2. PASS — admin self, no current password → 400 "Current password is required".
+    3. PASS — admin self, correct current password → 200.
+    4. PASS — admin reset of another user, no current password → 200 (target can still log in).
+- Gates: typecheck 0 new errors (web + api-server); all dev workflows running.
+- Other T102 items re-confirmed live: GET /deals/:id/tasks returns assigneeId + assigneeName;
+  GET /deal-card/:id/submission returns team[] with userId/name/relation (real ids).
+
+---
+
 ## Phase 4B — User Profiles & Management
 Branch: awf-os-brendy-sprint-1 · HEAD: ba5d6bf (synced, no local drift) · Date: 2026-06-25 · Result: ALL 9 PASS
 
@@ -139,9 +160,64 @@ Source: docs/build-prompts/phase-3.5-report.md (API via proxy localhost:80; UI v
 
 ---
 
-## Earlier phases (R.1–R.3 rating engine, S.1–S.5 underwriting/proposal/bind/appetite, S.4 workforce, D1/D1.1)
-No standalone acceptance-report docs exist in the repo for these — they predate the per-phase report-doc
-convention. Their scope and "done" status are recorded as feature entries in `replit.md` (Key Features) and
-in State Document §3 (D1/D1.1 design system) and §4 (build-state audit). Per-test PASS/FAIL evidence for these
-was delivered in chat at the time and is not reconstructable here without re-running them. If you want any of
-these formally re-verified, say which phase and I'll run a fresh acceptance pass and append it above.
+## R.1–R.3 + S.1–S.5 — Rating / Underwriting / Proposal / Bind / Appetite / Workforce
+Re-verified LIVE on 2026-06-25 against the dev DB (ADMIN session via proxy localhost:80). These phases predate
+the per-phase report-doc convention, so this is a fresh acceptance pass rather than a transcription. All test
+rows created during the run were cleaned up and any mutated deal state was restored (verified clean).
+
+### R.1 — Rate Table Ingestion (BIC → wc_rates + appetite)
+1. PASS — Ingestion volume: wc_rates = 25,093 rows, appetite = 25,058 rows, 46 distinct states.
+2. PASS — GET /api/wc-rates/lookup?state=CA&classCode=8810 → found, baseRate 0.3700, "Clerical Office Employees NOC." (200).
+3. PASS — GET /api/wc-rates/class-codes/search?q=8810 → returns the 8810 match (200).
+
+### R.2 — Rating Engine (WC + WFS)
+1. PASS — WC formula (CA, zip 90210, payroll 1,000,000, class 8810): payrollPer100 10,000 × baseRate 0.37 = 3,700,
+     × CA territory multiplier 1.2 (territory 1, prefix 902) = grossPremium 4,440 = finalPremium 4,440 (200).
+     Confirms Premium = (Payroll/100) × Rate × EMod × ScheduleRating with CA territorial multiplier applied.
+2. PASS — Minimum premium floor (TX, class 8810, payroll 1,000): gross 0.20 → finalPremium 500, minimumPremiumApplied=true (200).
+3. PASS — WFS PEPM (payroll 1,200,000, headcount 10): annualWFSFee 24,000 (= 2% of payroll), monthlyWFSFee 2,000, pepm 200 (200).
+
+### R.3 — Rating Engine UI "Save as Deal" (submit-for-approval)
+1. PASS — Flow creates account (dedupe) + deal + quote + generated deal_documents. Persisted evidence in deal_documents:
+     application_summary ×21, rate_indication ×21, coverage_verification ×21 (the doc set this flow emits), confirming
+     the quote-to-deal path has run end-to-end across the deal set. (No new deal created during this run to avoid junk data.)
+
+### S.1 — Underwriting Submission Engine (vertical-aware)
+1. PASS — GET /api/submission/question-set/cannabis → questionSet {verticalId:cannabis, version 1, isActive:true} +
+     questions array (e.g. section "Business Information", answerKey legal_business_name) (200).
+2. PASS — Loss-history upload path present (POST /api/loss-history/upload, multer); loss_history_bundle docs exist (×2).
+3. PASS — Document generation: ACORD 130 + Trean Cannabis Supp stream filled; axel-cannabis-application streams
+     (481-field source still unfilled — known follow-up per replit.md / State Document §4).
+
+### S.2 — Proposal System (lifecycle, auto-gen from quote)  [test rows cleaned up]
+1. PASS — POST /api/proposals/:dealId/create-from-quote → created draft proposal with fields mapped from the quote
+     breakdown: wcAnnualPremium 900 (rate 0.18 × payrollPer100 5,000), wcMonthlyPremium 75, totalAnnual 900, status "draft" (200).
+2. PASS — POST /api/proposals/:proposalId/request-approved-proposal → status draft → "underwriting_notified",
+     created underwriting_packages row (uwPackageId returned) (200).
+3. Cleanup: created proposal + underwriting_package deleted; the 3 pre-existing proposals left untouched (verified).
+
+### S.3 — Bind & Signature System (HelloSign stubbed)  [state restored]
+1. PASS — request-bind guard: POST /api/submission/request-bind/:dealId on a deal with no completed submission → 400
+     "No completed submission found." (negative test).
+2. PASS — request-bind happy path (deal with submitted submission + quote) → 200, created bind_document_packages row
+     status "generating", lossHistoryIncluded computed; set deal.submission_status + submission_answers.status → bind_requested.
+3. STUB BOUNDARY — POST /api/signatures/send/:bindPackageId returns "Bind package has no documents" until async
+     doc-gen completes; HelloSign itself is stubbed (no API key) per spec; the webhook receiver POST /api/webhooks/hellosign
+     is real code (FK-guard hardened in Phase 3.5).
+4. Cleanup: bind package + signature rows deleted; deal 4cc10a7e submission_status + submission_answers.status restored to "submitted".
+
+### S.4 — Workforce Profile Widget — multi-location rating
+1. PASS — POST /api/rate/wc/multi (2 locations: CA zip 90210 + TX, class 8810 @ $500,000 each, eMod 1.0):
+     CA subtotal 5,000 × 0.37 = 1,850 × territory 1.2 = 2,220; TX 5,000 × 0.02 = 100; totalGrossPremium 2,320 = finalPremium 2,320 (200).
+2. PASS — workforce_profile persisted as JSONB in quotes.workforce_profile (per S.4 storage model).
+
+### S.5 — Underwriting Appetite Engine
+1. PASS — GET /api/appetite/CA/8810 → uwDetermination "Acceptable" + description + baseRate (200).
+2. PASS — GET /api/appetite?state=CA&limit=3 → rows carry uwDetermination (e.g. "Referral") + uwConsiderations (200).
+3. PASS — POST /api/appetite/batch {lookups:[{state,class_code}]} → per-item results (CA 8810 Acceptable, TX 8810 Acceptable) (200).
+- Determination vocabulary present in appetite: Acceptable / Referral / Conditional / Ineligible.
+
+### D1 / D1.1 — Design system consolidation
+Not a curl-testable phase. "Done" status is recorded in State Document §3 (token system, two glass recipes, pink-primary/
+purple-support, single gradient CTA). Ongoing compliance is enforced per-phase via the light+dark Definition of Done and the
+static token audits recorded in 4A/4C/4B above.

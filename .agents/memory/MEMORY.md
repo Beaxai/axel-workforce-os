@@ -1,3 +1,4 @@
 - [Git push workflow](git-push-workflow.md) — feature work ships to GitHub branch `awf-os-brendy-sprint-1` via the github connection token in code_execution; NEVER main.
 - [Deal card modal](deal-card-modal.md) — opens only via login + clicking a Pipeline deal (openDealCard event); no direct route, so static screenshots can't reach it — use the testing skill.
 - [CA WC rating ZIP](ca-wc-rating-zip.md) — CA quotes need a 5-digit ZIP; engine must persist `zip` in breakdown.inputs or re-rating any saved CA quote 500s with TerritoryRatingError.
+- [Password-change policy](password-change-policy.md) — own-account password change ALWAYS verifies current pwd (even ADMIN-self); only admin changing ANOTHER user skips it.

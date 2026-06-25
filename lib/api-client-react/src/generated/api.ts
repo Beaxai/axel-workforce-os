@@ -488,7 +488,7 @@ export const useUpdateUserStatus = <
 };
 
 /**
- * @summary Change a user's password (self with current password, or ADMIN reset)
+ * @summary Change a user's password (own account always requires current password; ADMIN reset of another user does not)
  */
 export const getChangeUserPasswordUrl = (id: string) => {
   return `/api/users/${id}/password`;
@@ -552,7 +552,7 @@ export type ChangeUserPasswordMutationBody = BodyType<ChangePasswordRequest>;
 export type ChangeUserPasswordMutationError = ErrorType<unknown>;
 
 /**
- * @summary Change a user's password (self with current password, or ADMIN reset)
+ * @summary Change a user's password (own account always requires current password; ADMIN reset of another user does not)
  */
 export const useChangeUserPassword = <
   TError = ErrorType<unknown>,
