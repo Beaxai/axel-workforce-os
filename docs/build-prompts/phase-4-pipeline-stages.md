@@ -304,6 +304,11 @@ The live rates data is safe in the schema-managed `wc_rates` table — the backu
 - Update every stage badge/label site to read labels from the shared constant and remove legacy stage
   strings: `AccountDetail`, dashboards (`AgentDashboard`, `PeoDashboard`), `DealsPage`, `MyProgram`,
   `Billing`, quote-flow `Step4Indication`, and any others surfaced by grep.
+- **Cleanup:** delete the two accidentally-committed prompt-dump files
+  `attached_assets/Pasted-Continue-Same-execution-protocol-do-ONLY-this-step-run-_1782914086217.txt` and
+  `attached_assets/Pasted-PHASE-4-PIPELINE-STAGE-RECONCILIATION-You-are-on-branch_1782869273099.txt`
+  (the real prompts live in `docs/build-prompts/`), and add `attached_assets/Pasted-*` to `.gitignore`
+  so future paste dumps aren't committed. (Leave the pre-existing 4B/4C dumps alone — out of scope.)
 
 **Do NOT:** change tracker semantics or add phases; no new routes.
 
@@ -313,6 +318,7 @@ The live rates data is safe in the schema-managed `wc_rates` table — the backu
    migration script's mapping source.
 2. The 6-phase tracker maps correctly from **each** of the 10 stages (spot-check all 10).
 3. Badges correct on AccountDetail, dashboards, DealsPage, MyProgram; **light + dark**; typecheck zero new.
+4. The two P4 prompt-dump `.txt` files are gone; `.gitignore` now ignores `attached_assets/Pasted-*`.
 
 **Then STOP and wait for "continue."**
 
