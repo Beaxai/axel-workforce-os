@@ -146,18 +146,32 @@ table. This permanently clears the landmine for every future phase.
 
 **Objective:** add the `outcome` column and change the `stage` default, via Drizzle push — now unblocked.
 
+**Pre-req — exclude the orphan backup table (do NOT drop it):** `rates_backup_20260610` (24,820 rows) is
+an orphan snapshot not in the Drizzle schema; a full push would want to `DROP` it. **Do not drop it.**
+Exclude it from Drizzle's view via **`tablesFilter`** in the drizzle config so push ignores it entirely.
+The live rates data is safe in the schema-managed `wc_rates` table — the backup is untouched, preserved.
+
 **Scope (do only this):**
+- Add/adjust **`tablesFilter`** in the drizzle-kit config to exclude `rates_backup_20260610` (and any
+  other non-schema orphan tables) so push neither introspects nor drops them.
 - Edit `lib/db/src/schema/deals.ts`: add **`outcome`** `text` default `'open'`; change **`stage`** default
   from `'SUBMISSION_REVIEW'` → `'NEW_LEAD'`. `stage` stays `text`.
-- Run `pnpm --filter db push`. Confirm it applies clean (B0 cleared the truncate).
+- **Dry-run first:** run a full push dry-run and confirm the pending statements are **only**:
+  (a) the P4 change (add `outcome`, alter `stage` default), and (b) known non-destructive reconciliation
+  (FK `_fkey`→`_fk` renames, the `appetite` unique constraint→index conversion). **There must be NO
+  TRUNCATE and NO DROP of any data table.** If any destructive op appears → STOP and report.
+- Then apply: `pnpm --filter db push`.
 
 **Do NOT:**
+- Do NOT drop `rates_backup_20260610` or any table. Do NOT `push-force` blindly.
 - Do NOT remap existing deal rows yet (that's B2). Do NOT change routes, UI, or OpenAPI.
 
 **Acceptance test (run only this, then STOP):**
-1. Push applies clean (no truncate, no hang).
-2. Live `deals` has the `outcome` column (existing rows default to `'open'`) and `stage` default is
-   `NEW_LEAD`; deal count unchanged.
+1. Dry-run showed only the P4 change + non-destructive reconciliation (no truncate, no data-table drop);
+   `rates_backup_20260610` absent from the plan (excluded).
+2. Push applies clean (no hang). Live `deals` has the `outcome` column (existing rows default to `'open'`)
+   and `stage` default is `NEW_LEAD`; **deal count unchanged (32); `rates_backup_20260610` still present
+   with 24,820 rows**.
 3. `pnpm typecheck` — zero new errors vs baseline.
 
 **Then STOP and wait for "continue."**
