@@ -12,6 +12,7 @@ import { api } from "@/lib/api";
 import { openDealCard } from "@/components/DealCardModal";
 import { useTeamMembers } from "@/lib/users";
 import { VERTICAL_ICONS } from "@/lib/vertical-icons";
+import { PIPELINE_STAGES } from "@workspace/pipeline";
 import {
   Plus,
   Columns3,
@@ -28,22 +29,17 @@ interface Deal {
   annualPayroll?: string;
   employeeCountFt?: number;
   stage?: string;
+  outcome?: string;
   wcPremium?: string;
   wfsPepmRate?: string;
   ownerId?: string;
   createdAt?: string;
 }
 
-const STAGES = [
-  { num: 1, key: "SUBMISSION_REVIEW", label: "Submission Review" },
-  { num: 2, key: "INDICATION", label: "Indication" },
-  { num: 3, key: "UW_REVIEW", label: "U/W Review" },
-  { num: 4, key: "APPROVED_QUOTED", label: "Approved / Quoted" },
-  { num: 5, key: "BIND_ORDER", label: "Bind Order" },
-  { num: 6, key: "BOUND", label: "Bound" },
-  { num: 7, key: "CLIENT", label: "Client" },
-  { num: 8, key: "LOST", label: "Lost" },
-];
+// The 10 canonical stages come from the shared @workspace/pipeline constant —
+// the single source of truth. Lost is an outcome, not a column, so it is off-board.
+const STAGES = PIPELINE_STAGES.map((s) => ({ num: s.order, key: s.key, label: s.label }));
+const DEFAULT_STAGE = STAGES[0].key;
 
 const VERTICALS = [
   "Cannabis",
@@ -142,6 +138,8 @@ export default function Pipeline() {
   const [viewMode, setViewMode] = useState<"kanban" | "list">("kanban");
   const [appetiteFilter, setAppetiteFilter] = useState<string>("");
   const [dealAppetiteMap, setDealAppetiteMap] = useState<Record<string, string>>({});
+  const [showLost, setShowLost] = useState(false);
+  const [bindConfirm, setBindConfirm] = useState<{ dealId: string; name: string; prevStage?: string } | null>(null);
 
   const [form, setForm] = useState({
     businessName: "",
@@ -159,8 +157,11 @@ export default function Pipeline() {
   const inputBorder = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)";
   const borderSubtle = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)";
 
+  const [lostDeals, setLostDeals] = useState<Deal[]>([]);
+
   const fetchDeals = useCallback(async () => {
     try {
+      // Default list already excludes outcome='lost' (server, Step D).
       const data = await api.get<Deal[]>("/deals");
       setDeals(data);
     } catch (err) {
@@ -170,9 +171,24 @@ export default function Pipeline() {
     }
   }, []);
 
+  // Lost deals are absent from the active board; fetched on demand via
+  // ?includeLost=true and filtered to outcome='lost' for the Lost view.
+  const fetchLostDeals = useCallback(async () => {
+    try {
+      const data = await api.get<Deal[]>("/deals?includeLost=true");
+      setLostDeals(data.filter((d) => d.outcome === "lost"));
+    } catch (err) {
+      console.error("Failed to fetch lost deals:", err);
+    }
+  }, []);
+
   useEffect(() => {
     fetchDeals();
   }, [fetchDeals]);
+
+  useEffect(() => {
+    if (showLost) fetchLostDeals();
+  }, [showLost, fetchLostDeals]);
 
   useEffect(() => {
     const handler = () => { fetchDeals(); };
@@ -205,7 +221,7 @@ export default function Pipeline() {
   }, [deals, appetiteFilter, dealAppetiteMap]);
 
   const dealsByStage = (stageKey: string) =>
-    filteredDeals.filter((d) => (d.stage || "SUBMISSION_REVIEW") === stageKey);
+    filteredDeals.filter((d) => (d.stage || DEFAULT_STAGE) === stageKey);
 
   const [visibleByStage, setVisibleByStage] = useState<Record<string, number>>({});
 
@@ -238,7 +254,7 @@ export default function Pipeline() {
         state: form.state,
         annualPayroll: form.annualPayroll || undefined,
         employeeCountFt: form.employeeCountFt ? parseInt(form.employeeCountFt) : undefined,
-        stage: "SUBMISSION_REVIEW",
+        stage: DEFAULT_STAGE,
       };
       if (form.assignedTo) {
         payload.ownerId = form.assignedTo;
@@ -289,6 +305,30 @@ export default function Pipeline() {
     setDragOverStage(null);
   };
 
+  // Move a deal to a stage optimistically and persist. The server (Step D) owns
+  // the bind-readiness gate + implementation-tracker trigger — the board just
+  // PATCHes the stage. On a 409 (not bind-ready) we snap the card back and
+  // surface the server's reason.
+  const commitStageMove = useCallback(async (dealId: string, stageKey: string, prevStage?: string) => {
+    setDeals((prev) => prev.map((d) => (d.id === dealId ? { ...d, stage: stageKey } : d)));
+    try {
+      await api.patch(`/deals/${dealId}`, { stage: stageKey });
+    } catch (err) {
+      // Snap back to the prior column (prevStage is captured at drop time, so
+      // rollback is deterministic even under overlapping updates).
+      setDeals((prev) => prev.map((d) => (d.id === dealId ? { ...d, stage: prevStage } : d)));
+      const raw = err instanceof Error ? err.message : String(err);
+      let reason = raw;
+      try {
+        const parsed = JSON.parse(raw);
+        if (typeof parsed === "string") reason = parsed;
+        else if (parsed && typeof parsed === "object") reason = JSON.stringify(parsed);
+      } catch { /* not JSON — use raw */ }
+      window.alert(reason);
+      fetchDeals();
+    }
+  }, [fetchDeals]);
+
   const handleDrop = async (e: DragEvent, stageKey: string) => {
     e.preventDefault();
     setDragOverStage(null);
@@ -299,44 +339,13 @@ export default function Pipeline() {
     const deal = deals.find((d) => d.id === dealId);
     if (!deal || deal.stage === stageKey) return;
 
-    setDeals((prev) =>
-      prev.map((d) => (d.id === dealId ? { ...d, stage: stageKey } : d))
-    );
-
-    try {
-      await api.patch(`/deals/${dealId}`, { stage: stageKey });
-
-      if (stageKey === "BOUND" && deal) {
-        const today = new Date().toISOString().slice(0, 10);
-        api.post("/implementation", {
-          dealId,
-          productType: "WC",
-          goLiveDate: today,
-          status: "IN_PROGRESS",
-          overallProgress: 1,
-        }).catch(() => {});
-
-        if (deal.productType === "PEO") {
-          api.post("/implementation", {
-            dealId: dealId,
-            productType: "PEO",
-            goLiveDate: today,
-            status: "IN_PROGRESS",
-            overallProgress: 1,
-          }).catch(() => {});
-        }
-
-        api.post(`/deals/${dealId}/activity`, {
-          entityType: "deal",
-          entityId: dealId,
-          eventType: "STAGE_CHANGE",
-          description: `Deal moved to Bound — implementation tracker${deal.productType === "PEO" ? "s" : ""} created`,
-        }).catch(() => {});
-      }
-    } catch (err) {
-      console.error("Failed to update deal stage:", err);
-      fetchDeals();
+    // Entering Bound requires an explicit confirm before the server gate runs.
+    if (stageKey === "BOUND") {
+      setBindConfirm({ dealId, name: deal.businessName || "this deal", prevStage: deal.stage });
+      return;
     }
+
+    await commitStageMove(dealId, stageKey, deal.stage);
   };
 
   const handleDragEnd = () => {
@@ -470,10 +479,104 @@ export default function Pipeline() {
             </button>
           );
         })}
+        <button
+          onClick={() => setShowLost((v) => !v)}
+          style={{
+            marginLeft: "auto",
+            padding: "4px 12px",
+            borderRadius: "6px",
+            border: showLost ? "1px solid #ef4444" : `1px solid ${borderSubtle}`,
+            cursor: "pointer",
+            fontSize: "12px",
+            fontWeight: 500,
+            background: showLost ? "#ef444420" : "transparent",
+            color: showLost ? "#ef4444" : textMuted,
+            transition: "all 0.15s",
+          }}
+        >
+          {showLost ? "Hide Lost" : "Show Lost"}
+        </button>
       </div>
 
       {loading ? (
         <div style={{ color: textMuted, padding: "40px", textAlign: "center" }}>Loading pipeline…</div>
+      ) : showLost ? (
+        <div style={{ flex: 1, overflowY: "auto", paddingBottom: "12px" }}>
+          <GlassCard padding="0px">
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+              <thead>
+                <tr>
+                  {["Business", "Vertical", "Type", "State", "Stage at Loss", "WC Premium", "Created"].map((h) => (
+                    <th
+                      key={h}
+                      style={{
+                        textAlign: "left",
+                        padding: "12px 14px",
+                        fontWeight: 600,
+                        fontSize: "12px",
+                        color: textMuted,
+                        borderBottom: `1px solid ${borderSubtle}`,
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {lostDeals.map((deal) => {
+                  const Icon = deal.vertical ? VERTICAL_ICONS[deal.vertical] : null;
+                  const stageLabel = STAGES.find((s) => s.key === deal.stage)?.label || deal.stage || "—";
+                  return (
+                    <tr
+                      key={deal.id}
+                      onClick={() => openDealCard(deal.id)}
+                      style={{ cursor: "pointer", transition: "background 0.12s" }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                    >
+                      <td style={{ padding: "10px 14px", color: textPrimary, fontWeight: 500, borderBottom: `1px solid ${borderSubtle}` }}>
+                        {deal.businessName || "Untitled"}
+                      </td>
+                      <td style={{ padding: "10px 14px", borderBottom: `1px solid ${borderSubtle}` }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "5px", color: textMuted }}>
+                          {Icon && <Icon style={{ width: "13px", height: "13px" }} />}
+                          {deal.vertical || "—"}
+                        </div>
+                      </td>
+                      <td style={{ padding: "10px 14px", borderBottom: `1px solid ${borderSubtle}` }}>
+                        <Badge
+                          label={deal.productType === "PEO" ? "PEO" : "WC"}
+                          color={deal.productType === "PEO" ? "purple" : "blue"}
+                        />
+                      </td>
+                      <td style={{ padding: "10px 14px", color: textMuted, borderBottom: `1px solid ${borderSubtle}` }}>
+                        {deal.state || "—"}
+                      </td>
+                      <td style={{ padding: "10px 14px", borderBottom: `1px solid ${borderSubtle}` }}>
+                        <Badge label={stageLabel} color="gray" />
+                      </td>
+                      <td style={{ padding: "10px 14px", color: deal.wcPremium && parseFloat(deal.wcPremium) > 0 ? textPrimary : textMuted, borderBottom: `1px solid ${borderSubtle}` }}>
+                        {deal.wcPremium && parseFloat(deal.wcPremium) > 0 ? formatCurrency(deal.wcPremium) : "—"}
+                      </td>
+                      <td style={{ padding: "10px 14px", color: textMuted, borderBottom: `1px solid ${borderSubtle}`, whiteSpace: "nowrap" }}>
+                        {deal.createdAt ? new Date(deal.createdAt).toLocaleDateString() : "—"}
+                      </td>
+                    </tr>
+                  );
+                })}
+                {lostDeals.length === 0 && (
+                  <tr>
+                    <td colSpan={7} style={{ padding: "40px", textAlign: "center", color: textMuted }}>
+                      No lost deals.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </GlassCard>
+        </div>
       ) : viewMode === "list" ? (
         <div style={{ flex: 1, overflowY: "auto", paddingBottom: "12px" }}>
           <GlassCard padding="0px">
@@ -804,6 +907,33 @@ export default function Pipeline() {
           <GhostButton onClick={() => setShowNewDeal(false)} style={{ padding: "10px 24px" }}>
             Cancel
           </GhostButton>
+        </div>
+      </Modal>
+
+      <Modal isOpen={bindConfirm !== null} onClose={() => setBindConfirm(null)} title="Move to Bound?">
+        <div style={{ minWidth: "420px" }}>
+          <p style={{ fontSize: "14px", color: textPrimary, margin: "0 0 8px" }}>
+            Move <strong>{bindConfirm?.name}</strong> to <strong>Bound</strong>?
+          </p>
+          <p style={{ fontSize: "13px", color: textMuted, margin: 0 }}>
+            Binding is gated server-side — the deal must have a completed submission and an
+            approved quote. Binding also creates the implementation tracker(s).
+          </p>
+          <div style={{ display: "flex", gap: "12px", marginTop: "24px" }}>
+            <PinkButton
+              onClick={() => {
+                const c = bindConfirm;
+                setBindConfirm(null);
+                if (c) commitStageMove(c.dealId, "BOUND", c.prevStage);
+              }}
+              style={{ padding: "10px 24px" }}
+            >
+              Confirm Bind
+            </PinkButton>
+            <GhostButton onClick={() => setBindConfirm(null)} style={{ padding: "10px 24px" }}>
+              Cancel
+            </GhostButton>
+          </div>
         </div>
       </Modal>
 

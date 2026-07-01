@@ -412,6 +412,9 @@ importers:
       '@workspace/cannabis-application':
         specifier: workspace:*
         version: link:../../lib/cannabis-application
+      '@workspace/pipeline':
+        specifier: workspace:*
+        version: link:../../lib/pipeline
       class-variance-authority:
         specifier: 'catalog:'
         version: 0.7.1

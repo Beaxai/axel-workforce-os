@@ -2,4 +2,5 @@
 - [Deal card modal](deal-card-modal.md) — opens only via login + clicking a Pipeline deal (openDealCard event); no direct route, so static screenshots can't reach it — use the testing skill.
 - [CA WC rating ZIP](ca-wc-rating-zip.md) — CA quotes need a 5-digit ZIP; engine must persist `zip` in breakdown.inputs or re-rating any saved CA quote 500s with TerritoryRatingError.
 - [Bind transition atomicity](bind-transition-atomicity.md) — PATCH /deals BOUND path must stay in one tx with `.for("update")`; trackers have no DB unique index, so concurrent BOUND races duplicate them.
+- [Pipeline canonical stages](pipeline-canonical-stages.md) — 10 stages live once in @workspace/pipeline; no legacy keys; use DEFAULT_STAGE fallback; LOST is outcome not stage.
 - [Password-change policy](password-change-policy.md) — own-account password change ALWAYS verifies current pwd (even ADMIN-self); only admin changing ANOTHER user skips it.
