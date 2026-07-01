@@ -111,6 +111,37 @@ can land the spec way (Drizzle push).
 
 ---
 
+## STEP B0.1 — Reconcile remaining constraint-name drift DB-wide (non-destructive)
+
+**Objective:** `drizzle-kit push` is all-or-nothing across the whole schema. B0 fixed only `deals`, but
+the same `_key`-vs-`_unique` constraint-name drift exists on ~13 other tables / 14 constraints (e.g.
+`users_email_key`). Rename them all so a **full push runs clean DB-wide** — no truncate prompt on any
+table. This permanently clears the landmine for every future phase.
+
+**Scope (do only this):**
+- Enumerate every constraint where the live DB name differs from the name Drizzle's push expects (the
+  `_key` auto-name vs the Drizzle `_unique` / explicit `.unique("...")` name). **Read the real live names
+  from the Postgres catalog — do not assume the pattern** (some are composite, e.g. wc_rates).
+- For each, apply `ALTER TABLE <t> RENAME CONSTRAINT <live_name> TO <drizzle_expected_name>`. This is
+  metadata-only — **no rows touched**.
+
+**Do NOT:**
+- Do NOT apply any P4 schema change (no `outcome`, no `stage` default — that's B1).
+- Rename only — do NOT drop/add constraints, do NOT change columns/data, do NOT `push-force`, do NOT edit
+  Drizzle schema files (they're already correct; only the live DB names are drifted).
+- Only reconcile the `_key`→`_unique` name drift — do not "fix" other unrelated differences.
+
+**Acceptance test (run only this, then STOP):**
+1. A **full** `drizzle-kit push` dry-run (all tables, real FK context, stdin closed / timeout) shows **NO
+   pending TRUNCATE / destructive prompt on ANY table** — specifically the `users_email_unique` prompt
+   seen in B0's cross-check is now gone.
+2. Row counts unchanged on affected tables (spot-check e.g. `users`, `deals` — report before/after).
+3. List each constraint renamed (table, old name → new name).
+
+**Then STOP and wait for "continue."**
+
+---
+
 ## STEP B1 — Apply P4 schema via `drizzle-kit push` (spec workflow)
 
 **Objective:** add the `outcome` column and change the `stage` default, via Drizzle push — now unblocked.
