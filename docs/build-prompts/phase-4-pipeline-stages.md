@@ -266,8 +266,12 @@ The live rates data is safe in the schema-managed `wc_rates` table — the backu
 **Scope (do only this):**
 - `Pipeline.tsx`: replace the local 8-stage `STAGES` with the shared constant (10). Render 10 columns in
   order; keep the board **full-bleed with horizontal scroll**. Remove the `LOST` column.
-- Add a **Lost filter/toggle** that surfaces `outcome='lost'` deals (absent from the active board).
-- Entering `BOUND` via drag shows a confirm and respects the server bind-readiness gate from Step D.
+- Add a **Lost filter/toggle** that surfaces `outcome='lost'` deals (absent from the active board;
+  fetched via `?includeLost=true`).
+- **Remove the now-redundant client-side implementation-tracker trigger** from `Pipeline.tsx` — the board
+  simply PATCHes the stage; the server (Step D) owns the bind-readiness gate + trigger. Entering `BOUND`
+  via drag shows a confirm, then PATCHes. On a **409 (not bind-ready)**, surface the server's reason to the
+  user and **leave the card in its prior column** (snap back).
 
 **Do NOT:** change badge sites elsewhere yet (Step F); add no new routes/pages.
 
