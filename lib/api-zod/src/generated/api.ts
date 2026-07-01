@@ -85,7 +85,23 @@ export const GetUserProfileResponse = zod.object({
         id: zod.string(),
         referenceCode: zod.string(),
         businessName: zod.string().nullish(),
-        stage: zod.string().nullish(),
+        stage: zod
+          .enum([
+            "NEW_LEAD",
+            "QUALIFIED",
+            "NEEDS_ANALYSIS",
+            "PROPOSAL_SENT",
+            "NEGOTIATION",
+            "DECISION_PENDING",
+            "COMMITTED",
+            "DOCUMENTATION",
+            "BOUND",
+            "CLIENT",
+          ])
+          .describe(
+            "Canonical pipeline stage (mirrors @workspace\/pipeline PIPELINE_STAGE_KEYS).",
+          )
+          .nullish(),
       }),
     )
     .optional(),
@@ -146,7 +162,23 @@ export const UpdateUserProfileResponse = zod.object({
         id: zod.string(),
         referenceCode: zod.string(),
         businessName: zod.string().nullish(),
-        stage: zod.string().nullish(),
+        stage: zod
+          .enum([
+            "NEW_LEAD",
+            "QUALIFIED",
+            "NEEDS_ANALYSIS",
+            "PROPOSAL_SENT",
+            "NEGOTIATION",
+            "DECISION_PENDING",
+            "COMMITTED",
+            "DOCUMENTATION",
+            "BOUND",
+            "CLIENT",
+          ])
+          .describe(
+            "Canonical pipeline stage (mirrors @workspace\/pipeline PIPELINE_STAGE_KEYS).",
+          )
+          .nullish(),
       }),
     )
     .optional(),
@@ -817,7 +849,26 @@ export const ApproveDealParams = zod.object({
 
 export const ApproveDealResponse = zod.object({
   success: zod.boolean(),
-  stage: zod.string(),
+  stage: zod
+    .enum([
+      "NEW_LEAD",
+      "QUALIFIED",
+      "NEEDS_ANALYSIS",
+      "PROPOSAL_SENT",
+      "NEGOTIATION",
+      "DECISION_PENDING",
+      "COMMITTED",
+      "DOCUMENTATION",
+      "BOUND",
+      "CLIENT",
+    ])
+    .describe(
+      "Canonical pipeline stage (mirrors @workspace\/pipeline PIPELINE_STAGE_KEYS).",
+    ),
+  outcome: zod
+    .enum(["open", "lost"])
+    .optional()
+    .describe("A deal's outcome, orthogonal to its stage (open | lost)."),
 });
 
 /**
@@ -833,7 +884,26 @@ export const DeclineDealBody = zod.object({
 
 export const DeclineDealResponse = zod.object({
   success: zod.boolean(),
-  stage: zod.string(),
+  stage: zod
+    .enum([
+      "NEW_LEAD",
+      "QUALIFIED",
+      "NEEDS_ANALYSIS",
+      "PROPOSAL_SENT",
+      "NEGOTIATION",
+      "DECISION_PENDING",
+      "COMMITTED",
+      "DOCUMENTATION",
+      "BOUND",
+      "CLIENT",
+    ])
+    .describe(
+      "Canonical pipeline stage (mirrors @workspace\/pipeline PIPELINE_STAGE_KEYS).",
+    ),
+  outcome: zod
+    .enum(["open", "lost"])
+    .optional()
+    .describe("A deal's outcome, orthogonal to its stage (open | lost)."),
 });
 
 /**

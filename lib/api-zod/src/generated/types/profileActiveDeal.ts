@@ -5,10 +5,11 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { PipelineStage } from "./pipelineStage";
 
 export interface ProfileActiveDeal {
   id: string;
   referenceCode: string;
   businessName?: string | null;
-  stage?: string | null;
+  stage?: PipelineStage | null;
 }

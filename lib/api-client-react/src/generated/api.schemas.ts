@@ -130,9 +130,38 @@ export interface DeclineRequest {
   reason: string;
 }
 
+/**
+ * Canonical pipeline stage (mirrors @workspace/pipeline PIPELINE_STAGE_KEYS).
+ */
+export type PipelineStage = (typeof PipelineStage)[keyof typeof PipelineStage];
+
+export const PipelineStage = {
+  NEW_LEAD: "NEW_LEAD",
+  QUALIFIED: "QUALIFIED",
+  NEEDS_ANALYSIS: "NEEDS_ANALYSIS",
+  PROPOSAL_SENT: "PROPOSAL_SENT",
+  NEGOTIATION: "NEGOTIATION",
+  DECISION_PENDING: "DECISION_PENDING",
+  COMMITTED: "COMMITTED",
+  DOCUMENTATION: "DOCUMENTATION",
+  BOUND: "BOUND",
+  CLIENT: "CLIENT",
+} as const;
+
+/**
+ * A deal's outcome, orthogonal to its stage (open | lost).
+ */
+export type DealOutcome = (typeof DealOutcome)[keyof typeof DealOutcome];
+
+export const DealOutcome = {
+  open: "open",
+  lost: "lost",
+} as const;
+
 export interface StageActionResponse {
   success: boolean;
-  stage: string;
+  stage: PipelineStage;
+  outcome?: DealOutcome;
 }
 
 export type ApproveBlockedResponseBlockingRfisItem = {
@@ -458,7 +487,7 @@ export interface ProfileActiveDeal {
   id: string;
   referenceCode: string;
   businessName?: string | null;
-  stage?: string | null;
+  stage?: PipelineStage | null;
 }
 
 export interface UserProfile {
