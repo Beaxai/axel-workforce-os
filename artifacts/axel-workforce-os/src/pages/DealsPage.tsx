@@ -2,17 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { Plus, Search, Filter } from "lucide-react";
-
-const STAGES = ["NEW_LEAD", "QUALIFYING", "QUOTING", "PROPOSAL", "NEGOTIATION", "BOUND", "LOST"];
-const stageColors: Record<string, string> = {
-  NEW_LEAD: "bg-blue-100 text-blue-700",
-  QUALIFYING: "bg-cyan-100 text-cyan-700",
-  QUOTING: "bg-yellow-100 text-yellow-700",
-  PROPOSAL: "bg-purple-100 text-purple-700",
-  NEGOTIATION: "bg-orange-100 text-orange-700",
-  BOUND: "bg-green-100 text-green-700",
-  LOST: "bg-red-100 text-red-700",
-};
+import { PIPELINE_STAGES, stageLabel, type PipelineStageKey } from "@workspace/pipeline";
 
 export default function DealsPage() {
   const qc = useQueryClient();
@@ -110,7 +100,7 @@ export default function DealsPage() {
         </div>
         <select value={stageFilter} onChange={(e) => setStageFilter(e.target.value)} className="border border-slate-300 rounded-lg px-3 py-2 text-sm">
           <option value="">All Stages</option>
-          {STAGES.map((s) => <option key={s} value={s}>{s.replace(/_/g, " ")}</option>)}
+          {PIPELINE_STAGES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
         </select>
       </div>
 
@@ -136,8 +126,8 @@ export default function DealsPage() {
               <tr key={d.id} className="hover:bg-slate-50">
                 <td className="px-4 py-3 font-medium text-slate-900">{d.referenceCode}</td>
                 <td className="px-4 py-3">
-                  <span className={`text-xs font-medium px-2 py-1 rounded-full ${stageColors[d.stage] || "bg-slate-100"}`}>
-                    {d.stage?.replace(/_/g, " ")}
+                  <span className="text-xs font-medium px-2 py-1 rounded-full bg-slate-100 text-slate-700">
+                    {stageLabel(d.stage as PipelineStageKey) || d.stage}
                   </span>
                 </td>
                 <td className="px-4 py-3 text-slate-600">{d.productType || "—"}</td>

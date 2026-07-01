@@ -296,7 +296,7 @@ export async function assembleProfile(
       .where(
         and(
           or(eq(dealsTable.ownerId, targetId), eq(dealsTable.producingAgentId, targetId)),
-          ne(dealsTable.stage, "LOST"),
+          ne(dealsTable.outcome, "lost"),
         ),
       )
       .limit(50);

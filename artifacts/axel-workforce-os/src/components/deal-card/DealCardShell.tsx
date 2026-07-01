@@ -376,7 +376,7 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
 
   const stage = deal?.stage;
   const currentPhase = phaseIndex(stage);
-  const declined = isDeclined(stage);
+  const declined = isDeclined((deal as { outcome?: string } | undefined)?.outcome);
   const effectiveDate = deal?.coverageEffectiveDate ? new Date(String(deal.coverageEffectiveDate)).toLocaleDateString() : null;
 
   const badges = [deal?.vertical, deal?.productType].filter(Boolean) as string[];

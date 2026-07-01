@@ -11,7 +11,7 @@ export default function AgentDashboard() {
   const { data: commissions = [] } = useQuery({ queryKey: ["commissions"], queryFn: () => api.get<any[]>("/commissions") });
   const { data: contacts = [] } = useQuery({ queryKey: ["contacts"], queryFn: () => api.get<any[]>("/contacts") });
 
-  const activeDeals = deals.filter((d: any) => !["LOST", "BOUND"].includes(d.stage));
+  const activeDeals = deals.filter((d: any) => d.outcome !== "lost" && d.stage !== "BOUND");
   const totalCommissions = commissions.reduce((sum: number, c: any) => sum + parseFloat(c.amount || "0"), 0);
 
   const textPrimary = isDark ? "#fff" : "#111";

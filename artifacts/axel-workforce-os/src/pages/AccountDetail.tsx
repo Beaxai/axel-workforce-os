@@ -12,6 +12,7 @@ import { useThemeStore } from "@/lib/theme-store";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { useAuthStore } from "@/lib/auth-store";
 import { api } from "@/lib/api";
+import { stageLabel, type PipelineStageKey } from "@workspace/pipeline";
 import { ArrowLeft, Clock, User } from "lucide-react";
 
 const CLIENT_STAGES = ["Prospect", "Active Prospect", "New Client", "Active Client"] as const;
@@ -22,17 +23,6 @@ const STAGE_COLOR: Record<string, string> = {
   "New Client": "blue",
   "Active Client": "green",
   Inactive: "gray",
-};
-
-const STAGES: Record<string, string> = {
-  SUBMISSION_REVIEW: "Submission Review",
-  INDICATION: "Indication",
-  UW_REVIEW: "U/W Review",
-  APPROVED_QUOTED: "Approved / Quoted",
-  BIND_ORDER: "Bind Order",
-  BOUND: "Bound",
-  CLIENT: "Client",
-  LOST: "Lost",
 };
 
 interface Account {
@@ -276,7 +266,7 @@ export default function AccountDetail() {
                 >
                   <div>
                     <p style={{ fontSize: "13px", fontWeight: 500, color: textPrimary, margin: 0 }}>{d.businessName || d.referenceCode}</p>
-                    <span style={{ fontSize: "11px", color: textMuted }}>{STAGES[d.stage || ""] || d.stage}</span>
+                    <span style={{ fontSize: "11px", color: textMuted }}>{stageLabel(d.stage as PipelineStageKey) || d.stage}</span>
                   </div>
                   <Badge label={d.productType === "PEO" ? "PEO" : "WC"} color={d.productType === "PEO" ? "purple" : "blue"} />
                 </div>

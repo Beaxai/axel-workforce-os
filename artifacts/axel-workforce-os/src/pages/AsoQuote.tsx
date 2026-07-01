@@ -185,7 +185,7 @@ export default function AsoQuote() {
         contactPhone: admin.contactPhone || null,
         effectiveDate: admin.effectiveDate,
         wfsPepmRate: String(breakdown.result.pepm),
-        stage: "SUBMISSION_REVIEW",
+        stage: "NEW_LEAD",
       };
       const newDeal = await api.post<{ id: string; referenceCode?: string }>("/deals", dealPayload);
 
