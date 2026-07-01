@@ -9,6 +9,7 @@
     "start": "node --enable-source-maps ./dist/index.mjs",
     "seed:users": "tsx src/scripts/seed-users.ts",
     "normalize:user-status": "tsx src/scripts/normalize-user-status.ts",
+    "migrate:pipeline-stages": "tsx src/scripts/migrate-pipeline-stages.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
