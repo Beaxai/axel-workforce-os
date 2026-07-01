@@ -191,6 +191,9 @@ importers:
       '@workspace/db':
         specifier: workspace:*
         version: link:../../lib/db
+      '@workspace/pipeline':
+        specifier: workspace:*
+        version: link:../../lib/pipeline
       bcryptjs:
         specifier: ^3.0.3
         version: 3.0.3

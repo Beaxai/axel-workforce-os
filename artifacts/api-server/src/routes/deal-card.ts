@@ -739,7 +739,7 @@ router.post("/:id/approve", async (req, res) => {
   // the gap between a read and a write (no TOCTOU race).
   const updated = await db
     .update(dealsTable)
-    .set({ stage: "APPROVED_QUOTED" })
+    .set({ stage: "NEGOTIATION" })
     .where(
       and(
         eq(dealsTable.id, deal.id),
@@ -764,12 +764,12 @@ router.post("/:id/approve", async (req, res) => {
     entityType: "deal",
     entityId: deal.id,
     eventType: "deal_approved",
-    description: `${author} approved the submission. Stage advanced to Approved / Quoted.`,
-    metadata: { from_stage: deal.stage, to_stage: "APPROVED_QUOTED", author, role: actor.role },
+    description: `${author} approved the submission. Stage advanced to Negotiation.`,
+    metadata: { from_stage: deal.stage, to_stage: "NEGOTIATION", author, role: actor.role },
     createdBy: actor.id,
   });
 
-  return res.json({ success: true, stage: "APPROVED_QUOTED" });
+  return res.json({ success: true, stage: "NEGOTIATION" });
 });
 
 /* --------------------------------------------------------------------------
@@ -788,9 +788,11 @@ router.post("/:id/decline", async (req, res) => {
   const deal = await loadDeal(req.params.id);
   if (!deal) return res.status(404).json({ error: "Deal not found" });
 
+  // Decline no longer moves the deal to a LOST stage; it flags the outcome and
+  // stamps closedAt while preserving the deal's current pipeline stage.
   await db
     .update(dealsTable)
-    .set({ stage: "LOST", closedAt: new Date() })
+    .set({ outcome: "lost", closedAt: new Date() })
     .where(eq(dealsTable.id, deal.id));
 
   const u = req.user!;
@@ -801,11 +803,11 @@ router.post("/:id/decline", async (req, res) => {
     entityId: deal.id,
     eventType: "deal_declined",
     description: `${author} declined the submission. Reason: ${parsed.data.reason}`,
-    metadata: { from_stage: deal.stage, to_stage: "LOST", reason: parsed.data.reason, author, role: actor.role },
+    metadata: { from_stage: deal.stage, to_stage: deal.stage, outcome: "lost", reason: parsed.data.reason, author, role: actor.role },
     createdBy: actor.id,
   });
 
-  return res.json({ success: true, stage: "LOST" });
+  return res.json({ success: true, stage: deal.stage, outcome: "lost" });
 });
 
 /* --------------------------------------------------------------------------

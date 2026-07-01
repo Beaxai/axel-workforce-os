@@ -18,6 +18,7 @@
     "@workspace/api-zod": "workspace:*",
     "@workspace/cannabis-application": "workspace:*",
     "@workspace/db": "workspace:*",
+    "@workspace/pipeline": "workspace:*",
     "bcryptjs": "^3.0.3",
     "bullmq": "^5.71.1",
     "cookie-parser": "^1.4.7",
