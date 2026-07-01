@@ -292,7 +292,15 @@ The live rates data is safe in the schema-managed `wc_rates` table — the backu
 **Scope (do only this):**
 - `stage-map.ts`: re-point the **display-only** 6-phase macro tracker mapping FROM the new 10 stages → the
   6 phases (Submission Pending → Indication → U/W Review → Approved/Declined → Binding → Implementation).
-  Keep it display-only (Curtis-locked in 4C — do not change its semantics).
+  Keep it display-only (Curtis-locked in 4C — do not change its semantics or add phases). Use this
+  **suggested 10→6 mapping (display-only; flag for Curtis)** — adjust only if you have a clearly better
+  read:
+  - `NEW_LEAD`, `QUALIFIED`, `NEEDS_ANALYSIS` → **Submission Pending**
+  - `PROPOSAL_SENT` → **Indication**
+  - `NEGOTIATION` → **U/W Review**
+  - `DECISION_PENDING`, `COMMITTED` → **Approved/Declined**
+  - `DOCUMENTATION` → **Binding**
+  - `BOUND`, `CLIENT` → **Implementation**
 - Update every stage badge/label site to read labels from the shared constant and remove legacy stage
   strings: `AccountDetail`, dashboards (`AgentDashboard`, `PeoDashboard`), `DealsPage`, `MyProgram`,
   `Billing`, quote-flow `Step4Indication`, and any others surfaced by grep.
