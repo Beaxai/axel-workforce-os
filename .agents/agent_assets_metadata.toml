@@ -23,3 +23,15 @@ id = "8Lgvaup99jcys2zL31lH0"
 uri = "file://.local/screenshots/login-light.jpg"
 type = "image"
 title = "Login — Light"
+
+[[outputs]]
+id = "YK0ttxNPe8ACThq7Vkh6X"
+uri = "file://docs/demo/out/axel-demo.mp4"
+type = "video"
+title = "Axel Workforce OS — P4 demo (MP4)"
+
+[[outputs]]
+id = "Oo3X6l6Xo1oToQu5JhF-h"
+uri = "file://docs/demo/out/axel-demo.webm"
+type = "video"
+title = "Axel Workforce OS — P4 demo (WebM)"
