@@ -65,6 +65,9 @@ export default function QuoteWizard() {
     }
     const s = useQuoteFlowStore.getState();
     if (!s.vertical || s.submittedDealId) return;
+    // Don't create a draft until the user has entered something meaningful —
+    // otherwise merely opening the wizard spams empty "Untitled" drafts.
+    if (!s.draftId && !s.businessName.trim()) return;
     const snapshot = storeSnapshot(s as unknown as Record<string, unknown>);
     const json = JSON.stringify(snapshot);
     if (json === lastSavedJsonRef.current) return;
