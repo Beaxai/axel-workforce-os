@@ -27,6 +27,9 @@ import type { GeoMarker } from "@/lib/geo";
 export interface MarkerClickInfo {
   x: number;
   y: number;
+  /** Viewport (fixed-positioning) coordinates of the clicked dot. */
+  clientX: number;
+  clientY: number;
   containerW: number;
   containerH: number;
 }
@@ -71,9 +74,13 @@ export default function DealHeaderMap({ markers, onMarkerClick, onBackgroundClic
     const rect = svg.getBoundingClientRect();
     const [vx, vy, vw, vh] = vbRef.current;
     const scale = Math.min(rect.width / vw, rect.height / vh);
+    const px = (x - vx) * scale + (rect.width - vw * scale) / 2;
+    const py = (y - vy) * scale + (rect.height - vh * scale) / 2;
     return {
-      x: (x - vx) * scale + (rect.width - vw * scale) / 2,
-      y: (y - vy) * scale + (rect.height - vh * scale) / 2,
+      x: px,
+      y: py,
+      clientX: rect.left + px,
+      clientY: rect.top + py,
       containerW: rect.width,
       containerH: rect.height,
     };

@@ -13,7 +13,7 @@ import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import {
   X, Star, LayoutDashboard, ClipboardList, Folder, CheckSquare, Calculator, Shield, UserRound,
-  MapPin, Users, Banknote, Gauge, Sprout, Store, Truck, FlaskConical, Briefcase, HardHat,
+  MapPin, Users, Banknote, Gauge,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useThemeColors } from "@/lib/use-theme-colors";
@@ -23,7 +23,8 @@ import UserMiniProfile from "@/components/user-profile/UserMiniProfile";
 import type { CreateRfiInput } from "./OverviewTab";
 import { PHASES, phaseIndex, isDeclined } from "./stage-map";
 import DealHeaderMap, { type MarkerClickInfo } from "./DealHeaderMap";
-import { type GeoMarker, stateCentroid, zipToLngLat, spreadDuplicates } from "@/lib/geo";
+import { type GeoMarker, type GeoMarkerClassCode, stateCentroid, zipToLngLat, spreadDuplicates } from "@/lib/geo";
+import LocationPopup from "./LocationPopup";
 import OverviewTab from "./OverviewTab";
 import SubmissionTab from "./SubmissionTab";
 import PricingRail from "./PricingRail";
@@ -51,17 +52,25 @@ const NAV: Array<{ key: TabKey; label: string; Icon: typeof LayoutDashboard }> =
 
 const INTERNAL = new Set(["ADMIN", "CSA", "AGENT", "UNDERWRITER"]);
 
-/** Pick a lucide icon that visually represents an employee type (WC class-code
- * description keywords → icon). Falls back to a generic hard-hat worker. */
-function employeeTypeIcon(description?: string): typeof HardHat {
-  const d = (description ?? "").toLowerCase();
-  if (/cultivat|farm|grow|nursery|agricult|greenhouse/.test(d)) return Sprout;
-  if (/dispensar|retail|store|shop|sales/.test(d)) return Store;
-  if (/deliver|driver|transport|trucking|courier/.test(d)) return Truck;
-  if (/manufactur|extract|process|lab|chemist/.test(d)) return FlaskConical;
-  if (/office|clerical|admin|professional/.test(d)) return Briefcase;
-  if (/security|guard/.test(d)) return Shield;
-  return HardHat;
+/** Raw workforce-profile JSON as stored on the quote (extra keys preserved). */
+interface WorkforceProfileClassCodeRaw {
+  classCode?: string;
+  description?: string;
+  annualPayroll?: number;
+  fullTimeEmployees?: number;
+  partTimeEmployees?: number;
+  [key: string]: unknown;
+}
+interface WorkforceProfileLocationRaw {
+  state?: string;
+  zip?: string;
+  classCodes?: WorkforceProfileClassCodeRaw[];
+  [key: string]: unknown;
+}
+interface WorkforceProfileRaw {
+  eMod?: number;
+  locations?: WorkforceProfileLocationRaw[];
+  [key: string]: unknown;
 }
 
 function fieldValue(sections: SectionView[], sectionKey: string, fieldKey: string): unknown {
@@ -192,6 +201,9 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
   const [quoteStats, setQuoteStats] = useState<{ locations: number | null; eMod: number | null }>({ locations: null, eMod: null });
   // Marker popup: which location detail panel is open + where to anchor it.
   const [markerPopup, setMarkerPopup] = useState<{ marker: GeoMarker; info: MarkerClickInfo } | null>(null);
+  // Backing quote for the header map (id + raw workforce profile) so popup
+  // edits can be persisted via PATCH /quotes/:id.
+  const [quoteRef, setQuoteRef] = useState<{ id: string; profile: WorkforceProfileRaw } | null>(null);
 
   const isInternal = !!user && INTERNAL.has(user.role);
   const canPost = !!user && (isInternal || user.role === "EMPLOYER");
@@ -278,28 +290,21 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
       type RawLoc = {
         state?: string; zip?: string; employees: number;
         classCodes?: GeoMarker["classCodes"];
+        locationIndex?: number;
       };
       let locs: RawLoc[] = [];
       let stats: { locations: number | null; eMod: number | null } = { locations: null, eMod: null };
+      let qref: { id: string; profile: WorkforceProfileRaw } | null = null;
       try {
-        const q = await api.get<{
-          workforceProfile?: {
-            eMod?: number;
-            locations?: Array<{
-              state?: string; zip?: string;
-              classCodes?: Array<{
-                classCode?: string; description?: string; annualPayroll?: number;
-                fullTimeEmployees?: number; partTimeEmployees?: number;
-              }>;
-            }>;
-          };
-        }>(`/quotes/by-deal/${dealId}`);
+        const q = await api.get<{ id: string; workforceProfile?: WorkforceProfileRaw }>(`/quotes/by-deal/${dealId}`);
         const wp = q?.workforceProfile;
         const wpl = wp?.locations;
         if (Array.isArray(wpl) && wpl.length > 0) {
-          locs = wpl.map((l) => ({
+          qref = { id: q.id, profile: wp as WorkforceProfileRaw };
+          locs = wpl.map((l, idx) => ({
             state: l.state,
             zip: l.zip,
+            locationIndex: idx,
             employees: (l.classCodes ?? []).reduce(
               (s, cc) => s + (Number(cc.fullTimeEmployees) || 0) + (Number(cc.partTimeEmployees) || 0),
               0,
@@ -320,7 +325,10 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
       } catch {
         /* no quote for this deal — fall back to deal-level fields */
       }
-      if (active) setQuoteStats(stats);
+      if (active) {
+        setQuoteStats(stats);
+        setQuoteRef(qref);
+      }
       if (locs.length === 0) {
         const st = deal.state;
         if (!st) { if (active) setMapMarkers([]); return; }
@@ -345,12 +353,53 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
           lng: pt[0], lat: pt[1], employees: l.employees,
           label: [l.state, l.zip].filter(Boolean).join(" ") || undefined,
           classCodes: l.classCodes,
+          locationIndex: l.locationIndex,
         });
       });
       if (active) setMapMarkers(spreadDuplicates(resolved));
     })();
     return () => { active = false; };
   }, [isOpen, dealId, deal]);
+
+  // Persist an edited/expanded class-code list for one location back onto the
+  // quote's workforce profile, then refresh the local marker + popup state so
+  // the map chip, KPIs, and popup all reflect the new head-counts immediately.
+  const saveLocationClassCodes = useCallback(
+    async (locationIndex: number, next: GeoMarkerClassCode[]) => {
+      if (!quoteRef) throw new Error("No quote to update");
+      const profile: WorkforceProfileRaw = { ...quoteRef.profile };
+      const locations = [...(profile.locations ?? [])];
+      const loc = { ...(locations[locationIndex] ?? {}) };
+      const prevRaw = loc.classCodes ?? [];
+      // Merge by index: existing raw entries keep their extra keys; new rows
+      // (beyond the previous length) become fresh raw objects.
+      loc.classCodes = next.map((cc, i) => {
+        const base = i < prevRaw.length ? { ...prevRaw[i] } : {};
+        return {
+          ...base,
+          classCode: cc.code || base.classCode,
+          description: cc.description ?? base.description,
+          annualPayroll: cc.payroll ?? base.annualPayroll,
+          fullTimeEmployees: cc.ft,
+          partTimeEmployees: cc.pt,
+        };
+      });
+      locations[locationIndex] = loc;
+      profile.locations = locations;
+      await api.patch(`/quotes/${quoteRef.id}`, { workforceProfile: profile });
+      setQuoteRef({ id: quoteRef.id, profile });
+      const employees = next.reduce((s, cc) => s + cc.ft + cc.pt, 0);
+      setMapMarkers((prev) =>
+        prev.map((m) => (m.locationIndex === locationIndex ? { ...m, employees, classCodes: next } : m)),
+      );
+      setMarkerPopup((prev) =>
+        prev && prev.marker.locationIndex === locationIndex
+          ? { ...prev, marker: { ...prev.marker, employees, classCodes: next } }
+          : prev,
+      );
+    },
+    [quoteRef],
+  );
 
   const editorSection = useMemo(
     () => (openSection ? sections.find((s) => s.key === openSection) ?? null : null),
@@ -558,7 +607,15 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
           <div style={{ position: "absolute", inset: 0 }}>
             <DealHeaderMap
               markers={mapMarkers}
-              onMarkerClick={(marker, info) => setMarkerPopup((prev) => (prev && prev.marker === marker ? null : { marker, info }))}
+              onMarkerClick={(marker, info) =>
+                setMarkerPopup((prev) =>
+                  prev && prev.marker.locationIndex !== undefined && prev.marker.locationIndex === marker.locationIndex
+                    ? null
+                    : prev && prev.marker === marker
+                      ? null
+                      : { marker, info },
+                )
+              }
               onBackgroundClick={() => setMarkerPopup(null)}
             />
           </div>
@@ -666,91 +723,17 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
             })}
           </div>
 
-          {/* Location detail popup — anchored to the clicked map marker. */}
-          {markerPopup && (() => {
-            const { marker, info } = markerPopup;
-            const W = 280;
-            const left = Math.max(12, Math.min(info.x - W / 2, info.containerW - W - 12));
-            const below = info.y < info.containerH / 2;
-            // Vertical clamp: anchor edge stays within the header so at least
-            // ~100px of the (scrollable) panel is always visible.
-            const MIN_VISIBLE = 100;
-            const anchor = below
-              ? Math.max(12, Math.min(info.y + 16, info.containerH - 12 - MIN_VISIBLE))
-              : Math.max(12, Math.min(info.containerH - info.y + 16, info.containerH - 12 - MIN_VISIBLE));
-            const totalFt = (marker.classCodes ?? []).reduce((s, cc) => s + cc.ft, 0);
-            const totalPt = (marker.classCodes ?? []).reduce((s, cc) => s + cc.pt, 0);
-            return (
-              <div
-                role="dialog"
-                aria-label={`Location detail: ${marker.label ?? "location"}`}
-                style={{
-                  position: "absolute", zIndex: 3, left, width: W,
-                  ...(below ? { top: anchor } : { bottom: anchor }),
-                  maxHeight: info.containerH - anchor - 12, overflowY: "auto",
-                  background: c.isDark ? "rgba(18,18,24,0.82)" : "rgba(255,255,255,0.92)",
-                  backdropFilter: "blur(40px)", WebkitBackdropFilter: "blur(40px)",
-                  border: `1px solid ${c.borderColor}`, borderRadius: 12,
-                  boxShadow: c.isDark
-                    ? "0 24px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06)"
-                    : "0 24px 80px rgba(0,0,0,0.18)",
-                  padding: "12px 14px",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 8 }}>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: c.textPrimary }}>{marker.label ?? "Location"}</div>
-                    <div style={{ fontSize: 11, color: c.textMuted, marginTop: 2 }}>
-                      {marker.employees.toLocaleString()} employees
-                      {totalPt > 0 ? ` \u00b7 ${totalFt} FT / ${totalPt} PT` : ""}
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setMarkerPopup(null)}
-                    aria-label="Close location detail"
-                    style={{ background: "transparent", border: "none", color: c.textMuted, cursor: "pointer", padding: 2, lineHeight: 0, flexShrink: 0 }}
-                  >
-                    <X style={{ width: 14, height: 14 }} />
-                  </button>
-                </div>
-                {(marker.classCodes ?? []).length === 0 ? (
-                  <div style={{ fontSize: 12, color: c.textMuted }}>No employee type breakdown available for this location.</div>
-                ) : (
-                  (marker.classCodes ?? []).map((cc, i) => {
-                    const TypeIcon = employeeTypeIcon(cc.description);
-                    const count = cc.ft + cc.pt;
-                    return (
-                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 0", borderTop: i > 0 ? `1px solid ${c.borderColor}` : "none" }}>
-                        {/* square employee-type tile */}
-                        <div
-                          style={{
-                            width: 38, height: 38, borderRadius: 9, flexShrink: 0,
-                            display: "flex", alignItems: "center", justifyContent: "center",
-                            background: "var(--accent-support-soft)",
-                            border: `1px solid ${c.borderColor}`,
-                          }}
-                        >
-                          <TypeIcon style={{ width: 19, height: 19, color: "var(--accent-support)" }} />
-                        </div>
-                        <div style={{ minWidth: 0, flex: 1 }}>
-                          <div style={{ fontSize: 13, fontWeight: 600, color: c.textPrimary, lineHeight: 1.25 }}>
-                            {count.toLocaleString()} {count === 1 ? "Employee" : "Employees"}
-                            {cc.pt > 0 ? <span style={{ fontWeight: 400, color: c.textMuted }}> ({cc.ft} FT / {cc.pt} PT)</span> : null}
-                          </div>
-                          <div style={{ fontSize: 11, color: c.textMuted, marginTop: 2, lineHeight: 1.35 }}>
-                            {cc.description || `Class ${cc.code}`}
-                          </div>
-                          {cc.payroll ? (
-                            <div style={{ fontSize: 11, color: c.textMuted, marginTop: 1 }}>${cc.payroll.toLocaleString()} payroll</div>
-                          ) : null}
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            );
-          })()}
+          {/* Location detail popup — portaled to <body> so it renders on top of
+              everything (modal, header bands, milestone tracker), unclipped. */}
+          {markerPopup && (
+            <LocationPopup
+              marker={markerPopup.marker}
+              anchor={{ clientX: markerPopup.info.clientX, clientY: markerPopup.info.clientY }}
+              editable={!!quoteRef && markerPopup.marker.locationIndex !== undefined}
+              onClose={() => setMarkerPopup(null)}
+              onSave={(next) => saveLocationClassCodes(markerPopup.marker.locationIndex ?? -1, next)}
+            />
+          )}
         </div>
 
         {/* Body */}

@@ -26,6 +26,8 @@ export interface GeoMarker {
   label?: string;
   /** Employee types (WC class codes) at this location, for the marker popup. */
   classCodes?: GeoMarkerClassCode[];
+  /** Index of this location in the source workforce profile (for edits). */
+  locationIndex?: number;
 }
 
 /** Approximate visual centroids for US states, [lng, lat]. */
