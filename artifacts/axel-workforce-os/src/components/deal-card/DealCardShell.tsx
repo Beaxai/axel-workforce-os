@@ -13,6 +13,7 @@ import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import {
   X, Star, LayoutDashboard, ClipboardList, Folder, CheckSquare, Calculator, Shield, UserRound,
+  MapPin, Users, Banknote, Gauge,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useThemeColors } from "@/lib/use-theme-colors";
@@ -23,7 +24,6 @@ import type { CreateRfiInput } from "./OverviewTab";
 import { PHASES, phaseIndex, isDeclined } from "./stage-map";
 import DealHeaderMap from "./DealHeaderMap";
 import { type GeoMarker, stateCentroid, zipToLngLat, spreadDuplicates } from "@/lib/geo";
-import { STATUS_COLORS } from "./icons";
 import OverviewTab from "./OverviewTab";
 import SubmissionTab from "./SubmissionTab";
 import PricingRail from "./PricingRail";
@@ -471,11 +471,22 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
   const badges = [deal?.vertical, deal?.productType].filter(Boolean) as string[];
 
   const kpis = [
-    { label: "LOCATIONS", value: fmtNum(fieldValue(sections, "locations", "numberOfLocations")), accent: false },
-    { label: "EMPLOYEES", value: fmtNum(fieldValue(sections, "workforce", "employeeCountFt")), accent: false },
-    { label: "ANNUAL PAYROLL", value: fmtMoneyShort(fieldValue(sections, "workforce", "annualPayroll")), accent: true },
-    { label: "EXMOD", value: (() => { const e = fieldValue(sections, "workforce", "emod"); return e == null || e === "" ? "\u2014" : String(e); })(), accent: true },
+    { label: "LOCATIONS", Icon: MapPin, value: fmtNum(fieldValue(sections, "locations", "numberOfLocations")) },
+    { label: "EMPLOYEES", Icon: Users, value: fmtNum(fieldValue(sections, "workforce", "employeeCountFt")) },
+    { label: "PAYROLL", Icon: Banknote, value: fmtMoneyShort(fieldValue(sections, "workforce", "annualPayroll")) },
+    { label: "EXMOD", Icon: Gauge, value: (() => { const e = fieldValue(sections, "workforce", "emod"); return e == null || e === "" ? "\u2014" : String(e); })(), },
   ];
+
+  // Header-over-map palette: glyphs sit on the map artwork, so these branch on
+  // theme like the map itself (intentional artwork greys, not surface tokens).
+  const hdrValue = c.isDark ? "#ffffff" : "#17171d";
+  const hdrValueGlow = c.isDark ? "0 0 14px rgba(255,255,255,0.35)" : "none";
+  const hdrSoftGrey = c.isDark ? "#9b9ba4" : "#7c7c86";
+  const hdrFaint = c.isDark ? "rgba(255,255,255,0.16)" : "rgba(0,0,0,0.14)";
+  const hdrGlowNode = c.isDark ? "#ffffff" : "#17171d";
+  const hdrNodeGlow = c.isDark
+    ? "0 0 10px rgba(255,255,255,0.65), 0 0 0 4px rgba(255,255,255,0.10)"
+    : "0 0 10px rgba(23,23,29,0.45), 0 0 0 4px rgba(23,23,29,0.08)";
 
   return createPortal(
     <div
@@ -489,8 +500,9 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
           fontFamily: "var(--app-font-sans)",
         }}
       >
-        {/* Header — minimalist US map background (location markers) + company identity + deal team */}
-        <div style={{ position: "relative", minHeight: 158, borderBottom: `1px solid ${c.borderColor}`, overflow: "hidden", background: c.isDark ? "#0b0b0f" : "#ececf0", flexShrink: 0 }}>
+        {/* Header — minimalist US map background running behind identity, KPIs
+            AND the milestone tracker; deal-team avatars under the name. */}
+        <div style={{ position: "relative", minHeight: 208, borderBottom: `1px solid ${c.borderColor}`, overflow: "hidden", background: c.isDark ? "#0b0b0f" : "#ececf0", flexShrink: 0 }}>
           <div style={{ position: "absolute", inset: 0 }}>
             <DealHeaderMap markers={mapMarkers} />
           </div>
@@ -503,11 +515,29 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
                 : "linear-gradient(90deg, rgba(244,244,245,0.93) 0%, rgba(244,244,245,0.6) 42%, rgba(244,244,245,0.06) 100%)",
             }}
           />
-          <div style={{ position: "relative", zIndex: 1, display: "flex", alignItems: "flex-start", justifyContent: "space-between", padding: "16px 18px 14px" }}>
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <Star style={{ width: 18, height: 18, color: c.textMuted }} />
-                <div style={{ fontSize: 18, fontWeight: 600 }}>{deal?.businessName || "Deal"}</div>
+          {/* top-right vignette so the KPI numbers read over raw map */}
+          <div
+            style={{
+              position: "absolute", inset: 0, pointerEvents: "none",
+              background: c.isDark
+                ? "linear-gradient(270deg, rgba(6,6,8,0.72) 0%, rgba(6,6,8,0.30) 34%, rgba(6,6,8,0) 58%)"
+                : "linear-gradient(270deg, rgba(244,244,245,0.82) 0%, rgba(244,244,245,0.4) 34%, rgba(244,244,245,0) 58%)",
+            }}
+          />
+          {/* bottom band so the milestone labels read over the map */}
+          <div
+            style={{
+              position: "absolute", inset: 0, pointerEvents: "none",
+              background: c.isDark
+                ? "linear-gradient(0deg, rgba(6,6,8,0.82) 0%, rgba(6,6,8,0.38) 26%, rgba(6,6,8,0) 46%)"
+                : "linear-gradient(0deg, rgba(244,244,245,0.88) 0%, rgba(244,244,245,0.45) 26%, rgba(244,244,245,0) 46%)",
+            }}
+          />
+          <div style={{ position: "relative", zIndex: 1, display: "flex", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "space-between", gap: 12, padding: "16px 18px 0" }}>
+            <div style={{ flex: "1 1 260px", minWidth: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                <Star style={{ width: 18, height: 18, color: c.textMuted, flexShrink: 0 }} />
+                <div style={{ fontSize: 18, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{deal?.businessName || "Deal"}</div>
               </div>
               {(badges.length > 0 || effectiveDate) && (
                 <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
@@ -525,38 +555,51 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
                 <DealTeamAvatars team={payload?.team} />
               </div>
             </div>
-            <X onClick={onClose} style={{ width: 18, height: 18, color: c.textMuted, cursor: "pointer", flexShrink: 0 }} />
-          </div>
-        </div>
-
-        {/* 6-phase macro tracker (display-only) */}
-        <div style={{ display: "flex", alignItems: "flex-start", padding: "16px 18px 12px", borderBottom: `1px solid ${c.borderColor}` }}>
-          {PHASES.map((label, i) => {
-            const done = i < currentPhase;
-            const current = i === currentPhase;
-            const declinedNode = current && declined;
-            const nodeColor = declinedNode ? "#ef4444" : current ? "var(--accent-primary)" : done ? STATUS_COLORS.complete : c.borderColor;
-            const lblColor = declinedNode ? "#ef4444" : current ? "var(--accent-primary)" : done ? STATUS_COLORS.complete : c.textMuted;
-            return (
-              <div key={label} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", position: "relative", minWidth: 0 }}>
-                {i > 0 && <div style={{ position: "absolute", top: 5, left: "-50%", width: "100%", height: 2, background: i <= currentPhase ? STATUS_COLORS.complete : c.borderColor }} />}
-                <span style={{ width: 12, height: 12, borderRadius: "50%", border: `2px solid ${nodeColor}`, background: done || current ? nodeColor : c.bg, position: "relative", zIndex: 1, boxShadow: current ? `0 0 0 4px ${c.accentPrimarySoft}` : "none" }} />
-                <span style={{ fontSize: 10, marginTop: 8, color: lblColor, textAlign: "center", lineHeight: 1.3, maxWidth: 92, textTransform: "uppercase", letterSpacing: "0.07em", fontWeight: 500 }}>
-                  {declinedNode ? "Declined" : label}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* KPI strip */}
-        <div style={{ display: "flex", gap: 8, padding: "12px 18px", borderBottom: `1px solid ${c.borderColor}` }}>
-          {kpis.map((k) => (
-            <div key={k.label} style={{ flex: 1, background: c.cardBg, border: `1px solid ${c.borderColor}`, borderRadius: 10, padding: "8px 11px" }}>
-              <div style={{ fontSize: 11, letterSpacing: "0.06em", color: c.textMuted }}>{k.label}</div>
-              <div style={{ fontSize: 18, fontWeight: 500, marginTop: 1, color: k.accent ? "var(--accent-primary)" : c.textPrimary }}>{k.value}</div>
+            {/* KPI cluster — large glowing numbers with identifying icons, left of the X.
+                Wraps under the identity block on narrow widths instead of colliding. */}
+            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "flex-end", columnGap: 26, rowGap: 10, flex: "0 1 auto", minWidth: 0 }}>
+              {kpis.map(({ label, Icon, value }) => (
+                <div key={label} style={{ textAlign: "right" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 5, fontSize: 10, letterSpacing: "0.08em", fontWeight: 600, color: hdrSoftGrey, textTransform: "uppercase" }}>
+                    <Icon style={{ width: 13, height: 13, color: hdrSoftGrey }} />
+                    {label}
+                  </div>
+                  <div style={{ fontSize: 26, fontWeight: 600, lineHeight: 1.15, marginTop: 3, color: hdrValue, textShadow: hdrValueGlow, fontVariantNumeric: "tabular-nums" }}>
+                    {value}
+                  </div>
+                </div>
+              ))}
+              <X onClick={onClose} style={{ width: 18, height: 18, color: c.textMuted, cursor: "pointer", flexShrink: 0, marginTop: 1 }} />
             </div>
-          ))}
+          </div>
+
+          {/* 6-phase macro tracker (display-only) — map continues behind it.
+              Completed = soft grey; current = hollow glowing node. */}
+          <div style={{ position: "relative", zIndex: 1, display: "flex", alignItems: "flex-start", padding: "18px 18px 12px" }}>
+            {PHASES.map((label, i) => {
+              const done = i < currentPhase;
+              const current = i === currentPhase;
+              const declinedNode = current && declined;
+              const nodeColor = declinedNode ? "#ef4444" : current ? hdrGlowNode : done ? hdrSoftGrey : hdrFaint;
+              const lblColor = declinedNode ? "#ef4444" : current ? hdrValue : done ? hdrSoftGrey : c.textMuted;
+              return (
+                <div key={label} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", position: "relative", minWidth: 0 }}>
+                  {i > 0 && <div style={{ position: "absolute", top: 5, left: "-50%", width: "100%", height: 2, background: i <= currentPhase ? hdrSoftGrey : hdrFaint }} />}
+                  <span
+                    style={{
+                      width: 12, height: 12, borderRadius: "50%", border: `2px solid ${nodeColor}`,
+                      background: done ? hdrSoftGrey : "transparent",
+                      position: "relative", zIndex: 1,
+                      boxShadow: current ? hdrNodeGlow : "none",
+                    }}
+                  />
+                  <span style={{ fontSize: 10, marginTop: 8, color: lblColor, textAlign: "center", lineHeight: 1.3, maxWidth: 92, textTransform: "uppercase", letterSpacing: "0.07em", fontWeight: 500, textShadow: current ? hdrValueGlow : "none" }}>
+                    {declinedNode ? "Declined" : label}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         {/* Body */}

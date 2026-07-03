@@ -13,4 +13,4 @@ The Phase 4C Deal Card collaboration hub is a modal (React portal), opened via a
 
 **Why:** Repeated need to verify deal-card UI changes; the no-route modal trips up static screenshot attempts.
 
-**Popover gotcha:** the user mini-profile avatar popovers are Radix HoverCards — they open on HOVER (150ms delay), never on click. Playwright test plans must say "hover, don't click" or the step false-fails. Header team avatars come from the deal's ownerId / producingAgentId / referralPartnerId — deals with none set show grey placeholder circles with no popover.
+**Popover gotcha:** the user mini-profile avatar popovers are Radix HoverCards — they open on HOVER (150ms delay), never on click. Playwright test plans must say "hover, don't click" or the step false-fails. Deals with no assigned team show grey placeholder circles that have no popover at all.
