@@ -64,7 +64,17 @@ export default function FinalSubmission() {
         workforceProfile,
       });
 
-      s.update({ submittedDealId: result.dealId });
+      // Submission complete — remove the autosaved draft so it no longer
+      // appears as a resumable card on the Pipeline page. Awaited so cleanup
+      // is deterministic; a failure is logged but never blocks the submit UX.
+      if (s.draftId) {
+        try {
+          await api.delete(`/quote-drafts/${s.draftId}`);
+        } catch (cleanupErr) {
+          console.warn("Draft cleanup after submit failed:", cleanupErr);
+        }
+      }
+      s.update({ submittedDealId: result.dealId, draftId: null });
       s.setStep(s.currentStep + 1);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Submission failed. Please try again.";

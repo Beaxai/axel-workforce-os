@@ -17,7 +17,32 @@ import {
   Plus,
   Columns3,
   List,
+  FileEdit,
+  Trash2,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+
+interface QuoteDraft {
+  id: string;
+  businessName: string | null;
+  vertical: string | null;
+  coverageType: string | null;
+  phase: number | null;
+  currentStep: number | null;
+  state: Record<string, unknown>;
+  updatedAt: string | null;
+}
+
+function relativeTime(iso: string | null): string {
+  if (!iso) return "";
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
+}
 
 interface Deal {
   id: string;
@@ -158,6 +183,46 @@ export default function Pipeline() {
   const borderSubtle = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)";
 
   const [lostDeals, setLostDeals] = useState<Deal[]>([]);
+
+  /* ------------------------------------------------------------------ */
+  /* In-progress submission drafts (autosaved by the quote wizard)       */
+  /* ------------------------------------------------------------------ */
+  const navigate = useNavigate();
+  const [drafts, setDrafts] = useState<QuoteDraft[]>([]);
+
+  const fetchDrafts = useCallback(async () => {
+    try {
+      const data = await api.get<QuoteDraft[]>("/quote-drafts");
+      setDrafts(data);
+    } catch {
+      setDrafts([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchDrafts();
+  }, [fetchDrafts]);
+
+  const resumeDraft = (draft: QuoteDraft) => {
+    const vertical = draft.vertical || (draft.state.vertical as string) || "";
+    const coverageType = draft.coverageType || (draft.state.coverageType as string) || "WC";
+    navigate("/marketplace/quote/wizard", {
+      state: {
+        vertical,
+        coverageType,
+        prefill: { ...draft.state, draftId: draft.id },
+      },
+    });
+  };
+
+  const deleteDraft = async (id: string) => {
+    try {
+      await api.delete(`/quote-drafts/${id}`);
+      setDrafts((prev) => prev.filter((d) => d.id !== id));
+    } catch (err) {
+      console.error("Failed to delete draft:", err);
+    }
+  };
 
   const fetchDeals = useCallback(async () => {
     try {
@@ -446,6 +511,67 @@ export default function Pipeline() {
           </PinkButton>
         </div>
       </div>
+
+      {drafts.length > 0 && (
+        <div style={{ marginBottom: "16px", flexShrink: 0 }}>
+          <div style={{ fontSize: "11px", fontWeight: 700, color: textMuted, textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: "var(--app-font-heading)", marginBottom: "8px" }}>
+            In-Progress Submissions
+          </div>
+          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+            {drafts.map((draft) => {
+              const totalSteps = draft.phase === 2 ? undefined : 5;
+              return (
+                <div
+                  key={draft.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => resumeDraft(draft)}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") resumeDraft(draft); }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "12px",
+                    padding: "10px 14px",
+                    borderRadius: "12px",
+                    cursor: "pointer",
+                    background: inputBg,
+                    border: "1px dashed var(--accent-primary-soft)",
+                    transition: "border-color 0.15s, background 0.15s",
+                    maxWidth: "340px",
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--accent-primary)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--accent-primary-soft)"; }}
+                >
+                  <div style={{ width: 32, height: 32, borderRadius: 8, background: "var(--accent-primary-soft)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <FileEdit style={{ width: 15, height: 15, color: "var(--accent-primary)" }} />
+                  </div>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: "13px", fontWeight: 600, color: textPrimary, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {draft.businessName || "Untitled submission"}
+                    </div>
+                    <div style={{ fontSize: "11px", color: textMuted, whiteSpace: "nowrap" }}>
+                      {[draft.vertical, draft.coverageType].filter(Boolean).join(" · ")}
+                      {" — "}
+                      Phase {draft.phase ?? 1} · Step {draft.currentStep ?? 1}{totalSteps ? ` of ${totalSteps}` : ""}
+                      {draft.updatedAt ? ` · ${relativeTime(draft.updatedAt)}` : ""}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    aria-label="Delete draft"
+                    onClick={(e) => { e.stopPropagation(); deleteDraft(draft.id); }}
+                    style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: textMuted, flexShrink: 0, display: "flex" }}
+                    onMouseEnter={(e) => { e.currentTarget.style.color = "#ef4444"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.color = textMuted; }}
+                  >
+                    <Trash2 style={{ width: 14, height: 14 }} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", alignItems: "center", marginBottom: "12px", flexShrink: 0 }}>
         <span style={{ fontSize: "12px", color: textMuted, marginRight: "4px" }}>Appetite:</span>

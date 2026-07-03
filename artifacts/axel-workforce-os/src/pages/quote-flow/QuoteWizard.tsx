@@ -16,6 +16,15 @@ import FinalSubmission from "./FinalSubmission";
 import ConfirmationScreen from "./ConfirmationScreen";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useThemeColors } from "@/lib/use-theme-colors";
+import { api } from "@/lib/api";
+import { useRef, useState } from "react";
+
+/** Serializable snapshot of the quote-flow store (data fields only, no actions). */
+function storeSnapshot(store: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(store).filter(([, v]) => typeof v !== "function"),
+  );
+}
 
 export default function QuoteWizard() {
   const location = useLocation();
@@ -35,7 +44,77 @@ export default function QuoteWizard() {
     } else if (!store.vertical) {
       navigate("/marketplace", { replace: true });
     }
+    initializedRef.current = true;
   }, []);
+
+  /* ------------------------------------------------------------------ */
+  /* Draft autosave: persist the wizard state (however partial) to the   */
+  /* server ~1.2s after any change so submissions are always resumable.  */
+  /* ------------------------------------------------------------------ */
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const initializedRef = useRef(false);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const savingRef = useRef(false);
+  const rerunRef = useRef(false);
+  const lastSavedJsonRef = useRef<string>("");
+
+  const persistDraft = async () => {
+    if (savingRef.current) {
+      rerunRef.current = true;
+      return;
+    }
+    const s = useQuoteFlowStore.getState();
+    if (!s.vertical || s.submittedDealId) return;
+    const snapshot = storeSnapshot(s as unknown as Record<string, unknown>);
+    const json = JSON.stringify(snapshot);
+    if (json === lastSavedJsonRef.current) return;
+    savingRef.current = true;
+    setSaveStatus("saving");
+    const payload = {
+      businessName: s.businessName || null,
+      vertical: s.vertical,
+      coverageType: s.coverageType || null,
+      phase: s.phase,
+      currentStep: s.currentStep,
+      state: snapshot,
+    };
+    try {
+      if (s.draftId) {
+        try {
+          await api.patch(`/quote-drafts/${s.draftId}`, payload);
+        } catch (err) {
+          if (err instanceof Error && err.message.includes("404")) {
+            const created = await api.post<{ id: string }>("/quote-drafts", payload);
+            useQuoteFlowStore.getState().update({ draftId: created.id });
+          } else {
+            throw err;
+          }
+        }
+      } else {
+        const created = await api.post<{ id: string }>("/quote-drafts", payload);
+        useQuoteFlowStore.getState().update({ draftId: created.id });
+      }
+      lastSavedJsonRef.current = json;
+      setSaveStatus("saved");
+    } catch {
+      setSaveStatus("error");
+    } finally {
+      savingRef.current = false;
+      if (rerunRef.current) {
+        rerunRef.current = false;
+        void persistDraft();
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (!initializedRef.current || !store.vertical || store.submittedDealId) return;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => void persistDraft(), 1200);
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, [store]);
 
   const { isDark, textPrimary, textMuted } = useThemeColors();
   const btnBg = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)";
@@ -127,6 +206,18 @@ export default function QuoteWizard() {
 
   const progress = getProgressInfo();
 
+  // Clickable step pills — lets the user jump between steps freely.
+  const stepPills: { step: number; label: string }[] = (() => {
+    if (store.phase === 1) {
+      const labels = ["Business Details", "Workforce", "Experience", "General Info", "Indication"];
+      return labels.map((label, i) => ({ step: i + 1, label }));
+    }
+    // Phase 2: skip the transition (0) and confirmation (last) screens.
+    return phase2Steps
+      .map((s, i) => ({ step: i, label: s.label }))
+      .filter((p) => p.step > 0 && p.step < confirmStepIndex);
+  })();
+
   const handleNext = () => {
     if (store.phase === 1) {
       if (store.currentStep < 5) store.setStep(store.currentStep + 1);
@@ -158,12 +249,46 @@ export default function QuoteWizard() {
           <div style={{ height: 3, background: trackBg, width: "100%", borderRadius: 2 }}>
             <div style={{ height: "100%", width: `${(progress.current / progress.total) * 100}%`, background: "var(--accent-primary)", borderRadius: 2, transition: "width 0.3s" }} />
           </div>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: "var(--accent-primary)", textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: "var(--app-font-heading)" }}>
-              {progress.label}
-            </span>
-            <span style={{ fontSize: 13, color: textMuted }}>
-              Step {progress.current} of {progress.total}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10, gap: 12, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+              {store.phase === 2 && (
+                <button
+                  type="button"
+                  onClick={() => { store.setPhase(1); store.setStep(5); }}
+                  style={{
+                    padding: "4px 10px", borderRadius: 12, border: "none", cursor: "pointer",
+                    background: btnBg, color: textMuted, fontSize: 11, fontWeight: 600,
+                  }}
+                >
+                  ← Phase 1
+                </button>
+              )}
+              {stepPills.map((pill) => {
+                const isActive = pill.step === store.currentStep;
+                return (
+                  <button
+                    key={pill.step}
+                    type="button"
+                    onClick={() => store.setStep(pill.step)}
+                    title={pill.label}
+                    style={{
+                      padding: "4px 10px", borderRadius: 12, border: "none", cursor: "pointer",
+                      background: isActive ? "var(--accent-primary-soft)" : btnBg,
+                      color: isActive ? "var(--accent-primary)" : textMuted,
+                      fontSize: 11, fontWeight: isActive ? 700 : 600,
+                      transition: "background 0.15s, color 0.15s",
+                    }}
+                  >
+                    {pill.step}. {pill.label}
+                  </button>
+                );
+              })}
+            </div>
+            <span style={{ fontSize: 12, color: textMuted, whiteSpace: "nowrap" }}>
+              {saveStatus === "saving" && "Saving draft…"}
+              {saveStatus === "saved" && "Draft saved"}
+              {saveStatus === "error" && <span style={{ color: "#ef4444" }}>Draft save failed</span>}
+              {saveStatus === "idle" && `Step ${progress.current} of ${progress.total}`}
             </span>
           </div>
         </div>

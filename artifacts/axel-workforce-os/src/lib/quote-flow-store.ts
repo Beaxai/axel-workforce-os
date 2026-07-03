@@ -266,6 +266,7 @@ export interface QuoteFlowState {
 
   lossHistoryFiles: Array<{ id: string; name: string; size: number; yearsCovered: string; notes: string }>;
   submittedDealId: string | null;
+  draftId: string | null;
 }
 
 interface QuoteFlowActions {
@@ -468,6 +469,7 @@ const initialState: Omit<QuoteFlowState, keyof QuoteFlowActions> = {
   bicycleDeliveryExplain: "",
   lossHistoryFiles: [],
   submittedDealId: null,
+  draftId: null,
 };
 
 export const useQuoteFlowStore = create<QuoteFlowState & QuoteFlowActions>((set, get) => ({
