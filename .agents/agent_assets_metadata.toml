@@ -35,3 +35,27 @@ id = "Oo3X6l6Xo1oToQu5JhF-h"
 uri = "file://docs/demo/out/axel-demo.webm"
 type = "video"
 title = "Axel Workforce OS — P4 demo (WebM)"
+
+[[outputs]]
+id = "XNpZJKjExwK0uJHxSz3OV"
+uri = "file://attached_assets/stock_images/team_headshot_1.jpg"
+type = "image"
+title = "professional business person headshot portrait corporate"
+
+[[outputs]]
+id = "N0yyfCj9ebIWK0ezVWQF7"
+uri = "file://attached_assets/stock_images/team_headshot_2.jpg"
+type = "image"
+title = "professional business person headshot portrait corporate"
+
+[[outputs]]
+id = "gLOQCQzdOAYnaP8koV2s-"
+uri = "file://attached_assets/stock_images/team_headshot_3.jpg"
+type = "image"
+title = "professional business person headshot portrait corporate"
+
+[[outputs]]
+id = "2w3TLKSE4BFFfZa2FMTL1"
+uri = "file://attached_assets/stock_images/team_headshot_4.jpg"
+type = "image"
+title = "professional business person headshot portrait corporate"

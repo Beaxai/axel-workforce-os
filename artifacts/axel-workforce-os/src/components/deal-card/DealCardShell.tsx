@@ -8,7 +8,7 @@
  * renders + dispatches. Completeness lives on the Submission tab (per the
  * 2026-06-22 Stitch §8 update). Tokens only; verified light + dark.
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import {
@@ -21,6 +21,8 @@ import type { SectionView, SubmissionPayload, ActivityRow, SectionPatchResponse,
 import UserMiniProfile from "@/components/user-profile/UserMiniProfile";
 import type { CreateRfiInput } from "./OverviewTab";
 import { PHASES, phaseIndex, isDeclined } from "./stage-map";
+import DealHeaderMap from "./DealHeaderMap";
+import { type GeoMarker, stateCentroid, zipToLngLat, spreadDuplicates } from "@/lib/geo";
 import { STATUS_COLORS } from "./icons";
 import OverviewTab from "./OverviewTab";
 import SubmissionTab from "./SubmissionTab";
@@ -76,23 +78,38 @@ function teamInitials(name: string): string {
   return (parts[0]?.[0] ?? "?").toUpperCase();
 }
 
-/** Deal-team avatar cluster — each avatar opens the shared mini-profile popover. */
+/** Stock headshots used for a subset of deal-team members (rest get soft-grey acronym circles). */
+const AVATAR_PHOTOS = [
+  "/images/avatars/team_headshot_1.jpg",
+  "/images/avatars/team_headshot_2.jpg",
+  "/images/avatars/team_headshot_3.jpg",
+  "/images/avatars/team_headshot_4.jpg",
+];
+
+const AVATAR_SIZE = 38;
+
+/**
+ * Deal-team avatar row (rendered under the company name, over the header map).
+ * Every other member shows a stock headshot; the rest show soft-grey initials
+ * circles that deliberately stay quiet against the map background. Each avatar
+ * still opens the shared mini-profile popover.
+ */
 function DealTeamAvatars({ team }: { team?: DealTeamMember[] }) {
   const c = useThemeColors();
-  const colors = [c.accentSupport, c.accentPrimary, c.accentSupportHover];
+  const grey = c.isDark ? "rgba(255,255,255,0.13)" : "rgba(0,0,0,0.08)";
+  const greyText = c.isDark ? "rgba(255,255,255,0.72)" : "rgba(0,0,0,0.6)";
+  const ring = c.bg;
+  const base: CSSProperties = {
+    width: AVATAR_SIZE, height: AVATAR_SIZE, borderRadius: "50%",
+    border: `2px solid ${ring}`, display: "flex", alignItems: "center", justifyContent: "center",
+    flexShrink: 0, overflow: "hidden",
+  };
   if (!team || team.length === 0) {
     return (
       <div style={{ display: "flex", alignItems: "center" }}>
-        {colors.map((bg, i) => (
-          <div
-            key={i}
-            style={{
-              width: 26, height: 26, borderRadius: "50%", background: bg,
-              border: `2px solid ${c.bg}`, marginLeft: i === 0 ? 0 : -8,
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}
-          >
-            <UserRound style={{ width: 13, height: 13, color: "#fff" }} />
+        {[0, 1, 2].map((i) => (
+          <div key={i} style={{ ...base, background: grey, marginLeft: i === 0 ? 0 : -10 }}>
+            <UserRound style={{ width: 17, height: 17, color: greyText }} />
           </div>
         ))}
       </div>
@@ -100,24 +117,35 @@ function DealTeamAvatars({ team }: { team?: DealTeamMember[] }) {
   }
   return (
     <div style={{ display: "flex", alignItems: "center" }}>
-      {team.map((m, i) => (
-        <UserMiniProfile key={m.userId} userId={m.userId} align="end">
-          <button
-            type="button"
-            title={`${m.name} · ${m.relation}`}
-            style={{
-              width: 26, height: 26, borderRadius: "50%",
-              background: colors[i % colors.length],
-              border: `2px solid ${c.bg}`, marginLeft: i === 0 ? 0 : -8,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              cursor: "pointer", padding: 0,
-              fontSize: 10, fontWeight: 700, color: "#fff",
-            }}
-          >
-            {teamInitials(m.name)}
-          </button>
-        </UserMiniProfile>
-      ))}
+      {team.map((m, i) => {
+        const photo = i % 2 === 0 ? AVATAR_PHOTOS[Math.floor(i / 2) % AVATAR_PHOTOS.length] : null;
+        return (
+          <UserMiniProfile key={m.userId} userId={m.userId} align="start">
+            <button
+              type="button"
+              title={`${m.name} · ${m.relation}`}
+              style={{
+                ...base,
+                background: grey,
+                marginLeft: i === 0 ? 0 : -10,
+                cursor: "pointer", padding: 0,
+                fontSize: 13, fontWeight: 600, color: greyText,
+                position: "relative", zIndex: team.length - i,
+              }}
+            >
+              {photo ? (
+                <img
+                  src={photo}
+                  alt={m.name}
+                  style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                />
+              ) : (
+                teamInitials(m.name)
+              )}
+            </button>
+          </UserMiniProfile>
+        );
+      })}
     </div>
   );
 }
@@ -145,6 +173,7 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
   const [posting, setPosting] = useState(false);
   const [decisionBusy, setDecisionBusy] = useState(false);
   const [approveError, setApproveError] = useState<string | null>(null);
+  const [mapMarkers, setMapMarkers] = useState<GeoMarker[]>([]);
 
   const isInternal = !!user && INTERNAL.has(user.role);
   const canPost = !!user && (isInternal || user.role === "EMPLOYER");
@@ -209,6 +238,7 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
     setVarUsedAi(false);
     setTab("overview");
     setOpenSection(null);
+    setMapMarkers([]);
     fetchSubmission();
     fetchActivity();
     fetchRfis();
@@ -216,6 +246,65 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
 
   const sections = payload?.sections ?? [];
   const deal = payload?.deal;
+
+  // Resolve header-map markers: prefer the quote's workforce profile (per-location
+  // state/zip + class-code headcounts); fall back to the deal-level state, dividing
+  // the FT employee count evenly across numberOfLocations when the per-location
+  // split is unknown.
+  useEffect(() => {
+    if (!isOpen || !dealId || !deal) return;
+    let active = true;
+    (async () => {
+      type RawLoc = { state?: string; zip?: string; employees: number };
+      let locs: RawLoc[] = [];
+      try {
+        const q = await api.get<{
+          workforceProfile?: {
+            locations?: Array<{
+              state?: string; zip?: string;
+              classCodes?: Array<{ fullTimeEmployees?: number; partTimeEmployees?: number }>;
+            }>;
+          };
+        }>(`/quotes/by-deal/${dealId}`);
+        const wpl = q?.workforceProfile?.locations;
+        if (Array.isArray(wpl) && wpl.length > 0) {
+          locs = wpl.map((l) => ({
+            state: l.state,
+            zip: l.zip,
+            employees: (l.classCodes ?? []).reduce(
+              (s, cc) => s + (Number(cc.fullTimeEmployees) || 0) + (Number(cc.partTimeEmployees) || 0),
+              0,
+            ),
+          }));
+        }
+      } catch {
+        /* no quote for this deal — fall back to deal-level fields */
+      }
+      if (locs.length === 0) {
+        const st = deal.state;
+        if (!st) { if (active) setMapMarkers([]); return; }
+        const n = Math.max(1, Number(deal.numberOfLocations) || 1);
+        locs = Array.from({ length: n }, () => ({ state: st, employees: 0 }));
+      }
+      // Even split when we know a total headcount but not the per-location breakdown.
+      if (locs.every((l) => l.employees === 0)) {
+        const total = Number(deal.employeeCountFt) || 0;
+        if (total > 0) {
+          const per = Math.max(1, Math.round(total / locs.length));
+          locs = locs.map((l) => ({ ...l, employees: per }));
+        }
+      }
+      const points = await Promise.all(
+        locs.map(async (l) => (l.zip ? await zipToLngLat(l.zip) : null) ?? stateCentroid(l.state)),
+      );
+      const resolved: GeoMarker[] = [];
+      points.forEach((pt, i) => {
+        if (pt) resolved.push({ lng: pt[0], lat: pt[1], employees: locs[i].employees });
+      });
+      if (active) setMapMarkers(spreadDuplicates(resolved));
+    })();
+    return () => { active = false; };
+  }, [isOpen, dealId, deal]);
 
   const editorSection = useMemo(
     () => (openSection ? sections.find((s) => s.key === openSection) ?? null : null),
@@ -400,14 +489,28 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
           fontFamily: "var(--app-font-sans)",
         }}
       >
-        {/* Header */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 18px", borderBottom: `1px solid ${c.borderColor}` }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <Star style={{ width: 18, height: 18, color: c.textMuted }} />
+        {/* Header — minimalist US map background (location markers) + company identity + deal team */}
+        <div style={{ position: "relative", minHeight: 158, borderBottom: `1px solid ${c.borderColor}`, overflow: "hidden", background: c.isDark ? "#0b0b0f" : "#ececf0", flexShrink: 0 }}>
+          <div style={{ position: "absolute", inset: 0 }}>
+            <DealHeaderMap markers={mapMarkers} />
+          </div>
+          {/* left-to-right legibility gradient so the text sits comfortably over the map */}
+          <div
+            style={{
+              position: "absolute", inset: 0, pointerEvents: "none",
+              background: c.isDark
+                ? "linear-gradient(90deg, rgba(6,6,8,0.9) 0%, rgba(6,6,8,0.55) 42%, rgba(6,6,8,0.06) 100%)"
+                : "linear-gradient(90deg, rgba(244,244,245,0.93) 0%, rgba(244,244,245,0.6) 42%, rgba(244,244,245,0.06) 100%)",
+            }}
+          />
+          <div style={{ position: "relative", zIndex: 1, display: "flex", alignItems: "flex-start", justifyContent: "space-between", padding: "16px 18px 14px" }}>
             <div>
-              <div style={{ fontSize: 16, fontWeight: 500 }}>{deal?.businessName || "Deal"}</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <Star style={{ width: 18, height: 18, color: c.textMuted }} />
+                <div style={{ fontSize: 18, fontWeight: 600 }}>{deal?.businessName || "Deal"}</div>
+              </div>
               {(badges.length > 0 || effectiveDate) && (
-                <div style={{ display: "flex", gap: 6, marginTop: 4, flexWrap: "wrap" }}>
+                <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
                   {badges.map((b) => (
                     <span key={b} style={{ fontSize: 11, padding: "2px 8px", borderRadius: 9999, background: c.cardBg, color: c.textMuted, border: `1px solid ${c.borderColor}` }}>{b}</span>
                   ))}
@@ -418,11 +521,11 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
                   )}
                 </div>
               )}
+              <div style={{ marginTop: 14 }}>
+                <DealTeamAvatars team={payload?.team} />
+              </div>
             </div>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <DealTeamAvatars team={payload?.team} />
-            <X onClick={onClose} style={{ width: 18, height: 18, color: c.textMuted, cursor: "pointer" }} />
+            <X onClick={onClose} style={{ width: 18, height: 18, color: c.textMuted, cursor: "pointer", flexShrink: 0 }} />
           </div>
         </div>
 

@@ -85,7 +85,7 @@ accent literals outside the token files remain pink/purple brand hexes, `#1E6BE9
 **Key Features:**
 - **Role-based Dashboards:** Eight tailored dashboards for specific user roles.
 - **Pipeline Management:** 8-stage Kanban board with drag-and-drop for deals.
-- **Deal Card Modal:** Detailed full-screen modal for deal interaction, including activities, tasks, and editable details.
+- **Deal Card Modal:** Detailed full-screen modal for deal interaction, including activities, tasks, and editable details. Header features a black/grey minimalist US map background (`DealHeaderMap.tsx`, us-atlas + d3-geo) with glowing markers for submitted locations (employee-count chips; per-location FT+PT from the deal's quote `workforceProfile`, falling back to deal state × locations with an even headcount split via `src/lib/geo.ts` ZIP/state-centroid geocoding), plus a 38px team avatar row under the company name alternating stock headshots (`public/images/avatars/`) and grey initials circles, each wired to the UserMiniProfile hover card.
 - **Accounts Management:** Listing, search, filtering, and detailed views for accounts.
 - **Implementation Tracking:** Dual-tab view for WC Bind Journey and PEO/ASO Onboarding with progress trackers.
 - **Network Management:** Multi-tab partner directory for various partner types.
