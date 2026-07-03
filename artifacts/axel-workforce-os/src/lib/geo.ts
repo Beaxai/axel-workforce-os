@@ -10,10 +10,22 @@
  * at state level) are deterministically fanned out so both stay visible.
  */
 
+export interface GeoMarkerClassCode {
+  code: string;
+  description?: string;
+  ft: number;
+  pt: number;
+  payroll?: number;
+}
+
 export interface GeoMarker {
   lng: number;
   lat: number;
   employees: number;
+  /** Human label for the location, e.g. "CA 95521". */
+  label?: string;
+  /** Employee types (WC class codes) at this location, for the marker popup. */
+  classCodes?: GeoMarkerClassCode[];
 }
 
 /** Approximate visual centroids for US states, [lng, lat]. */

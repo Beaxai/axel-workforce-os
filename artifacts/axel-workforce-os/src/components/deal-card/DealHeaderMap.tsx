@@ -14,12 +14,22 @@
  * Grey/black literals here are intentional map artwork (per the header-map
  * design brief), branched on theme — not UI surface colors.
  */
-import { useMemo } from "react";
+import { useMemo, useRef, type MouseEvent as ReactMouseEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { geoAlbersUsa, geoPath } from "d3-geo";
 import { feature } from "topojson-client";
 import statesTopo from "us-atlas/states-albers-10m.json";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import type { GeoMarker } from "@/lib/geo";
+
+/** Pixel-space info handed to onMarkerClick — position of the clicked dot
+ * relative to the map container, plus the container's rendered size so the
+ * caller can clamp its popup within bounds. */
+export interface MarkerClickInfo {
+  x: number;
+  y: number;
+  containerW: number;
+  containerH: number;
+}
 
 /* ---- static basemap (computed once at module load) ---- */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -39,19 +49,40 @@ const project = geoAlbersUsa().scale(1300).translate([487.5, 305]);
 const FULL: [number, number, number, number] = [0, 0, 975, 610];
 /** Approx rendered header size (px) — used to keep glyphs a constant apparent size. */
 const PX_W = 1000;
-const PX_H = 158;
+const PX_H = 240;
 
 interface Props {
   markers: GeoMarker[];
+  /** Marker click → location detail popup (handled by the parent). */
+  onMarkerClick?: (marker: GeoMarker, info: MarkerClickInfo) => void;
+  /** Click on empty map space (used to dismiss the popup). */
+  onBackgroundClick?: () => void;
 }
 
-export default function DealHeaderMap({ markers }: Props) {
+export default function DealHeaderMap({ markers, onMarkerClick, onBackgroundClick }: Props) {
   const c = useThemeColors();
+  const svgRef = useRef<SVGSVGElement | null>(null);
+
+  /** Map-units → container-px for a marker, honoring xMidYMid meet. */
+  const toPx = (x: number, y: number): MarkerClickInfo | null => {
+    const svg = svgRef.current;
+    if (!svg) return null;
+    const rect = svg.getBoundingClientRect();
+    const [vx, vy, vw, vh] = vbRef.current;
+    const scale = Math.min(rect.width / vw, rect.height / vh);
+    return {
+      x: (x - vx) * scale + (rect.width - vw * scale) / 2,
+      y: (y - vy) * scale + (rect.height - vh * scale) / 2,
+      containerW: rect.width,
+      containerH: rect.height,
+    };
+  };
+  const vbRef = useRef<[number, number, number, number]>(FULL);
 
   const { vb, pts, k } = useMemo(() => {
     const projected = markers
-      .map((m) => ({ xy: project([m.lng, m.lat]), employees: m.employees }))
-      .filter((p): p is { xy: [number, number]; employees: number } => !!p.xy);
+      .map((m) => ({ xy: project([m.lng, m.lat]), marker: m }))
+      .filter((p): p is { xy: [number, number]; marker: GeoMarker } => !!p.xy);
 
     if (projected.length === 0) {
       return { vb: FULL, pts: projected, k: Math.max(FULL[2] / PX_W, FULL[3] / PX_H) };
@@ -93,12 +124,17 @@ export default function DealHeaderMap({ markers }: Props) {
   const chipBorder = c.isDark ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.18)";
   const chipText = c.isDark ? "#ffffff" : "#17171d";
 
+  vbRef.current = vb;
+
   return (
     <svg
+      ref={svgRef}
       viewBox={vb.join(" ")}
       preserveAspectRatio="xMidYMid meet"
       style={{ width: "100%", height: "100%", display: "block" }}
-      aria-hidden="true"
+      onClick={onBackgroundClick}
+      role="img"
+      aria-label="Map of submitted locations"
     >
       <defs>
         <filter id="deal-map-glow" x="-120%" y="-120%" width="340%" height="340%">
@@ -112,14 +148,45 @@ export default function DealHeaderMap({ markers }: Props) {
       </g>
       {pts.map((p, i) => {
         const [x, y] = p.xy;
-        const label = p.employees > 0 ? p.employees.toLocaleString() : null;
+        const label = p.marker.employees > 0 ? p.marker.employees.toLocaleString() : null;
         const chipH = 19 * k;
         const chipW = label ? (label.length * 6.6 + 26) * k : 0;
         const chipY = y - 13 * k; // bottom edge of chip sits above the dot
         const midY = chipY - chipH / 2;
         const iconX = x - chipW / 2 + 10 * k;
+        const clickable = !!onMarkerClick;
+        const openPopup = () => {
+          const info = toPx(x, y);
+          if (info && onMarkerClick) onMarkerClick(p.marker, info);
+        };
+        const handleClick = clickable
+          ? (e: ReactMouseEvent) => {
+              e.stopPropagation();
+              openPopup();
+            }
+          : undefined;
         return (
-          <g key={i}>
+          <g
+            key={i}
+            onClick={handleClick}
+            onKeyDown={
+              clickable
+                ? (e: ReactKeyboardEvent) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      openPopup();
+                    }
+                  }
+                : undefined
+            }
+            tabIndex={clickable ? 0 : undefined}
+            style={clickable ? { cursor: "pointer" } : undefined}
+            role={clickable ? "button" : undefined}
+            aria-label={clickable ? `Location ${p.marker.label ?? i + 1}: ${p.marker.employees} employees` : undefined}
+          >
+            {/* generous invisible hit area so the dot is easy to click */}
+            {clickable && <circle cx={x} cy={y} r={16 * k} fill="transparent" />}
             {/* glow halo + solid dot */}
             <circle cx={x} cy={y} r={9 * k} fill={dot} opacity={haloOpacity} filter="url(#deal-map-glow)" />
             <circle cx={x} cy={y} r={4.4 * k} fill={dot} stroke={c.isDark ? "rgba(255,255,255,0.85)" : "rgba(23,23,29,0.85)"} strokeWidth={1.2 * k} />

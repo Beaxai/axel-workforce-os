@@ -22,7 +22,7 @@ import type { SectionView, SubmissionPayload, ActivityRow, SectionPatchResponse,
 import UserMiniProfile from "@/components/user-profile/UserMiniProfile";
 import type { CreateRfiInput } from "./OverviewTab";
 import { PHASES, phaseIndex, isDeclined } from "./stage-map";
-import DealHeaderMap from "./DealHeaderMap";
+import DealHeaderMap, { type MarkerClickInfo } from "./DealHeaderMap";
 import { type GeoMarker, stateCentroid, zipToLngLat, spreadDuplicates } from "@/lib/geo";
 import OverviewTab from "./OverviewTab";
 import SubmissionTab from "./SubmissionTab";
@@ -174,6 +174,11 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
   const [decisionBusy, setDecisionBusy] = useState(false);
   const [approveError, setApproveError] = useState<string | null>(null);
   const [mapMarkers, setMapMarkers] = useState<GeoMarker[]>([]);
+  // KPI fallbacks sourced from the deal's quote workforce profile (the deal-level
+  // columns are often unset when the deal was created from the quote flow).
+  const [quoteStats, setQuoteStats] = useState<{ locations: number | null; eMod: number | null }>({ locations: null, eMod: null });
+  // Marker popup: which location detail panel is open + where to anchor it.
+  const [markerPopup, setMarkerPopup] = useState<{ marker: GeoMarker; info: MarkerClickInfo } | null>(null);
 
   const isInternal = !!user && INTERNAL.has(user.role);
   const canPost = !!user && (isInternal || user.role === "EMPLOYER");
@@ -239,6 +244,8 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
     setTab("overview");
     setOpenSection(null);
     setMapMarkers([]);
+    setQuoteStats({ locations: null, eMod: null });
+    setMarkerPopup(null);
     fetchSubmission();
     fetchActivity();
     fetchRfis();
@@ -255,18 +262,27 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
     if (!isOpen || !dealId || !deal) return;
     let active = true;
     (async () => {
-      type RawLoc = { state?: string; zip?: string; employees: number };
+      type RawLoc = {
+        state?: string; zip?: string; employees: number;
+        classCodes?: GeoMarker["classCodes"];
+      };
       let locs: RawLoc[] = [];
+      let stats: { locations: number | null; eMod: number | null } = { locations: null, eMod: null };
       try {
         const q = await api.get<{
           workforceProfile?: {
+            eMod?: number;
             locations?: Array<{
               state?: string; zip?: string;
-              classCodes?: Array<{ fullTimeEmployees?: number; partTimeEmployees?: number }>;
+              classCodes?: Array<{
+                classCode?: string; description?: string; annualPayroll?: number;
+                fullTimeEmployees?: number; partTimeEmployees?: number;
+              }>;
             }>;
           };
         }>(`/quotes/by-deal/${dealId}`);
-        const wpl = q?.workforceProfile?.locations;
+        const wp = q?.workforceProfile;
+        const wpl = wp?.locations;
         if (Array.isArray(wpl) && wpl.length > 0) {
           locs = wpl.map((l) => ({
             state: l.state,
@@ -275,11 +291,23 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
               (s, cc) => s + (Number(cc.fullTimeEmployees) || 0) + (Number(cc.partTimeEmployees) || 0),
               0,
             ),
+            classCodes: (l.classCodes ?? []).map((cc) => ({
+              code: String(cc.classCode ?? ""),
+              description: cc.description,
+              ft: Number(cc.fullTimeEmployees) || 0,
+              pt: Number(cc.partTimeEmployees) || 0,
+              payroll: Number(cc.annualPayroll) || undefined,
+            })),
           }));
+          stats = {
+            locations: wpl.length,
+            eMod: typeof wp?.eMod === "number" ? wp.eMod : null,
+          };
         }
       } catch {
         /* no quote for this deal — fall back to deal-level fields */
       }
+      if (active) setQuoteStats(stats);
       if (locs.length === 0) {
         const st = deal.state;
         if (!st) { if (active) setMapMarkers([]); return; }
@@ -299,7 +327,12 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
       );
       const resolved: GeoMarker[] = [];
       points.forEach((pt, i) => {
-        if (pt) resolved.push({ lng: pt[0], lat: pt[1], employees: locs[i].employees });
+        const l = locs[i];
+        if (pt) resolved.push({
+          lng: pt[0], lat: pt[1], employees: l.employees,
+          label: [l.state, l.zip].filter(Boolean).join(" ") || undefined,
+          classCodes: l.classCodes,
+        });
       });
       if (active) setMapMarkers(spreadDuplicates(resolved));
     })();
@@ -470,11 +503,17 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
 
   const badges = [deal?.vertical, deal?.productType].filter(Boolean) as string[];
 
+  // Deal-level columns first, then quote workforce-profile fallbacks (deals
+  // created via the quote flow often never backfill numberOfLocations / emod).
+  const locationsVal = fieldValue(sections, "locations", "numberOfLocations") ?? quoteStats.locations ?? (mapMarkers.length > 0 ? mapMarkers.length : null);
+  const exModRaw = fieldValue(sections, "workforce", "emod") ?? quoteStats.eMod;
+  const exModVal = exModRaw == null || exModRaw === "" || isNaN(Number(exModRaw)) ? null : Number(exModRaw).toFixed(2);
+
   const kpis = [
-    { label: "LOCATIONS", Icon: MapPin, value: fmtNum(fieldValue(sections, "locations", "numberOfLocations")) },
+    { label: "LOCATIONS", Icon: MapPin, value: fmtNum(locationsVal) },
     { label: "EMPLOYEES", Icon: Users, value: fmtNum(fieldValue(sections, "workforce", "employeeCountFt")) },
     { label: "PAYROLL", Icon: Banknote, value: fmtMoneyShort(fieldValue(sections, "workforce", "annualPayroll")) },
-    { label: "EXMOD", Icon: Gauge, value: (() => { const e = fieldValue(sections, "workforce", "emod"); return e == null || e === "" ? "\u2014" : String(e); })(), },
+    { label: "EXMOD", Icon: Gauge, value: exModVal ?? "\u2014" },
   ];
 
   // Header-over-map palette: glyphs sit on the map artwork, so these branch on
@@ -502,9 +541,13 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
       >
         {/* Header — minimalist US map background running behind identity, KPIs
             AND the milestone tracker; deal-team avatars under the name. */}
-        <div style={{ position: "relative", minHeight: 208, borderBottom: `1px solid ${c.borderColor}`, overflow: "hidden", background: c.isDark ? "#0b0b0f" : "#ececf0", flexShrink: 0 }}>
+        <div style={{ position: "relative", minHeight: 248, display: "flex", flexDirection: "column", borderBottom: `1px solid ${c.borderColor}`, overflow: "hidden", background: c.isDark ? "#0b0b0f" : "#ececf0", flexShrink: 0 }}>
           <div style={{ position: "absolute", inset: 0 }}>
-            <DealHeaderMap markers={mapMarkers} />
+            <DealHeaderMap
+              markers={mapMarkers}
+              onMarkerClick={(marker, info) => setMarkerPopup((prev) => (prev && prev.marker === marker ? null : { marker, info }))}
+              onBackgroundClick={() => setMarkerPopup(null)}
+            />
           </div>
           {/* left-to-right legibility gradient so the text sits comfortably over the map */}
           <div
@@ -533,8 +576,10 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
                 : "linear-gradient(0deg, rgba(244,244,245,0.88) 0%, rgba(244,244,245,0.45) 26%, rgba(244,244,245,0) 46%)",
             }}
           />
-          <div style={{ position: "relative", zIndex: 1, display: "flex", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "space-between", gap: 12, padding: "16px 18px 0" }}>
-            <div style={{ flex: "1 1 260px", minWidth: 0 }}>
+          {/* pointerEvents: none on the row so clicks fall through to the map;
+              re-enabled on the interactive children. */}
+          <div style={{ position: "relative", zIndex: 1, display: "flex", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "space-between", gap: 12, padding: "16px 18px 0", pointerEvents: "none" }}>
+            <div style={{ flex: "1 1 260px", minWidth: 0, pointerEvents: "auto" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
                 <Star style={{ width: 18, height: 18, color: c.textMuted, flexShrink: 0 }} />
                 <div style={{ fontSize: 18, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{deal?.businessName || "Deal"}</div>
@@ -557,7 +602,7 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
             </div>
             {/* KPI cluster — large glowing numbers with identifying icons, left of the X.
                 Wraps under the identity block on narrow widths instead of colliding. */}
-            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "flex-end", columnGap: 26, rowGap: 10, flex: "0 1 auto", minWidth: 0 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "flex-end", columnGap: 26, rowGap: 10, flex: "0 1 auto", minWidth: 0, pointerEvents: "auto" }}>
               {kpis.map(({ label, Icon, value }) => (
                 <div key={label} style={{ textAlign: "right" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 5, fontSize: 10, letterSpacing: "0.08em", fontWeight: 600, color: hdrSoftGrey, textTransform: "uppercase" }}>
@@ -574,8 +619,11 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
           </div>
 
           {/* 6-phase macro tracker (display-only) — map continues behind it.
-              Completed = soft grey; current = hollow glowing node. */}
-          <div style={{ position: "relative", zIndex: 1, display: "flex", alignItems: "flex-start", padding: "18px 18px 12px" }}>
+              Completed = soft grey; current = hollow glowing node.
+              marginTop: auto pins it to the bottom of the taller header so the
+              map dots get breathing room; pointerEvents: none lets clicks reach
+              the markers behind it. */}
+          <div style={{ position: "relative", zIndex: 1, display: "flex", alignItems: "flex-start", padding: "18px 18px 12px", marginTop: "auto", pointerEvents: "none" }}>
             {PHASES.map((label, i) => {
               const done = i < currentPhase;
               const current = i === currentPhase;
@@ -600,6 +648,75 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
               );
             })}
           </div>
+
+          {/* Location detail popup — anchored to the clicked map marker. */}
+          {markerPopup && (() => {
+            const { marker, info } = markerPopup;
+            const W = 280;
+            const left = Math.max(12, Math.min(info.x - W / 2, info.containerW - W - 12));
+            const below = info.y < info.containerH / 2;
+            // Vertical clamp: anchor edge stays within the header so at least
+            // ~100px of the (scrollable) panel is always visible.
+            const MIN_VISIBLE = 100;
+            const anchor = below
+              ? Math.max(12, Math.min(info.y + 16, info.containerH - 12 - MIN_VISIBLE))
+              : Math.max(12, Math.min(info.containerH - info.y + 16, info.containerH - 12 - MIN_VISIBLE));
+            const totalFt = (marker.classCodes ?? []).reduce((s, cc) => s + cc.ft, 0);
+            const totalPt = (marker.classCodes ?? []).reduce((s, cc) => s + cc.pt, 0);
+            return (
+              <div
+                role="dialog"
+                aria-label={`Location detail: ${marker.label ?? "location"}`}
+                style={{
+                  position: "absolute", zIndex: 3, left, width: W,
+                  ...(below ? { top: anchor } : { bottom: anchor }),
+                  maxHeight: info.containerH - anchor - 12, overflowY: "auto",
+                  background: c.isDark ? "rgba(18,18,24,0.82)" : "rgba(255,255,255,0.92)",
+                  backdropFilter: "blur(40px)", WebkitBackdropFilter: "blur(40px)",
+                  border: `1px solid ${c.borderColor}`, borderRadius: 12,
+                  boxShadow: c.isDark
+                    ? "0 24px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06)"
+                    : "0 24px 80px rgba(0,0,0,0.18)",
+                  padding: "12px 14px",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 8 }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: c.textPrimary }}>{marker.label ?? "Location"}</div>
+                    <div style={{ fontSize: 11, color: c.textMuted, marginTop: 2 }}>
+                      {marker.employees.toLocaleString()} employees
+                      {totalPt > 0 ? ` \u00b7 ${totalFt} FT / ${totalPt} PT` : ""}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setMarkerPopup(null)}
+                    aria-label="Close location detail"
+                    style={{ background: "transparent", border: "none", color: c.textMuted, cursor: "pointer", padding: 2, lineHeight: 0, flexShrink: 0 }}
+                  >
+                    <X style={{ width: 14, height: 14 }} />
+                  </button>
+                </div>
+                {(marker.classCodes ?? []).length === 0 ? (
+                  <div style={{ fontSize: 12, color: c.textMuted }}>No employee type breakdown available for this location.</div>
+                ) : (
+                  (marker.classCodes ?? []).map((cc, i) => (
+                    <div key={i} style={{ padding: "8px 0", borderTop: i > 0 ? `1px solid ${c.borderColor}` : "none" }}>
+                      <div style={{ fontSize: 12, fontWeight: 500, color: c.textPrimary, lineHeight: 1.35 }}>
+                        {cc.description || `Class ${cc.code}`}
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginTop: 3, fontSize: 11, color: c.textMuted }}>
+                        <span>
+                          {cc.code ? `Class ${cc.code} \u00b7 ` : ""}
+                          {cc.ft} FT{cc.pt > 0 ? ` / ${cc.pt} PT` : ""}
+                        </span>
+                        {cc.payroll ? <span>${cc.payroll.toLocaleString()} payroll</span> : null}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            );
+          })()}
         </div>
 
         {/* Body */}
