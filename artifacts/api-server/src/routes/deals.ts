@@ -101,6 +101,14 @@ async function fireImplementationTrigger(deal: Deal, author: string, actorId: st
   return toCreate;
 }
 
+/** Shape of the quote workforce_profile JSONB used for KPI fallbacks. */
+interface WorkforceProfileLite {
+  eMod?: number;
+  locations?: {
+    classCodes?: { fullTimeEmployees?: number; partTimeEmployees?: number; annualPayroll?: number }[];
+  }[];
+}
+
 router.get("/", async (req, res) => {
   // Active list excludes lost deals by default; pass ?includeLost=true to include them.
   const includeLost = req.query.includeLost === "true";
@@ -111,7 +119,48 @@ router.get("/", async (req, res) => {
         .from(dealsTable)
         .where(sql`coalesce(${dealsTable.outcome}, 'open') <> 'lost'`)
         .orderBy(desc(dealsTable.createdAt));
-  res.json(rows);
+
+  // Enrich each deal with card-face KPIs (locations / employees / payroll / exMod),
+  // falling back to the latest quote's workforce_profile when the deal-level
+  // columns are null — the same fallback the deal-card modal header uses.
+  const ids = rows.map((r) => r.id);
+  const quoteRows = ids.length
+    ? await db
+        .select({
+          dealId: quotesTable.dealId,
+          workforceProfile: quotesTable.workforceProfile,
+        })
+        .from(quotesTable)
+        .where(inArray(quotesTable.dealId, ids))
+        .orderBy(desc(quotesTable.createdAt))
+    : [];
+  const latestProfile = new Map<string, WorkforceProfileLite>();
+  for (const q of quoteRows) {
+    if (q.dealId && q.workforceProfile && !latestProfile.has(q.dealId)) {
+      latestProfile.set(q.dealId, q.workforceProfile as WorkforceProfileLite);
+    }
+  }
+  const enriched = rows.map((r) => {
+    const wp = latestProfile.get(r.id);
+    const codes = wp?.locations?.flatMap((l) => l.classCodes ?? []) ?? [];
+    const wpEmployees = codes.reduce(
+      (sum, c) => sum + (c.fullTimeEmployees ?? 0) + (c.partTimeEmployees ?? 0),
+      0,
+    );
+    const wpPayroll = codes.reduce((sum, c) => sum + (c.annualPayroll ?? 0), 0);
+    const dealEmployees =
+      r.employeeCountFt !== null || r.employeeCountPt !== null
+        ? (r.employeeCountFt ?? 0) + (r.employeeCountPt ?? 0)
+        : null;
+    return {
+      ...r,
+      kpiLocations: r.numberOfLocations ?? (wp?.locations?.length || null),
+      kpiEmployees: dealEmployees ?? (wpEmployees > 0 ? wpEmployees : null),
+      kpiPayroll: r.annualPayroll ?? (wpPayroll > 0 ? String(wpPayroll) : null),
+      kpiExMod: r.emod ?? (wp?.eMod != null ? String(wp.eMod) : null),
+    };
+  });
+  res.json(enriched);
 });
 
 router.get("/:id", async (req, res) => {

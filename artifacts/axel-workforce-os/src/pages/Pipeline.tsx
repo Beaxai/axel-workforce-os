@@ -59,6 +59,10 @@ interface Deal {
   wfsPepmRate?: string;
   ownerId?: string;
   createdAt?: string;
+  kpiLocations?: number | null;
+  kpiEmployees?: number | null;
+  kpiPayroll?: string | null;
+  kpiExMod?: string | null;
 }
 
 // The 10 canonical stages come from the shared @workspace/pipeline constant —
@@ -142,6 +146,23 @@ function formatCurrency(val: string | number | undefined | null): string {
   const n = typeof val === "string" ? parseFloat(val) : val;
   if (isNaN(n)) return "$0";
   return n.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0 });
+}
+
+function formatCompactMoney(val: string | number | undefined | null): string {
+  if (!val) return "—";
+  const n = typeof val === "string" ? parseFloat(val) : val;
+  if (isNaN(n)) return "—";
+  if (n === 0) return "$0";
+  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}K`;
+  return `$${n.toLocaleString()}`;
+}
+
+function formatExMod(val: string | null | undefined): string {
+  if (!val) return "—";
+  const n = parseFloat(val);
+  if (isNaN(n)) return "—";
+  return n.toFixed(2);
 }
 
 function generateRefCode(): string {
@@ -842,64 +863,104 @@ export default function Pipeline() {
                           e.currentTarget.style.borderColor = borderSubtle;
                         }}
                       >
-                        <p style={{ fontSize: "14px", fontWeight: 600, color: textPrimary, margin: "0 0 6px" }}>
-                          {deal.businessName || "Untitled"}
-                        </p>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "6px" }}>
+                          <p style={{ fontSize: "14px", fontWeight: 600, color: textPrimary, margin: 0, lineHeight: 1.2 }}>
+                            {deal.businessName || "Untitled"}
+                          </p>
+                        </div>
 
-                        {deal.vertical && (() => {
-                          const Icon = VERTICAL_ICONS[deal.vertical];
-                          return (
-                            <div style={{ display: "flex", alignItems: "center", gap: "5px", marginBottom: "8px" }}>
-                              {Icon && <Icon style={{ width: "12px", height: "12px", color: textMuted }} />}
-                              <span style={{ fontSize: "12px", color: textMuted }}>{deal.vertical}</span>
-                            </div>
-                          );
-                        })()}
-
-                        <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "6px" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "10px", flexWrap: "wrap" }}>
+                          {deal.vertical && (() => {
+                            const Icon = VERTICAL_ICONS[deal.vertical];
+                            return (
+                              <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                                {Icon && <Icon style={{ width: "12px", height: "12px", color: textMuted }} />}
+                                <span style={{ fontSize: "12px", color: textMuted, fontWeight: 500 }}>{deal.vertical}</span>
+                              </div>
+                            );
+                          })()}
+                          {deal.vertical && <span style={{ color: borderSubtle }}>|</span>}
                           <Badge
                             label={deal.productType === "PEO" ? "PEO" : "WC"}
-                            color={deal.productType === "PEO" ? "purple" : "blue"}
+                            color="gray"
                           />
                         </div>
 
-                        <p style={{ fontSize: "12px", color: deal.wcPremium && parseFloat(deal.wcPremium) > 0 ? textPrimary : textMuted, margin: "0 0 2px" }}>
-                          {deal.wcPremium && parseFloat(deal.wcPremium) > 0
-                            ? `${formatCurrency(deal.wcPremium)} WC Premium`
-                            : "Pending Quote"}
-                        </p>
+                        <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "12px", flexWrap: "wrap" }}>
+                          <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                            <span style={{ fontSize: "10px", fontWeight: 700, color: textMuted, textTransform: "uppercase", letterSpacing: "0.04em", fontFamily: "var(--app-font-heading)" }}>Loc</span>
+                            <span style={{ fontSize: "13px", color: textPrimary, fontWeight: 500 }}>{deal.kpiLocations ?? "—"}</span>
+                          </div>
+                          <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                            <span style={{ fontSize: "10px", fontWeight: 700, color: textMuted, textTransform: "uppercase", letterSpacing: "0.04em", fontFamily: "var(--app-font-heading)" }}>Emp</span>
+                            <span style={{ fontSize: "13px", color: textPrimary, fontWeight: 500 }}>{deal.kpiEmployees ?? "—"}</span>
+                          </div>
+                          <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                            <span style={{ fontSize: "10px", fontWeight: 700, color: textMuted, textTransform: "uppercase", letterSpacing: "0.04em", fontFamily: "var(--app-font-heading)" }}>Payroll</span>
+                            <span style={{ fontSize: "13px", color: textPrimary, fontWeight: 500 }}>{formatCompactMoney(deal.kpiPayroll)}</span>
+                          </div>
+                          <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                            <span style={{ fontSize: "10px", fontWeight: 700, color: textMuted, textTransform: "uppercase", letterSpacing: "0.04em", fontFamily: "var(--app-font-heading)" }}>ExMod</span>
+                            <span style={{ fontSize: "13px", color: textPrimary, fontWeight: 500 }}>{formatExMod(deal.kpiExMod)}</span>
+                          </div>
+                        </div>
 
-                        {deal.productType === "PEO" && (
-                          <p style={{ fontSize: "12px", color: deal.wfsPepmRate && parseFloat(deal.wfsPepmRate) > 0 ? textPrimary : textMuted, margin: 0 }}>
-                            {deal.wfsPepmRate && parseFloat(deal.wfsPepmRate) > 0
-                              ? `${formatCurrency(deal.wfsPepmRate)} PEPM`
-                              : "Pending Quote"}
-                          </p>
-                        )}
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginTop: "auto" }}>
+                          <div>
+                            <p style={{ fontSize: "13px", fontWeight: 600, color: deal.wcPremium && parseFloat(deal.wcPremium) > 0 ? textPrimary : textMuted, margin: "0 0 2px" }}>
+                              {deal.wcPremium && parseFloat(deal.wcPremium) > 0
+                                ? `${formatCurrency(deal.wcPremium)} WC`
+                                : "Pending Quote"}
+                            </p>
 
-                        <div style={{ display: "flex", marginTop: "8px" }}>
-                          {[0, 1, 2].map((i) => (
-                            <div
-                              key={i}
-                              style={{
-                                width: "24px",
-                                height: "24px",
-                                borderRadius: "50%",
-                                background: `hsl(${(i * 120 + 200) % 360}, 50%, 50%)`,
-                                border: `2px solid ${isDark ? "#141418" : "#f4f4f5"}`,
-                                marginLeft: i > 0 ? "-8px" : 0,
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                fontSize: "10px",
-                                fontWeight: 600,
-                                color: "#fff",
-                              }}
-                              title={members[i]?.name}
-                            >
-                              {members[i]?.name.charAt(0)}
-                            </div>
-                          ))}
+                            {deal.productType === "PEO" && (
+                              <p style={{ fontSize: "12px", color: deal.wfsPepmRate && parseFloat(deal.wfsPepmRate) > 0 ? textPrimary : textMuted, margin: 0 }}>
+                                {deal.wfsPepmRate && parseFloat(deal.wfsPepmRate) > 0
+                                  ? `${formatCurrency(deal.wfsPepmRate)} PEPM`
+                                  : "Pending Quote"}
+                              </p>
+                            )}
+                          </div>
+
+                          <div style={{ display: "flex", alignItems: "center" }}>
+                            {[0, 1, 2].map((i) => {
+                              const member = members[i];
+                              if (!member) return null;
+                              
+                              const photo = i % 2 === 0 ? `/images/avatars/team_headshot_${(i % 4) + 1}.jpg` : null;
+                              const initials = member.name ? member.name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase() : "?";
+                              
+                              return (
+                                <div
+                                  key={i}
+                                  style={{
+                                    width: "24px",
+                                    height: "24px",
+                                    borderRadius: "50%",
+                                    background: isDark ? "rgba(255,255,255,0.13)" : "rgba(0,0,0,0.08)",
+                                    border: `2px solid hsl(var(--background))`,
+                                    marginLeft: i > 0 ? "-6px" : 0,
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    fontSize: "10px",
+                                    fontWeight: 600,
+                                    color: isDark ? "rgba(255,255,255,0.72)" : "rgba(0,0,0,0.6)",
+                                    overflow: "hidden",
+                                    position: "relative",
+                                    zIndex: 3 - i
+                                  }}
+                                  title={member.name}
+                                >
+                                  {photo ? (
+                                    <img src={photo} alt={member.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                                  ) : (
+                                    initials
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
                       </div>
                     ))}
