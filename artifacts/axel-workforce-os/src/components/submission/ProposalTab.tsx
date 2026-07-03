@@ -173,7 +173,7 @@ export default function ProposalTab({ dealId, dealName }: ProposalTabProps) {
           style={{
             display: "inline-flex", alignItems: "center", gap: 8,
             padding: "12px 24px", borderRadius: 8, border: "none",
-            background: accent, color: "#fff", cursor: creating ? "not-allowed" : "pointer",
+            background: "var(--gradient-cta)", color: "#fff", cursor: creating ? "not-allowed" : "pointer",
             fontSize: 14, fontWeight: 600,
           }}
         >
@@ -299,7 +299,7 @@ export default function ProposalTab({ dealId, dealName }: ProposalTabProps) {
               style={{
                 display: "flex", alignItems: "center", gap: 8,
                 padding: "12px 24px", borderRadius: 8,
-                border: "none", background: accent, color: "#fff",
+                border: "none", background: "var(--gradient-cta)", color: "#fff",
                 cursor: requesting ? "not-allowed" : "pointer",
                 fontSize: 14, fontWeight: 600, whiteSpace: "nowrap",
               }}

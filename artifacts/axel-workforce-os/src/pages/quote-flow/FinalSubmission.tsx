@@ -218,7 +218,7 @@ export default function FinalSubmission() {
           padding: "18px 64px",
           borderRadius: 32,
           border: "none",
-          background: "var(--accent-primary)",
+          background: "var(--gradient-cta)",
           color: "#fff",
           fontSize: 18,
           fontWeight: 700,

@@ -38,7 +38,7 @@ export default function ReRateBanner({ show, onReRate }: ReRateBannerProps) {
           fontSize: 11,
           fontWeight: 500,
           color: "#fff",
-          background: "var(--accent-primary)",
+          background: "var(--gradient-cta)",
           border: "none",
           borderRadius: 8,
           padding: "6px 12px",

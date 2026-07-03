@@ -1242,7 +1242,7 @@ export default function Step4Indication() {
             padding: "16px 24px",
             borderRadius: 28,
             border: "none",
-            background: "var(--accent-primary)",
+            background: "var(--gradient-cta)",
             color: "#fff",
             fontSize: 16,
             fontWeight: 700,

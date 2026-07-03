@@ -93,7 +93,7 @@ export default function AdminDashboard() {
             color: textSecondary, fontSize: 13, fontWeight: 500, padding: "8px 16px", cursor: "pointer",
           }}>Export Report</button>
           <button style={{
-            background: "var(--accent-primary)", border: "none", borderRadius: 8,
+            background: "var(--gradient-cta)", border: "none", borderRadius: 8,
             color: "#fff", fontSize: 13, fontWeight: 500, padding: "8px 16px", cursor: "pointer",
           }}>+ Generate Insight</button>
         </div>

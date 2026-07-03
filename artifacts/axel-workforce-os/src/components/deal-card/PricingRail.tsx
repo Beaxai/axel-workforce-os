@@ -137,7 +137,7 @@ export default function PricingRail({
                 <button
                   onClick={() => onDecline(reason)}
                   disabled={busy || reason.trim().length === 0}
-                  style={{ flex: 1, fontSize: 12, borderRadius: 8, padding: 7, cursor: reason.trim() ? "pointer" : "not-allowed", color: "#fff", background: "var(--accent-primary)", border: "none", fontWeight: 500, opacity: reason.trim() ? 1 : 0.5 }}
+                  style={{ flex: 1, fontSize: 12, borderRadius: 8, padding: 7, cursor: reason.trim() ? "pointer" : "not-allowed", color: "#fff", background: "var(--gradient-cta)", border: "none", fontWeight: 500, opacity: reason.trim() ? 1 : 0.5 }}
                 >
                   Confirm
                 </button>

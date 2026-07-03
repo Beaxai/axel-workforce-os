@@ -3,9 +3,9 @@ import type { ButtonHTMLAttributes, ReactNode } from "react";
 interface PrimaryButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   children: ReactNode;
   /**
-   * "primary" (default) = solid purple interactive button.
-   * "cta" = the single primary call-to-action per screen; renders the one
-   * permitted brand gradient. Use at most one per view.
+   * All action buttons render the purple→pink brand gradient
+   * (var(--gradient-cta)). The two variants are kept for API compatibility
+   * and now style identically.
    */
   variant?: "primary" | "cta";
 }
@@ -17,13 +17,13 @@ export default function PrimaryButton({
   variant = "primary",
   ...props
 }: PrimaryButtonProps) {
-  const isCta = variant === "cta";
+  void variant;
   return (
     <button
       {...props}
       disabled={disabled}
       style={{
-        background: isCta ? "var(--gradient-cta)" : "var(--accent-primary)",
+        background: "var(--gradient-cta)",
         color: "#fff",
         border: "none",
         borderRadius: "10px",
@@ -37,19 +37,11 @@ export default function PrimaryButton({
       }}
       onMouseEnter={(e) => {
         if (disabled) return;
-        if (isCta) {
-          e.currentTarget.style.filter = "brightness(1.1)";
-        } else {
-          e.currentTarget.style.background = "var(--accent-primary-hover)";
-        }
+        e.currentTarget.style.filter = "brightness(1.1)";
       }}
       onMouseLeave={(e) => {
         if (disabled) return;
-        if (isCta) {
-          e.currentTarget.style.filter = "none";
-        } else {
-          e.currentTarget.style.background = "var(--accent-primary)";
-        }
+        e.currentTarget.style.filter = "none";
       }}
     >
       {children}

@@ -191,7 +191,7 @@ export default function ProposalScreen() {
             style={{
               display: "inline-flex", alignItems: "center", gap: 8,
               padding: "12px 24px", borderRadius: 8, border: "none",
-              background: accent, color: textPrimary, cursor: creating ? "not-allowed" : "pointer",
+              background: "var(--gradient-cta)", color: "#fff", cursor: creating ? "not-allowed" : "pointer",
               fontSize: 14, fontWeight: 600,
             }}
           >
@@ -314,7 +314,7 @@ export default function ProposalScreen() {
                   style={{
                     display: "flex", alignItems: "center", gap: 8,
                     padding: "12px 24px", borderRadius: 8,
-                    border: "none", background: accent, color: textPrimary,
+                    border: "none", background: "var(--gradient-cta)", color: "#fff",
                     cursor: requesting ? "not-allowed" : "pointer",
                     fontSize: 14, fontWeight: 600, whiteSpace: "nowrap",
                   }}

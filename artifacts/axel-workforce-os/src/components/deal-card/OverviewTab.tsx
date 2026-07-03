@@ -600,7 +600,7 @@ export default function OverviewTab({
                   <button
                     onClick={submitRfi}
                     disabled={rfiBusy || !rfiSubject.trim()}
-                    style={{ fontSize: 11.5, borderRadius: 8, padding: "6px 12px", cursor: rfiSubject.trim() ? "pointer" : "not-allowed", color: "#fff", background: "var(--accent-primary)", border: "none", fontWeight: 600, fontFamily: "inherit", opacity: rfiSubject.trim() ? 1 : 0.5 }}
+                    style={{ fontSize: 11.5, borderRadius: 8, padding: "6px 12px", cursor: rfiSubject.trim() ? "pointer" : "not-allowed", color: "#fff", background: "var(--gradient-cta)", border: "none", fontWeight: 600, fontFamily: "inherit", opacity: rfiSubject.trim() ? 1 : 0.5 }}
                   >
                     {rfiBusy ? "Saving\u2026" : "Raise RFI"}
                   </button>
@@ -648,7 +648,7 @@ export default function OverviewTab({
                         <button
                           onClick={() => onResolveRfi(r.id, "RESOLVED")}
                           disabled={rfiBusy}
-                          style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, borderRadius: 8, padding: "5px 10px", cursor: "pointer", color: "#fff", background: "var(--accent-primary)", border: "none", fontWeight: 500, fontFamily: "inherit" }}
+                          style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, borderRadius: 8, padding: "5px 10px", cursor: "pointer", color: "#fff", background: "var(--gradient-cta)", border: "none", fontWeight: 500, fontFamily: "inherit" }}
                         >
                           <Check style={{ width: 12, height: 12 }} /> Resolve
                         </button>

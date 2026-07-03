@@ -23,7 +23,7 @@ export default function Phase2Transition() {
         style={{
           display: "flex", alignItems: "center", gap: 8,
           padding: "16px 40px", borderRadius: 28, border: "none",
-          background: "var(--accent-primary)", color: textPrimary, fontSize: 16, fontWeight: 700,
+          background: "var(--gradient-cta)", color: "#fff", fontSize: 16, fontWeight: 700,
           cursor: "pointer", transition: "opacity 0.15s",
         }}
         onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.9")}

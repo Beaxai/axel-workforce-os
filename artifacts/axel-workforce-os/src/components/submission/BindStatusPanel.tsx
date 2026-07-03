@@ -252,7 +252,7 @@ export default function BindStatusPanel({
               padding: 10,
               borderRadius: 8,
               border: "none",
-              background: accent,
+              background: "var(--gradient-cta)",
               color: "#fff",
               cursor: sending ? "not-allowed" : "pointer",
               fontSize: 13,

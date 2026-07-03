@@ -135,7 +135,7 @@ export default function SubmissionPage() {
                 padding: "12px 28px",
                 borderRadius: 8,
                 border: "none",
-                background: accent,
+                background: "var(--gradient-cta)",
                 color: "#fff",
                 cursor: "pointer",
                 fontSize: 15,
