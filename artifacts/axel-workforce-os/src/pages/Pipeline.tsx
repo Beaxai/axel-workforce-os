@@ -888,39 +888,43 @@ export default function Pipeline() {
 
                         <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "12px", flexWrap: "wrap" }}>
                           <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-                            <span style={{ fontSize: "10px", fontWeight: 700, color: textMuted, textTransform: "uppercase", letterSpacing: "0.04em", fontFamily: "var(--app-font-heading)" }}>Loc</span>
-                            <span style={{ fontSize: "13px", color: textPrimary, fontWeight: 500 }}>{deal.kpiLocations ?? "—"}</span>
+                            <span style={{ fontSize: "9px", fontWeight: 700, color: textMuted, textTransform: "uppercase", letterSpacing: "0.04em", fontFamily: "var(--app-font-heading)" }}>Loc</span>
+                            <span style={{ fontSize: "16px", color: textPrimary, fontWeight: 600 }}>{deal.kpiLocations ?? "—"}</span>
                           </div>
                           <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-                            <span style={{ fontSize: "10px", fontWeight: 700, color: textMuted, textTransform: "uppercase", letterSpacing: "0.04em", fontFamily: "var(--app-font-heading)" }}>Emp</span>
-                            <span style={{ fontSize: "13px", color: textPrimary, fontWeight: 500 }}>{deal.kpiEmployees ?? "—"}</span>
+                            <span style={{ fontSize: "9px", fontWeight: 700, color: textMuted, textTransform: "uppercase", letterSpacing: "0.04em", fontFamily: "var(--app-font-heading)" }}>Emp</span>
+                            <span style={{ fontSize: "16px", color: textPrimary, fontWeight: 600 }}>{deal.kpiEmployees ?? "—"}</span>
                           </div>
                           <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-                            <span style={{ fontSize: "10px", fontWeight: 700, color: textMuted, textTransform: "uppercase", letterSpacing: "0.04em", fontFamily: "var(--app-font-heading)" }}>Payroll</span>
-                            <span style={{ fontSize: "13px", color: textPrimary, fontWeight: 500 }}>{formatCompactMoney(deal.kpiPayroll)}</span>
+                            <span style={{ fontSize: "9px", fontWeight: 700, color: textMuted, textTransform: "uppercase", letterSpacing: "0.04em", fontFamily: "var(--app-font-heading)" }}>Payroll</span>
+                            <span style={{ fontSize: "16px", color: textPrimary, fontWeight: 600 }}>{formatCompactMoney(deal.kpiPayroll)}</span>
                           </div>
                           <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-                            <span style={{ fontSize: "10px", fontWeight: 700, color: textMuted, textTransform: "uppercase", letterSpacing: "0.04em", fontFamily: "var(--app-font-heading)" }}>ExMod</span>
-                            <span style={{ fontSize: "13px", color: textPrimary, fontWeight: 500 }}>{formatExMod(deal.kpiExMod)}</span>
+                            <span style={{ fontSize: "9px", fontWeight: 700, color: textMuted, textTransform: "uppercase", letterSpacing: "0.04em", fontFamily: "var(--app-font-heading)" }}>ExMod</span>
+                            <span style={{ fontSize: "16px", color: textPrimary, fontWeight: 600 }}>{formatExMod(deal.kpiExMod)}</span>
                           </div>
                         </div>
 
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginTop: "auto" }}>
-                          <div>
-                            <p style={{ fontSize: "13px", fontWeight: 600, color: deal.wcPremium && parseFloat(deal.wcPremium) > 0 ? textPrimary : textMuted, margin: "0 0 2px" }}>
-                              {deal.wcPremium && parseFloat(deal.wcPremium) > 0
-                                ? `${formatCurrency(deal.wcPremium)} WC`
-                                : "Pending Quote"}
-                            </p>
-
-                            {deal.productType === "PEO" && (
-                              <p style={{ fontSize: "12px", color: deal.wfsPepmRate && parseFloat(deal.wfsPepmRate) > 0 ? textPrimary : textMuted, margin: 0 }}>
-                                {deal.wfsPepmRate && parseFloat(deal.wfsPepmRate) > 0
-                                  ? `${formatCurrency(deal.wfsPepmRate)} PEPM`
-                                  : "Pending Quote"}
-                              </p>
-                            )}
-                          </div>
+                          {(() => {
+                            const hasWc = !!(deal.wcPremium && parseFloat(deal.wcPremium) > 0);
+                            const hasPepm = !!(deal.wfsPepmRate && parseFloat(deal.wfsPepmRate) > 0);
+                            const isPeo = deal.productType === "PEO";
+                            return (
+                              <div>
+                                {(hasWc || !isPeo || !hasPepm) && (
+                                  <p style={{ fontSize: "13px", fontWeight: 600, color: hasWc ? textPrimary : textMuted, margin: "0 0 2px" }}>
+                                    {hasWc ? `${formatCurrency(Math.round(parseFloat(deal.wcPremium!)))} WC` : "Pending Quote"}
+                                  </p>
+                                )}
+                                {isPeo && hasPepm && (
+                                  <p style={{ fontSize: "12px", color: textPrimary, margin: 0 }}>
+                                    {`${formatCurrency(deal.wfsPepmRate)} PEPM`}
+                                  </p>
+                                )}
+                              </div>
+                            );
+                          })()}
 
                           <div style={{ display: "flex", alignItems: "center" }}>
                             {[0, 1, 2].map((i) => {
@@ -934,16 +938,16 @@ export default function Pipeline() {
                                 <div
                                   key={i}
                                   style={{
-                                    width: "24px",
-                                    height: "24px",
+                                    width: "32px",
+                                    height: "32px",
                                     borderRadius: "50%",
                                     background: isDark ? "rgba(255,255,255,0.13)" : "rgba(0,0,0,0.08)",
                                     border: `2px solid hsl(var(--background))`,
-                                    marginLeft: i > 0 ? "-6px" : 0,
+                                    marginLeft: i > 0 ? "-9px" : 0,
                                     display: "flex",
                                     alignItems: "center",
                                     justifyContent: "center",
-                                    fontSize: "10px",
+                                    fontSize: "12px",
                                     fontWeight: 600,
                                     color: isDark ? "rgba(255,255,255,0.72)" : "rgba(0,0,0,0.6)",
                                     overflow: "hidden",

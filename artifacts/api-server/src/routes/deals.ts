@@ -129,15 +129,30 @@ router.get("/", async (req, res) => {
         .select({
           dealId: quotesTable.dealId,
           workforceProfile: quotesTable.workforceProfile,
+          wcPremium: quotesTable.wcPremium,
+          wcFinalPremium: quotesTable.wcFinalPremium,
+          pepm: quotesTable.pepm,
+          peoPepm: quotesTable.peoPepm,
         })
         .from(quotesTable)
         .where(inArray(quotesTable.dealId, ids))
         .orderBy(desc(quotesTable.createdAt))
     : [];
   const latestProfile = new Map<string, WorkforceProfileLite>();
+  const latestWcPremium = new Map<string, string>();
+  const latestPepm = new Map<string, string>();
   for (const q of quoteRows) {
-    if (q.dealId && q.workforceProfile && !latestProfile.has(q.dealId)) {
+    if (!q.dealId) continue;
+    if (q.workforceProfile && !latestProfile.has(q.dealId)) {
       latestProfile.set(q.dealId, q.workforceProfile as WorkforceProfileLite);
+    }
+    const wc = q.wcPremium ?? q.wcFinalPremium;
+    if (wc != null && parseFloat(wc) > 0 && !latestWcPremium.has(q.dealId)) {
+      latestWcPremium.set(q.dealId, wc);
+    }
+    const pepm = q.peoPepm ?? q.pepm;
+    if (pepm != null && parseFloat(pepm) > 0 && !latestPepm.has(q.dealId)) {
+      latestPepm.set(q.dealId, pepm);
     }
   }
   const enriched = rows.map((r) => {
@@ -152,8 +167,13 @@ router.get("/", async (req, res) => {
       r.employeeCountFt !== null || r.employeeCountPt !== null
         ? (r.employeeCountFt ?? 0) + (r.employeeCountPt ?? 0)
         : null;
+    const dealWc = r.wcPremium != null && parseFloat(r.wcPremium) > 0 ? r.wcPremium : null;
+    const dealPepm = r.wfsPepmRate != null && parseFloat(r.wfsPepmRate) > 0 ? r.wfsPepmRate : null;
     return {
       ...r,
+      // Premium fallbacks: deal-level columns win; otherwise the latest quote's.
+      wcPremium: dealWc ?? latestWcPremium.get(r.id) ?? r.wcPremium,
+      wfsPepmRate: dealPepm ?? latestPepm.get(r.id) ?? r.wfsPepmRate,
       kpiLocations: r.numberOfLocations ?? (wp?.locations?.length || null),
       kpiEmployees: dealEmployees ?? (wpEmployees > 0 ? wpEmployees : null),
       kpiPayroll: r.annualPayroll ?? (wpPayroll > 0 ? String(wpPayroll) : null),
