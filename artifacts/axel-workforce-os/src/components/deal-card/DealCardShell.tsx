@@ -13,7 +13,7 @@ import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import {
   X, Star, LayoutDashboard, ClipboardList, Folder, CheckSquare, Calculator, Shield, UserRound,
-  MapPin, Users, Banknote, Gauge,
+  MapPin, Users, Banknote, Gauge, Sprout, Store, Truck, FlaskConical, Briefcase, HardHat,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useThemeColors } from "@/lib/use-theme-colors";
@@ -50,6 +50,19 @@ const NAV: Array<{ key: TabKey; label: string; Icon: typeof LayoutDashboard }> =
 ];
 
 const INTERNAL = new Set(["ADMIN", "CSA", "AGENT", "UNDERWRITER"]);
+
+/** Pick a lucide icon that visually represents an employee type (WC class-code
+ * description keywords → icon). Falls back to a generic hard-hat worker. */
+function employeeTypeIcon(description?: string): typeof HardHat {
+  const d = (description ?? "").toLowerCase();
+  if (/cultivat|farm|grow|nursery|agricult|greenhouse/.test(d)) return Sprout;
+  if (/dispensar|retail|store|shop|sales/.test(d)) return Store;
+  if (/deliver|driver|transport|trucking|courier/.test(d)) return Truck;
+  if (/manufactur|extract|process|lab|chemist/.test(d)) return FlaskConical;
+  if (/office|clerical|admin|professional/.test(d)) return Briefcase;
+  if (/security|guard/.test(d)) return Shield;
+  return HardHat;
+}
 
 function fieldValue(sections: SectionView[], sectionKey: string, fieldKey: string): unknown {
   const s = sections.find((x) => x.key === sectionKey);
@@ -579,7 +592,9 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
           {/* pointerEvents: none on the row so clicks fall through to the map;
               re-enabled on the interactive children. */}
           <div style={{ position: "relative", zIndex: 1, display: "flex", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "space-between", gap: 12, padding: "16px 18px 0", pointerEvents: "none" }}>
-            <div style={{ flex: "1 1 260px", minWidth: 0, pointerEvents: "auto" }}>
+            {/* identity block itself is click-transparent (its box can cover a
+                map marker); only the avatar row re-enables pointer events. */}
+            <div style={{ flex: "1 1 260px", minWidth: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
                 <Star style={{ width: 18, height: 18, color: c.textMuted, flexShrink: 0 }} />
                 <div style={{ fontSize: 18, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{deal?.businessName || "Deal"}</div>
@@ -596,13 +611,15 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
                   )}
                 </div>
               )}
-              <div style={{ marginTop: 14 }}>
+              <div style={{ marginTop: 14, pointerEvents: "auto", width: "fit-content" }}>
                 <DealTeamAvatars team={payload?.team} />
               </div>
             </div>
             {/* KPI cluster — large glowing numbers with identifying icons, left of the X.
                 Wraps under the identity block on narrow widths instead of colliding. */}
-            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "flex-end", columnGap: 26, rowGap: 10, flex: "0 1 auto", minWidth: 0, pointerEvents: "auto" }}>
+            {/* KPI numbers are display-only — keep the cluster click-transparent
+                so markers underneath stay clickable; only the X re-enables. */}
+            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "flex-end", columnGap: 26, rowGap: 10, flex: "0 1 auto", minWidth: 0 }}>
               {kpis.map(({ label, Icon, value }) => (
                 <div key={label} style={{ textAlign: "right" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 5, fontSize: 10, letterSpacing: "0.08em", fontWeight: 600, color: hdrSoftGrey, textTransform: "uppercase" }}>
@@ -614,7 +631,7 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
                   </div>
                 </div>
               ))}
-              <X onClick={onClose} style={{ width: 18, height: 18, color: c.textMuted, cursor: "pointer", flexShrink: 0, marginTop: 1 }} />
+              <X onClick={onClose} style={{ width: 18, height: 18, color: c.textMuted, cursor: "pointer", flexShrink: 0, marginTop: 1, pointerEvents: "auto" }} />
             </div>
           </div>
 
@@ -699,20 +716,37 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
                 {(marker.classCodes ?? []).length === 0 ? (
                   <div style={{ fontSize: 12, color: c.textMuted }}>No employee type breakdown available for this location.</div>
                 ) : (
-                  (marker.classCodes ?? []).map((cc, i) => (
-                    <div key={i} style={{ padding: "8px 0", borderTop: i > 0 ? `1px solid ${c.borderColor}` : "none" }}>
-                      <div style={{ fontSize: 12, fontWeight: 500, color: c.textPrimary, lineHeight: 1.35 }}>
-                        {cc.description || `Class ${cc.code}`}
+                  (marker.classCodes ?? []).map((cc, i) => {
+                    const TypeIcon = employeeTypeIcon(cc.description);
+                    const count = cc.ft + cc.pt;
+                    return (
+                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 0", borderTop: i > 0 ? `1px solid ${c.borderColor}` : "none" }}>
+                        {/* square employee-type tile */}
+                        <div
+                          style={{
+                            width: 38, height: 38, borderRadius: 9, flexShrink: 0,
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                            background: "var(--accent-support-soft)",
+                            border: `1px solid ${c.borderColor}`,
+                          }}
+                        >
+                          <TypeIcon style={{ width: 19, height: 19, color: "var(--accent-support)" }} />
+                        </div>
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: c.textPrimary, lineHeight: 1.25 }}>
+                            {count.toLocaleString()} {count === 1 ? "Employee" : "Employees"}
+                            {cc.pt > 0 ? <span style={{ fontWeight: 400, color: c.textMuted }}> ({cc.ft} FT / {cc.pt} PT)</span> : null}
+                          </div>
+                          <div style={{ fontSize: 11, color: c.textMuted, marginTop: 2, lineHeight: 1.35 }}>
+                            {cc.description || `Class ${cc.code}`}
+                          </div>
+                          {cc.payroll ? (
+                            <div style={{ fontSize: 11, color: c.textMuted, marginTop: 1 }}>${cc.payroll.toLocaleString()} payroll</div>
+                          ) : null}
+                        </div>
                       </div>
-                      <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginTop: 3, fontSize: 11, color: c.textMuted }}>
-                        <span>
-                          {cc.code ? `Class ${cc.code} \u00b7 ` : ""}
-                          {cc.ft} FT{cc.pt > 0 ? ` / ${cc.pt} PT` : ""}
-                        </span>
-                        {cc.payroll ? <span>${cc.payroll.toLocaleString()} payroll</span> : null}
-                      </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             );

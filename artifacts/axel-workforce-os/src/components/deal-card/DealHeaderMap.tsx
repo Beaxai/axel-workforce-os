@@ -14,7 +14,7 @@
  * Grey/black literals here are intentional map artwork (per the header-map
  * design brief), branched on theme — not UI surface colors.
  */
-import { useMemo, useRef, type MouseEvent as ReactMouseEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useMemo, useRef, useState, type MouseEvent as ReactMouseEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { geoAlbersUsa, geoPath } from "d3-geo";
 import { feature } from "topojson-client";
 import statesTopo from "us-atlas/states-albers-10m.json";
@@ -62,6 +62,7 @@ interface Props {
 export default function DealHeaderMap({ markers, onMarkerClick, onBackgroundClick }: Props) {
   const c = useThemeColors();
   const svgRef = useRef<SVGSVGElement | null>(null);
+  const [hovered, setHovered] = useState<number | null>(null);
 
   /** Map-units → container-px for a marker, honoring xMidYMid meet. */
   const toPx = (x: number, y: number): MarkerClickInfo | null => {
@@ -96,21 +97,24 @@ export default function DealHeaderMap({ markers, onMarkerClick, onBackgroundClic
     const maxY = Math.max(...ys);
     const spanX = maxX - minX;
     const spanY = maxY - minY;
-    const pad = Math.max(32, Math.max(spanX, spanY) * 0.35);
+    const pad = Math.max(40, Math.max(spanX, spanY) * 0.45);
     // Minimum span ≈ state-level zoom, so a single-location deal still shows
     // recognizable surrounding geography instead of a blank close-up.
-    const w = Math.max(spanX + pad * 2, 170);
-    let h = Math.max(spanY + pad * 2, 68);
+    const w = Math.max(spanX + pad * 2, 190);
+    let h = Math.max(spanY + pad * 2, 76);
     const cx = (minX + maxX) / 2;
     let cy = (minY + maxY) / 2;
     // Map-units-per-CSS-px at the "meet" scale — glyph sizes multiply by this
     // so dots/chips render at a constant apparent size at any zoom.
     let unitsPerPx = Math.max(w / PX_W, h / PX_H);
     // Reserve headroom above the top marker so its employee chip (which sits
-    // ~34px above the dot) never clips at the header's top edge.
+    // ~34px above the dot) never clips at the header's top edge, and footroom
+    // below the bottom marker so dots never sit under the milestone tracker
+    // band pinned to the bottom of the header (~60px tall incl. labels).
     const headroom = 36 * unitsPerPx;
-    h += headroom;
-    cy -= headroom / 2;
+    const footroom = 68 * unitsPerPx;
+    h += headroom + footroom;
+    cy += (footroom - headroom) / 2;
     unitsPerPx = Math.max(w / PX_W, h / PX_H);
     const box: [number, number, number, number] = [cx - w / 2, cy - h / 2, w, h];
     return { vb: box, pts: projected, k: unitsPerPx };
@@ -149,9 +153,10 @@ export default function DealHeaderMap({ markers, onMarkerClick, onBackgroundClic
       {pts.map((p, i) => {
         const [x, y] = p.xy;
         const label = p.marker.employees > 0 ? p.marker.employees.toLocaleString() : null;
+        const isHover = hovered === i;
         const chipH = 19 * k;
         const chipW = label ? (label.length * 6.6 + 26) * k : 0;
-        const chipY = y - 13 * k; // bottom edge of chip sits above the dot
+        const chipY = y - 16 * k; // bottom edge of chip sits above the dot
         const midY = chipY - chipH / 2;
         const iconX = x - chipW / 2 + 10 * k;
         const clickable = !!onMarkerClick;
@@ -181,15 +186,17 @@ export default function DealHeaderMap({ markers, onMarkerClick, onBackgroundClic
                 : undefined
             }
             tabIndex={clickable ? 0 : undefined}
+            onMouseEnter={clickable ? () => setHovered(i) : undefined}
+            onMouseLeave={clickable ? () => setHovered((h) => (h === i ? null : h)) : undefined}
             style={clickable ? { cursor: "pointer" } : undefined}
             role={clickable ? "button" : undefined}
             aria-label={clickable ? `Location ${p.marker.label ?? i + 1}: ${p.marker.employees} employees` : undefined}
           >
             {/* generous invisible hit area so the dot is easy to click */}
-            {clickable && <circle cx={x} cy={y} r={16 * k} fill="transparent" />}
-            {/* glow halo + solid dot */}
-            <circle cx={x} cy={y} r={9 * k} fill={dot} opacity={haloOpacity} filter="url(#deal-map-glow)" />
-            <circle cx={x} cy={y} r={4.4 * k} fill={dot} stroke={c.isDark ? "rgba(255,255,255,0.85)" : "rgba(23,23,29,0.85)"} strokeWidth={1.2 * k} />
+            {clickable && <circle cx={x} cy={y} r={20 * k} fill="transparent" />}
+            {/* glow halo + solid dot — enlarges slightly on hover */}
+            <circle cx={x} cy={y} r={(isHover ? 15 : 13) * k} fill={dot} opacity={isHover ? Math.min(haloOpacity + 0.2, 0.85) : haloOpacity} filter="url(#deal-map-glow)" />
+            <circle cx={x} cy={y} r={(isHover ? 8 : 7) * k} fill={dot} stroke={c.isDark ? "rgba(255,255,255,0.85)" : "rgba(23,23,29,0.85)"} strokeWidth={1.4 * k} />
             {label && (
               <g>
                 <rect
