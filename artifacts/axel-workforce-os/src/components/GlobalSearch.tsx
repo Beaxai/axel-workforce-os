@@ -63,7 +63,8 @@ export default function GlobalSearch({ onClose }: { onClose: () => void }) {
       onClick={onClose}
       style={{
         position: "fixed", inset: 0, zIndex: 9999,
-        background: "rgba(0,0,0,0.5)",
+        background: "var(--overlay-bg)",
+        backdropFilter: "var(--overlay-blur)", WebkitBackdropFilter: "var(--overlay-blur)",
         display: "flex", alignItems: "flex-start", justifyContent: "center", paddingTop: "80px",
       }}
     >

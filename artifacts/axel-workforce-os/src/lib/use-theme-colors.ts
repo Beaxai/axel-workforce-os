@@ -27,6 +27,12 @@ export function useThemeColors() {
     labelText: isDark ? "rgba(255,255,255,0.72)" : "rgba(0,0,0,0.65)",
     sectionHeading: isDark ? "rgba(255,255,255,0.85)" : "rgba(0,0,0,0.80)",
 
+    // Modal overlay tokens — mirror --overlay-bg / --overlay-blur in index.css.
+    // Prefer var(--overlay-bg)/var(--overlay-blur) in inline styles so the
+    // values re-resolve on theme flip; these mirrors exist for JS-only paths.
+    overlayBg: isDark ? "rgba(0,0,0,0.68)" : "rgba(15,15,20,0.40)",
+    overlayBlur: "blur(12px)",
+
     // Brand accent tokens — mirror the CSS variables in index.css so the JS
     // styling path and the CSS path read identical values. Pink = primary
     // interactive accent; purple = supporting accent.

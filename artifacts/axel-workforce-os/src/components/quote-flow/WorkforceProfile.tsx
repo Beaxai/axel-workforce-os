@@ -812,7 +812,9 @@ export default function WorkforceProfile() {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            background: "rgba(0,0,0,0.5)",
+            background: "var(--overlay-bg)",
+            backdropFilter: "var(--overlay-blur)",
+            WebkitBackdropFilter: "var(--overlay-blur)",
           }}
           onClick={() => setLearnMoreEntry(null)}
         >

@@ -720,7 +720,7 @@ export default function OverviewTab({
       {compare && (
         <div
           onClick={(e) => { if (e.target === e.currentTarget) setCompare(null); }}
-          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, zIndex: 60 }}
+          style={{ position: "fixed", inset: 0, background: "var(--overlay-bg)", backdropFilter: "var(--overlay-blur)", WebkitBackdropFilter: "var(--overlay-blur)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, zIndex: 60 }}
         >
           <div
             style={{

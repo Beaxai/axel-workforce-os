@@ -24,7 +24,9 @@ export default function AxelModal({ isOpen, onClose, children, title }: AxelModa
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "rgba(0,0,0,0.5)",
+        background: "var(--overlay-bg)",
+        backdropFilter: "var(--overlay-blur)",
+        WebkitBackdropFilter: "var(--overlay-blur)",
       }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();

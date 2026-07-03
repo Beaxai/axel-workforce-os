@@ -388,12 +388,10 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
     { label: "EXMOD", value: (() => { const e = fieldValue(sections, "workforce", "emod"); return e == null || e === "" ? "\u2014" : String(e); })(), accent: true },
   ];
 
-  const overlayBg = "rgba(0,0,0,0.5)";
-
   return createPortal(
     <div
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-      style={{ position: "fixed", inset: 0, background: overlayBg, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, zIndex: 50 }}
+      style={{ position: "fixed", inset: 0, background: "var(--overlay-bg)", backdropFilter: "var(--overlay-blur)", WebkitBackdropFilter: "var(--overlay-blur)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, zIndex: 50 }}
     >
       <div
         style={{
