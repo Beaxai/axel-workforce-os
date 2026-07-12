@@ -1,5 +1,12 @@
 # P4 — Pipeline Stage Reconciliation — Design Spec
 
+> **⚠️ SUPERSEDED BY PHASE 4.1 (2026-07-12).** The 10-stage sales funnel this spec adopted was based on
+> an erroneous State Document §11; the pipeline has been reverted to the **8 operational stages**
+> (Submission Review → Indication → U/W Review → Approved/Quoted → Bind Order → Bound → Client → Lost).
+> `outcome` is removed — Lost is a stage again. See `docs/build-prompts/phase-4.1-report.md`.
+> NOTE: Curtis's MASTER doc still needs the same §11 correction. The text below is preserved as-written
+> for historical record.
+
 _Date: 2026-06-30 · Author: Brendan (lead engineer) · Owner sign-off required: Curtis Prince_
 _Branch (planned): `p4-pipeline-stages` off `awf-os-brendy-sprint-1` · Build path: Replit-native_
 

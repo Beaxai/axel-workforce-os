@@ -224,13 +224,14 @@ mirror) MUST stay in sync.
 - **Lead vs Account (decision #4):** a *lead* is an unqualified name in its own `leads` table under
   the Accounts module. An *account* is a real company with a real opportunity — **one table for
   prospects AND clients**, distinguished by `client_stage` (Prospect → Active Prospect → New Client
-  → Active Client). **Never create a separate `prospects` table.** Pipeline Stage 1 ("New Lead")
+  → Active Client). **Never create a separate `prospects` table.** Pipeline Stage 1 ("Submission Review")
   means a new *deal*, not a lead record.
-- **Pipeline is 10 stages** (State Doc, authoritative — `replit.md`'s "8-stage" is wrong): New Lead →
-  Qualified → Needs Analysis → Proposal Sent → Negotiation → Decision Pending → Committed →
-  Documentation → Bound → Client. **Stage 9 (Bound) triggers both implementation trackers**;
-  pipeline stops at Bind Order — the Implementation Tracker owns everything post-bind. Client module
-  is named **"My Program"**; the workforce/partner module is named **"Network"**.
+- **Pipeline is 8 operational stages** (Phase 4.1 correction — the previously-documented 10-stage
+  sales funnel was erroneous): Submission Review → Indication → U/W Review → Approved/Quoted →
+  Bind Order → Bound → Client → Lost. **Bound (stage 6) triggers both implementation trackers**;
+  the Implementation Tracker owns everything post-bind. NOTE: Curtis's MASTER doc still needs the
+  same §11 correction. Client module is named **"My Program"**; the workforce/partner module is
+  named **"Network"**.
 - **API surface changes** must update `openapi.yaml` and regenerate Orval hooks + Zod schemas. New
   scope ships with explicit **acceptance tests**; a phase isn't done until its tests pass. Flag
   anything that would touch a binding decision *before* building it.

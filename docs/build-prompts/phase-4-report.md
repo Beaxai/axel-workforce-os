@@ -1,5 +1,11 @@
 # Phase 4 — Pipeline Stage Reconciliation — Acceptance Report
 
+> **⚠️ SUPERSEDED BY PHASE 4.1 (2026-07-12).** The 10-stage sales funnel delivered by this phase was
+> based on an erroneous State Document §11 and has been reverted to the **8 operational stages**
+> (Submission Review → Indication → U/W Review → Approved/Quoted → Bind Order → Bound → Client → Lost);
+> `outcome` was removed (Lost is a stage). See `docs/build-prompts/phase-4.1-report.md`.
+> NOTE: Curtis's MASTER doc still needs the same §11 correction. The report below is historical.
+
 **Branch:** `p4-pipeline-stages` (NOT merged to `awf-os-brendy-sprint-1` / `main`)
 **Date:** 2026-07-01
 **Scope:** Reconcile the pipeline onto the canonical 10-stage model with an

@@ -133,11 +133,11 @@ async function main() {
     await cap("Admin dashboard — role-based home screen", 2200);
   });
 
-  // 2 — Pipeline: 10 stages
+  // 2 — Pipeline: 8 operational stages
   await beat("pipeline", async () => {
     await goto("/pipeline");
     await page.waitForSelector('div[draggable="true"]', { timeout: 15000 });
-    await cap("NEW in P4 — the 10-stage pipeline (State Document funnel)", 2400);
+    await cap("The 8-stage operational pipeline", 2400);
     await page.mouse.move(720, 450);
     await panBoard(4000);            // pan to the far right (Bound, Client)
     await page.waitForTimeout(1800);

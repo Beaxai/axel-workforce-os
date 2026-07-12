@@ -294,7 +294,7 @@ Client tab disappears permanently after completion
 Rate lookup
 Most recent rate always; EffectiveDate never filters
 Pipeline
-10 stages: New Lead → Qualified → Needs Analysis → Proposal Sent → Negotiation → Decision Pending → Committed → Documentation → Bound → Client; stage 9 (Bound) triggers both implementation trackers; pipeline stops at Bind Order — Implementation Tracker owns post-bind
+Pipeline — 8 stages: Submission Review → Indication → U/W Review → Approved/Quoted → Bind Order → Bound → Client → Lost. Bound (stage 6) triggers both implementation trackers; the Implementation Tracker owns everything post-bind. (Corrects the erroneously-documented 10-stage sales funnel.) NOTE: Curtis's MASTER doc still needs this same §11 correction.
 Deal listener email
 [clientname][ID]@card.axelworkforce.com (deal_email_addresses table, 7 live)
 PDF filling
