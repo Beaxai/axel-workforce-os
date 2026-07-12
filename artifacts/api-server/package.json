@@ -10,6 +10,7 @@
     "seed:users": "tsx src/scripts/seed-users.ts",
     "normalize:user-status": "tsx src/scripts/normalize-user-status.ts",
     "migrate:pipeline-stages": "tsx src/scripts/migrate-pipeline-stages.ts",
+    "revert:pipeline-stages": "tsx src/scripts/revert-pipeline-stages.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
