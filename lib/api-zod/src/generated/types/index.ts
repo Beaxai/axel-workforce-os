@@ -24,7 +24,6 @@ export * from "./changeUserPassword200";
 export * from "./convertLeadRequest";
 export * from "./convertLeadResult";
 export * from "./createRfiRequest";
-export * from "./dealOutcome";
 export * from "./dealSubmissionResponse";
 export * from "./dealSubmissionResponseAccess";
 export * from "./dealSubmissionResponseAccount";

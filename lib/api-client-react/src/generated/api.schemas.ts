@@ -136,32 +136,19 @@ export interface DeclineRequest {
 export type PipelineStage = (typeof PipelineStage)[keyof typeof PipelineStage];
 
 export const PipelineStage = {
-  NEW_LEAD: "NEW_LEAD",
-  QUALIFIED: "QUALIFIED",
-  NEEDS_ANALYSIS: "NEEDS_ANALYSIS",
-  PROPOSAL_SENT: "PROPOSAL_SENT",
-  NEGOTIATION: "NEGOTIATION",
-  DECISION_PENDING: "DECISION_PENDING",
-  COMMITTED: "COMMITTED",
-  DOCUMENTATION: "DOCUMENTATION",
+  SUBMISSION_REVIEW: "SUBMISSION_REVIEW",
+  INDICATION: "INDICATION",
+  UW_REVIEW: "UW_REVIEW",
+  APPROVED_QUOTED: "APPROVED_QUOTED",
+  BIND_ORDER: "BIND_ORDER",
   BOUND: "BOUND",
   CLIENT: "CLIENT",
-} as const;
-
-/**
- * A deal's outcome, orthogonal to its stage (open | lost).
- */
-export type DealOutcome = (typeof DealOutcome)[keyof typeof DealOutcome];
-
-export const DealOutcome = {
-  open: "open",
-  lost: "lost",
+  LOST: "LOST",
 } as const;
 
 export interface StageActionResponse {
   success: boolean;
   stage: PipelineStage;
-  outcome?: DealOutcome;
 }
 
 export type ApproveBlockedResponseBlockingRfisItem = {

@@ -5,11 +5,9 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import type { DealOutcome } from "./dealOutcome";
 import type { PipelineStage } from "./pipelineStage";
 
 export interface StageActionResponse {
   success: boolean;
   stage: PipelineStage;
-  outcome?: DealOutcome;
 }

@@ -87,16 +87,14 @@ export const GetUserProfileResponse = zod.object({
         businessName: zod.string().nullish(),
         stage: zod
           .enum([
-            "NEW_LEAD",
-            "QUALIFIED",
-            "NEEDS_ANALYSIS",
-            "PROPOSAL_SENT",
-            "NEGOTIATION",
-            "DECISION_PENDING",
-            "COMMITTED",
-            "DOCUMENTATION",
+            "SUBMISSION_REVIEW",
+            "INDICATION",
+            "UW_REVIEW",
+            "APPROVED_QUOTED",
+            "BIND_ORDER",
             "BOUND",
             "CLIENT",
+            "LOST",
           ])
           .describe(
             "Canonical pipeline stage (mirrors @workspace\/pipeline PIPELINE_STAGE_KEYS).",
@@ -164,16 +162,14 @@ export const UpdateUserProfileResponse = zod.object({
         businessName: zod.string().nullish(),
         stage: zod
           .enum([
-            "NEW_LEAD",
-            "QUALIFIED",
-            "NEEDS_ANALYSIS",
-            "PROPOSAL_SENT",
-            "NEGOTIATION",
-            "DECISION_PENDING",
-            "COMMITTED",
-            "DOCUMENTATION",
+            "SUBMISSION_REVIEW",
+            "INDICATION",
+            "UW_REVIEW",
+            "APPROVED_QUOTED",
+            "BIND_ORDER",
             "BOUND",
             "CLIENT",
+            "LOST",
           ])
           .describe(
             "Canonical pipeline stage (mirrors @workspace\/pipeline PIPELINE_STAGE_KEYS).",
@@ -851,24 +847,18 @@ export const ApproveDealResponse = zod.object({
   success: zod.boolean(),
   stage: zod
     .enum([
-      "NEW_LEAD",
-      "QUALIFIED",
-      "NEEDS_ANALYSIS",
-      "PROPOSAL_SENT",
-      "NEGOTIATION",
-      "DECISION_PENDING",
-      "COMMITTED",
-      "DOCUMENTATION",
+      "SUBMISSION_REVIEW",
+      "INDICATION",
+      "UW_REVIEW",
+      "APPROVED_QUOTED",
+      "BIND_ORDER",
       "BOUND",
       "CLIENT",
+      "LOST",
     ])
     .describe(
       "Canonical pipeline stage (mirrors @workspace\/pipeline PIPELINE_STAGE_KEYS).",
     ),
-  outcome: zod
-    .enum(["open", "lost"])
-    .optional()
-    .describe("A deal's outcome, orthogonal to its stage (open | lost)."),
 });
 
 /**
@@ -886,24 +876,18 @@ export const DeclineDealResponse = zod.object({
   success: zod.boolean(),
   stage: zod
     .enum([
-      "NEW_LEAD",
-      "QUALIFIED",
-      "NEEDS_ANALYSIS",
-      "PROPOSAL_SENT",
-      "NEGOTIATION",
-      "DECISION_PENDING",
-      "COMMITTED",
-      "DOCUMENTATION",
+      "SUBMISSION_REVIEW",
+      "INDICATION",
+      "UW_REVIEW",
+      "APPROVED_QUOTED",
+      "BIND_ORDER",
       "BOUND",
       "CLIENT",
+      "LOST",
     ])
     .describe(
       "Canonical pipeline stage (mirrors @workspace\/pipeline PIPELINE_STAGE_KEYS).",
     ),
-  outcome: zod
-    .enum(["open", "lost"])
-    .optional()
-    .describe("A deal's outcome, orthogonal to its stage (open | lost)."),
 });
 
 /**

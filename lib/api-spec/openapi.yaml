@@ -1070,8 +1070,6 @@ components:
           type: boolean
         stage:
           $ref: "#/components/schemas/PipelineStage"
-        outcome:
-          $ref: "#/components/schemas/DealOutcome"
       required: [success, stage]
     ApproveBlockedResponse:
       type: object
@@ -1368,22 +1366,14 @@ components:
       type: string
       description: Canonical pipeline stage (mirrors @workspace/pipeline PIPELINE_STAGE_KEYS).
       enum:
-        - NEW_LEAD
-        - QUALIFIED
-        - NEEDS_ANALYSIS
-        - PROPOSAL_SENT
-        - NEGOTIATION
-        - DECISION_PENDING
-        - COMMITTED
-        - DOCUMENTATION
+        - SUBMISSION_REVIEW
+        - INDICATION
+        - UW_REVIEW
+        - APPROVED_QUOTED
+        - BIND_ORDER
         - BOUND
         - CLIENT
-    DealOutcome:
-      type: string
-      description: A deal's outcome, orthogonal to its stage (open | lost).
-      enum:
-        - open
-        - lost
+        - LOST
     AuthUser:
       type: object
       properties:
