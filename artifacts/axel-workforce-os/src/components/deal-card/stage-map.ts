@@ -19,18 +19,16 @@ export const PHASES = [
   "Implementation",
 ] as const;
 
-// Display-only 10 -> 6 mapping, in board order (Curtis-locked semantics).
+// Display-only 8 -> 6 mapping, in board order (Curtis-locked semantics).
 const STAGE_TO_PHASE: Record<PipelineStageKey, number> = {
-  NEW_LEAD: 0,
-  QUALIFIED: 0,
-  NEEDS_ANALYSIS: 0,
-  PROPOSAL_SENT: 1,
-  NEGOTIATION: 2,
-  DECISION_PENDING: 3,
-  COMMITTED: 3,
-  DOCUMENTATION: 4,
+  SUBMISSION_REVIEW: 0,
+  INDICATION: 1,
+  UW_REVIEW: 2,
+  APPROVED_QUOTED: 3,
+  BIND_ORDER: 4,
   BOUND: 5,
   CLIENT: 5,
+  LOST: 3,
 };
 
 export function phaseIndex(stage?: string): number {
