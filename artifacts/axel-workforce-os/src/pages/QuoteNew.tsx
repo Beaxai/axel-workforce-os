@@ -175,7 +175,7 @@ export default function QuoteNew() {
         state: form.state,
         annualPayroll: form.annualPayroll,
         employeeCountFt: parseInt(form.employeeCount),
-        stage: "NEW_LEAD",
+        stage: "SUBMISSION_REVIEW",
         wcPremium: wcBreakdown ? String(wcBreakdown.result.wcPremium) : undefined,
         wfsPepmRate: wfsBreakdown ? String(wfsBreakdown.result.pepm) : undefined,
       };

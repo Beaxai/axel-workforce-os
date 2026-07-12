@@ -21,7 +21,7 @@ import { useAuthStore } from "@/lib/auth-store";
 import type { SectionView, SubmissionPayload, ActivityRow, SectionPatchResponse, RfiRow, RfiListResponse, QuoteVariation, QuoteVariationsResponse, ApplyVariationResponse, PreviewVariationResponse, VariationLevers, DealTeamMember } from "./types";
 import UserMiniProfile from "@/components/user-profile/UserMiniProfile";
 import type { CreateRfiInput } from "./OverviewTab";
-import { PHASES, phaseIndex, isDeclined } from "./stage-map";
+import { PHASES, phaseIndex } from "./stage-map";
 import DealHeaderMap, { type MarkerClickInfo } from "./DealHeaderMap";
 import { type GeoMarker, type GeoMarkerClassCode, stateCentroid, zipToLngLat, spreadDuplicates } from "@/lib/geo";
 import LocationPopup from "./LocationPopup";
@@ -560,7 +560,8 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
 
   const stage = deal?.stage;
   const currentPhase = phaseIndex(stage);
-  const declined = isDeclined((deal as { outcome?: string } | undefined)?.outcome);
+  // A Lost-stage deal shows a red "Declined" marker at its mapped phase node.
+  const declined = stage === "LOST";
   const effectiveDate = deal?.coverageEffectiveDate ? new Date(String(deal.coverageEffectiveDate)).toLocaleDateString() : null;
 
   const badges = [deal?.vertical, deal?.productType].filter(Boolean) as string[];

@@ -11,7 +11,7 @@ export default function UnderwriterDashboard() {
   const { data: policies = [] } = useQuery({ queryKey: ["policies"], queryFn: () => api.get<any[]>("/policies") });
   const { data: rates = [] } = useQuery({ queryKey: ["pepm-rates"], queryFn: () => api.get<any[]>("/rate-tables/pepm") });
 
-  const pendingDeals = deals.filter((d: any) => ["NEW_LEAD", "QUOTING"].includes(d.stage));
+  const pendingDeals = deals.filter((d: any) => ["SUBMISSION_REVIEW", "UW_REVIEW"].includes(d.stage));
 
   const textPrimary = isDark ? "#fff" : "#111";
   const textMuted = isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.58)";

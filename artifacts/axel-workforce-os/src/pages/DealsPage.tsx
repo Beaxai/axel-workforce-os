@@ -44,7 +44,7 @@ export default function DealsPage() {
             const fd = new FormData(e.currentTarget);
             create.mutate({
               referenceCode: fd.get("referenceCode"),
-              stage: "NEW_LEAD",
+              stage: "SUBMISSION_REVIEW",
               productType: fd.get("productType"),
               vertical: fd.get("vertical") || null,
               state: fd.get("state") || null,

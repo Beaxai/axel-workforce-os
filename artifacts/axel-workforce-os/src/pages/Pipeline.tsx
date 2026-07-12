@@ -54,7 +54,6 @@ interface Deal {
   annualPayroll?: string;
   employeeCountFt?: number;
   stage?: string;
-  outcome?: string;
   wcPremium?: string;
   wfsPepmRate?: string;
   ownerId?: string;
@@ -65,8 +64,8 @@ interface Deal {
   kpiExMod?: string | null;
 }
 
-// The 10 canonical stages come from the shared @workspace/pipeline constant —
-// the single source of truth. Lost is an outcome, not a column, so it is off-board.
+// The 8 canonical stages come from the shared @workspace/pipeline constant —
+// the single source of truth. Lost is a stage, so it renders as a board column.
 const STAGES = PIPELINE_STAGES.map((s) => ({ num: s.order, key: s.key, label: s.label }));
 const DEFAULT_STAGE = STAGES[0].key;
 
@@ -184,7 +183,6 @@ export default function Pipeline() {
   const [viewMode, setViewMode] = useState<"kanban" | "list">("kanban");
   const [appetiteFilter, setAppetiteFilter] = useState<string>("");
   const [dealAppetiteMap, setDealAppetiteMap] = useState<Record<string, string>>({});
-  const [showLost, setShowLost] = useState(false);
   const [bindConfirm, setBindConfirm] = useState<{ dealId: string; name: string; prevStage?: string } | null>(null);
 
   const [form, setForm] = useState({
@@ -202,8 +200,6 @@ export default function Pipeline() {
   const inputBg = isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)";
   const inputBorder = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)";
   const borderSubtle = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)";
-
-  const [lostDeals, setLostDeals] = useState<Deal[]>([]);
 
   /* ------------------------------------------------------------------ */
   /* In-progress submission drafts (autosaved by the quote wizard)       */
@@ -247,7 +243,7 @@ export default function Pipeline() {
 
   const fetchDeals = useCallback(async () => {
     try {
-      // Default list already excludes outcome='lost' (server, Step D).
+      // The list returns ALL deals — Lost is a stage (a board column).
       const data = await api.get<Deal[]>("/deals");
       setDeals(data);
     } catch (err) {
@@ -257,24 +253,9 @@ export default function Pipeline() {
     }
   }, []);
 
-  // Lost deals are absent from the active board; fetched on demand via
-  // ?includeLost=true and filtered to outcome='lost' for the Lost view.
-  const fetchLostDeals = useCallback(async () => {
-    try {
-      const data = await api.get<Deal[]>("/deals?includeLost=true");
-      setLostDeals(data.filter((d) => d.outcome === "lost"));
-    } catch (err) {
-      console.error("Failed to fetch lost deals:", err);
-    }
-  }, []);
-
   useEffect(() => {
     fetchDeals();
   }, [fetchDeals]);
-
-  useEffect(() => {
-    if (showLost) fetchLostDeals();
-  }, [showLost, fetchLostDeals]);
 
   useEffect(() => {
     const handler = () => { fetchDeals(); };
@@ -626,104 +607,10 @@ export default function Pipeline() {
             </button>
           );
         })}
-        <button
-          onClick={() => setShowLost((v) => !v)}
-          style={{
-            marginLeft: "auto",
-            padding: "4px 12px",
-            borderRadius: "6px",
-            border: showLost ? "1px solid #ef4444" : `1px solid ${borderSubtle}`,
-            cursor: "pointer",
-            fontSize: "12px",
-            fontWeight: 500,
-            background: showLost ? "#ef444420" : "transparent",
-            color: showLost ? "#ef4444" : textMuted,
-            transition: "all 0.15s",
-          }}
-        >
-          {showLost ? "Hide Lost" : "Show Lost"}
-        </button>
       </div>
 
       {loading ? (
         <div style={{ color: textMuted, padding: "40px", textAlign: "center" }}>Loading pipeline…</div>
-      ) : showLost ? (
-        <div style={{ flex: 1, overflowY: "auto", paddingBottom: "12px" }}>
-          <GlassCard padding="0px">
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
-              <thead>
-                <tr>
-                  {["Business", "Vertical", "Type", "State", "Stage at Loss", "WC Premium", "Created"].map((h) => (
-                    <th
-                      key={h}
-                      style={{
-                        textAlign: "left",
-                        padding: "12px 14px",
-                        fontWeight: 600,
-                        fontSize: "12px",
-                        color: textMuted,
-                        borderBottom: `1px solid ${borderSubtle}`,
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {lostDeals.map((deal) => {
-                  const Icon = deal.vertical ? VERTICAL_ICONS[deal.vertical] : null;
-                  const stageLabel = STAGES.find((s) => s.key === deal.stage)?.label || deal.stage || "—";
-                  return (
-                    <tr
-                      key={deal.id}
-                      onClick={() => openDealCard(deal.id)}
-                      style={{ cursor: "pointer", transition: "background 0.12s" }}
-                      onMouseEnter={(e) => { e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)"; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
-                    >
-                      <td style={{ padding: "10px 14px", color: textPrimary, fontWeight: 500, borderBottom: `1px solid ${borderSubtle}` }}>
-                        {deal.businessName || "Untitled"}
-                      </td>
-                      <td style={{ padding: "10px 14px", borderBottom: `1px solid ${borderSubtle}` }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "5px", color: textMuted }}>
-                          {Icon && <Icon style={{ width: "13px", height: "13px" }} />}
-                          {deal.vertical || "—"}
-                        </div>
-                      </td>
-                      <td style={{ padding: "10px 14px", borderBottom: `1px solid ${borderSubtle}` }}>
-                        <Badge
-                          label={deal.productType === "PEO" ? "PEO" : "WC"}
-                          color={deal.productType === "PEO" ? "purple" : "blue"}
-                        />
-                      </td>
-                      <td style={{ padding: "10px 14px", color: textMuted, borderBottom: `1px solid ${borderSubtle}` }}>
-                        {deal.state || "—"}
-                      </td>
-                      <td style={{ padding: "10px 14px", borderBottom: `1px solid ${borderSubtle}` }}>
-                        <Badge label={stageLabel} color="gray" />
-                      </td>
-                      <td style={{ padding: "10px 14px", color: deal.wcPremium && parseFloat(deal.wcPremium) > 0 ? textPrimary : textMuted, borderBottom: `1px solid ${borderSubtle}` }}>
-                        {deal.wcPremium && parseFloat(deal.wcPremium) > 0 ? formatCurrency(deal.wcPremium) : "—"}
-                      </td>
-                      <td style={{ padding: "10px 14px", color: textMuted, borderBottom: `1px solid ${borderSubtle}`, whiteSpace: "nowrap" }}>
-                        {deal.createdAt ? new Date(deal.createdAt).toLocaleDateString() : "—"}
-                      </td>
-                    </tr>
-                  );
-                })}
-                {lostDeals.length === 0 && (
-                  <tr>
-                    <td colSpan={7} style={{ padding: "40px", textAlign: "center", color: textMuted }}>
-                      No lost deals.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </GlassCard>
-        </div>
       ) : viewMode === "list" ? (
         <div style={{ flex: 1, overflowY: "auto", paddingBottom: "12px" }}>
           <GlassCard padding="0px">

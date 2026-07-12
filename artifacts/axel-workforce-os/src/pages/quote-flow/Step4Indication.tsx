@@ -331,7 +331,7 @@ export default function Step4Indication() {
         state: s.locations[0]?.state || undefined,
         annualPayroll: totalPayroll ? String(totalPayroll) : undefined,
         employeeCountFt: totalEmployees || undefined,
-        stage: "PROPOSAL_SENT",
+        stage: "INDICATION",
         wcPremium: isAso ? undefined : String(totalPremium),
       };
       const newDeal = await api.post<{ id: string }>("/deals", payload);

@@ -27,10 +27,13 @@ export default function Dashboard() {
   const recentDeals = deals.slice(0, 5);
 
   const stageColors: Record<string, string> = {
-    NEW_LEAD: "bg-blue-100 text-blue-700",
-    QUOTING: "bg-yellow-100 text-yellow-700",
-    PROPOSAL: "bg-purple-100 text-purple-700",
+    SUBMISSION_REVIEW: "bg-blue-100 text-blue-700",
+    INDICATION: "bg-yellow-100 text-yellow-700",
+    UW_REVIEW: "bg-purple-100 text-purple-700",
+    APPROVED_QUOTED: "bg-purple-100 text-purple-700",
+    BIND_ORDER: "bg-yellow-100 text-yellow-700",
     BOUND: "bg-green-100 text-green-700",
+    CLIENT: "bg-green-100 text-green-700",
     LOST: "bg-red-100 text-red-700",
   };
 
