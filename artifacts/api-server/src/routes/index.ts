@@ -14,7 +14,7 @@ import tasksRouter from "./tasks";
 import notesRouter from "./notes";
 import agentRegistrationsRouter from "./agent-registrations";
 import rateTablesRouter from "./rate-tables";
-import implementationRouter from "./implementation";
+import journeysRouter from "./journeys";
 import workforceRouter from "./workforce";
 import accountsRouter from "./accounts";
 import leadsRouter from "./leads";
@@ -80,7 +80,10 @@ router.use("/tasks", requireRoles("ADMIN", "CSA"), tasksRouter);
 router.use("/notes", requireRoles(...INTERNAL_SALES), notesRouter);
 router.use("/agent-registrations", requireRoles("ADMIN", "CSA"), agentRegistrationsRouter);
 router.use("/rate-tables", requireRoles("ADMIN"), rateTablesRouter);
-router.use("/implementation", requireRoles("ADMIN", "CSA"), implementationRouter);
+// Retired (P5b W1 Task 4): /implementation is superseded by /journeys.
+// GETs redirect so pre-P5b UI pages keep working; writes are gone.
+router.use("/implementation", (req, res) => res.redirect(307, "/api/journeys" + req.url));
+router.use("/journeys", journeysRouter);
 router.use("/workforce", requireRoles("ADMIN", "CSA", "AGENT"), workforceRouter);
 router.use("/accounts", requireRoles(...INTERNAL_SALES), accountsRouter);
 // Leads: ADMIN/CSA full, AGENT own-only (enforced inside). UNDERWRITER excluded.
