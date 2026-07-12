@@ -31,6 +31,11 @@ import documentsRouter from "./documents";
 import appetiteRouter from "./appetite";
 import aiRouter from "./ai";
 import dealCardRouter from "./deal-card";
+import {
+  journeyTemplatesRouter,
+  journeyTemplatePhasesRouter,
+  journeyTemplateTasksRouter,
+} from "./journey-templates";
 import { requireAuth, requireRoles } from "../middleware/require-auth";
 
 const router: IRouter = Router();
@@ -98,6 +103,10 @@ router.use(
   requireRoles("ADMIN", "CSA", "AGENT", "UNDERWRITER", "EMPLOYER", "CARRIER", "PEO", "VENDOR"),
   dealCardRouter,
 );
+// Journey templates (P5b W1): admin-only CRUD across all three path prefixes.
+router.use("/journey-templates", requireRoles("ADMIN"), journeyTemplatesRouter);
+router.use("/journey-template-phases", requireRoles("ADMIN"), journeyTemplatePhasesRouter);
+router.use("/journey-template-tasks", requireRoles("ADMIN"), journeyTemplateTasksRouter);
 router.use("/bind-packages", requireRoles(...INTERNAL_SALES), (req, res, next) => {
   req.url = "/bind-package" + req.url;
   documentsRouter(req, res, next);
