@@ -31,10 +31,6 @@ export const PIPELINE_STAGES: readonly PipelineStage[] = [
   { key: "LOST", label: "Lost", order: 8 },
 ] as const;
 
-/** A deal's outcome, orthogonal to its stage. */
-export type DealOutcome = "open" | "lost";
-export const DEAL_OUTCOMES: readonly DealOutcome[] = ["open", "lost"] as const;
-
 /** Ordered list of the 8 canonical stage keys. */
 export const PIPELINE_STAGE_KEYS: readonly PipelineStageKey[] = PIPELINE_STAGES.map(
   (s) => s.key,

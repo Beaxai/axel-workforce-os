@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import { db, dealsTable, insertDealSchema, quotesTable, contactsTable, notesTable, tasksTable, activityLogTable, insertActivityLogSchema, dealEmailAddressesTable, usersTable, accountsTable, lossHistoryDocumentsTable, implementationTrackersTable, type Deal } from "@workspace/db";
 import { eq, desc, inArray, sql } from "drizzle-orm";
 import { z } from "zod/v4";
-import { PIPELINE_STAGE_KEYS, DEAL_OUTCOMES } from "@workspace/pipeline";
+import { PIPELINE_STAGE_KEYS } from "@workspace/pipeline";
 import { buildSections } from "../lib/deal-sections";
 import { findOrCreateAccount } from "../lib/accounts";
 
@@ -18,14 +18,11 @@ type DbOrTx = Db | Tx;
 // create) the owning account from the deal payload.
 const createDealSchema = insertDealSchema.extend({ accountId: z.string().uuid().optional() });
 
-/** Reject stage/outcome values outside the canonical sets. Returns an error
- *  message string, or null when valid. Undefined/null (field omitted) is OK. */
-function validateStageOutcome(stage: unknown, outcome: unknown): string | null {
+/** Reject stage values outside the canonical 8 operational keys. Returns an
+ *  error message string, or null when valid. Undefined/null (field omitted) is OK. */
+function validateStage(stage: unknown): string | null {
   if (stage !== undefined && stage !== null && !(PIPELINE_STAGE_KEYS as readonly string[]).includes(stage as string)) {
     return `Invalid stage "${String(stage)}". Must be one of: ${PIPELINE_STAGE_KEYS.join(", ")}`;
-  }
-  if (outcome !== undefined && outcome !== null && !(DEAL_OUTCOMES as readonly string[]).includes(outcome as string)) {
-    return `Invalid outcome "${String(outcome)}". Must be one of: ${DEAL_OUTCOMES.join(", ")}`;
   }
   return null;
 }
@@ -109,16 +106,9 @@ interface WorkforceProfileLite {
   }[];
 }
 
-router.get("/", async (req, res) => {
-  // Active list excludes lost deals by default; pass ?includeLost=true to include them.
-  const includeLost = req.query.includeLost === "true";
-  const rows = includeLost
-    ? await db.select().from(dealsTable).orderBy(desc(dealsTable.createdAt))
-    : await db
-        .select()
-        .from(dealsTable)
-        .where(sql`coalesce(${dealsTable.outcome}, 'open') <> 'lost'`)
-        .orderBy(desc(dealsTable.createdAt));
+router.get("/", async (_req, res) => {
+  // Returns ALL deals — LOST is a stage (a board column), not a filtered outcome.
+  const rows = await db.select().from(dealsTable).orderBy(desc(dealsTable.createdAt));
 
   // Enrich each deal with card-face KPIs (locations / employees / payroll / exMod),
   // falling back to the latest quote's workforce_profile when the deal-level
@@ -192,7 +182,7 @@ router.get("/:id", async (req, res) => {
 router.post("/", async (req, res) => {
   const parsed = createDealSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues });
-  const invalid = validateStageOutcome(parsed.data.stage, parsed.data.outcome);
+  const invalid = validateStage(parsed.data.stage);
   if (invalid) return res.status(400).json({ error: invalid });
   let accountId = parsed.data.accountId;
   if (!accountId) {
@@ -216,7 +206,7 @@ router.post("/", async (req, res) => {
 router.patch("/:id", async (req, res) => {
   const parsed = insertDealSchema.partial().safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues });
-  const invalid = validateStageOutcome(parsed.data.stage, parsed.data.outcome);
+  const invalid = validateStage(parsed.data.stage);
   if (invalid) return res.status(400).json({ error: invalid });
 
   const u = req.user;
