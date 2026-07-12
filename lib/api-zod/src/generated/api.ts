@@ -1086,3 +1086,318 @@ export const PreviewQuoteVariationResponse = zod.object({
     isPEO: zod.boolean(),
   }),
 });
+
+/**
+ * @summary List journey templates
+ */
+export const GetJourneyTemplatesQueryParams = zod.object({
+  type: zod.enum(["IMPLEMENTATION", "ONBOARDING"]).optional(),
+  productType: zod.enum(["WC", "PEO", "ASO", "ANY"]).optional(),
+  isActive: zod.coerce.boolean().optional(),
+});
+
+export const GetJourneyTemplatesResponseItem = zod.object({
+  id: zod.string().uuid(),
+  name: zod.string(),
+  type: zod.enum(["IMPLEMENTATION", "ONBOARDING"]),
+  productType: zod.enum(["WC", "PEO", "ASO", "ANY"]),
+  isActive: zod.boolean(),
+  version: zod.number(),
+  createdAt: zod.string().nullish(),
+  updatedAt: zod.string().nullish(),
+});
+export const GetJourneyTemplatesResponse = zod.array(
+  GetJourneyTemplatesResponseItem,
+);
+
+/**
+ * @summary Create a journey template
+ */
+export const CreateJourneyTemplateBody = zod.object({
+  name: zod.string(),
+  type: zod.enum(["IMPLEMENTATION", "ONBOARDING"]),
+  productType: zod.enum(["WC", "PEO", "ASO", "ANY"]),
+  isActive: zod.boolean().optional(),
+  version: zod.number().optional(),
+});
+
+/**
+ * @summary Get a journey template with its phases and tasks
+ */
+export const GetJourneyTemplateParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const GetJourneyTemplateResponse = zod
+  .object({
+    id: zod.string().uuid(),
+    name: zod.string(),
+    type: zod.enum(["IMPLEMENTATION", "ONBOARDING"]),
+    productType: zod.enum(["WC", "PEO", "ASO", "ANY"]),
+    isActive: zod.boolean(),
+    version: zod.number(),
+    createdAt: zod.string().nullish(),
+    updatedAt: zod.string().nullish(),
+  })
+  .and(
+    zod.object({
+      phases: zod.array(
+        zod.object({
+          id: zod.string().uuid(),
+          templateId: zod.string().uuid(),
+          name: zod.string(),
+          sortOrder: zod.number(),
+          targetOffsetDays: zod.number(),
+        }),
+      ),
+      tasks: zod.array(
+        zod.object({
+          id: zod.string().uuid(),
+          templateId: zod.string().uuid(),
+          phaseId: zod.string().uuid(),
+          name: zod.string(),
+          taskType: zod.string(),
+          ownerType: zod.enum([
+            "INTERNAL_SPECIALIST",
+            "CLIENT",
+            "AGENT",
+            "CARRIER",
+          ]),
+          isMilestone: zod.boolean(),
+          offsetDays: zod.number(),
+          sortOrder: zod.number(),
+        }),
+      ),
+    }),
+  );
+
+/**
+ * @summary Update a journey template
+ */
+export const UpdateJourneyTemplateParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const UpdateJourneyTemplateBody = zod.object({
+  name: zod.string().optional(),
+  type: zod.enum(["IMPLEMENTATION", "ONBOARDING"]).optional(),
+  productType: zod.enum(["WC", "PEO", "ASO", "ANY"]).optional(),
+  isActive: zod.boolean().optional(),
+  version: zod.number().optional(),
+});
+
+export const UpdateJourneyTemplateResponse = zod.object({
+  id: zod.string().uuid(),
+  name: zod.string(),
+  type: zod.enum(["IMPLEMENTATION", "ONBOARDING"]),
+  productType: zod.enum(["WC", "PEO", "ASO", "ANY"]),
+  isActive: zod.boolean(),
+  version: zod.number(),
+  createdAt: zod.string().nullish(),
+  updatedAt: zod.string().nullish(),
+});
+
+/**
+ * @summary Delete a journey template
+ */
+export const DeleteJourneyTemplateParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+/**
+ * @summary Add a phase to a journey template
+ */
+export const CreateJourneyTemplatePhaseParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const CreateJourneyTemplatePhaseBody = zod.object({
+  name: zod.string(),
+  sortOrder: zod.number(),
+  targetOffsetDays: zod.number().optional(),
+});
+
+/**
+ * @summary Update a journey template phase
+ */
+export const UpdateJourneyTemplatePhaseParams = zod.object({
+  phaseId: zod.coerce.string(),
+});
+
+export const UpdateJourneyTemplatePhaseBody = zod.object({
+  name: zod.string().optional(),
+  sortOrder: zod.number().optional(),
+  targetOffsetDays: zod.number().optional(),
+});
+
+export const UpdateJourneyTemplatePhaseResponse = zod.object({
+  id: zod.string().uuid(),
+  templateId: zod.string().uuid(),
+  name: zod.string(),
+  sortOrder: zod.number(),
+  targetOffsetDays: zod.number(),
+});
+
+/**
+ * @summary Delete a journey template phase
+ */
+export const DeleteJourneyTemplatePhaseParams = zod.object({
+  phaseId: zod.coerce.string(),
+});
+
+/**
+ * @summary Add a task to a journey template
+ */
+export const CreateJourneyTemplateTaskParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const CreateJourneyTemplateTaskBody = zod.object({
+  phaseId: zod.string().uuid(),
+  name: zod.string(),
+  taskType: zod.string().optional(),
+  ownerType: zod.enum(["INTERNAL_SPECIALIST", "CLIENT", "AGENT", "CARRIER"]),
+  isMilestone: zod.boolean().optional(),
+  offsetDays: zod.number().optional(),
+  sortOrder: zod.number(),
+});
+
+/**
+ * @summary Update a journey template task
+ */
+export const UpdateJourneyTemplateTaskParams = zod.object({
+  taskId: zod.coerce.string(),
+});
+
+export const UpdateJourneyTemplateTaskBody = zod.object({
+  phaseId: zod.string().uuid().optional(),
+  name: zod.string().optional(),
+  taskType: zod.string().optional(),
+  ownerType: zod
+    .enum(["INTERNAL_SPECIALIST", "CLIENT", "AGENT", "CARRIER"])
+    .optional(),
+  isMilestone: zod.boolean().optional(),
+  offsetDays: zod.number().optional(),
+  sortOrder: zod.number().optional(),
+});
+
+export const UpdateJourneyTemplateTaskResponse = zod.object({
+  id: zod.string().uuid(),
+  templateId: zod.string().uuid(),
+  phaseId: zod.string().uuid(),
+  name: zod.string(),
+  taskType: zod.string(),
+  ownerType: zod.enum(["INTERNAL_SPECIALIST", "CLIENT", "AGENT", "CARRIER"]),
+  isMilestone: zod.boolean(),
+  offsetDays: zod.number(),
+  sortOrder: zod.number(),
+});
+
+/**
+ * @summary Delete a journey template task
+ */
+export const DeleteJourneyTemplateTaskParams = zod.object({
+  taskId: zod.coerce.string(),
+});
+
+/**
+ * @summary List journeys (implementation/onboarding trackers)
+ */
+export const GetJourneysQueryParams = zod.object({
+  dealId: zod.coerce.string().optional(),
+  type: zod.enum(["IMPLEMENTATION", "ONBOARDING"]).optional(),
+});
+
+export const GetJourneysResponseItem = zod.object({
+  id: zod.string().uuid(),
+  dealId: zod.string().uuid().nullish(),
+  policyId: zod.string().uuid().nullish(),
+  type: zod.enum(["IMPLEMENTATION", "ONBOARDING"]),
+  templateId: zod.string().uuid().nullish(),
+  productType: zod.string(),
+  goLiveDate: zod.string(),
+  status: zod.enum(["IN_PROGRESS", "COMPLETE"]),
+  assignedSpecialist: zod.string().uuid().nullish(),
+  overallProgress: zod.number(),
+  createdAt: zod.string().nullish(),
+  completedAt: zod.string().nullish(),
+});
+export const GetJourneysResponse = zod.array(GetJourneysResponseItem);
+
+/**
+ * @summary Get a journey with its phases and tasks
+ */
+export const GetJourneyParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const GetJourneyResponse = zod
+  .object({
+    id: zod.string().uuid(),
+    dealId: zod.string().uuid().nullish(),
+    policyId: zod.string().uuid().nullish(),
+    type: zod.enum(["IMPLEMENTATION", "ONBOARDING"]),
+    templateId: zod.string().uuid().nullish(),
+    productType: zod.string(),
+    goLiveDate: zod.string(),
+    status: zod.enum(["IN_PROGRESS", "COMPLETE"]),
+    assignedSpecialist: zod.string().uuid().nullish(),
+    overallProgress: zod.number(),
+    createdAt: zod.string().nullish(),
+    completedAt: zod.string().nullish(),
+  })
+  .and(
+    zod.object({
+      phases: zod.array(
+        zod.object({
+          id: zod.string().uuid(),
+          trackerId: zod.string().uuid(),
+          phaseNumber: zod.number(),
+          phaseName: zod.string(),
+          targetDate: zod.string(),
+          status: zod.string(),
+        }),
+      ),
+      tasks: zod.array(
+        zod.object({
+          id: zod.string().uuid(),
+          trackerId: zod.string().uuid(),
+          phaseId: zod.string().uuid(),
+          taskName: zod.string(),
+          taskType: zod.string(),
+          ownerType: zod.string(),
+          status: zod.enum(["PENDING", "IN_PROGRESS", "COMPLETE"]),
+          isMilestone: zod.boolean(),
+          dueDate: zod.string().nullish(),
+          completedAt: zod.string().nullish(),
+          sortOrder: zod.number(),
+        }),
+      ),
+    }),
+  );
+
+/**
+ * @summary Update a journey task's status
+ */
+export const UpdateJourneyTaskStatusParams = zod.object({
+  id: zod.coerce.string(),
+  taskId: zod.coerce.string(),
+});
+
+export const UpdateJourneyTaskStatusBody = zod.object({
+  status: zod.enum(["PENDING", "IN_PROGRESS", "COMPLETE"]),
+});
+
+export const UpdateJourneyTaskStatusResponse = zod.object({
+  id: zod.string().uuid(),
+  trackerId: zod.string().uuid(),
+  phaseId: zod.string().uuid(),
+  taskName: zod.string(),
+  taskType: zod.string(),
+  ownerType: zod.string(),
+  status: zod.enum(["PENDING", "IN_PROGRESS", "COMPLETE"]),
+  isMilestone: zod.boolean(),
+  dueDate: zod.string().nullish(),
+  completedAt: zod.string().nullish(),
+  sortOrder: zod.number(),
+});

@@ -560,6 +560,253 @@ export interface ApproveRegistrationResponse {
   registrationId: string;
 }
 
+export type JourneyTemplateType =
+  (typeof JourneyTemplateType)[keyof typeof JourneyTemplateType];
+
+export const JourneyTemplateType = {
+  IMPLEMENTATION: "IMPLEMENTATION",
+  ONBOARDING: "ONBOARDING",
+} as const;
+
+export type JourneyTemplateProductType =
+  (typeof JourneyTemplateProductType)[keyof typeof JourneyTemplateProductType];
+
+export const JourneyTemplateProductType = {
+  WC: "WC",
+  PEO: "PEO",
+  ASO: "ASO",
+  ANY: "ANY",
+} as const;
+
+export interface JourneyTemplate {
+  id: string;
+  name: string;
+  type: JourneyTemplateType;
+  productType: JourneyTemplateProductType;
+  isActive: boolean;
+  version: number;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+}
+
+export interface JourneyTemplatePhase {
+  id: string;
+  templateId: string;
+  name: string;
+  sortOrder: number;
+  targetOffsetDays: number;
+}
+
+export type JourneyTemplateTaskOwnerType =
+  (typeof JourneyTemplateTaskOwnerType)[keyof typeof JourneyTemplateTaskOwnerType];
+
+export const JourneyTemplateTaskOwnerType = {
+  INTERNAL_SPECIALIST: "INTERNAL_SPECIALIST",
+  CLIENT: "CLIENT",
+  AGENT: "AGENT",
+  CARRIER: "CARRIER",
+} as const;
+
+export interface JourneyTemplateTask {
+  id: string;
+  templateId: string;
+  phaseId: string;
+  name: string;
+  taskType: string;
+  ownerType: JourneyTemplateTaskOwnerType;
+  isMilestone: boolean;
+  offsetDays: number;
+  sortOrder: number;
+}
+
+export type JourneyTemplateDetail = JourneyTemplate & {
+  phases: JourneyTemplatePhase[];
+  tasks: JourneyTemplateTask[];
+};
+
+export type JourneyType = (typeof JourneyType)[keyof typeof JourneyType];
+
+export const JourneyType = {
+  IMPLEMENTATION: "IMPLEMENTATION",
+  ONBOARDING: "ONBOARDING",
+} as const;
+
+export type JourneyStatus = (typeof JourneyStatus)[keyof typeof JourneyStatus];
+
+export const JourneyStatus = {
+  IN_PROGRESS: "IN_PROGRESS",
+  COMPLETE: "COMPLETE",
+} as const;
+
+export interface Journey {
+  id: string;
+  dealId?: string | null;
+  policyId?: string | null;
+  type: JourneyType;
+  templateId?: string | null;
+  productType: string;
+  goLiveDate: string;
+  status: JourneyStatus;
+  assignedSpecialist?: string | null;
+  overallProgress: number;
+  createdAt?: string | null;
+  completedAt?: string | null;
+}
+
+export interface JourneyPhase {
+  id: string;
+  trackerId: string;
+  phaseNumber: number;
+  phaseName: string;
+  targetDate: string;
+  status: string;
+}
+
+export type JourneyTaskStatus =
+  (typeof JourneyTaskStatus)[keyof typeof JourneyTaskStatus];
+
+export const JourneyTaskStatus = {
+  PENDING: "PENDING",
+  IN_PROGRESS: "IN_PROGRESS",
+  COMPLETE: "COMPLETE",
+} as const;
+
+export interface JourneyTask {
+  id: string;
+  trackerId: string;
+  phaseId: string;
+  taskName: string;
+  taskType: string;
+  ownerType: string;
+  status: JourneyTaskStatus;
+  isMilestone: boolean;
+  dueDate?: string | null;
+  completedAt?: string | null;
+  sortOrder: number;
+}
+
+export type JourneyDetail = Journey & {
+  phases: JourneyPhase[];
+  tasks: JourneyTask[];
+};
+
+export type CreateJourneyTemplateRequestType =
+  (typeof CreateJourneyTemplateRequestType)[keyof typeof CreateJourneyTemplateRequestType];
+
+export const CreateJourneyTemplateRequestType = {
+  IMPLEMENTATION: "IMPLEMENTATION",
+  ONBOARDING: "ONBOARDING",
+} as const;
+
+export type CreateJourneyTemplateRequestProductType =
+  (typeof CreateJourneyTemplateRequestProductType)[keyof typeof CreateJourneyTemplateRequestProductType];
+
+export const CreateJourneyTemplateRequestProductType = {
+  WC: "WC",
+  PEO: "PEO",
+  ASO: "ASO",
+  ANY: "ANY",
+} as const;
+
+export interface CreateJourneyTemplateRequest {
+  name: string;
+  type: CreateJourneyTemplateRequestType;
+  productType: CreateJourneyTemplateRequestProductType;
+  isActive?: boolean;
+  version?: number;
+}
+
+export type UpdateJourneyTemplateRequestType =
+  (typeof UpdateJourneyTemplateRequestType)[keyof typeof UpdateJourneyTemplateRequestType];
+
+export const UpdateJourneyTemplateRequestType = {
+  IMPLEMENTATION: "IMPLEMENTATION",
+  ONBOARDING: "ONBOARDING",
+} as const;
+
+export type UpdateJourneyTemplateRequestProductType =
+  (typeof UpdateJourneyTemplateRequestProductType)[keyof typeof UpdateJourneyTemplateRequestProductType];
+
+export const UpdateJourneyTemplateRequestProductType = {
+  WC: "WC",
+  PEO: "PEO",
+  ASO: "ASO",
+  ANY: "ANY",
+} as const;
+
+export interface UpdateJourneyTemplateRequest {
+  name?: string;
+  type?: UpdateJourneyTemplateRequestType;
+  productType?: UpdateJourneyTemplateRequestProductType;
+  isActive?: boolean;
+  version?: number;
+}
+
+export interface CreateJourneyTemplatePhaseRequest {
+  name: string;
+  sortOrder: number;
+  targetOffsetDays?: number;
+}
+
+export interface UpdateJourneyTemplatePhaseRequest {
+  name?: string;
+  sortOrder?: number;
+  targetOffsetDays?: number;
+}
+
+export type CreateJourneyTemplateTaskRequestOwnerType =
+  (typeof CreateJourneyTemplateTaskRequestOwnerType)[keyof typeof CreateJourneyTemplateTaskRequestOwnerType];
+
+export const CreateJourneyTemplateTaskRequestOwnerType = {
+  INTERNAL_SPECIALIST: "INTERNAL_SPECIALIST",
+  CLIENT: "CLIENT",
+  AGENT: "AGENT",
+  CARRIER: "CARRIER",
+} as const;
+
+export interface CreateJourneyTemplateTaskRequest {
+  phaseId: string;
+  name: string;
+  taskType?: string;
+  ownerType: CreateJourneyTemplateTaskRequestOwnerType;
+  isMilestone?: boolean;
+  offsetDays?: number;
+  sortOrder: number;
+}
+
+export type UpdateJourneyTemplateTaskRequestOwnerType =
+  (typeof UpdateJourneyTemplateTaskRequestOwnerType)[keyof typeof UpdateJourneyTemplateTaskRequestOwnerType];
+
+export const UpdateJourneyTemplateTaskRequestOwnerType = {
+  INTERNAL_SPECIALIST: "INTERNAL_SPECIALIST",
+  CLIENT: "CLIENT",
+  AGENT: "AGENT",
+  CARRIER: "CARRIER",
+} as const;
+
+export interface UpdateJourneyTemplateTaskRequest {
+  phaseId?: string;
+  name?: string;
+  taskType?: string;
+  ownerType?: UpdateJourneyTemplateTaskRequestOwnerType;
+  isMilestone?: boolean;
+  offsetDays?: number;
+  sortOrder?: number;
+}
+
+export type UpdateJourneyTaskStatusRequestStatus =
+  (typeof UpdateJourneyTaskStatusRequestStatus)[keyof typeof UpdateJourneyTaskStatusRequestStatus];
+
+export const UpdateJourneyTaskStatusRequestStatus = {
+  PENDING: "PENDING",
+  IN_PROGRESS: "IN_PROGRESS",
+  COMPLETE: "COMPLETE",
+} as const;
+
+export interface UpdateJourneyTaskStatusRequest {
+  status: UpdateJourneyTaskStatusRequestStatus;
+}
+
 export type ChangeUserPassword200 = {
   success: boolean;
 };
@@ -581,4 +828,41 @@ export type GetAccountsTab =
 export const GetAccountsTab = {
   prospects: "prospects",
   clients: "clients",
+} as const;
+
+export type GetJourneyTemplatesParams = {
+  type?: GetJourneyTemplatesType;
+  productType?: GetJourneyTemplatesProductType;
+  isActive?: boolean;
+};
+
+export type GetJourneyTemplatesType =
+  (typeof GetJourneyTemplatesType)[keyof typeof GetJourneyTemplatesType];
+
+export const GetJourneyTemplatesType = {
+  IMPLEMENTATION: "IMPLEMENTATION",
+  ONBOARDING: "ONBOARDING",
+} as const;
+
+export type GetJourneyTemplatesProductType =
+  (typeof GetJourneyTemplatesProductType)[keyof typeof GetJourneyTemplatesProductType];
+
+export const GetJourneyTemplatesProductType = {
+  WC: "WC",
+  PEO: "PEO",
+  ASO: "ASO",
+  ANY: "ANY",
+} as const;
+
+export type GetJourneysParams = {
+  dealId?: string;
+  type?: GetJourneysType;
+};
+
+export type GetJourneysType =
+  (typeof GetJourneysType)[keyof typeof GetJourneysType];
+
+export const GetJourneysType = {
+  IMPLEMENTATION: "IMPLEMENTATION",
+  ONBOARDING: "ONBOARDING",
 } as const;

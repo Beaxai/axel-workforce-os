@@ -29,6 +29,9 @@ import type {
   ChangeUserPassword200,
   ConvertLeadRequest,
   ConvertLeadResult,
+  CreateJourneyTemplatePhaseRequest,
+  CreateJourneyTemplateRequest,
+  CreateJourneyTemplateTaskRequest,
   CreateRfiRequest,
   DealSubmissionResponse,
   DeclineRequest,
@@ -36,9 +39,18 @@ import type {
   ErrorResponse,
   ForgotPasswordRequest,
   GetAccountsParams,
+  GetJourneyTemplatesParams,
+  GetJourneysParams,
   GetLeadsParams,
   HealthStatus,
   InviteUserRequest,
+  Journey,
+  JourneyDetail,
+  JourneyTask,
+  JourneyTemplate,
+  JourneyTemplateDetail,
+  JourneyTemplatePhase,
+  JourneyTemplateTask,
   Lead,
   LeadInput,
   LoginRequest,
@@ -57,6 +69,10 @@ import type {
   SectionPatchRequest,
   SectionPatchResponse,
   StageActionResponse,
+  UpdateJourneyTaskStatusRequest,
+  UpdateJourneyTemplatePhaseRequest,
+  UpdateJourneyTemplateRequest,
+  UpdateJourneyTemplateTaskRequest,
   UpdateUserProfileRequest,
   UpdateUserStatusRequest,
   UserActivityResponse,
@@ -3389,4 +3405,1269 @@ export const usePreviewQuoteVariation = <
   TContext
 > => {
   return useMutation(getPreviewQuoteVariationMutationOptions(options));
+};
+
+/**
+ * @summary List journey templates
+ */
+export const getGetJourneyTemplatesUrl = (
+  params?: GetJourneyTemplatesParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/journey-templates?${stringifiedParams}`
+    : `/api/journey-templates`;
+};
+
+export const getJourneyTemplates = async (
+  params?: GetJourneyTemplatesParams,
+  options?: RequestInit,
+): Promise<JourneyTemplate[]> => {
+  return customFetch<JourneyTemplate[]>(getGetJourneyTemplatesUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetJourneyTemplatesQueryKey = (
+  params?: GetJourneyTemplatesParams,
+) => {
+  return [`/api/journey-templates`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetJourneyTemplatesQueryOptions = <
+  TData = Awaited<ReturnType<typeof getJourneyTemplates>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetJourneyTemplatesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getJourneyTemplates>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetJourneyTemplatesQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getJourneyTemplates>>
+  > = ({ signal }) =>
+    getJourneyTemplates(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getJourneyTemplates>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetJourneyTemplatesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getJourneyTemplates>>
+>;
+export type GetJourneyTemplatesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List journey templates
+ */
+
+export function useGetJourneyTemplates<
+  TData = Awaited<ReturnType<typeof getJourneyTemplates>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetJourneyTemplatesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getJourneyTemplates>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetJourneyTemplatesQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a journey template
+ */
+export const getCreateJourneyTemplateUrl = () => {
+  return `/api/journey-templates`;
+};
+
+export const createJourneyTemplate = async (
+  createJourneyTemplateRequest: CreateJourneyTemplateRequest,
+  options?: RequestInit,
+): Promise<JourneyTemplate> => {
+  return customFetch<JourneyTemplate>(getCreateJourneyTemplateUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createJourneyTemplateRequest),
+  });
+};
+
+export const getCreateJourneyTemplateMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createJourneyTemplate>>,
+    TError,
+    { data: BodyType<CreateJourneyTemplateRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createJourneyTemplate>>,
+  TError,
+  { data: BodyType<CreateJourneyTemplateRequest> },
+  TContext
+> => {
+  const mutationKey = ["createJourneyTemplate"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createJourneyTemplate>>,
+    { data: BodyType<CreateJourneyTemplateRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createJourneyTemplate(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateJourneyTemplateMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createJourneyTemplate>>
+>;
+export type CreateJourneyTemplateMutationBody =
+  BodyType<CreateJourneyTemplateRequest>;
+export type CreateJourneyTemplateMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create a journey template
+ */
+export const useCreateJourneyTemplate = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createJourneyTemplate>>,
+    TError,
+    { data: BodyType<CreateJourneyTemplateRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createJourneyTemplate>>,
+  TError,
+  { data: BodyType<CreateJourneyTemplateRequest> },
+  TContext
+> => {
+  return useMutation(getCreateJourneyTemplateMutationOptions(options));
+};
+
+/**
+ * @summary Get a journey template with its phases and tasks
+ */
+export const getGetJourneyTemplateUrl = (id: string) => {
+  return `/api/journey-templates/${id}`;
+};
+
+export const getJourneyTemplate = async (
+  id: string,
+  options?: RequestInit,
+): Promise<JourneyTemplateDetail> => {
+  return customFetch<JourneyTemplateDetail>(getGetJourneyTemplateUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetJourneyTemplateQueryKey = (id: string) => {
+  return [`/api/journey-templates/${id}`] as const;
+};
+
+export const getGetJourneyTemplateQueryOptions = <
+  TData = Awaited<ReturnType<typeof getJourneyTemplate>>,
+  TError = ErrorType<void>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getJourneyTemplate>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetJourneyTemplateQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getJourneyTemplate>>
+  > = ({ signal }) => getJourneyTemplate(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getJourneyTemplate>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetJourneyTemplateQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getJourneyTemplate>>
+>;
+export type GetJourneyTemplateQueryError = ErrorType<void>;
+
+/**
+ * @summary Get a journey template with its phases and tasks
+ */
+
+export function useGetJourneyTemplate<
+  TData = Awaited<ReturnType<typeof getJourneyTemplate>>,
+  TError = ErrorType<void>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getJourneyTemplate>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetJourneyTemplateQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Update a journey template
+ */
+export const getUpdateJourneyTemplateUrl = (id: string) => {
+  return `/api/journey-templates/${id}`;
+};
+
+export const updateJourneyTemplate = async (
+  id: string,
+  updateJourneyTemplateRequest: UpdateJourneyTemplateRequest,
+  options?: RequestInit,
+): Promise<JourneyTemplate> => {
+  return customFetch<JourneyTemplate>(getUpdateJourneyTemplateUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateJourneyTemplateRequest),
+  });
+};
+
+export const getUpdateJourneyTemplateMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateJourneyTemplate>>,
+    TError,
+    { id: string; data: BodyType<UpdateJourneyTemplateRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateJourneyTemplate>>,
+  TError,
+  { id: string; data: BodyType<UpdateJourneyTemplateRequest> },
+  TContext
+> => {
+  const mutationKey = ["updateJourneyTemplate"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateJourneyTemplate>>,
+    { id: string; data: BodyType<UpdateJourneyTemplateRequest> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateJourneyTemplate(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateJourneyTemplateMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateJourneyTemplate>>
+>;
+export type UpdateJourneyTemplateMutationBody =
+  BodyType<UpdateJourneyTemplateRequest>;
+export type UpdateJourneyTemplateMutationError = ErrorType<void>;
+
+/**
+ * @summary Update a journey template
+ */
+export const useUpdateJourneyTemplate = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateJourneyTemplate>>,
+    TError,
+    { id: string; data: BodyType<UpdateJourneyTemplateRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateJourneyTemplate>>,
+  TError,
+  { id: string; data: BodyType<UpdateJourneyTemplateRequest> },
+  TContext
+> => {
+  return useMutation(getUpdateJourneyTemplateMutationOptions(options));
+};
+
+/**
+ * @summary Delete a journey template
+ */
+export const getDeleteJourneyTemplateUrl = (id: string) => {
+  return `/api/journey-templates/${id}`;
+};
+
+export const deleteJourneyTemplate = async (
+  id: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteJourneyTemplateUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteJourneyTemplateMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteJourneyTemplate>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteJourneyTemplate>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["deleteJourneyTemplate"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteJourneyTemplate>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteJourneyTemplate(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteJourneyTemplateMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteJourneyTemplate>>
+>;
+
+export type DeleteJourneyTemplateMutationError = ErrorType<void>;
+
+/**
+ * @summary Delete a journey template
+ */
+export const useDeleteJourneyTemplate = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteJourneyTemplate>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteJourneyTemplate>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getDeleteJourneyTemplateMutationOptions(options));
+};
+
+/**
+ * @summary Add a phase to a journey template
+ */
+export const getCreateJourneyTemplatePhaseUrl = (id: string) => {
+  return `/api/journey-templates/${id}/phases`;
+};
+
+export const createJourneyTemplatePhase = async (
+  id: string,
+  createJourneyTemplatePhaseRequest: CreateJourneyTemplatePhaseRequest,
+  options?: RequestInit,
+): Promise<JourneyTemplatePhase> => {
+  return customFetch<JourneyTemplatePhase>(
+    getCreateJourneyTemplatePhaseUrl(id),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(createJourneyTemplatePhaseRequest),
+    },
+  );
+};
+
+export const getCreateJourneyTemplatePhaseMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createJourneyTemplatePhase>>,
+    TError,
+    { id: string; data: BodyType<CreateJourneyTemplatePhaseRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createJourneyTemplatePhase>>,
+  TError,
+  { id: string; data: BodyType<CreateJourneyTemplatePhaseRequest> },
+  TContext
+> => {
+  const mutationKey = ["createJourneyTemplatePhase"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createJourneyTemplatePhase>>,
+    { id: string; data: BodyType<CreateJourneyTemplatePhaseRequest> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return createJourneyTemplatePhase(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateJourneyTemplatePhaseMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createJourneyTemplatePhase>>
+>;
+export type CreateJourneyTemplatePhaseMutationBody =
+  BodyType<CreateJourneyTemplatePhaseRequest>;
+export type CreateJourneyTemplatePhaseMutationError = ErrorType<void>;
+
+/**
+ * @summary Add a phase to a journey template
+ */
+export const useCreateJourneyTemplatePhase = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createJourneyTemplatePhase>>,
+    TError,
+    { id: string; data: BodyType<CreateJourneyTemplatePhaseRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createJourneyTemplatePhase>>,
+  TError,
+  { id: string; data: BodyType<CreateJourneyTemplatePhaseRequest> },
+  TContext
+> => {
+  return useMutation(getCreateJourneyTemplatePhaseMutationOptions(options));
+};
+
+/**
+ * @summary Update a journey template phase
+ */
+export const getUpdateJourneyTemplatePhaseUrl = (phaseId: string) => {
+  return `/api/journey-template-phases/${phaseId}`;
+};
+
+export const updateJourneyTemplatePhase = async (
+  phaseId: string,
+  updateJourneyTemplatePhaseRequest: UpdateJourneyTemplatePhaseRequest,
+  options?: RequestInit,
+): Promise<JourneyTemplatePhase> => {
+  return customFetch<JourneyTemplatePhase>(
+    getUpdateJourneyTemplatePhaseUrl(phaseId),
+    {
+      ...options,
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(updateJourneyTemplatePhaseRequest),
+    },
+  );
+};
+
+export const getUpdateJourneyTemplatePhaseMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateJourneyTemplatePhase>>,
+    TError,
+    { phaseId: string; data: BodyType<UpdateJourneyTemplatePhaseRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateJourneyTemplatePhase>>,
+  TError,
+  { phaseId: string; data: BodyType<UpdateJourneyTemplatePhaseRequest> },
+  TContext
+> => {
+  const mutationKey = ["updateJourneyTemplatePhase"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateJourneyTemplatePhase>>,
+    { phaseId: string; data: BodyType<UpdateJourneyTemplatePhaseRequest> }
+  > = (props) => {
+    const { phaseId, data } = props ?? {};
+
+    return updateJourneyTemplatePhase(phaseId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateJourneyTemplatePhaseMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateJourneyTemplatePhase>>
+>;
+export type UpdateJourneyTemplatePhaseMutationBody =
+  BodyType<UpdateJourneyTemplatePhaseRequest>;
+export type UpdateJourneyTemplatePhaseMutationError = ErrorType<void>;
+
+/**
+ * @summary Update a journey template phase
+ */
+export const useUpdateJourneyTemplatePhase = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateJourneyTemplatePhase>>,
+    TError,
+    { phaseId: string; data: BodyType<UpdateJourneyTemplatePhaseRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateJourneyTemplatePhase>>,
+  TError,
+  { phaseId: string; data: BodyType<UpdateJourneyTemplatePhaseRequest> },
+  TContext
+> => {
+  return useMutation(getUpdateJourneyTemplatePhaseMutationOptions(options));
+};
+
+/**
+ * @summary Delete a journey template phase
+ */
+export const getDeleteJourneyTemplatePhaseUrl = (phaseId: string) => {
+  return `/api/journey-template-phases/${phaseId}`;
+};
+
+export const deleteJourneyTemplatePhase = async (
+  phaseId: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteJourneyTemplatePhaseUrl(phaseId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteJourneyTemplatePhaseMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteJourneyTemplatePhase>>,
+    TError,
+    { phaseId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteJourneyTemplatePhase>>,
+  TError,
+  { phaseId: string },
+  TContext
+> => {
+  const mutationKey = ["deleteJourneyTemplatePhase"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteJourneyTemplatePhase>>,
+    { phaseId: string }
+  > = (props) => {
+    const { phaseId } = props ?? {};
+
+    return deleteJourneyTemplatePhase(phaseId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteJourneyTemplatePhaseMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteJourneyTemplatePhase>>
+>;
+
+export type DeleteJourneyTemplatePhaseMutationError = ErrorType<void>;
+
+/**
+ * @summary Delete a journey template phase
+ */
+export const useDeleteJourneyTemplatePhase = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteJourneyTemplatePhase>>,
+    TError,
+    { phaseId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteJourneyTemplatePhase>>,
+  TError,
+  { phaseId: string },
+  TContext
+> => {
+  return useMutation(getDeleteJourneyTemplatePhaseMutationOptions(options));
+};
+
+/**
+ * @summary Add a task to a journey template
+ */
+export const getCreateJourneyTemplateTaskUrl = (id: string) => {
+  return `/api/journey-templates/${id}/tasks`;
+};
+
+export const createJourneyTemplateTask = async (
+  id: string,
+  createJourneyTemplateTaskRequest: CreateJourneyTemplateTaskRequest,
+  options?: RequestInit,
+): Promise<JourneyTemplateTask> => {
+  return customFetch<JourneyTemplateTask>(getCreateJourneyTemplateTaskUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createJourneyTemplateTaskRequest),
+  });
+};
+
+export const getCreateJourneyTemplateTaskMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createJourneyTemplateTask>>,
+    TError,
+    { id: string; data: BodyType<CreateJourneyTemplateTaskRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createJourneyTemplateTask>>,
+  TError,
+  { id: string; data: BodyType<CreateJourneyTemplateTaskRequest> },
+  TContext
+> => {
+  const mutationKey = ["createJourneyTemplateTask"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createJourneyTemplateTask>>,
+    { id: string; data: BodyType<CreateJourneyTemplateTaskRequest> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return createJourneyTemplateTask(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateJourneyTemplateTaskMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createJourneyTemplateTask>>
+>;
+export type CreateJourneyTemplateTaskMutationBody =
+  BodyType<CreateJourneyTemplateTaskRequest>;
+export type CreateJourneyTemplateTaskMutationError = ErrorType<void>;
+
+/**
+ * @summary Add a task to a journey template
+ */
+export const useCreateJourneyTemplateTask = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createJourneyTemplateTask>>,
+    TError,
+    { id: string; data: BodyType<CreateJourneyTemplateTaskRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createJourneyTemplateTask>>,
+  TError,
+  { id: string; data: BodyType<CreateJourneyTemplateTaskRequest> },
+  TContext
+> => {
+  return useMutation(getCreateJourneyTemplateTaskMutationOptions(options));
+};
+
+/**
+ * @summary Update a journey template task
+ */
+export const getUpdateJourneyTemplateTaskUrl = (taskId: string) => {
+  return `/api/journey-template-tasks/${taskId}`;
+};
+
+export const updateJourneyTemplateTask = async (
+  taskId: string,
+  updateJourneyTemplateTaskRequest: UpdateJourneyTemplateTaskRequest,
+  options?: RequestInit,
+): Promise<JourneyTemplateTask> => {
+  return customFetch<JourneyTemplateTask>(
+    getUpdateJourneyTemplateTaskUrl(taskId),
+    {
+      ...options,
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(updateJourneyTemplateTaskRequest),
+    },
+  );
+};
+
+export const getUpdateJourneyTemplateTaskMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateJourneyTemplateTask>>,
+    TError,
+    { taskId: string; data: BodyType<UpdateJourneyTemplateTaskRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateJourneyTemplateTask>>,
+  TError,
+  { taskId: string; data: BodyType<UpdateJourneyTemplateTaskRequest> },
+  TContext
+> => {
+  const mutationKey = ["updateJourneyTemplateTask"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateJourneyTemplateTask>>,
+    { taskId: string; data: BodyType<UpdateJourneyTemplateTaskRequest> }
+  > = (props) => {
+    const { taskId, data } = props ?? {};
+
+    return updateJourneyTemplateTask(taskId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateJourneyTemplateTaskMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateJourneyTemplateTask>>
+>;
+export type UpdateJourneyTemplateTaskMutationBody =
+  BodyType<UpdateJourneyTemplateTaskRequest>;
+export type UpdateJourneyTemplateTaskMutationError = ErrorType<void>;
+
+/**
+ * @summary Update a journey template task
+ */
+export const useUpdateJourneyTemplateTask = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateJourneyTemplateTask>>,
+    TError,
+    { taskId: string; data: BodyType<UpdateJourneyTemplateTaskRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateJourneyTemplateTask>>,
+  TError,
+  { taskId: string; data: BodyType<UpdateJourneyTemplateTaskRequest> },
+  TContext
+> => {
+  return useMutation(getUpdateJourneyTemplateTaskMutationOptions(options));
+};
+
+/**
+ * @summary Delete a journey template task
+ */
+export const getDeleteJourneyTemplateTaskUrl = (taskId: string) => {
+  return `/api/journey-template-tasks/${taskId}`;
+};
+
+export const deleteJourneyTemplateTask = async (
+  taskId: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteJourneyTemplateTaskUrl(taskId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteJourneyTemplateTaskMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteJourneyTemplateTask>>,
+    TError,
+    { taskId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteJourneyTemplateTask>>,
+  TError,
+  { taskId: string },
+  TContext
+> => {
+  const mutationKey = ["deleteJourneyTemplateTask"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteJourneyTemplateTask>>,
+    { taskId: string }
+  > = (props) => {
+    const { taskId } = props ?? {};
+
+    return deleteJourneyTemplateTask(taskId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteJourneyTemplateTaskMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteJourneyTemplateTask>>
+>;
+
+export type DeleteJourneyTemplateTaskMutationError = ErrorType<void>;
+
+/**
+ * @summary Delete a journey template task
+ */
+export const useDeleteJourneyTemplateTask = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteJourneyTemplateTask>>,
+    TError,
+    { taskId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteJourneyTemplateTask>>,
+  TError,
+  { taskId: string },
+  TContext
+> => {
+  return useMutation(getDeleteJourneyTemplateTaskMutationOptions(options));
+};
+
+/**
+ * @summary List journeys (implementation/onboarding trackers)
+ */
+export const getGetJourneysUrl = (params?: GetJourneysParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/journeys?${stringifiedParams}`
+    : `/api/journeys`;
+};
+
+export const getJourneys = async (
+  params?: GetJourneysParams,
+  options?: RequestInit,
+): Promise<Journey[]> => {
+  return customFetch<Journey[]>(getGetJourneysUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetJourneysQueryKey = (params?: GetJourneysParams) => {
+  return [`/api/journeys`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetJourneysQueryOptions = <
+  TData = Awaited<ReturnType<typeof getJourneys>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetJourneysParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getJourneys>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetJourneysQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getJourneys>>> = ({
+    signal,
+  }) => getJourneys(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getJourneys>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetJourneysQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getJourneys>>
+>;
+export type GetJourneysQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List journeys (implementation/onboarding trackers)
+ */
+
+export function useGetJourneys<
+  TData = Awaited<ReturnType<typeof getJourneys>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetJourneysParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getJourneys>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetJourneysQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get a journey with its phases and tasks
+ */
+export const getGetJourneyUrl = (id: string) => {
+  return `/api/journeys/${id}`;
+};
+
+export const getJourney = async (
+  id: string,
+  options?: RequestInit,
+): Promise<JourneyDetail> => {
+  return customFetch<JourneyDetail>(getGetJourneyUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetJourneyQueryKey = (id: string) => {
+  return [`/api/journeys/${id}`] as const;
+};
+
+export const getGetJourneyQueryOptions = <
+  TData = Awaited<ReturnType<typeof getJourney>>,
+  TError = ErrorType<void>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getJourney>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetJourneyQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getJourney>>> = ({
+    signal,
+  }) => getJourney(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getJourney>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetJourneyQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getJourney>>
+>;
+export type GetJourneyQueryError = ErrorType<void>;
+
+/**
+ * @summary Get a journey with its phases and tasks
+ */
+
+export function useGetJourney<
+  TData = Awaited<ReturnType<typeof getJourney>>,
+  TError = ErrorType<void>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getJourney>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetJourneyQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Update a journey task's status
+ */
+export const getUpdateJourneyTaskStatusUrl = (id: string, taskId: string) => {
+  return `/api/journeys/${id}/tasks/${taskId}`;
+};
+
+export const updateJourneyTaskStatus = async (
+  id: string,
+  taskId: string,
+  updateJourneyTaskStatusRequest: UpdateJourneyTaskStatusRequest,
+  options?: RequestInit,
+): Promise<JourneyTask> => {
+  return customFetch<JourneyTask>(getUpdateJourneyTaskStatusUrl(id, taskId), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateJourneyTaskStatusRequest),
+  });
+};
+
+export const getUpdateJourneyTaskStatusMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateJourneyTaskStatus>>,
+    TError,
+    {
+      id: string;
+      taskId: string;
+      data: BodyType<UpdateJourneyTaskStatusRequest>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateJourneyTaskStatus>>,
+  TError,
+  {
+    id: string;
+    taskId: string;
+    data: BodyType<UpdateJourneyTaskStatusRequest>;
+  },
+  TContext
+> => {
+  const mutationKey = ["updateJourneyTaskStatus"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateJourneyTaskStatus>>,
+    {
+      id: string;
+      taskId: string;
+      data: BodyType<UpdateJourneyTaskStatusRequest>;
+    }
+  > = (props) => {
+    const { id, taskId, data } = props ?? {};
+
+    return updateJourneyTaskStatus(id, taskId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateJourneyTaskStatusMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateJourneyTaskStatus>>
+>;
+export type UpdateJourneyTaskStatusMutationBody =
+  BodyType<UpdateJourneyTaskStatusRequest>;
+export type UpdateJourneyTaskStatusMutationError = ErrorType<void>;
+
+/**
+ * @summary Update a journey task's status
+ */
+export const useUpdateJourneyTaskStatus = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateJourneyTaskStatus>>,
+    TError,
+    {
+      id: string;
+      taskId: string;
+      data: BodyType<UpdateJourneyTaskStatusRequest>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateJourneyTaskStatus>>,
+  TError,
+  {
+    id: string;
+    taskId: string;
+    data: BodyType<UpdateJourneyTaskStatusRequest>;
+  },
+  TContext
+> => {
+  return useMutation(getUpdateJourneyTaskStatusMutationOptions(options));
 };

@@ -20,6 +20,10 @@ tags:
     description: Account directory operations
   - name: deal-card
     description: Deal card collaboration hub operations (Phase 4C)
+  - name: journey-templates
+    description: Journey template admin operations (P5b)
+  - name: journeys
+    description: Journey (implementation/onboarding tracker) operations (P5b)
 paths:
   /users:
     get:
@@ -895,6 +899,326 @@ paths:
           description: Insufficient permissions
         "409":
           description: Deal has no quote to vary
+  /journey-templates:
+    get:
+      operationId: getJourneyTemplates
+      tags: [journey-templates]
+      summary: List journey templates
+      parameters:
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [IMPLEMENTATION, ONBOARDING]
+        - name: productType
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [WC, PEO, ASO, ANY]
+        - name: isActive
+          in: query
+          required: false
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: List of journey templates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/JourneyTemplate"
+    post:
+      operationId: createJourneyTemplate
+      tags: [journey-templates]
+      summary: Create a journey template
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateJourneyTemplateRequest"
+      responses:
+        "201":
+          description: Created journey template
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JourneyTemplate"
+  /journey-templates/{id}:
+    get:
+      operationId: getJourneyTemplate
+      tags: [journey-templates]
+      summary: Get a journey template with its phases and tasks
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Journey template detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JourneyTemplateDetail"
+        "404":
+          description: Template not found
+    patch:
+      operationId: updateJourneyTemplate
+      tags: [journey-templates]
+      summary: Update a journey template
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateJourneyTemplateRequest"
+      responses:
+        "200":
+          description: Updated journey template
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JourneyTemplate"
+        "404":
+          description: Template not found
+    delete:
+      operationId: deleteJourneyTemplate
+      tags: [journey-templates]
+      summary: Delete a journey template
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Template not found
+  /journey-templates/{id}/phases:
+    post:
+      operationId: createJourneyTemplatePhase
+      tags: [journey-templates]
+      summary: Add a phase to a journey template
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateJourneyTemplatePhaseRequest"
+      responses:
+        "201":
+          description: Created phase
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JourneyTemplatePhase"
+        "404":
+          description: Template not found
+  /journey-template-phases/{phaseId}:
+    patch:
+      operationId: updateJourneyTemplatePhase
+      tags: [journey-templates]
+      summary: Update a journey template phase
+      parameters:
+        - name: phaseId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateJourneyTemplatePhaseRequest"
+      responses:
+        "200":
+          description: Updated phase
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JourneyTemplatePhase"
+        "404":
+          description: Phase not found
+    delete:
+      operationId: deleteJourneyTemplatePhase
+      tags: [journey-templates]
+      summary: Delete a journey template phase
+      parameters:
+        - name: phaseId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Phase not found
+  /journey-templates/{id}/tasks:
+    post:
+      operationId: createJourneyTemplateTask
+      tags: [journey-templates]
+      summary: Add a task to a journey template
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateJourneyTemplateTaskRequest"
+      responses:
+        "201":
+          description: Created task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JourneyTemplateTask"
+        "404":
+          description: Template or phase not found
+  /journey-template-tasks/{taskId}:
+    patch:
+      operationId: updateJourneyTemplateTask
+      tags: [journey-templates]
+      summary: Update a journey template task
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateJourneyTemplateTaskRequest"
+      responses:
+        "200":
+          description: Updated task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JourneyTemplateTask"
+        "404":
+          description: Task not found
+    delete:
+      operationId: deleteJourneyTemplateTask
+      tags: [journey-templates]
+      summary: Delete a journey template task
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Task not found
+  /journeys:
+    get:
+      operationId: getJourneys
+      tags: [journeys]
+      summary: List journeys (implementation/onboarding trackers)
+      parameters:
+        - name: dealId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [IMPLEMENTATION, ONBOARDING]
+      responses:
+        "200":
+          description: List of journeys
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Journey"
+  /journeys/{id}:
+    get:
+      operationId: getJourney
+      tags: [journeys]
+      summary: Get a journey with its phases and tasks
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Journey detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JourneyDetail"
+        "404":
+          description: Journey not found
+  /journeys/{id}/tasks/{taskId}:
+    patch:
+      operationId: updateJourneyTaskStatus
+      tags: [journeys]
+      summary: Update a journey task's status
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateJourneyTaskStatusRequest"
+      responses:
+        "200":
+          description: Updated journey task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JourneyTask"
+        "404":
+          description: Journey or task not found
 components:
   schemas:
     SubmissionField:
@@ -1898,3 +2222,285 @@ components:
           type: string
       required:
         - registrationId
+    JourneyTemplate:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        type:
+          type: string
+          enum: [IMPLEMENTATION, ONBOARDING]
+        productType:
+          type: string
+          enum: [WC, PEO, ASO, ANY]
+        isActive:
+          type: boolean
+        version:
+          type: integer
+        createdAt:
+          type: string
+          nullable: true
+        updatedAt:
+          type: string
+          nullable: true
+      required: [id, name, type, productType, isActive, version]
+    JourneyTemplatePhase:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        templateId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        sortOrder:
+          type: integer
+        targetOffsetDays:
+          type: integer
+      required: [id, templateId, name, sortOrder, targetOffsetDays]
+    JourneyTemplateTask:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        templateId:
+          type: string
+          format: uuid
+        phaseId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        taskType:
+          type: string
+        ownerType:
+          type: string
+          enum: [INTERNAL_SPECIALIST, CLIENT, AGENT, CARRIER]
+        isMilestone:
+          type: boolean
+        offsetDays:
+          type: integer
+        sortOrder:
+          type: integer
+      required: [id, templateId, phaseId, name, taskType, ownerType, isMilestone, offsetDays, sortOrder]
+    JourneyTemplateDetail:
+      allOf:
+        - $ref: "#/components/schemas/JourneyTemplate"
+        - type: object
+          properties:
+            phases:
+              type: array
+              items:
+                $ref: "#/components/schemas/JourneyTemplatePhase"
+            tasks:
+              type: array
+              items:
+                $ref: "#/components/schemas/JourneyTemplateTask"
+          required: [phases, tasks]
+    Journey:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        dealId:
+          type: string
+          format: uuid
+          nullable: true
+        policyId:
+          type: string
+          format: uuid
+          nullable: true
+        type:
+          type: string
+          enum: [IMPLEMENTATION, ONBOARDING]
+        templateId:
+          type: string
+          format: uuid
+          nullable: true
+        productType:
+          type: string
+        goLiveDate:
+          type: string
+        status:
+          type: string
+          enum: [IN_PROGRESS, COMPLETE]
+        assignedSpecialist:
+          type: string
+          format: uuid
+          nullable: true
+        overallProgress:
+          type: integer
+        createdAt:
+          type: string
+          nullable: true
+        completedAt:
+          type: string
+          nullable: true
+      required: [id, type, productType, goLiveDate, status, overallProgress]
+    JourneyPhase:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        trackerId:
+          type: string
+          format: uuid
+        phaseNumber:
+          type: integer
+        phaseName:
+          type: string
+        targetDate:
+          type: string
+        status:
+          type: string
+      required: [id, trackerId, phaseNumber, phaseName, targetDate, status]
+    JourneyTask:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        trackerId:
+          type: string
+          format: uuid
+        phaseId:
+          type: string
+          format: uuid
+        taskName:
+          type: string
+        taskType:
+          type: string
+        ownerType:
+          type: string
+        status:
+          type: string
+          enum: [PENDING, IN_PROGRESS, COMPLETE]
+        isMilestone:
+          type: boolean
+        dueDate:
+          type: string
+          nullable: true
+        completedAt:
+          type: string
+          nullable: true
+        sortOrder:
+          type: integer
+      required: [id, trackerId, phaseId, taskName, taskType, ownerType, status, isMilestone, sortOrder]
+    JourneyDetail:
+      allOf:
+        - $ref: "#/components/schemas/Journey"
+        - type: object
+          properties:
+            phases:
+              type: array
+              items:
+                $ref: "#/components/schemas/JourneyPhase"
+            tasks:
+              type: array
+              items:
+                $ref: "#/components/schemas/JourneyTask"
+          required: [phases, tasks]
+    CreateJourneyTemplateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          enum: [IMPLEMENTATION, ONBOARDING]
+        productType:
+          type: string
+          enum: [WC, PEO, ASO, ANY]
+        isActive:
+          type: boolean
+        version:
+          type: integer
+      required: [name, type, productType]
+    UpdateJourneyTemplateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          enum: [IMPLEMENTATION, ONBOARDING]
+        productType:
+          type: string
+          enum: [WC, PEO, ASO, ANY]
+        isActive:
+          type: boolean
+        version:
+          type: integer
+    CreateJourneyTemplatePhaseRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        sortOrder:
+          type: integer
+        targetOffsetDays:
+          type: integer
+      required: [name, sortOrder]
+    UpdateJourneyTemplatePhaseRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        sortOrder:
+          type: integer
+        targetOffsetDays:
+          type: integer
+    CreateJourneyTemplateTaskRequest:
+      type: object
+      properties:
+        phaseId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        taskType:
+          type: string
+        ownerType:
+          type: string
+          enum: [INTERNAL_SPECIALIST, CLIENT, AGENT, CARRIER]
+        isMilestone:
+          type: boolean
+        offsetDays:
+          type: integer
+        sortOrder:
+          type: integer
+      required: [phaseId, name, ownerType, sortOrder]
+    UpdateJourneyTemplateTaskRequest:
+      type: object
+      properties:
+        phaseId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        taskType:
+          type: string
+        ownerType:
+          type: string
+          enum: [INTERNAL_SPECIALIST, CLIENT, AGENT, CARRIER]
+        isMilestone:
+          type: boolean
+        offsetDays:
+          type: integer
+        sortOrder:
+          type: integer
+    UpdateJourneyTaskStatusRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [PENDING, IN_PROGRESS, COMPLETE]
+      required: [status]
