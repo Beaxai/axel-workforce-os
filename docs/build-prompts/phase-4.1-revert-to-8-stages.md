@@ -33,8 +33,13 @@ _Branch: `p4-pipeline-stages` (continue on it) · Supersedes the 10-stage model 
 the **8 operational stages** above (keys, labels, order). `PipelineStageKey` becomes those 8. Keep
 `stageLabel`/`PIPELINE_STAGE_KEYS`. Leave `DealOutcome`/`DEAL_OUTCOMES` exports in place **for now**
 (removed in R3 once usages are gone).
-**Do NOT:** touch routes, schema, UI, or OpenAPI yet.
-**Test (then STOP):** `pnpm typecheck` zero new; log the export → exactly the 8 keys in order with labels.
+Also update the **one forced consumer** — `stage-map.ts`'s exhaustive `STAGE_TO_PHASE:
+Record<PipelineStageKey, number>` — to the 8 keys (it won't compile otherwise). Use this 8→6 mapping:
+`SUBMISSION_REVIEW:0, INDICATION:1, UW_REVIEW:2, APPROVED_QUOTED:3, BIND_ORDER:4, BOUND:5, CLIENT:5,
+LOST:3` (LOST → the "Approved/Declined" phase). Leave `isDeclined` and the rest of the board UI for R5.
+**Do NOT:** touch routes, schema, the board UI, or OpenAPI yet (only the `STAGE_TO_PHASE` keys, as forced).
+**Test (then STOP):** `pnpm typecheck` **zero new** (the stage-map fix clears the TS2353); log the export
+→ exactly the 8 keys in order with labels.
 
 ---
 
@@ -87,8 +92,8 @@ shows only regenerated output under `generated/`.
 **Scope:**
 - `Pipeline.tsx`: render the **8 columns** (incl. **Lost as a column**) from the shared constant; **remove
   the Show/Hide-Lost filter** and all `outcome` logic; new-deal default stage → `SUBMISSION_REVIEW`.
-- `stage-map.ts`: remap the display-only 6-phase tracker from the 8 operational stages (they align ~1:1);
-  remove `isDeclined(outcome)` — a Lost-stage deal is simply in the Lost column.
+- `stage-map.ts`: the `STAGE_TO_PHASE` keys were already remapped in R1; here, **remove `isDeclined(outcome)`**
+  (outcome is gone) — a Lost-stage deal is simply in the Lost column — and clean up any remaining callers.
 - Any badge/filter site still using `outcome` (e.g. `AgentDashboard` active filter) → revert to
   `stage !== 'LOST'`. All badges read the shared constant.
 **Test (Playwright + visual, then STOP):** board shows the 8 columns incl. Lost, in order; drag persists;
