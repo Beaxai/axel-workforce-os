@@ -22,7 +22,7 @@ export * from "./task-send-log";
 export * from "./implementation";
 export * from "./agent-registrations";
 export * from "./rate-tables";
-export * from "./onboarding";
+export * from "./journey-templates";
 export * from "./partners";
 export * from "./resources";
 export * from "./wc-rates";

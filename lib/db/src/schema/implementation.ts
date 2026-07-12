@@ -5,12 +5,15 @@ import { sql } from "drizzle-orm";
 import { dealsTable } from "./deals";
 import { policiesTable } from "./policies";
 import { usersTable } from "./users";
+import { journeyTemplatesTable } from "./journey-templates";
 
 export const implementationTrackersTable = pgTable("implementation_trackers", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   dealId: uuid("deal_id").references(() => dealsTable.id),
   policyId: uuid("policy_id").references(() => policiesTable.id),
   productType: text("product_type").notNull(),
+  type: text("type").notNull().default("IMPLEMENTATION"),
+  templateId: uuid("template_id").references(() => journeyTemplatesTable.id),
   goLiveDate: date("go_live_date").notNull(),
   status: text("status").default("IN_PROGRESS"),
   assignedSpecialist: uuid("assigned_specialist").references(() => usersTable.id),
