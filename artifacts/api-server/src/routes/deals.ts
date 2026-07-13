@@ -5,6 +5,7 @@ import { z } from "zod/v4";
 import { PIPELINE_STAGE_KEYS } from "@workspace/pipeline";
 import { buildSections } from "../lib/deal-sections";
 import { findOrCreateAccount } from "../lib/accounts";
+import { instantiateJourneysForDeal } from "../lib/journey-instantiate";
 
 const router: IRouter = Router();
 
@@ -62,40 +63,38 @@ async function isBindReady(deal: Deal, dbc: DbOrTx): Promise<{ ready: boolean; r
   return { ready: true };
 }
 
-/** Relocated Bound trigger: create the implementation tracker(s) on entry to
- *  BOUND. Always a WC tracker; a PEO deal also gets a PEO tracker. Idempotent —
- *  skips product types that already have a tracker for this deal. */
+/** Relocated Bound trigger (P5b W1 Task 5): instantiate journeys from active
+ *  templates on entry to BOUND. Runs inside the caller's FOR UPDATE
+ *  transaction; idempotency lives in instantiateJourneysForDeal (a tracker per
+ *  (deal, type, productType) is only ever created once). */
 async function fireImplementationTrigger(deal: Deal, author: string, actorId: string | undefined, dbc: DbOrTx): Promise<string[]> {
-  const today = new Date().toISOString().slice(0, 10);
-  const existing = await dbc
-    .select({ productType: implementationTrackersTable.productType })
-    .from(implementationTrackersTable)
-    .where(eq(implementationTrackersTable.dealId, deal.id));
-  const have = new Set(existing.map((t) => t.productType));
-  const toCreate: string[] = [];
-  if (!have.has("WC")) toCreate.push("WC");
-  if (deal.productType === "PEO" && !have.has("PEO")) toCreate.push("PEO");
-  for (const productType of toCreate) {
-    await dbc.insert(implementationTrackersTable).values({
-      dealId: deal.id,
-      productType,
-      goLiveDate: today,
-      status: "IN_PROGRESS",
-      overallProgress: 1,
-    });
-  }
-  if (toCreate.length > 0) {
+  const result = await instantiateJourneysForDeal(deal, dbc);
+
+  if (result.noTemplate) {
     await dbc.insert(activityLogTable).values({
       dealId: deal.id,
       entityType: "deal",
       entityId: deal.id,
       eventType: "STAGE_CHANGE",
-      description: `Deal moved to Bound — implementation tracker${toCreate.length > 1 ? "s" : ""} created (${toCreate.join(", ")}).`,
-      metadata: { trackers: toCreate, author },
+      description: `Bound — no active journey template for product ${deal.productType ?? "—"}; no journey created.`,
+      metadata: { author, productType: deal.productType ?? null },
+      createdBy: actorId,
+    });
+    return [];
+  }
+
+  if (result.created.length > 0) {
+    await dbc.insert(activityLogTable).values({
+      dealId: deal.id,
+      entityType: "deal",
+      entityId: deal.id,
+      eventType: "STAGE_CHANGE",
+      description: `Deal moved to Bound — journey${result.created.length > 1 ? "s" : ""} instantiated from ${result.created.length} template${result.created.length > 1 ? "s" : ""}.`,
+      metadata: { createdFromTemplates: result.created, skippedTemplates: result.skipped, author },
       createdBy: actorId,
     });
   }
-  return toCreate;
+  return result.created;
 }
 
 /** Shape of the quote workforce_profile JSONB used for KPI fallbacks. */
