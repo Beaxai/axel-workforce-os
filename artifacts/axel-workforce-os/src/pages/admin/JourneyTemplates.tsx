@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useGetJourneyTemplates,
@@ -30,6 +31,7 @@ function fmtDate(v?: string | null): string {
 export default function JourneyTemplates() {
   const c = useThemeColors();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const [typeFilter, setTypeFilter] = useState<string>("");
   const [productFilter, setProductFilter] = useState<string>("");
@@ -100,7 +102,7 @@ export default function JourneyTemplates() {
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
           {templates.map((t) => (
-            <GlassCard key={t.id} padding="16px 20px">
+            <GlassCard key={t.id} padding="16px 20px" onClick={() => navigate(`/admin/journeys/${t.id}`)} style={{ cursor: "pointer" }}>
               <div data-testid={`row-template-${t.id}`} style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
                 <span style={{ fontSize: "15px", fontWeight: 600, color: c.textPrimary }}>{t.name}</span>
                 <AxelBadge label={t.type} color={TYPE_BADGE_COLOR[t.type] || "gray"} />

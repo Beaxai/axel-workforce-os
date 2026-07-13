@@ -81,6 +81,8 @@ export * from "./quoteVariationSource";
 export * from "./quoteVariationsResponse";
 export * from "./ratingStaleClearedResponse";
 export * from "./registerRequest";
+export * from "./reorderJourneyTemplatePhasesRequest";
+export * from "./reorderJourneyTemplateTasksRequest";
 export * from "./resetPasswordRequest";
 export * from "./resolveRfiRequest";
 export * from "./resolveRfiRequestStatus";

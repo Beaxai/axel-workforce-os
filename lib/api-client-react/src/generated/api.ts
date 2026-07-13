@@ -62,6 +62,8 @@ import type {
   QuoteVariationsResponse,
   RatingStaleClearedResponse,
   RegisterRequest,
+  ReorderJourneyTemplatePhasesRequest,
+  ReorderJourneyTemplateTasksRequest,
   ResetPasswordRequest,
   ResolveRfiRequest,
   RfiListResponse,
@@ -3942,6 +3944,188 @@ export const useCreateJourneyTemplatePhase = <
   TContext
 > => {
   return useMutation(getCreateJourneyTemplatePhaseMutationOptions(options));
+};
+
+/**
+ * @summary Atomically reorder all phases of a journey template
+ */
+export const getReorderJourneyTemplatePhasesUrl = (id: string) => {
+  return `/api/journey-templates/${id}/phases/reorder`;
+};
+
+export const reorderJourneyTemplatePhases = async (
+  id: string,
+  reorderJourneyTemplatePhasesRequest: ReorderJourneyTemplatePhasesRequest,
+  options?: RequestInit,
+): Promise<JourneyTemplatePhase[]> => {
+  return customFetch<JourneyTemplatePhase[]>(
+    getReorderJourneyTemplatePhasesUrl(id),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(reorderJourneyTemplatePhasesRequest),
+    },
+  );
+};
+
+export const getReorderJourneyTemplatePhasesMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof reorderJourneyTemplatePhases>>,
+    TError,
+    { id: string; data: BodyType<ReorderJourneyTemplatePhasesRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof reorderJourneyTemplatePhases>>,
+  TError,
+  { id: string; data: BodyType<ReorderJourneyTemplatePhasesRequest> },
+  TContext
+> => {
+  const mutationKey = ["reorderJourneyTemplatePhases"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof reorderJourneyTemplatePhases>>,
+    { id: string; data: BodyType<ReorderJourneyTemplatePhasesRequest> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return reorderJourneyTemplatePhases(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ReorderJourneyTemplatePhasesMutationResult = NonNullable<
+  Awaited<ReturnType<typeof reorderJourneyTemplatePhases>>
+>;
+export type ReorderJourneyTemplatePhasesMutationBody =
+  BodyType<ReorderJourneyTemplatePhasesRequest>;
+export type ReorderJourneyTemplatePhasesMutationError = ErrorType<void>;
+
+/**
+ * @summary Atomically reorder all phases of a journey template
+ */
+export const useReorderJourneyTemplatePhases = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof reorderJourneyTemplatePhases>>,
+    TError,
+    { id: string; data: BodyType<ReorderJourneyTemplatePhasesRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof reorderJourneyTemplatePhases>>,
+  TError,
+  { id: string; data: BodyType<ReorderJourneyTemplatePhasesRequest> },
+  TContext
+> => {
+  return useMutation(getReorderJourneyTemplatePhasesMutationOptions(options));
+};
+
+/**
+ * @summary Atomically reorder the tasks of one phase on a journey template
+ */
+export const getReorderJourneyTemplateTasksUrl = (id: string) => {
+  return `/api/journey-templates/${id}/tasks/reorder`;
+};
+
+export const reorderJourneyTemplateTasks = async (
+  id: string,
+  reorderJourneyTemplateTasksRequest: ReorderJourneyTemplateTasksRequest,
+  options?: RequestInit,
+): Promise<JourneyTemplateTask[]> => {
+  return customFetch<JourneyTemplateTask[]>(
+    getReorderJourneyTemplateTasksUrl(id),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(reorderJourneyTemplateTasksRequest),
+    },
+  );
+};
+
+export const getReorderJourneyTemplateTasksMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof reorderJourneyTemplateTasks>>,
+    TError,
+    { id: string; data: BodyType<ReorderJourneyTemplateTasksRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof reorderJourneyTemplateTasks>>,
+  TError,
+  { id: string; data: BodyType<ReorderJourneyTemplateTasksRequest> },
+  TContext
+> => {
+  const mutationKey = ["reorderJourneyTemplateTasks"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof reorderJourneyTemplateTasks>>,
+    { id: string; data: BodyType<ReorderJourneyTemplateTasksRequest> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return reorderJourneyTemplateTasks(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ReorderJourneyTemplateTasksMutationResult = NonNullable<
+  Awaited<ReturnType<typeof reorderJourneyTemplateTasks>>
+>;
+export type ReorderJourneyTemplateTasksMutationBody =
+  BodyType<ReorderJourneyTemplateTasksRequest>;
+export type ReorderJourneyTemplateTasksMutationError = ErrorType<void>;
+
+/**
+ * @summary Atomically reorder the tasks of one phase on a journey template
+ */
+export const useReorderJourneyTemplateTasks = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof reorderJourneyTemplateTasks>>,
+    TError,
+    { id: string; data: BodyType<ReorderJourneyTemplateTasksRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof reorderJourneyTemplateTasks>>,
+  TError,
+  { id: string; data: BodyType<ReorderJourneyTemplateTasksRequest> },
+  TContext
+> => {
+  return useMutation(getReorderJourneyTemplateTasksMutationOptions(options));
 };
 
 /**

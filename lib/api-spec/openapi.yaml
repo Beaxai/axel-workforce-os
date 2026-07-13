@@ -1008,6 +1008,8 @@ paths:
           description: Deleted
         "404":
           description: Template not found
+        "409":
+          description: Template is referenced by live journeys and cannot be deleted
   /journey-templates/{id}/phases:
     post:
       operationId: createJourneyTemplatePhase
@@ -1034,6 +1036,66 @@ paths:
                 $ref: "#/components/schemas/JourneyTemplatePhase"
         "404":
           description: Template not found
+  /journey-templates/{id}/phases/reorder:
+    post:
+      operationId: reorderJourneyTemplatePhases
+      tags: [journey-templates]
+      summary: Atomically reorder all phases of a journey template
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReorderJourneyTemplatePhasesRequest"
+      responses:
+        "200":
+          description: Reordered phases in new order
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/JourneyTemplatePhase"
+        "400":
+          description: Provided ids do not exactly match the template's phases
+        "404":
+          description: Template not found
+  /journey-templates/{id}/tasks/reorder:
+    post:
+      operationId: reorderJourneyTemplateTasks
+      tags: [journey-templates]
+      summary: Atomically reorder the tasks of one phase on a journey template
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReorderJourneyTemplateTasksRequest"
+      responses:
+        "200":
+          description: Reordered tasks in new order
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/JourneyTemplateTask"
+        "400":
+          description: Provided ids do not exactly match the phase's tasks
+        "404":
+          description: Template or phase not found
   /journey-template-phases/{phaseId}:
     patch:
       operationId: updateJourneyTemplatePhase
@@ -2497,6 +2559,27 @@ components:
           type: integer
         sortOrder:
           type: integer
+    ReorderJourneyTemplatePhasesRequest:
+      type: object
+      properties:
+        orderedPhaseIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+      required: [orderedPhaseIds]
+    ReorderJourneyTemplateTasksRequest:
+      type: object
+      properties:
+        phaseId:
+          type: string
+          format: uuid
+        orderedTaskIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+      required: [phaseId, orderedTaskIds]
     UpdateJourneyTaskStatusRequest:
       type: object
       properties:

@@ -794,6 +794,15 @@ export interface UpdateJourneyTemplateTaskRequest {
   sortOrder?: number;
 }
 
+export interface ReorderJourneyTemplatePhasesRequest {
+  orderedPhaseIds: string[];
+}
+
+export interface ReorderJourneyTemplateTasksRequest {
+  phaseId: string;
+  orderedTaskIds: string[];
+}
+
 export type UpdateJourneyTaskStatusRequestStatus =
   (typeof UpdateJourneyTaskStatusRequestStatus)[keyof typeof UpdateJourneyTaskStatusRequestStatus];
 

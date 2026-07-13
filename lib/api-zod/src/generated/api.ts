@@ -1218,6 +1218,55 @@ export const CreateJourneyTemplatePhaseBody = zod.object({
 });
 
 /**
+ * @summary Atomically reorder all phases of a journey template
+ */
+export const ReorderJourneyTemplatePhasesParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const ReorderJourneyTemplatePhasesBody = zod.object({
+  orderedPhaseIds: zod.array(zod.string().uuid()),
+});
+
+export const ReorderJourneyTemplatePhasesResponseItem = zod.object({
+  id: zod.string().uuid(),
+  templateId: zod.string().uuid(),
+  name: zod.string(),
+  sortOrder: zod.number(),
+  targetOffsetDays: zod.number(),
+});
+export const ReorderJourneyTemplatePhasesResponse = zod.array(
+  ReorderJourneyTemplatePhasesResponseItem,
+);
+
+/**
+ * @summary Atomically reorder the tasks of one phase on a journey template
+ */
+export const ReorderJourneyTemplateTasksParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const ReorderJourneyTemplateTasksBody = zod.object({
+  phaseId: zod.string().uuid(),
+  orderedTaskIds: zod.array(zod.string().uuid()),
+});
+
+export const ReorderJourneyTemplateTasksResponseItem = zod.object({
+  id: zod.string().uuid(),
+  templateId: zod.string().uuid(),
+  phaseId: zod.string().uuid(),
+  name: zod.string(),
+  taskType: zod.string(),
+  ownerType: zod.enum(["INTERNAL_SPECIALIST", "CLIENT", "AGENT", "CARRIER"]),
+  isMilestone: zod.boolean(),
+  offsetDays: zod.number(),
+  sortOrder: zod.number(),
+});
+export const ReorderJourneyTemplateTasksResponse = zod.array(
+  ReorderJourneyTemplateTasksResponseItem,
+);
+
+/**
  * @summary Update a journey template phase
  */
 export const UpdateJourneyTemplatePhaseParams = zod.object({
