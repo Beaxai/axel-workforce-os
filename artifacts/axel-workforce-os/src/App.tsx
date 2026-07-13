@@ -55,6 +55,7 @@ import MyProgram from "@/pages/MyProgram";
 import ClientOnboarding from "@/pages/ClientOnboarding";
 import UserProfile from "@/pages/UserProfile";
 import AdminUsers from "@/pages/AdminUsers";
+import JourneyTemplates from "@/pages/admin/JourneyTemplates";
 import Welcome from "@/pages/Welcome";
 import NotFound from "@/pages/not-found";
 import { useAuthStore } from "@/lib/auth-store";
@@ -124,6 +125,7 @@ function App() {
               <Route path="/dashboard/admin/*" element={<AdminDashboard />} />
               <Route path="/admin/rates" element={<RateLookup />} />
               <Route path="/admin/users" element={<AdminUsers />} />
+              <Route path="/admin/journeys" element={<JourneyTemplates />} />
             </Route>
 
             <Route
