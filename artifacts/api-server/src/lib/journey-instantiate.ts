@@ -23,12 +23,14 @@ type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
 export type DbOrTx = Db | Tx;
 
 export interface InstantiateResult {
-  /** Template ids a journey was created from. */
+  /** Template ids a journey was created from. At most one (v2.4 §8). */
   created: string[];
   /** Template ids skipped because a matching tracker already exists (idempotent). */
   skipped: string[];
   /** True when no active template matched the deal's product at all. */
   noTemplate: boolean;
+  /** Candidates that lost the match (config ambiguity) — logged, never created. */
+  ambiguous?: string[];
 }
 
 function addDays(isoDate: string, days: number): string {
@@ -40,13 +42,14 @@ function addDays(isoDate: string, days: number): string {
 export async function instantiateJourneysForDeal(deal: Deal, dbc: DbOrTx): Promise<InstantiateResult> {
   const today = new Date().toISOString().slice(0, 10);
 
-  // 1. Active templates matching the deal's product (or ANY).
-  const templates = await dbc
+  // 1. Active IMPLEMENTATION templates that could match this deal.
+  const candidates = await dbc
     .select()
     .from(journeyTemplatesTable)
     .where(
       and(
         eq(journeyTemplatesTable.isActive, true),
+        eq(journeyTemplatesTable.type, "IMPLEMENTATION"),
         or(
           eq(journeyTemplatesTable.productType, deal.productType ?? ""),
           eq(journeyTemplatesTable.productType, "ANY"),
@@ -54,9 +57,21 @@ export async function instantiateJourneysForDeal(deal: Deal, dbc: DbOrTx): Promi
       ),
     );
 
-  if (templates.length === 0) {
+  if (candidates.length === 0) {
     return { created: [], skipped: [], noTemplate: true };
   }
+
+  // 2. Curtis v2.4 §8: exactly ONE tracker — the one matching the deal's product.
+  // Exact product beats ANY; then highest version; then earliest created.
+  const exact = candidates.filter((t) => t.productType === deal.productType);
+  const pool = exact.length > 0 ? exact : candidates;
+  const ranked = [...pool].sort((a, b) => {
+    if (b.version !== a.version) return b.version - a.version;
+    return (a.createdAt?.getTime() ?? 0) - (b.createdAt?.getTime() ?? 0);
+  });
+  const chosen = ranked[0]!;
+  const ambiguous = ranked.slice(1).map((t) => t.id);
+  const templates = [chosen];
 
   const created: string[] = [];
   const skipped: string[] = [];
@@ -140,5 +155,5 @@ export async function instantiateJourneysForDeal(deal: Deal, dbc: DbOrTx): Promi
     created.push(template.id);
   }
 
-  return { created, skipped, noTemplate: false };
+  return { created, skipped, noTemplate: false, ambiguous };
 }

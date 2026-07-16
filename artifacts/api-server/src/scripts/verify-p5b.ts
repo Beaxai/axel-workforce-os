@@ -64,10 +64,15 @@ async function main() {
       check("precondition: a deal exists to bind", true, `deal ${picked.id}`);
       const deal = { id: picked.id, productType: picked.productType } as Deal;
 
-      // ---- build a throwaway ACTIVE template (product ANY → matches any deal) -
+      // ---- build a throwaway ACTIVE template (EXACT product match for the deal) -
       const [tpl] = await tx
         .insert(journeyTemplatesTable)
-        .values({ name: "__verify__ playbook", type: "IMPLEMENTATION", productType: "ANY", isActive: true })
+        .values({
+          name: "__verify__ playbook",
+          type: "IMPLEMENTATION",
+          productType: picked.productType ?? "ANY",
+          isActive: true,
+        })
         .returning();
       const [p1] = await tx
         .insert(journeyTemplatePhasesTable)
@@ -83,10 +88,30 @@ async function main() {
         { templateId: tpl!.id, phaseId: p2!.id, name: "vt-milestone-c", ownerType: "INTERNAL_SPECIALIST", isMilestone: true, offsetDays: 10, sortOrder: 3 },
       ]);
 
+      // A2 setup: a competing ANY template — the amended rule must pick exactly ONE.
+      const [tplAny] = await tx
+        .insert(journeyTemplatesTable)
+        .values({ name: "__verify__ ANY playbook", type: "IMPLEMENTATION", productType: "ANY", isActive: true })
+        .returning();
+      const [pAny] = await tx
+        .insert(journeyTemplatePhasesTable)
+        .values({ templateId: tplAny!.id, name: "Any Phase", sortOrder: 1, targetOffsetDays: 1 })
+        .returning();
+      await tx.insert(journeyTemplateTasksTable).values({
+        templateId: tplAny!.id, phaseId: pAny!.id, name: "vt-any-task",
+        ownerType: "INTERNAL_SPECIALIST", isMilestone: false, offsetDays: 1, sortOrder: 1,
+      });
+
       // ========================================================================
       // A. Bound instantiation creates a journey from the active template
       // ========================================================================
       const r1 = await instantiateJourneysForDeal(deal, tx);
+      check("A. exactly ONE tracker created (v2.4 amended rule)", r1.created.length === 1, JSON.stringify(r1));
+      check(
+        "A. the PRODUCT-MATCHED template won, not ANY",
+        r1.created[0] === tpl!.id,
+        `created=${r1.created[0]} expected=${tpl!.id}`,
+      );
       check("A. instantiate → 1 journey created", r1.created.length === 1 && r1.created[0] === tpl!.id, JSON.stringify(r1));
       check("A. noTemplate flag is false", r1.noTemplate === false);
 
