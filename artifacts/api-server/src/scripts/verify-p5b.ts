@@ -124,7 +124,11 @@ async function main() {
       // B. Tracker + phases + tasks copied with correct fields and dates
       // ========================================================================
       check("B. tracker type = IMPLEMENTATION", tracker?.type === "IMPLEMENTATION");
-      check("B. tracker productType = ANY", tracker?.productType === "ANY");
+      check(
+        "B. tracker productType copied from template",
+        tracker?.productType === tpl!.productType,
+        `${tracker?.productType} vs ${tpl!.productType}`,
+      );
       check("B. tracker goLiveDate = today", day(tracker?.goLiveDate) === today, `${day(tracker?.goLiveDate)} vs ${today}`);
       check("B. tracker status = IN_PROGRESS", tracker?.status === "IN_PROGRESS");
       check("B. tracker overallProgress = 0", (tracker?.overallProgress ?? -1) === 0);
