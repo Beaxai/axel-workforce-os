@@ -194,11 +194,12 @@ async function main() {
       // ========================================================================
       const otherActive = (
         await tx.select({ id: journeyTemplatesTable.id }).from(journeyTemplatesTable).where(eq(journeyTemplatesTable.isActive, true))
-      ).filter((t) => t.id !== tpl!.id);
+      ).filter((t) => t.id !== tpl!.id && t.id !== tplAny!.id);
       if (otherActive.length > 0) {
         check("E. no-template case (SKIPPED — other active templates exist)", true, `${otherActive.length} other active template(s) in DB`);
       } else {
         await tx.update(journeyTemplatesTable).set({ isActive: false }).where(eq(journeyTemplatesTable.id, tpl!.id));
+        await tx.update(journeyTemplatesTable).set({ isActive: false }).where(eq(journeyTemplatesTable.id, tplAny!.id));
         const r3 = await instantiateJourneysForDeal({ id: deal.id, productType: "ZZ_NO_MATCH" } as Deal, tx);
         check("E. no active template → noTemplate=true, nothing created", r3.noTemplate === true && r3.created.length === 0);
       }
