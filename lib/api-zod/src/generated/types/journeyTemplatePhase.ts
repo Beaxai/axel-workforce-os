@@ -12,4 +12,5 @@ export interface JourneyTemplatePhase {
   name: string;
   sortOrder: number;
   targetOffsetDays: number;
+  systemKey?: string | null;
 }

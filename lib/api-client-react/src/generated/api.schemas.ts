@@ -584,6 +584,7 @@ export interface JourneyTemplate {
   type: JourneyTemplateType;
   productType: JourneyTemplateProductType;
   isActive: boolean;
+  isSystem?: boolean;
   version: number;
   createdAt?: string | null;
   updatedAt?: string | null;
@@ -595,6 +596,7 @@ export interface JourneyTemplatePhase {
   name: string;
   sortOrder: number;
   targetOffsetDays: number;
+  systemKey?: string | null;
 }
 
 export type JourneyTemplateTaskOwnerType =
@@ -617,6 +619,7 @@ export interface JourneyTemplateTask {
   isMilestone: boolean;
   offsetDays: number;
   sortOrder: number;
+  systemKey?: string | null;
 }
 
 export type JourneyTemplateDetail = JourneyTemplate & {

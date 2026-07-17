@@ -149,6 +149,7 @@ export async function instantiateJourneysForDeal(deal: Deal, dbc: DbOrTx): Promi
         status: "PENDING",
         isMilestone: tt.isMilestone,
         sortOrder: tt.sortOrder,
+        systemKey: tt.systemKey,
       });
     }
 

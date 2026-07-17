@@ -85,6 +85,9 @@ journeyTemplatesRouter.patch("/:id", async (req, res) => {
 const TEMPLATE_REFERENCED_MSG =
   "This template is referenced by one or more live journeys and cannot be deleted. Deactivate it instead to stop new journeys from using it.";
 
+const SYSTEM_LOCKED_MSG =
+  "This is a system-defined tracker from the WC/PEO spec. You can add your own tasks to it, but its built-in phases and tasks cannot be deleted or renamed.";
+
 function isFkViolation(err: unknown): boolean {
   return (
     typeof err === "object" &&
@@ -102,6 +105,13 @@ journeyTemplatesRouter.delete("/:id", async (req, res) => {
   // mapped to the same 409.
   try {
     const deleted = await db.transaction(async (tx) => {
+      const [sysTpl] = await tx
+        .select({ isSystem: journeyTemplatesTable.isSystem })
+        .from(journeyTemplatesTable)
+        .where(eq(journeyTemplatesTable.id, req.params.id))
+        .limit(1);
+      if (sysTpl?.isSystem) return "system" as const;
+
       const [liveJourney] = await tx
         .select({ id: implementationTrackersTable.id })
         .from(implementationTrackersTable)
@@ -116,6 +126,9 @@ journeyTemplatesRouter.delete("/:id", async (req, res) => {
       return row ? ("deleted" as const) : ("missing" as const);
     });
 
+    if (deleted === "system") {
+      return res.status(409).json({ error: SYSTEM_LOCKED_MSG });
+    }
     if (deleted === "referenced") {
       return res.status(409).json({ error: TEMPLATE_REFERENCED_MSG });
     }
@@ -313,11 +326,14 @@ journeyTemplatePhasesRouter.patch("/:phaseId", async (req, res) => {
 });
 
 journeyTemplatePhasesRouter.delete("/:phaseId", async (req, res) => {
-  const [row] = await db
-    .delete(journeyTemplatePhasesTable)
-    .where(eq(journeyTemplatePhasesTable.id, req.params.phaseId))
-    .returning();
-  if (!row) return res.status(404).json({ error: "Phase not found" });
+  const [existing] = await db
+    .select({ systemKey: journeyTemplatePhasesTable.systemKey })
+    .from(journeyTemplatePhasesTable)
+    .where(eq(journeyTemplatePhasesTable.id, req.params.phaseId));
+  if (!existing) return res.status(404).json({ error: "Phase not found" });
+  if (existing.systemKey) return res.status(409).json({ error: SYSTEM_LOCKED_MSG });
+
+  await db.delete(journeyTemplatePhasesTable).where(eq(journeyTemplatePhasesTable.id, req.params.phaseId));
   return res.status(204).end();
 });
 
@@ -360,10 +376,13 @@ journeyTemplateTasksRouter.patch("/:taskId", async (req, res) => {
 });
 
 journeyTemplateTasksRouter.delete("/:taskId", async (req, res) => {
-  const [row] = await db
-    .delete(journeyTemplateTasksTable)
-    .where(eq(journeyTemplateTasksTable.id, req.params.taskId))
-    .returning();
-  if (!row) return res.status(404).json({ error: "Task not found" });
+  const [existing] = await db
+    .select({ systemKey: journeyTemplateTasksTable.systemKey })
+    .from(journeyTemplateTasksTable)
+    .where(eq(journeyTemplateTasksTable.id, req.params.taskId));
+  if (!existing) return res.status(404).json({ error: "Task not found" });
+  if (existing.systemKey) return res.status(409).json({ error: SYSTEM_LOCKED_MSG });
+
+  await db.delete(journeyTemplateTasksTable).where(eq(journeyTemplateTasksTable.id, req.params.taskId));
   return res.status(204).end();
 });

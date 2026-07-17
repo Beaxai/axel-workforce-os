@@ -17,4 +17,5 @@ export interface JourneyTemplateTask {
   isMilestone: boolean;
   offsetDays: number;
   sortOrder: number;
+  systemKey?: string | null;
 }

@@ -14,6 +14,7 @@ export interface JourneyTemplate {
   type: JourneyTemplateType;
   productType: JourneyTemplateProductType;
   isActive: boolean;
+  isSystem?: boolean;
   version: number;
   createdAt?: string | null;
   updatedAt?: string | null;

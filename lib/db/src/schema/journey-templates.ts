@@ -9,6 +9,7 @@ export const journeyTemplatesTable = pgTable("journey_templates", {
   type: text("type").notNull(),                 // IMPLEMENTATION | ONBOARDING
   productType: text("product_type").notNull(),  // WC | PEO | ASO | ANY
   isActive: boolean("is_active").notNull().default(true),
+  isSystem: boolean("is_system").notNull().default(false),
   version: integer("version").notNull().default(1),
   createdAt: timestamp("created_at", { withTimezone: true }).default(sql`now()`),
   updatedAt: timestamp("updated_at", { withTimezone: true }).default(sql`now()`),
@@ -20,6 +21,7 @@ export const journeyTemplatePhasesTable = pgTable("journey_template_phases", {
   name: text("name").notNull(),
   sortOrder: integer("sort_order").notNull(),
   targetOffsetDays: integer("target_offset_days").notNull().default(0),
+  systemKey: text("system_key"),
 });
 
 export const journeyTemplateTasksTable = pgTable("journey_template_tasks", {
@@ -32,6 +34,7 @@ export const journeyTemplateTasksTable = pgTable("journey_template_tasks", {
   isMilestone: boolean("is_milestone").notNull().default(false),
   offsetDays: integer("offset_days").notNull().default(0),
   sortOrder: integer("sort_order").notNull(),
+  systemKey: text("system_key"),
 });
 
 export const insertJourneyTemplateSchema = createInsertSchema(journeyTemplatesTable).omit({ id: true, createdAt: true, updatedAt: true });

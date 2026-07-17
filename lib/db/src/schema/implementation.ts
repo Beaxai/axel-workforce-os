@@ -49,6 +49,7 @@ export const implementationTasksTable = pgTable("implementation_tasks", {
   completedAt: timestamp("completed_at", { withTimezone: true }),
   completedBy: uuid("completed_by").references(() => usersTable.id),
   sortOrder: integer("sort_order").notNull(),
+  systemKey: text("system_key"),
 });
 
 export const insertImplementationTrackerSchema = createInsertSchema(implementationTrackersTable).omit({ id: true, createdAt: true });

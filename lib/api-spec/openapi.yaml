@@ -2300,6 +2300,8 @@ components:
           enum: [WC, PEO, ASO, ANY]
         isActive:
           type: boolean
+        isSystem:
+          type: boolean
         version:
           type: integer
         createdAt:
@@ -2324,6 +2326,9 @@ components:
           type: integer
         targetOffsetDays:
           type: integer
+        systemKey:
+          type: string
+          nullable: true
       required: [id, templateId, name, sortOrder, targetOffsetDays]
     JourneyTemplateTask:
       type: object
@@ -2350,6 +2355,9 @@ components:
           type: integer
         sortOrder:
           type: integer
+        systemKey:
+          type: string
+          nullable: true
       required: [id, templateId, phaseId, name, taskType, ownerType, isMilestone, offsetDays, sortOrder]
     JourneyTemplateDetail:
       allOf:

@@ -85,7 +85,7 @@ async function main() {
       await tx.insert(journeyTemplateTasksTable).values([
         { templateId: tpl!.id, phaseId: p1!.id, name: "vt-internal-a", ownerType: "INTERNAL_SPECIALIST", isMilestone: false, offsetDays: 3, sortOrder: 1 },
         { templateId: tpl!.id, phaseId: p1!.id, name: "vt-client-b", ownerType: "CLIENT", isMilestone: false, offsetDays: 5, sortOrder: 2 },
-        { templateId: tpl!.id, phaseId: p2!.id, name: "vt-milestone-c", ownerType: "INTERNAL_SPECIALIST", isMilestone: true, offsetDays: 10, sortOrder: 3 },
+        { templateId: tpl!.id, phaseId: p2!.id, name: "vt-milestone-c", ownerType: "INTERNAL_SPECIALIST", isMilestone: true, offsetDays: 10, sortOrder: 3, systemKey: "VT_TEST_KEY" },
       ]);
 
       // A2 setup: a competing ANY template — the amended rule must pick exactly ONE.
@@ -154,6 +154,11 @@ async function main() {
       check("B. isMilestone preserved", byName.get("vt-milestone-c")?.isMilestone === true && byName.get("vt-internal-a")?.isMilestone === false);
       check("B. all tasks start PENDING", itasks.every((t) => t.status === "PENDING"));
       check("B. phase mapping correct (task → its phase)", byName.get("vt-internal-a")?.phaseId === ip1?.id && byName.get("vt-milestone-c")?.phaseId === ip2?.id);
+      check(
+        "B. systemKey copied onto the live task",
+        byName.get("vt-milestone-c")?.systemKey === "VT_TEST_KEY",
+        `got=${byName.get("vt-milestone-c")?.systemKey}`,
+      );
 
       // ========================================================================
       // C. Idempotent — re-binding does not duplicate

@@ -1102,6 +1102,7 @@ export const GetJourneyTemplatesResponseItem = zod.object({
   type: zod.enum(["IMPLEMENTATION", "ONBOARDING"]),
   productType: zod.enum(["WC", "PEO", "ASO", "ANY"]),
   isActive: zod.boolean(),
+  isSystem: zod.boolean().optional(),
   version: zod.number(),
   createdAt: zod.string().nullish(),
   updatedAt: zod.string().nullish(),
@@ -1135,6 +1136,7 @@ export const GetJourneyTemplateResponse = zod
     type: zod.enum(["IMPLEMENTATION", "ONBOARDING"]),
     productType: zod.enum(["WC", "PEO", "ASO", "ANY"]),
     isActive: zod.boolean(),
+    isSystem: zod.boolean().optional(),
     version: zod.number(),
     createdAt: zod.string().nullish(),
     updatedAt: zod.string().nullish(),
@@ -1148,6 +1150,7 @@ export const GetJourneyTemplateResponse = zod
           name: zod.string(),
           sortOrder: zod.number(),
           targetOffsetDays: zod.number(),
+          systemKey: zod.string().nullish(),
         }),
       ),
       tasks: zod.array(
@@ -1166,6 +1169,7 @@ export const GetJourneyTemplateResponse = zod
           isMilestone: zod.boolean(),
           offsetDays: zod.number(),
           sortOrder: zod.number(),
+          systemKey: zod.string().nullish(),
         }),
       ),
     }),
@@ -1192,6 +1196,7 @@ export const UpdateJourneyTemplateResponse = zod.object({
   type: zod.enum(["IMPLEMENTATION", "ONBOARDING"]),
   productType: zod.enum(["WC", "PEO", "ASO", "ANY"]),
   isActive: zod.boolean(),
+  isSystem: zod.boolean().optional(),
   version: zod.number(),
   createdAt: zod.string().nullish(),
   updatedAt: zod.string().nullish(),
@@ -1234,6 +1239,7 @@ export const ReorderJourneyTemplatePhasesResponseItem = zod.object({
   name: zod.string(),
   sortOrder: zod.number(),
   targetOffsetDays: zod.number(),
+  systemKey: zod.string().nullish(),
 });
 export const ReorderJourneyTemplatePhasesResponse = zod.array(
   ReorderJourneyTemplatePhasesResponseItem,
@@ -1261,6 +1267,7 @@ export const ReorderJourneyTemplateTasksResponseItem = zod.object({
   isMilestone: zod.boolean(),
   offsetDays: zod.number(),
   sortOrder: zod.number(),
+  systemKey: zod.string().nullish(),
 });
 export const ReorderJourneyTemplateTasksResponse = zod.array(
   ReorderJourneyTemplateTasksResponseItem,
@@ -1285,6 +1292,7 @@ export const UpdateJourneyTemplatePhaseResponse = zod.object({
   name: zod.string(),
   sortOrder: zod.number(),
   targetOffsetDays: zod.number(),
+  systemKey: zod.string().nullish(),
 });
 
 /**
@@ -1340,6 +1348,7 @@ export const UpdateJourneyTemplateTaskResponse = zod.object({
   isMilestone: zod.boolean(),
   offsetDays: zod.number(),
   sortOrder: zod.number(),
+  systemKey: zod.string().nullish(),
 });
 
 /**
