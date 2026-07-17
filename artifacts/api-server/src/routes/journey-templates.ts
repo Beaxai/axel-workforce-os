@@ -73,6 +73,9 @@ journeyTemplatesRouter.get("/:id", async (req, res) => {
 journeyTemplatesRouter.patch("/:id", async (req, res) => {
   const parsed = insertJourneyTemplateSchema.omit({ isSystem: true }).partial().safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues });
+  if (Object.keys(parsed.data).length === 0) {
+    return res.status(400).json({ error: "No updatable fields provided" });
+  }
 
   const [existing] = await db
     .select({ isSystem: journeyTemplatesTable.isSystem, name: journeyTemplatesTable.name })
@@ -326,6 +329,9 @@ journeyTemplatePhasesRouter.patch("/:phaseId", async (req, res) => {
     .partial()
     .safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues });
+  if (Object.keys(parsed.data).length === 0) {
+    return res.status(400).json({ error: "No updatable fields provided" });
+  }
 
   const [existing] = await db
     .select({ systemKey: journeyTemplatePhasesTable.systemKey, name: journeyTemplatePhasesTable.name })
@@ -365,6 +371,9 @@ journeyTemplateTasksRouter.patch("/:taskId", async (req, res) => {
     .partial()
     .safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues });
+  if (Object.keys(parsed.data).length === 0) {
+    return res.status(400).json({ error: "No updatable fields provided" });
+  }
 
   const [existing] = await db
     .select({
