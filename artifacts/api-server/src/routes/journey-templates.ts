@@ -71,8 +71,18 @@ journeyTemplatesRouter.get("/:id", async (req, res) => {
 });
 
 journeyTemplatesRouter.patch("/:id", async (req, res) => {
-  const parsed = insertJourneyTemplateSchema.partial().safeParse(req.body);
+  const parsed = insertJourneyTemplateSchema.omit({ isSystem: true }).partial().safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues });
+
+  const [existing] = await db
+    .select({ isSystem: journeyTemplatesTable.isSystem, name: journeyTemplatesTable.name })
+    .from(journeyTemplatesTable)
+    .where(eq(journeyTemplatesTable.id, req.params.id));
+  if (!existing) return res.status(404).json({ error: "Template not found" });
+  if (existing.isSystem && parsed.data.name !== undefined && parsed.data.name !== existing.name) {
+    return res.status(409).json({ error: SYSTEM_LOCKED_MSG });
+  }
+
   const [row] = await db
     .update(journeyTemplatesTable)
     .set({ ...parsed.data, updatedAt: new Date() })
@@ -312,10 +322,20 @@ journeyTemplatesRouter.post("/:id/tasks/reorder", async (req, res) => {
 
 journeyTemplatePhasesRouter.patch("/:phaseId", async (req, res) => {
   const parsed = insertJourneyTemplatePhaseSchema
-    .omit({ templateId: true })
+    .omit({ templateId: true, systemKey: true })
     .partial()
     .safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues });
+
+  const [existing] = await db
+    .select({ systemKey: journeyTemplatePhasesTable.systemKey, name: journeyTemplatePhasesTable.name })
+    .from(journeyTemplatePhasesTable)
+    .where(eq(journeyTemplatePhasesTable.id, req.params.phaseId));
+  if (!existing) return res.status(404).json({ error: "Phase not found" });
+  if (existing.systemKey && parsed.data.name !== undefined && parsed.data.name !== existing.name) {
+    return res.status(409).json({ error: SYSTEM_LOCKED_MSG });
+  }
+
   const [row] = await db
     .update(journeyTemplatePhasesTable)
     .set(parsed.data)
@@ -341,16 +361,23 @@ journeyTemplatePhasesRouter.delete("/:phaseId", async (req, res) => {
 
 journeyTemplateTasksRouter.patch("/:taskId", async (req, res) => {
   const parsed = insertJourneyTemplateTaskSchema
-    .omit({ templateId: true })
+    .omit({ templateId: true, systemKey: true })
     .partial()
     .safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues });
 
   const [existing] = await db
-    .select({ templateId: journeyTemplateTasksTable.templateId })
+    .select({
+      templateId: journeyTemplateTasksTable.templateId,
+      systemKey: journeyTemplateTasksTable.systemKey,
+      name: journeyTemplateTasksTable.name,
+    })
     .from(journeyTemplateTasksTable)
     .where(eq(journeyTemplateTasksTable.id, req.params.taskId));
   if (!existing) return res.status(404).json({ error: "Task not found" });
+  if (existing.systemKey && parsed.data.name !== undefined && parsed.data.name !== existing.name) {
+    return res.status(409).json({ error: SYSTEM_LOCKED_MSG });
+  }
 
   // Integrity guard: a task may only move to a phase on its own template.
   if (parsed.data.phaseId !== undefined) {
