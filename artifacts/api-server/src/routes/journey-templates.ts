@@ -99,7 +99,7 @@ const TEMPLATE_REFERENCED_MSG =
   "This template is referenced by one or more live journeys and cannot be deleted. Deactivate it instead to stop new journeys from using it.";
 
 const SYSTEM_LOCKED_MSG =
-  "This is a system-defined tracker from the WC/PEO spec. You can add your own tasks to it, but its built-in phases and tasks cannot be deleted or renamed.";
+  "This is a system-defined tracker from the WC/PEO spec. Its phases are fixed product logic — they cannot be added to, removed, renamed, or reordered. You can still add your own supplemental to-dos inside any of its phases.";
 
 function isFkViolation(err: unknown): boolean {
   return (
@@ -161,10 +161,11 @@ journeyTemplatesRouter.delete("/:id", async (req, res) => {
 
 journeyTemplatesRouter.post("/:id/phases", async (req, res) => {
   const [template] = await db
-    .select({ id: journeyTemplatesTable.id })
+    .select({ id: journeyTemplatesTable.id, isSystem: journeyTemplatesTable.isSystem })
     .from(journeyTemplatesTable)
     .where(eq(journeyTemplatesTable.id, req.params.id));
   if (!template) return res.status(404).json({ error: "Template not found" });
+  if (template.isSystem) return res.status(409).json({ error: SYSTEM_LOCKED_MSG });
 
   const parsed = insertJourneyTemplatePhaseSchema.safeParse({
     ...req.body,
@@ -216,10 +217,11 @@ journeyTemplatesRouter.post("/:id/phases/reorder", async (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues });
 
   const [template] = await db
-    .select({ id: journeyTemplatesTable.id })
+    .select({ id: journeyTemplatesTable.id, isSystem: journeyTemplatesTable.isSystem })
     .from(journeyTemplatesTable)
     .where(eq(journeyTemplatesTable.id, req.params.id));
   if (!template) return res.status(404).json({ error: "Template not found" });
+  if (template.isSystem) return res.status(409).json({ error: SYSTEM_LOCKED_MSG });
 
   const { orderedPhaseIds } = parsed.data;
 
