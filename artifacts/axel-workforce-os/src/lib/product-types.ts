@@ -1,7 +1,8 @@
 export const PRODUCT_TYPES = {
-  WC_ONLY: "WC_ONLY",
+  WC: "WC",
   PEO: "PEO",
   ASO: "ASO",
+  ASO_CAPTIVE: "ASO_CAPTIVE",
 } as const;
 
 export type ProductType = typeof PRODUCT_TYPES[keyof typeof PRODUCT_TYPES];

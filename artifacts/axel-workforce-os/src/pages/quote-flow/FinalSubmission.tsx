@@ -44,7 +44,7 @@ export default function FinalSubmission() {
       const result = await api.post<{ success: boolean; dealId: string }>("/submission/submit-for-approval", {
         businessName: s.businessName,
         vertical: s.vertical || "Cannabis",
-        coverageType: s.coverageType || "Workers' Compensation",
+        coverageType: s.coverageType || null,
         businessState: s.businessState,
         totalPayroll,
         totalEmployees,

@@ -243,7 +243,7 @@ router.post("/submit-for-approval", async (req, res) => {
       accountId: account.id,
       businessName: businessName || "Unnamed Business",
       vertical: vertical || "Cannabis",
-      productType: coverageType || "Workers' Compensation",
+      productType: coverageType || null,
       state: businessState || "",
       annualPayroll: String(totalPayroll || 0),
       employeeCountFt: totalEmployees || 0,
