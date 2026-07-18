@@ -6,6 +6,7 @@ import { PIPELINE_STAGE_KEYS } from "@workspace/pipeline";
 import { buildSections } from "../lib/deal-sections";
 import { findOrCreateAccount } from "../lib/accounts";
 import { instantiateJourneysForDeal } from "../lib/journey-instantiate";
+import { generateSubjectivitiesForDeal } from "../lib/subjectivities";
 
 const router: IRouter = Router();
 
@@ -272,6 +273,21 @@ router.patch("/:id", async (req, res) => {
       // Relocated Bound trigger fires on entry to stage 9.
       if (nextStage === "BOUND") {
         await fireImplementationTrigger(row, author, u?.id, tx);
+      }
+      // §6A: entering Bind Order stamps the subjectivities checklist onto the deal.
+      if (nextStage === "BIND_ORDER") {
+        const subj = await generateSubjectivitiesForDeal(row, tx);
+        if (subj.created > 0) {
+          await tx.insert(activityLogTable).values({
+            dealId: row.id,
+            entityType: "deal",
+            entityId: row.id,
+            eventType: "STAGE_CHANGE",
+            description: `Bind Order — ${subj.created}-item subjectivities checklist generated${subj.staleLossHistory ? " (loss history flagged as stale)" : ""}.`,
+            metadata: { author, staleLossHistory: subj.staleLossHistory },
+            createdBy: u?.id,
+          });
+        }
       }
     }
 

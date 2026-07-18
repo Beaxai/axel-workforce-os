@@ -19,6 +19,7 @@ import {
   implementationTrackersTable,
   implementationPhasesTable,
   implementationTasksTable,
+  dealSubjectivitiesTable,
   type Deal,
 } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
@@ -219,6 +220,37 @@ async function main() {
       const phasesPartial = await tx.select().from(implementationPhasesTable).where(eq(implementationPhasesTable.trackerId, tracker!.id));
       check("D. partial → phase 1 IN_PROGRESS, phase 2 COMPLETE",
         phasesPartial.find((p) => p.phaseNumber === 1)?.status === "IN_PROGRESS" && phasesPartial.find((p) => p.phaseNumber === 2)?.status === "COMPLETE");
+
+      // ========================================================================
+      // F. §6A — Bind Order generates the subjectivities checklist.
+      // The seeded template is product 'WC'; pass a WC view of the picked deal so
+      // the test is deterministic whatever product the real deal happens to carry.
+      // Only deal.id (FK) and deal.productType (matching) are used by the generator.
+      // ========================================================================
+      const { generateSubjectivitiesForDeal } = await import("../lib/subjectivities");
+      const wcDeal = { ...deal, productType: "WC" } as Deal;
+
+      const gen = await generateSubjectivitiesForDeal(wcDeal, tx);
+      check("F. checklist generated with 10 items", gen.created === 10, JSON.stringify(gen));
+
+      const subs = await tx
+        .select()
+        .from(dealSubjectivitiesTable)
+        .where(eq(dealSubjectivitiesTable.dealId, deal.id));
+      check("F. all items start OPEN", subs.length === 10 && subs.every((s) => s.status === "OPEN"), `${subs.length} items`);
+      check(
+        "F. broker fee is non-blocking",
+        subs.find((s) => s.systemKey === "SUBJ_BROKER_FEE")?.isBlocking === false,
+      );
+      check(
+        "F. loss-history item auto-flagged with a reason (fail-closed)",
+        !!subs.find((s) => s.systemKey === "SUBJ_LOSS_HISTORY")?.autoFlagReason,
+        subs.find((s) => s.systemKey === "SUBJ_LOSS_HISTORY")?.autoFlagReason ?? "no reason",
+      );
+      check("F. staleness reported on the result", gen.staleLossHistory === true, JSON.stringify(gen));
+
+      const gen2 = await generateSubjectivitiesForDeal(wcDeal, tx);
+      check("F. regeneration is idempotent", gen2.created === 0 && gen2.skipped === true, JSON.stringify(gen2));
 
       // ========================================================================
       // E. No matching active template → nothing instantiated + noTemplate flag
