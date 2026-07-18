@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, dealsTable, accountsTable, partnersTable, resourcesTable } from "@workspace/db";
-import { ilike, or } from "drizzle-orm";
+import { ilike, or, and, isNull } from "drizzle-orm";
 
 const router: IRouter = Router();
 
@@ -11,7 +11,7 @@ router.get("/", async (req, res) => {
   const pattern = `%${q}%`;
 
   const [deals, accounts, partners, resources] = await Promise.all([
-    db.select().from(dealsTable).where(or(ilike(dealsTable.businessName, pattern), ilike(dealsTable.referenceCode, pattern))).limit(10),
+    db.select().from(dealsTable).where(and(isNull(dealsTable.archivedAt), or(ilike(dealsTable.businessName, pattern), ilike(dealsTable.referenceCode, pattern)))).limit(10),
     db.select().from(accountsTable).where(ilike(accountsTable.businessName, pattern)).limit(10),
     db.select().from(partnersTable).where(or(ilike(partnersTable.name, pattern), ilike(partnersTable.agencyName, pattern))).limit(10),
     db.select().from(resourcesTable).where(ilike(resourcesTable.title, pattern)).limit(10),

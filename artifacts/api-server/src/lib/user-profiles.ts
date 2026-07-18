@@ -1,4 +1,4 @@
-import { and, eq, ne, or, sql } from "drizzle-orm";
+import { and, eq, isNull, ne, or, sql } from "drizzle-orm";
 import {
   db,
   usersTable,
@@ -118,7 +118,7 @@ export async function computeBookSummary(userId: string): Promise<BookSummary> {
       boundPremium: sql<number>`coalesce(sum(${dealsTable.estimatedPremium}) filter (where ${dealsTable.bindStatus} = 'bound'), 0)::float`,
     })
     .from(dealsTable)
-    .where(eq(dealsTable.producingAgentId, userId));
+    .where(and(eq(dealsTable.producingAgentId, userId), isNull(dealsTable.archivedAt)));
   return {
     dealCount: row?.dealCount ?? 0,
     totalPremium: row?.totalPremium ?? 0,
@@ -297,6 +297,7 @@ export async function assembleProfile(
         and(
           or(eq(dealsTable.ownerId, targetId), eq(dealsTable.producingAgentId, targetId)),
           ne(dealsTable.stage, "LOST"),
+          isNull(dealsTable.archivedAt),
         ),
       )
       .limit(50);

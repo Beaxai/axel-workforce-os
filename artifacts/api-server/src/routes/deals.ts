@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, dealsTable, insertDealSchema, quotesTable, contactsTable, notesTable, tasksTable, activityLogTable, insertActivityLogSchema, dealEmailAddressesTable, usersTable, accountsTable, lossHistoryDocumentsTable, implementationTrackersTable, type Deal } from "@workspace/db";
-import { eq, desc, inArray, sql } from "drizzle-orm";
+import { eq, desc, inArray, sql, isNull } from "drizzle-orm";
 import { z } from "zod/v4";
 import { PIPELINE_STAGE_KEYS } from "@workspace/pipeline";
 import { buildSections } from "../lib/deal-sections";
@@ -106,8 +106,13 @@ interface WorkforceProfileLite {
 }
 
 router.get("/", async (_req, res) => {
-  // Returns ALL deals — LOST is a stage (a board column), not a filtered outcome.
-  const rows = await db.select().from(dealsTable).orderBy(desc(dealsTable.createdAt));
+  // Returns all NON-ARCHIVED deals — LOST is a stage (a board column), not a
+  // filtered outcome, but archived deals are hidden everywhere.
+  const rows = await db
+    .select()
+    .from(dealsTable)
+    .where(isNull(dealsTable.archivedAt))
+    .orderBy(desc(dealsTable.createdAt));
 
   // Enrich each deal with card-face KPIs (locations / employees / payroll / exMod),
   // falling back to the latest quote's workforce_profile when the deal-level

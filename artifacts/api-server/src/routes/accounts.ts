@@ -1,6 +1,6 @@
 import { Router, type IRouter, type RequestHandler, type Request, type Response } from "express";
 import { db, accountsTable, insertAccountSchema, dealsTable, policiesTable, activityLogTable, insertActivityLogSchema, PROSPECT_STAGES, CLIENT_TAB_STAGES } from "@workspace/db";
-import { eq, desc, ilike, or, and, inArray } from "drizzle-orm";
+import { eq, desc, ilike, or, and, inArray, isNull } from "drizzle-orm";
 
 const router: IRouter = Router();
 
@@ -32,7 +32,7 @@ const requireAccountManager: RequestHandler = (req, res, next) => {
 
 /** Restrict a deal query to the requesting AGENT's own/produced deals; ADMIN/CSA/UW see all. */
 function dealScopeForAccount(req: { user?: { id: string; role: string } }, accountId: string) {
-  const base = eq(dealsTable.accountId, accountId);
+  const base = and(eq(dealsTable.accountId, accountId), isNull(dealsTable.archivedAt));
   if (req.user?.role !== "AGENT") return base;
   return and(base, or(eq(dealsTable.ownerId, req.user.id), eq(dealsTable.producingAgentId, req.user.id)));
 }

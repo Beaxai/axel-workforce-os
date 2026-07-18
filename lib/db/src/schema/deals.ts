@@ -45,6 +45,7 @@ export const dealsTable = pgTable("deals", {
   dealEmailAddress: text("deal_email_address").unique(),
   createdAt: timestamp("created_at", { withTimezone: true }).default(sql`now()`),
   closedAt: timestamp("closed_at", { withTimezone: true }),
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
   metadata: jsonb("metadata"),
   verticalId: text("vertical_id"),
   hasPriorCoverage: boolean("has_prior_coverage").default(false),
