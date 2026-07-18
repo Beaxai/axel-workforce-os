@@ -343,17 +343,23 @@ router.patch("/:id/tasks/:taskId", async (req, res) => {
   if (!allowed) return res.status(403).json({ error: "Insufficient permissions" });
 
   const status = parsed.data.status;
-  const [updated] = await db
-    .update(implementationTasksTable)
-    .set({
-      status,
-      completedAt: status === "COMPLETE" ? new Date() : null,
-      completedBy: status === "COMPLETE" ? actor.id : null,
-    })
-    .where(eq(implementationTasksTable.id, task.id))
-    .returning();
-
-  await recomputeProgress(tracker.id);
+  // Atomic: the task write and the progress/Active-Client recompute must commit or roll
+  // back together. If they were separate and the process died between them on the LAST
+  // task, the tracker would read 100% while the account stayed "New Client" forever, with
+  // nothing to retry the conversion (v2.4 §6D).
+  const updated = await db.transaction(async (tx) => {
+    const [row] = await tx
+      .update(implementationTasksTable)
+      .set({
+        status,
+        completedAt: status === "COMPLETE" ? new Date() : null,
+        completedBy: status === "COMPLETE" ? actor.id : null,
+      })
+      .where(eq(implementationTasksTable.id, task.id))
+      .returning();
+    await recomputeProgress(tracker.id, tx);
+    return row;
+  });
 
   return res.json(mapTask(updated!));
 });
