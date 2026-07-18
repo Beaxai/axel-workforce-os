@@ -26,7 +26,7 @@ import {
   dealSubjectivitiesTable,
   type Deal,
 } from "@workspace/db";
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, isNotNull } from "drizzle-orm";
 
 type DbOrTx = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -41,16 +41,30 @@ export async function evaluateLossHistoryStaleness(
     return { stale: true, reason: "No desired effective date on the deal — cannot verify the 60-day valuation window." };
   }
 
+  // Pick the newest run that actually HAS a valuation date. Postgres sorts NULLs first
+  // under DESC, so an unvalued run would otherwise mask a perfectly good valued one.
   const [newest] = await dbc
     .select({ valuationDate: lossHistoryDocumentsTable.valuationDate, fileName: lossHistoryDocumentsTable.fileName })
     .from(lossHistoryDocumentsTable)
-    .where(eq(lossHistoryDocumentsTable.dealId, deal.id))
+    .where(
+      and(
+        eq(lossHistoryDocumentsTable.dealId, deal.id),
+        isNotNull(lossHistoryDocumentsTable.valuationDate),
+      ),
+    )
     .orderBy(desc(lossHistoryDocumentsTable.valuationDate))
     .limit(1);
 
-  if (!newest) return { stale: true, reason: "No loss run on file." };
-  if (!newest.valuationDate) {
-    return { stale: true, reason: `Loss run "${newest.fileName}" has no valuation date recorded.` };
+  if (!newest) {
+    // No VALUED run. Distinguish "nothing uploaded" from "uploaded but undated" so the
+    // CSA knows whether to chase a document or just record its valuation date.
+    const [anyRun] = await dbc
+      .select({ fileName: lossHistoryDocumentsTable.fileName })
+      .from(lossHistoryDocumentsTable)
+      .where(eq(lossHistoryDocumentsTable.dealId, deal.id))
+      .limit(1);
+    if (!anyRun) return { stale: true, reason: "No loss run on file." };
+    return { stale: true, reason: `Loss run "${anyRun.fileName}" has no valuation date recorded.` };
   }
 
   const cutoff = new Date(`${deal.coverageEffectiveDate}T00:00:00Z`);
