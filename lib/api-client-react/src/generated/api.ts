@@ -33,6 +33,7 @@ import type {
   CreateJourneyTemplateRequest,
   CreateJourneyTemplateTaskRequest,
   CreateRfiRequest,
+  DealSubjectivity,
   DealSubmissionResponse,
   DeclineRequest,
   DeletedResponse,
@@ -61,6 +62,7 @@ import type {
   PreviewVariationResponse,
   QuoteVariationsResponse,
   RatingStaleClearedResponse,
+  RecomputeDealSubjectivities200,
   RegisterRequest,
   ReorderJourneyTemplatePhasesRequest,
   ReorderJourneyTemplateTasksRequest,
@@ -75,6 +77,7 @@ import type {
   UpdateJourneyTemplatePhaseRequest,
   UpdateJourneyTemplateRequest,
   UpdateJourneyTemplateTaskRequest,
+  UpdateSubjectivityRequest,
   UpdateUserProfileRequest,
   UpdateUserStatusRequest,
   UserActivityResponse,
@@ -4854,4 +4857,268 @@ export const useUpdateJourneyTaskStatus = <
   TContext
 > => {
   return useMutation(getUpdateJourneyTaskStatusMutationOptions(options));
+};
+
+/**
+ * @summary List the bind subjectivities checklist for a deal
+ */
+export const getGetDealSubjectivitiesUrl = (dealId: string) => {
+  return `/api/deals/${dealId}/subjectivities`;
+};
+
+export const getDealSubjectivities = async (
+  dealId: string,
+  options?: RequestInit,
+): Promise<DealSubjectivity[]> => {
+  return customFetch<DealSubjectivity[]>(getGetDealSubjectivitiesUrl(dealId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetDealSubjectivitiesQueryKey = (dealId: string) => {
+  return [`/api/deals/${dealId}/subjectivities`] as const;
+};
+
+export const getGetDealSubjectivitiesQueryOptions = <
+  TData = Awaited<ReturnType<typeof getDealSubjectivities>>,
+  TError = ErrorType<unknown>,
+>(
+  dealId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getDealSubjectivities>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetDealSubjectivitiesQueryKey(dealId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getDealSubjectivities>>
+  > = ({ signal }) =>
+    getDealSubjectivities(dealId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!dealId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getDealSubjectivities>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetDealSubjectivitiesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getDealSubjectivities>>
+>;
+export type GetDealSubjectivitiesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List the bind subjectivities checklist for a deal
+ */
+
+export function useGetDealSubjectivities<
+  TData = Awaited<ReturnType<typeof getDealSubjectivities>>,
+  TError = ErrorType<unknown>,
+>(
+  dealId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getDealSubjectivities>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetDealSubjectivitiesQueryOptions(dealId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Re-evaluate the loss-history staleness auto-flag for a deal
+ */
+export const getRecomputeDealSubjectivitiesUrl = (dealId: string) => {
+  return `/api/deals/${dealId}/subjectivities/recompute`;
+};
+
+export const recomputeDealSubjectivities = async (
+  dealId: string,
+  options?: RequestInit,
+): Promise<RecomputeDealSubjectivities200> => {
+  return customFetch<RecomputeDealSubjectivities200>(
+    getRecomputeDealSubjectivitiesUrl(dealId),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getRecomputeDealSubjectivitiesMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof recomputeDealSubjectivities>>,
+    TError,
+    { dealId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof recomputeDealSubjectivities>>,
+  TError,
+  { dealId: string },
+  TContext
+> => {
+  const mutationKey = ["recomputeDealSubjectivities"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof recomputeDealSubjectivities>>,
+    { dealId: string }
+  > = (props) => {
+    const { dealId } = props ?? {};
+
+    return recomputeDealSubjectivities(dealId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RecomputeDealSubjectivitiesMutationResult = NonNullable<
+  Awaited<ReturnType<typeof recomputeDealSubjectivities>>
+>;
+
+export type RecomputeDealSubjectivitiesMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Re-evaluate the loss-history staleness auto-flag for a deal
+ */
+export const useRecomputeDealSubjectivities = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof recomputeDealSubjectivities>>,
+    TError,
+    { dealId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof recomputeDealSubjectivities>>,
+  TError,
+  { dealId: string },
+  TContext
+> => {
+  return useMutation(getRecomputeDealSubjectivitiesMutationOptions(options));
+};
+
+/**
+ * @summary Update a subjectivity item's status
+ */
+export const getUpdateSubjectivityUrl = (id: string) => {
+  return `/api/subjectivities/${id}`;
+};
+
+export const updateSubjectivity = async (
+  id: string,
+  updateSubjectivityRequest: UpdateSubjectivityRequest,
+  options?: RequestInit,
+): Promise<DealSubjectivity> => {
+  return customFetch<DealSubjectivity>(getUpdateSubjectivityUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateSubjectivityRequest),
+  });
+};
+
+export const getUpdateSubjectivityMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateSubjectivity>>,
+    TError,
+    { id: string; data: BodyType<UpdateSubjectivityRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateSubjectivity>>,
+  TError,
+  { id: string; data: BodyType<UpdateSubjectivityRequest> },
+  TContext
+> => {
+  const mutationKey = ["updateSubjectivity"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateSubjectivity>>,
+    { id: string; data: BodyType<UpdateSubjectivityRequest> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateSubjectivity(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateSubjectivityMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateSubjectivity>>
+>;
+export type UpdateSubjectivityMutationBody =
+  BodyType<UpdateSubjectivityRequest>;
+export type UpdateSubjectivityMutationError = ErrorType<void>;
+
+/**
+ * @summary Update a subjectivity item's status
+ */
+export const useUpdateSubjectivity = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateSubjectivity>>,
+    TError,
+    { id: string; data: BodyType<UpdateSubjectivityRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateSubjectivity>>,
+  TError,
+  { id: string; data: BodyType<UpdateSubjectivityRequest> },
+  TContext
+> => {
+  return useMutation(getUpdateSubjectivityMutationOptions(options));
 };

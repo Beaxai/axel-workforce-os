@@ -627,6 +627,45 @@ export type JourneyTemplateDetail = JourneyTemplate & {
   tasks: JourneyTemplateTask[];
 };
 
+export type DealSubjectivityStatus =
+  (typeof DealSubjectivityStatus)[keyof typeof DealSubjectivityStatus];
+
+export const DealSubjectivityStatus = {
+  OPEN: "OPEN",
+  SATISFIED: "SATISFIED",
+  WAIVED: "WAIVED",
+  NOT_APPLICABLE: "NOT_APPLICABLE",
+} as const;
+
+export interface DealSubjectivity {
+  id: string;
+  dealId: string;
+  name: string;
+  sortOrder: number;
+  systemKey?: string | null;
+  status: DealSubjectivityStatus;
+  isBlocking: boolean;
+  autoFlagReason?: string | null;
+  notes?: string | null;
+  satisfiedAt?: string | null;
+  satisfiedBy?: string | null;
+}
+
+export type UpdateSubjectivityRequestStatus =
+  (typeof UpdateSubjectivityRequestStatus)[keyof typeof UpdateSubjectivityRequestStatus];
+
+export const UpdateSubjectivityRequestStatus = {
+  OPEN: "OPEN",
+  SATISFIED: "SATISFIED",
+  WAIVED: "WAIVED",
+  NOT_APPLICABLE: "NOT_APPLICABLE",
+} as const;
+
+export interface UpdateSubjectivityRequest {
+  status: UpdateSubjectivityRequestStatus;
+  notes?: string | null;
+}
+
 export type JourneyType = (typeof JourneyType)[keyof typeof JourneyType];
 
 export const JourneyType = {
@@ -878,3 +917,9 @@ export const GetJourneysType = {
   IMPLEMENTATION: "IMPLEMENTATION",
   ONBOARDING: "ONBOARDING",
 } as const;
+
+export type RecomputeDealSubjectivities200 = {
+  updated: boolean;
+  stale: boolean;
+  reason?: string | null;
+};

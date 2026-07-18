@@ -19,6 +19,7 @@ export const SUBJ_KEYS = {
 
 import {
   db,
+  dealsTable,
   lossHistoryDocumentsTable,
   subjectivityTemplatesTable,
   subjectivityTemplateItemsTable,
@@ -117,4 +118,39 @@ export async function generateSubjectivitiesForDeal(
     created++;
   }
   return { created, skipped: false, staleLossHistory: staleness.stale };
+}
+
+/**
+ * Re-evaluate §6A item 9 for a deal whose data changed after the checklist was generated
+ * (a loss run arrived, or the effective date was set). Updates ONLY the auto-flag reason —
+ * never the status. Clearing the reason signals "no longer stale"; a human still marks it
+ * SATISFIED after confirming the document.
+ */
+export async function recomputeLossHistorySubjectivity(
+  dealId: string,
+  dbc: DbOrTx = db,
+): Promise<{ updated: boolean; stale: boolean; reason: string | null }> {
+  const [deal] = await dbc.select().from(dealsTable).where(eq(dealsTable.id, dealId)).limit(1);
+  if (!deal) return { updated: false, stale: false, reason: null };
+
+  const [item] = await dbc
+    .select({ id: dealSubjectivitiesTable.id })
+    .from(dealSubjectivitiesTable)
+    .where(
+      and(
+        eq(dealSubjectivitiesTable.dealId, dealId),
+        eq(dealSubjectivitiesTable.systemKey, SUBJ_KEYS.LOSS_HISTORY),
+      ),
+    )
+    .limit(1);
+  if (!item) return { updated: false, stale: false, reason: null };
+
+  const staleness = await evaluateLossHistoryStaleness(deal, dbc);
+
+  await dbc
+    .update(dealSubjectivitiesTable)
+    .set({ autoFlagReason: staleness.reason, updatedAt: new Date() })
+    .where(eq(dealSubjectivitiesTable.id, item.id));
+
+  return { updated: true, stale: staleness.stale, reason: staleness.reason };
 }

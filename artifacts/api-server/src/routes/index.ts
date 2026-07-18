@@ -25,6 +25,7 @@ import wcRatesRouter from "./wc-rates";
 import rateRouter from "./rate";
 import submissionRouter from "./submission";
 import lossHistoryRouter from "./loss-history";
+import { dealSubjectivitiesRouter, subjectivitiesRouter } from "./subjectivities";
 import proposalsRouter from "./proposals";
 import signaturesRouter from "./signatures";
 import documentsRouter from "./documents";
@@ -70,6 +71,10 @@ router.use("/organizations", requireRoles("ADMIN", "CSA"), organizationsRouter);
 // directory/CRUD to internal staff while profile/activity use record-level authz.
 router.use("/users", requireRoles(), usersRouter);
 router.use("/deals", requireRoles(...INTERNAL_SALES), dealsRouter);
+// §6A subjectivities checklist — CSA drives/monitors it (§6B). Additional router on
+// /deals: only defines /:dealId/subjectivities* so it cannot shadow dealsRouter routes.
+router.use("/deals", requireRoles("ADMIN", "CSA"), dealSubjectivitiesRouter);
+router.use("/subjectivities", requireRoles("ADMIN", "CSA"), subjectivitiesRouter);
 router.use("/quotes", requireRoles(...INTERNAL_SALES), quotesRouter);
 router.use("/quote-drafts", requireRoles(...INTERNAL_SALES), quoteDraftsRouter);
 router.use("/policies", requireRoles("ADMIN", "CSA", "UNDERWRITER"), policiesRouter);

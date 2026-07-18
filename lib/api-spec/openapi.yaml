@@ -24,6 +24,8 @@ tags:
     description: Journey template admin operations (P5b)
   - name: journeys
     description: Journey (implementation/onboarding tracker) operations (P5b)
+  - name: subjectivities
+    description: Bind subjectivities checklist operations (P5-WC 6A)
 paths:
   /users:
     get:
@@ -1281,6 +1283,79 @@ paths:
                 $ref: "#/components/schemas/JourneyTask"
         "404":
           description: Journey or task not found
+  /deals/{dealId}/subjectivities:
+    get:
+      operationId: getDealSubjectivities
+      tags: [subjectivities]
+      summary: List the bind subjectivities checklist for a deal
+      parameters:
+        - name: dealId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Checklist items in sort order
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DealSubjectivity"
+  /deals/{dealId}/subjectivities/recompute:
+    post:
+      operationId: recomputeDealSubjectivities
+      tags: [subjectivities]
+      summary: Re-evaluate the loss-history staleness auto-flag for a deal
+      parameters:
+        - name: dealId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Recompute result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  updated:
+                    type: boolean
+                  stale:
+                    type: boolean
+                  reason:
+                    type: string
+                    nullable: true
+                required: [updated, stale]
+  /subjectivities/{id}:
+    patch:
+      operationId: updateSubjectivity
+      tags: [subjectivities]
+      summary: Update a subjectivity item's status
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSubjectivityRequest"
+      responses:
+        "200":
+          description: Updated subjectivity item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DealSubjectivity"
+        "404":
+          description: Subjectivity not found
 components:
   schemas:
     SubmissionField:
@@ -2373,6 +2448,51 @@ components:
               items:
                 $ref: "#/components/schemas/JourneyTemplateTask"
           required: [phases, tasks]
+    DealSubjectivity:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        dealId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        sortOrder:
+          type: integer
+        systemKey:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [OPEN, SATISFIED, WAIVED, NOT_APPLICABLE]
+        isBlocking:
+          type: boolean
+        autoFlagReason:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        satisfiedAt:
+          type: string
+          nullable: true
+        satisfiedBy:
+          type: string
+          format: uuid
+          nullable: true
+      required: [id, dealId, name, sortOrder, status, isBlocking]
+    UpdateSubjectivityRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [OPEN, SATISFIED, WAIVED, NOT_APPLICABLE]
+        notes:
+          type: string
+          nullable: true
+      required: [status]
     Journey:
       type: object
       properties:

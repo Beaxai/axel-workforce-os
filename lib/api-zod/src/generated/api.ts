@@ -1459,3 +1459,66 @@ export const UpdateJourneyTaskStatusResponse = zod.object({
   completedAt: zod.string().nullish(),
   sortOrder: zod.number(),
 });
+
+/**
+ * @summary List the bind subjectivities checklist for a deal
+ */
+export const GetDealSubjectivitiesParams = zod.object({
+  dealId: zod.coerce.string(),
+});
+
+export const GetDealSubjectivitiesResponseItem = zod.object({
+  id: zod.string().uuid(),
+  dealId: zod.string().uuid(),
+  name: zod.string(),
+  sortOrder: zod.number(),
+  systemKey: zod.string().nullish(),
+  status: zod.enum(["OPEN", "SATISFIED", "WAIVED", "NOT_APPLICABLE"]),
+  isBlocking: zod.boolean(),
+  autoFlagReason: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  satisfiedAt: zod.string().nullish(),
+  satisfiedBy: zod.string().uuid().nullish(),
+});
+export const GetDealSubjectivitiesResponse = zod.array(
+  GetDealSubjectivitiesResponseItem,
+);
+
+/**
+ * @summary Re-evaluate the loss-history staleness auto-flag for a deal
+ */
+export const RecomputeDealSubjectivitiesParams = zod.object({
+  dealId: zod.coerce.string(),
+});
+
+export const RecomputeDealSubjectivitiesResponse = zod.object({
+  updated: zod.boolean(),
+  stale: zod.boolean(),
+  reason: zod.string().nullish(),
+});
+
+/**
+ * @summary Update a subjectivity item's status
+ */
+export const UpdateSubjectivityParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const UpdateSubjectivityBody = zod.object({
+  status: zod.enum(["OPEN", "SATISFIED", "WAIVED", "NOT_APPLICABLE"]),
+  notes: zod.string().nullish(),
+});
+
+export const UpdateSubjectivityResponse = zod.object({
+  id: zod.string().uuid(),
+  dealId: zod.string().uuid(),
+  name: zod.string(),
+  sortOrder: zod.number(),
+  systemKey: zod.string().nullish(),
+  status: zod.enum(["OPEN", "SATISFIED", "WAIVED", "NOT_APPLICABLE"]),
+  isBlocking: zod.boolean(),
+  autoFlagReason: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  satisfiedAt: zod.string().nullish(),
+  satisfiedBy: zod.string().uuid().nullish(),
+});

@@ -8,6 +8,7 @@ import {
   activityLogTable,
 } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
+import { recomputeLossHistorySubjectivity } from "../lib/subjectivities";
 
 const uploadDir = path.join(process.cwd(), "uploads", "loss-history");
 if (!fs.existsSync(uploadDir)) {
@@ -76,6 +77,9 @@ router.post("/:dealId/upload", upload.single("file"), async (req: Request<{ deal
     description: `Loss run document uploaded: ${req.file.originalname}`,
     metadata: { storage_path: storagePath, years_covered: yearsCovered },
   });
+
+  // §6A item 9: a new loss run may clear (or change) the staleness flag.
+  await recomputeLossHistorySubjectivity(req.params.dealId, db);
 
   return res.json({ success: true, document: doc });
 });
