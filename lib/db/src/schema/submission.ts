@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, integer, boolean, timestamp, jsonb, index } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, integer, boolean, timestamp, jsonb, index, date } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { sql } from "drizzle-orm";
@@ -69,6 +69,10 @@ export const lossHistoryDocumentsTable = pgTable("loss_history_documents", {
   uploadedBy: uuid("uploaded_by").references(() => usersTable.id),
   uploadedAt: timestamp("uploaded_at", { withTimezone: true }).default(sql`now()`),
   yearsCovered: text("years_covered"),
+  /** The date the loss run was VALUED by the carrier — NOT the upload date.
+   *  §6A item 9 requires valuation within 60 days of the desired effective date.
+   *  Null means unknown, which fails closed (the subjectivity stays open). */
+  valuationDate: date("valuation_date", { mode: "string" }),
   notes: text("notes"),
 }, (t) => [
   index("idx_loss_history_deal").on(t.dealId),
