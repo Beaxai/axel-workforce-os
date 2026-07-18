@@ -1,0 +1,18 @@
+/**
+ * P5-WC §6A — Bind Subjectivities Checklist. The 10 items are system-owned product
+ * logic (Curtis 2026-07-16); code addresses them via these stable keys.
+ */
+export const SUBJ_TEMPLATE_NAME = "WC Bind Subjectivities";
+
+export const SUBJ_KEYS = {
+  ACORD_130: "SUBJ_ACORD_130",
+  SUPPLEMENTAL_APP: "SUBJ_SUPPLEMENTAL_APP",
+  QUOTE_ACCEPTANCE: "SUBJ_QUOTE_ACCEPTANCE",
+  TRIA_ELECTION: "SUBJ_TRIA_ELECTION",
+  FRAUD_WARNINGS: "SUBJ_FRAUD_WARNINGS",
+  STATE_NOTICES: "SUBJ_STATE_NOTICES",
+  OFFICER_EXCLUSION: "SUBJ_OFFICER_EXCLUSION",
+  WAIVER_FORMS: "SUBJ_WAIVER_FORMS",
+  LOSS_HISTORY: "SUBJ_LOSS_HISTORY",
+  BROKER_FEE: "SUBJ_BROKER_FEE",
+} as const;

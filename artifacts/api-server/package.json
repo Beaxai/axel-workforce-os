@@ -9,6 +9,7 @@
     "start": "node --enable-source-maps ./dist/index.mjs",
     "seed:users": "tsx src/scripts/seed-users.ts",
     "seed:wc-tracker": "tsx src/scripts/seed-wc-tracker.ts",
+    "seed:subjectivities": "tsx src/scripts/seed-subjectivity-template.ts",
     "normalize:user-status": "tsx src/scripts/normalize-user-status.ts",
     "migrate:pipeline-stages": "tsx src/scripts/migrate-pipeline-stages.ts",
     "revert:pipeline-stages": "tsx src/scripts/revert-pipeline-stages.ts",
