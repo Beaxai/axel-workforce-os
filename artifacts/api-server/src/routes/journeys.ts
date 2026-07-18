@@ -17,8 +17,11 @@ import {
   implementationPhasesTable,
   implementationTasksTable,
   dealsTable,
+  accountsTable,
+  activityLogTable,
+  PROSPECT_STAGES,
 } from "@workspace/db";
-import { eq, and, asc } from "drizzle-orm";
+import { eq, and, asc, inArray } from "drizzle-orm";
 import { z } from "zod/v4";
 
 const router: IRouter = Router();
@@ -118,7 +121,63 @@ async function canViewJourney(tracker: TrackerRow, actor: Actor): Promise<boolea
 
 /* ---------------------------- progress recompute -------------------------- */
 
-type DbOrTx = Pick<typeof db, "select" | "update">;
+type DbOrTx = Pick<typeof db, "select" | "update" | "insert">;
+
+/**
+ * v2.4 §6D — tracker complete flips the account to Active Client, automated.
+ * Mirrors the bind-time advance in webhooks.ts: a single conditional UPDATE, so a repeat
+ * call matches zero rows (idempotent, no duplicate activity row) and an account that is
+ * already Active Client is never downgraded.
+ */
+async function advanceAccountToActiveClient(trackerId: string, dbc: DbOrTx): Promise<void> {
+  const [tracker] = await dbc
+    .select({ dealId: implementationTrackersTable.dealId })
+    .from(implementationTrackersTable)
+    .where(eq(implementationTrackersTable.id, trackerId))
+    .limit(1);
+  if (!tracker?.dealId) return;
+
+  const [deal] = await dbc
+    .select({ accountId: dealsTable.accountId })
+    .from(dealsTable)
+    .where(eq(dealsTable.id, tracker.dealId))
+    .limit(1);
+  if (!deal?.accountId) return;
+
+  const [account] = await dbc
+    .select({ clientStage: accountsTable.clientStage })
+    .from(accountsTable)
+    .where(eq(accountsTable.id, deal.accountId))
+    .limit(1);
+  const fromStage = account?.clientStage ?? "—";
+
+  const advanced = await dbc
+    .update(accountsTable)
+    .set({ clientStage: "Active Client", updatedAt: new Date() })
+    .where(
+      and(
+        eq(accountsTable.id, deal.accountId),
+        inArray(accountsTable.clientStage, [...PROSPECT_STAGES, "New Client"]),
+      ),
+    )
+    .returning({ id: accountsTable.id });
+
+  if (advanced.length === 0) return; // already Active Client — no duplicate log
+
+  await dbc.insert(activityLogTable).values({
+    dealId: tracker.dealId,
+    entityType: "account",
+    entityId: deal.accountId,
+    eventType: "stage_changed",
+    description: `Stage changed from "${fromStage}" to "Active Client" (implementation tracker complete).`,
+    metadata: {
+      changes: [{ field: "clientStage", label: "Stage", from: fromStage, to: "Active Client" }],
+      trigger: "tracker_complete",
+      trackerId,
+    },
+    createdBy: null,
+  });
+}
 
 /**
  * Recompute overall_progress + tracker status and roll up phase statuses from
@@ -143,6 +202,8 @@ export async function recomputeProgress(trackerId: string, dbc: DbOrTx = db): Pr
       completedAt: allComplete ? new Date() : null,
     })
     .where(eq(implementationTrackersTable.id, trackerId));
+
+  if (allComplete) await advanceAccountToActiveClient(trackerId, dbc);
 
   const phases = await dbc
     .select()

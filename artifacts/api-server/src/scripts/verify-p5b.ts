@@ -12,6 +12,7 @@
 import {
   db,
   dealsTable,
+  accountsTable,
   journeyTemplatesTable,
   journeyTemplatePhasesTable,
   journeyTemplateTasksTable,
@@ -182,11 +183,25 @@ async function main() {
       // ========================================================================
       // D. Progress recompute rolls up tasks → phases → tracker
       // ========================================================================
+      // D3 setup: pin a known starting stage (rolled back with everything else).
+      const [acctDeal] = await tx
+        .select({ accountId: dealsTable.accountId })
+        .from(dealsTable)
+        .where(eq(dealsTable.id, deal.id));
+      await tx
+        .update(accountsTable)
+        .set({ clientStage: "New Client" })
+        .where(eq(accountsTable.id, acctDeal!.accountId));
       await tx.update(implementationTasksTable).set({ status: "COMPLETE" }).where(eq(implementationTasksTable.trackerId, tracker!.id));
       await recomputeProgress(tracker!.id, tx);
       let [t2] = await tx.select().from(implementationTrackersTable).where(eq(implementationTrackersTable.id, tracker!.id));
       check("D. all complete → progress 100", (t2?.overallProgress ?? -1) === 100);
       check("D. all complete → tracker COMPLETE + completedAt set", t2?.status === "COMPLETE" && !!t2?.completedAt);
+      const [acct] = await tx
+        .select({ clientStage: accountsTable.clientStage })
+        .from(accountsTable)
+        .where(eq(accountsTable.id, acctDeal!.accountId));
+      check("D3. tracker complete → account is Active Client", acct?.clientStage === "Active Client", `stage=${acct?.clientStage}`);
       const phasesAllDone = await tx.select().from(implementationPhasesTable).where(eq(implementationPhasesTable.trackerId, tracker!.id));
       check("D. all complete → every phase COMPLETE", phasesAllDone.every((p) => p.status === "COMPLETE"));
 
@@ -196,6 +211,11 @@ async function main() {
       [t2] = await tx.select().from(implementationTrackersTable).where(eq(implementationTrackersTable.id, tracker!.id));
       check("D. partial → progress 67 (2 of 3)", (t2?.overallProgress ?? -1) === 67, `${t2?.overallProgress}`);
       check("D. partial → tracker back to IN_PROGRESS, completedAt cleared", t2?.status === "IN_PROGRESS" && !t2?.completedAt);
+      const [acct2] = await tx
+        .select({ clientStage: accountsTable.clientStage })
+        .from(accountsTable)
+        .where(eq(accountsTable.id, acctDeal!.accountId));
+      check("D3. reopening a task does NOT downgrade the client", acct2?.clientStage === "Active Client", `stage=${acct2?.clientStage}`);
       const phasesPartial = await tx.select().from(implementationPhasesTable).where(eq(implementationPhasesTable.trackerId, tracker!.id));
       check("D. partial → phase 1 IN_PROGRESS, phase 2 COMPLETE",
         phasesPartial.find((p) => p.phaseNumber === 1)?.status === "IN_PROGRESS" && phasesPartial.find((p) => p.phaseNumber === 2)?.status === "COMPLETE");
