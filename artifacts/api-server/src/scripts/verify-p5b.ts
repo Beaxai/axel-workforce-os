@@ -64,6 +64,12 @@ async function main() {
       check("precondition: a deal exists to bind", true, `deal ${picked.id}`);
       const deal = { id: picked.id, productType: picked.productType } as Deal;
 
+      // Hermetic isolation: neutralize any real templates (the seeded WC tracker, and any
+      // future PEO/starter templates) so ONLY this run's fixtures compete. Safe — the whole
+      // run is inside a transaction that is rolled back, so live data is untouched after.
+      // Without this, the seeded WC tracker legitimately beats the fixture and A/B cascade.
+      await tx.update(journeyTemplatesTable).set({ isActive: false });
+
       // ---- build a throwaway ACTIVE template (EXACT product match for the deal) -
       const [tpl] = await tx
         .insert(journeyTemplatesTable)
