@@ -28,6 +28,18 @@ function validateStage(stage: unknown): string | null {
   return null;
 }
 
+const PRODUCT_TYPES = ["WC", "PEO", "ASO", "ASO_CAPTIVE"] as const;
+
+/** Mirrors validateStage: returns an error string when the value is present but not
+ *  canonical. productType is nullable, so undefined/null passes. */
+function validateProductType(value: unknown): string | null {
+  if (value === undefined || value === null) return null;
+  if (typeof value !== "string" || !PRODUCT_TYPES.includes(value as (typeof PRODUCT_TYPES)[number])) {
+    return `Invalid productType. Must be one of: ${PRODUCT_TYPES.join(", ")}.`;
+  }
+  return null;
+}
+
 /** Bind-readiness gate for canonical stage 9 (BOUND). A deal is bind-ready when
  *  its submission is complete (every section) AND a quote exists for it.
  *  NOTE (flag for Curtis): "approved quote" is currently modelled as the mere
@@ -188,6 +200,8 @@ router.post("/", async (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues });
   const invalid = validateStage(parsed.data.stage);
   if (invalid) return res.status(400).json({ error: invalid });
+  const invalidProduct = validateProductType(parsed.data.productType);
+  if (invalidProduct) return res.status(400).json({ error: invalidProduct });
   let accountId = parsed.data.accountId;
   if (!accountId) {
     const { account } = await findOrCreateAccount({
@@ -212,6 +226,8 @@ router.patch("/:id", async (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues });
   const invalid = validateStage(parsed.data.stage);
   if (invalid) return res.status(400).json({ error: invalid });
+  const invalidProduct = validateProductType(parsed.data.productType);
+  if (invalidProduct) return res.status(400).json({ error: invalidProduct });
 
   const u = req.user;
   const author = u ? [u.firstName, u.lastName].filter(Boolean).join(" ") || u.email : "System";

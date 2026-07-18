@@ -247,7 +247,7 @@ router.post("/submit-for-approval", async (req, res) => {
       state: businessState || "",
       annualPayroll: String(totalPayroll || 0),
       employeeCountFt: totalEmployees || 0,
-      stage: "NEEDS_ANALYSIS",
+      stage: "SUBMISSION_REVIEW",
       submissionStatus: "submitted",
       verticalId: (vertical || "cannabis").toLowerCase(),
       fein: fein || null,

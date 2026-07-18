@@ -60,10 +60,10 @@ export default function DealsPage() {
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Product Type</label>
                 <select name="productType" className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
-                  <option value="WC_ONLY">WC Only</option>
+                  <option value="WC">WC Only</option>
                   <option value="PEO">PEO</option>
                   <option value="ASO">ASO</option>
-                  <option value="STAFFING">Staffing</option>
+                  <option value="ASO_CAPTIVE">ASO + Captive</option>
                 </select>
               </div>
               <div>
