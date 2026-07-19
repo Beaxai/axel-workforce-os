@@ -162,23 +162,26 @@ async function advanceAccountToActiveClient(trackerId: string, dbc: DbOrTx): Pro
     )
     .returning({ id: accountsTable.id });
 
-  if (advanced.length === 0) return; // already Active Client — no duplicate log
+  if (advanced.length > 0) {
+    // Log only when the account actually advanced — no duplicate log on repeat calls.
+    await dbc.insert(activityLogTable).values({
+      dealId: tracker.dealId,
+      entityType: "account",
+      entityId: deal.accountId,
+      eventType: "stage_changed",
+      description: `Stage changed from "${fromStage}" to "Active Client" (implementation tracker complete).`,
+      metadata: {
+        changes: [{ field: "clientStage", label: "Stage", from: fromStage, to: "Active Client" }],
+        trigger: "tracker_complete",
+        trackerId,
+      },
+      createdBy: null,
+    });
+  }
 
-  await dbc.insert(activityLogTable).values({
-    dealId: tracker.dealId,
-    entityType: "account",
-    entityId: deal.accountId,
-    eventType: "stage_changed",
-    description: `Stage changed from "${fromStage}" to "Active Client" (implementation tracker complete).`,
-    metadata: {
-      changes: [{ field: "clientStage", label: "Stage", from: fromStage, to: "Active Client" }],
-      trigger: "tracker_complete",
-      trackerId,
-    },
-    createdBy: null,
-  });
-
-  // Keep the pipeline card in sync with the account: an Active Client's deal
+  // Keep the pipeline card in sync with the account — runs even when the
+  // account was already Active Client, so a drifted deal (account advanced,
+  // card still in Bound) self-heals on the next recompute. An Active Client's deal
   // belongs in the CLIENT column, not BOUND. Same idempotent conditional-UPDATE
   // pattern — only advances BOUND → CLIENT, never moves any other stage.
   const dealAdvanced = await dbc
