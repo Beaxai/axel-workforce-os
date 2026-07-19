@@ -1,13 +1,23 @@
 import { useState, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   GlassCard,
   Badge,
   SectionHeader,
 } from "@/components/ui/axel-index";
-import { useGetJourneys, type Journey } from "@workspace/api-client-react";
+import {
+  useGetJourneys,
+  useGetJourney,
+  useUpdateJourneyTaskStatus,
+  getGetJourneyQueryKey,
+  getGetJourneysQueryKey,
+  type Journey,
+  type JourneyTask,
+} from "@workspace/api-client-react";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { api } from "@/lib/api";
-import { Rocket } from "lucide-react";
+import JourneyView from "@/components/journey/JourneyView";
+import { Rocket, ArrowLeft } from "lucide-react";
 
 type TabKey = "WC" | "PEO" | "ASO";
 
@@ -28,9 +38,119 @@ const tabOf = (j: Journey, dealProductType?: string): TabKey => {
 
 const EXPECTED_DAYS: Record<TabKey, number> = { WC: 7, PEO: 22, ASO: 18 };
 
+/**
+ * Detail view for one journey — the internal specialist's work surface.
+ * Renders the shared JourneyView (also used by the client-facing "My Program"),
+ * so both audiences can never drift apart.
+ */
+function JourneyDetailPanel({
+  journeyId,
+  businessName,
+  onBack,
+}: {
+  journeyId: string;
+  businessName: string;
+  onBack: () => void;
+}) {
+  const c = useThemeColors();
+  const queryClient = useQueryClient();
+  const { data: journey, isLoading, error } = useGetJourney(journeyId);
+  const updateTask = useUpdateJourneyTaskStatus();
+  const [taskError, setTaskError] = useState<string | null>(null);
+
+  const handleCompleteTask = (taskId: string) => {
+    setTaskError(null);
+    updateTask.mutate(
+      { id: journeyId, taskId, data: { status: "COMPLETE" } },
+      {
+        onSuccess: () => {
+          // Progress, phase roll-up and the Active Client flip all happen
+          // server-side, so refetch rather than patching local state.
+          queryClient.invalidateQueries({ queryKey: getGetJourneyQueryKey(journeyId) });
+          queryClient.invalidateQueries({ queryKey: getGetJourneysQueryKey() });
+        },
+        onError: () => setTaskError("Could not complete that task. Please try again."),
+      },
+    );
+  };
+
+  // INTERNAL audience: staff work everything except the client's own tasks.
+  const canCompleteTask = (task: JourneyTask) =>
+    task.ownerType !== "CLIENT" && task.status !== "COMPLETE";
+
+  const backButton = (
+    <button
+      type="button"
+      data-testid="button-back-to-journeys"
+      onClick={onBack}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+        background: "transparent",
+        border: "none",
+        color: "var(--accent-primary)",
+        fontSize: 14,
+        fontWeight: 500,
+        cursor: "pointer",
+        padding: 0,
+        marginBottom: 16,
+      }}
+    >
+      <ArrowLeft style={{ width: 16, height: 16 }} />
+      All implementations
+    </button>
+  );
+
+  if (isLoading) {
+    return (
+      <div>
+        {backButton}
+        <GlassCard padding="40px" style={{ textAlign: "center" }}>
+          <p style={{ color: c.textMuted, fontSize: 15, margin: 0 }}>Loading journey…</p>
+        </GlassCard>
+      </div>
+    );
+  }
+
+  if (error || !journey) {
+    return (
+      <div>
+        {backButton}
+        <GlassCard padding="40px" style={{ textAlign: "center" }}>
+          <p style={{ color: "#ef4444", fontSize: 15, margin: 0 }}>
+            Could not load this journey.
+          </p>
+        </GlassCard>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {backButton}
+      <SectionHeader title={businessName} subtitle="Implementation journey" />
+      {taskError && (
+        <GlassCard padding="12px 16px" style={{ marginBottom: 16, border: "1px solid #ef4444" }}>
+          <span data-testid="text-task-error" style={{ color: "#ef4444", fontSize: 13.5 }}>
+            {taskError}
+          </span>
+        </GlassCard>
+      )}
+      <JourneyView
+        journey={journey}
+        audience="INTERNAL"
+        onCompleteTask={handleCompleteTask}
+        canCompleteTask={canCompleteTask}
+      />
+    </div>
+  );
+}
+
 export default function Implementations() {
   const c = useThemeColors();
   const [tab, setTab] = useState<TabKey>("WC");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [dealInfo, setDealInfo] = useState<Map<string, { businessName: string; productType?: string }>>(new Map());
 
   const { data: journeys = [], isLoading } = useGetJourneys({ type: "IMPLEMENTATION" });
@@ -56,6 +176,20 @@ export default function Implementations() {
     const d = new Date(dateStr);
     return Math.floor((Date.now() - d.getTime()) / (1000 * 60 * 60 * 24));
   };
+
+  // Detail view takes over the page when a journey is selected.
+  if (selectedId) {
+    const selected = journeys.find((j) => j.id === selectedId);
+    const name =
+      (selected?.dealId && dealInfo.get(selected.dealId)?.businessName) || "Implementation";
+    return (
+      <JourneyDetailPanel
+        journeyId={selectedId}
+        businessName={name}
+        onBack={() => setSelectedId(null)}
+      />
+    );
+  }
 
   return (
     <div>
@@ -105,7 +239,12 @@ export default function Implementations() {
             (journey.dealId && dealInfo.get(journey.dealId)?.businessName) || "Unknown Business";
 
           return (
-            <GlassCard key={journey.id} padding="24px">
+            <GlassCard
+              key={journey.id}
+              padding="24px"
+              onClick={() => setSelectedId(journey.id)}
+              style={{ cursor: "pointer" }}
+            >
               <div data-testid={`card-journey-${journey.id}`} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "16px" }}>
                 <div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>

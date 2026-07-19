@@ -751,6 +751,14 @@ export default function Pipeline() {
                           <p style={{ fontSize: "14px", fontWeight: 600, color: textPrimary, margin: 0, lineHeight: 1.2 }}>
                             {deal.businessName || "Untitled"}
                           </p>
+                          {deal.referenceCode && (
+                            <p
+                              data-testid={`text-ref-${deal.id}`}
+                              style={{ fontSize: "11px", color: textMuted, margin: "2px 0 0", fontFamily: "monospace", letterSpacing: "0.02em" }}
+                            >
+                              {deal.referenceCode}
+                            </p>
+                          )}
                         </div>
 
                         <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "10px", flexWrap: "wrap" }}>
