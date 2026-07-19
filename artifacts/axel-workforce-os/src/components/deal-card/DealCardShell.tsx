@@ -13,7 +13,7 @@ import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import {
   X, Star, LayoutDashboard, ClipboardList, Folder, CheckSquare, Calculator, Shield, UserRound,
-  MapPin, Users, Banknote, Gauge,
+  MapPin, Users, Banknote, Gauge, ShieldCheck,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useThemeColors } from "@/lib/use-theme-colors";
@@ -27,6 +27,7 @@ import { type GeoMarker, type GeoMarkerClassCode, stateCentroid, zipToLngLat, sp
 import LocationPopup from "./LocationPopup";
 import OverviewTab from "./OverviewTab";
 import SubmissionTab from "./SubmissionTab";
+import SubjectivitiesTab from "./SubjectivitiesTab";
 import PricingRail from "./PricingRail";
 import ReRateBanner from "./ReRateBanner";
 import SectionEditorOverlay from "./SectionEditorOverlay";
@@ -39,11 +40,13 @@ interface DealCardShellProps {
   onDealUpdated?: () => void;
 }
 
-type TabKey = "overview" | "submission" | "documents" | "tasks" | "quote" | "policy";
+type TabKey = "overview" | "submission" | "subjectivities" | "documents" | "tasks" | "quote" | "policy";
 
 const NAV: Array<{ key: TabKey; label: string; Icon: typeof LayoutDashboard }> = [
   { key: "overview", label: "Overview", Icon: LayoutDashboard },
   { key: "submission", label: "Submission", Icon: ClipboardList },
+  // §6A bind subjectivities — generated when the deal reaches Bind Order.
+  { key: "subjectivities", label: "Subjectivities", Icon: ShieldCheck },
   { key: "documents", label: "Documents", Icon: Folder },
   { key: "tasks", label: "Tasks", Icon: CheckSquare },
   { key: "quote", label: "Quote", Icon: Calculator },
@@ -793,6 +796,7 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
                   />
                 )}
                 {tab === "submission" && <SubmissionTab sections={sections} aggregateComplete={payload.aggregateComplete} total={payload.total} onOpenSection={setOpenSection} />}
+                {tab === "subjectivities" && <SubjectivitiesTab dealId={dealId} />}
                 {tab === "documents" && <DocumentsTab dealId={dealId} />}
                 {tab === "tasks" && <TasksTab dealId={dealId} />}
                 {tab === "quote" && <QuoteTab dealId={dealId} businessName={deal?.businessName || ""} productType={deal?.productType} onClose={onClose} />}
