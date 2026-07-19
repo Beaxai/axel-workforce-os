@@ -30,6 +30,35 @@ router.get("/:id", async (req, res) => {
 router.post("/", async (req, res) => {
   const parsed = insertQuoteDraftSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues });
+
+  // Dedupe: one in-progress draft per business name per user. If a draft with
+  // the same (case-insensitive) business name already exists for this user,
+  // update it in place instead of creating a duplicate row. This guards
+  // against autosave double-fires and re-starting a quote for the same
+  // company, which previously produced duplicate "In-Progress Submissions".
+  const businessName = parsed.data.businessName?.trim();
+  if (businessName) {
+    const [existing] = await db
+      .select()
+      .from(quoteDraftsTable)
+      .where(
+        and(
+          eq(quoteDraftsTable.createdBy, req.user!.id),
+          sql`lower(${quoteDraftsTable.businessName}) = lower(${businessName})`,
+        ),
+      )
+      .orderBy(desc(quoteDraftsTable.updatedAt))
+      .limit(1);
+    if (existing) {
+      const [row] = await db
+        .update(quoteDraftsTable)
+        .set({ ...parsed.data, updatedAt: sql`now()` })
+        .where(eq(quoteDraftsTable.id, existing.id))
+        .returning();
+      return res.status(200).json(row);
+    }
+  }
+
   const [row] = await db
     .insert(quoteDraftsTable)
     .values({ ...parsed.data, createdBy: req.user!.id })
