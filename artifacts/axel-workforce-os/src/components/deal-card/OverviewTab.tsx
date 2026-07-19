@@ -15,6 +15,13 @@ import { STATUS_COLORS } from "./icons";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import UserMiniProfile from "@/components/user-profile/UserMiniProfile";
 
+/**
+ * Feature flag: AI Quote Variations row on the deal card Overview tab.
+ * Temporarily hidden per product decision (feature saved for later).
+ * Flip to true to restore — the API routes and all wiring remain live.
+ */
+const SHOW_AI_QUOTE_VARIATIONS = false;
+
 export interface CreateRfiInput {
   subject: string;
   detail?: string;
@@ -427,8 +434,10 @@ export default function OverviewTab({
           </div>
         ))}
 
-        {/* AI quote-variation — live (P6 iteration 2), internal staff only */}
-        {isInternal && (
+        {/* AI quote-variation — live (P6 iteration 2), internal staff only.
+            Temporarily hidden from deal cards (feature saved for later) — flip
+            SHOW_AI_QUOTE_VARIATIONS to true to restore; all wiring stays intact. */}
+        {SHOW_AI_QUOTE_VARIATIONS && isInternal && (
           <div style={{ position: "relative" }}>
             {node(c.accentSupport)}
             <div style={{ ...card, display: "flex", flexDirection: "column", gap: 10 }}>
