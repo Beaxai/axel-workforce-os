@@ -8,6 +8,7 @@ interface LossHistoryDoc {
   fileName: string;
   fileSizeBytes: number;
   yearsCovered: string | null;
+  valuationDate: string | null;
   notes: string | null;
   uploadedAt: string;
 }
@@ -27,6 +28,7 @@ export default function LossHistoryUpload({ dealId }: LossHistoryUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [valuationDate, setValuationDate] = useState("");
   const [yearsCovered, setYearsCovered] = useState("");
   const [notes, setNotes] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -56,6 +58,7 @@ export default function LossHistoryUpload({ dealId }: LossHistoryUploadProps) {
     setUploadError(null);
     const formData = new FormData();
     formData.append("file", file);
+    if (valuationDate) formData.append("valuationDate", valuationDate);
     if (yearsCovered) formData.append("yearsCovered", yearsCovered);
     if (notes) formData.append("notes", notes);
 
@@ -66,6 +69,7 @@ export default function LossHistoryUpload({ dealId }: LossHistoryUploadProps) {
       });
       const data = await res.json();
       if (data.success) {
+        setValuationDate("");
         setYearsCovered("");
         setNotes("");
         loadDocuments();
@@ -115,6 +119,25 @@ export default function LossHistoryUpload({ dealId }: LossHistoryUploadProps) {
         Upload prior carrier loss runs (last 3 years). Required if client has prior WC coverage.
         PDFs only.
       </p>
+
+      <div style={{ marginBottom: 12 }}>
+        <label
+          style={{ display: "block", color: "var(--label-text)", fontSize: 12, marginBottom: 6 }}
+        >
+          Valuation date
+        </label>
+        <input
+          type="date"
+          value={valuationDate}
+          onChange={(e) => setValuationDate(e.target.value)}
+          style={inputStyle}
+          data-testid="input-valuation-date"
+        />
+        <p style={{ color: "var(--label-text)", fontSize: 11, marginTop: 4, marginBottom: 0, opacity: 0.8 }}>
+          The date the carrier valued this loss run. Carriers require valuation within 60 days
+          of the desired effective date.
+        </p>
+      </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
         <div>
@@ -227,6 +250,7 @@ export default function LossHistoryUpload({ dealId }: LossHistoryUploadProps) {
                   <p style={{ color: "hsl(var(--foreground))", fontSize: 13, margin: 0 }}>{doc.fileName}</p>
                   <p style={{ color: "hsl(var(--muted-foreground))", fontSize: 11, margin: 0 }}>
                     {doc.yearsCovered && `${doc.yearsCovered} \u00B7 `}
+                    {`Valued: ${doc.valuationDate ?? "\u2014"} \u00B7 `}
                     {formatBytes(doc.fileSizeBytes)}
                   </p>
                 </div>

@@ -49,7 +49,7 @@ router.get("/:dealId", async (req, res) => {
 
 router.post("/:dealId/upload", upload.single("file"), async (req: Request<{ dealId: string }>, res: Response) => {
   const { dealId } = req.params;
-  const { yearsCovered, notes } = req.body;
+  const { yearsCovered, notes, valuationDate } = req.body;
 
   if (!req.file) {
     return res.status(400).json({ error: "No file provided." });
@@ -65,6 +65,7 @@ router.post("/:dealId/upload", upload.single("file"), async (req: Request<{ deal
       storagePath,
       fileSizeBytes: req.file.size,
       yearsCovered: yearsCovered || null,
+      valuationDate: valuationDate || null,
       notes: notes || null,
     })
     .returning();
@@ -75,7 +76,7 @@ router.post("/:dealId/upload", upload.single("file"), async (req: Request<{ deal
     entityId: doc.id,
     eventType: "loss_history_uploaded",
     description: `Loss run document uploaded: ${req.file.originalname}`,
-    metadata: { storage_path: storagePath, years_covered: yearsCovered },
+    metadata: { storage_path: storagePath, years_covered: yearsCovered, valuation_date: valuationDate || null },
   });
 
   // §6A item 9: a new loss run may clear (or change) the staleness flag.
