@@ -10,6 +10,11 @@ import { generateSubjectivitiesForDeal } from "../lib/subjectivities";
 
 const router: IRouter = Router();
 
+// Listener email domain. NOTE: Curtis's State Doc §8 specifies
+// [clientname][ID]@card.axelworkforce.com — the domain is pending his ruling, so it lives
+// here as one constant rather than being duplicated across the frontend.
+const LISTENER_EMAIL_DOMAIN = "listener.axel.io";
+
 /** A drizzle db handle or an in-flight transaction — helpers accept either so
  *  their reads/writes can participate in the caller's transaction. */
 type Db = typeof db;
@@ -359,15 +364,21 @@ router.get("/:id/email", async (req, res) => {
 
 router.post("/:id/email", async (req, res) => {
   const dealId = req.params.id;
-  const { emailAddress, companySlug } = req.body;
-  if (!emailAddress || !companySlug) return res.status(400).json({ error: "emailAddress and companySlug required" });
+  const { companySlug } = req.body;
+  if (!companySlug) return res.status(400).json({ error: "companySlug required" });
+
   const [existing] = await db.select().from(dealEmailAddressesTable).where(eq(dealEmailAddressesTable.dealId, dealId));
   if (existing) return res.json(existing);
+
+  // Unique by construction: slug + the deal's short id (State Doc's [clientname][ID] shape).
+  const fileId = dealId.slice(0, 8);
+  const emailAddress = `${companySlug}-${fileId}@${LISTENER_EMAIL_DOMAIN}`;
+
   const [row] = await db.insert(dealEmailAddressesTable).values({
     dealId,
     emailAddress,
     companySlug,
-    fileId: dealId.slice(0, 8),
+    fileId,
   }).returning();
   return res.status(201).json(row);
 });

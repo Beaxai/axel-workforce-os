@@ -201,10 +201,7 @@ export default function QuoteNew() {
       }
 
       const slug = form.businessName.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 30);
-      api.post(`/deals/${newDeal.id}/email`, {
-        emailAddress: `${slug}@listener.axel.io`,
-        companySlug: slug,
-      }).catch(() => {});
+      api.post(`/deals/${newDeal.id}/email`, { companySlug: slug }).catch(() => {});
 
       api.post(`/deals/${newDeal.id}/activity`, {
         entityType: "deal",

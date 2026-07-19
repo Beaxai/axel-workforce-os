@@ -333,6 +333,11 @@ export default function Step4Indication() {
         employeeCountFt: totalEmployees || undefined,
         stage: "INDICATION",
         wcPremium: isAso ? undefined : String(totalPremium),
+        fein: s.fein || undefined,
+        entityType: s.entityType || undefined,
+        coverageEffectiveDate: s.coverageEffectiveDate || undefined,
+        emod: s.experienceMod || undefined,
+        numberOfLocations: s.locations?.length || undefined,
       };
       const newDeal = await api.post<{ id: string }>("/deals", payload);
 
@@ -375,11 +380,12 @@ export default function Step4Indication() {
         }
       }
 
+      if (s.draftId) {
+        await api.delete(`/quote-drafts/${s.draftId}`).catch(() => {});
+      }
+
       const slug = businessName.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 30);
-      api.post(`/deals/${newDeal.id}/email`, {
-        emailAddress: `${slug}@listener.axel.io`,
-        companySlug: slug,
-      }).catch(() => {});
+      api.post(`/deals/${newDeal.id}/email`, { companySlug: slug }).catch(() => {});
       api.post(`/deals/${newDeal.id}/activity`, {
         entityType: "deal",
         entityId: newDeal.id,
