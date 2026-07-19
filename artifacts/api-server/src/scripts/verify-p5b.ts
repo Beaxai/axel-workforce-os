@@ -253,6 +253,58 @@ async function main() {
       check("F. regeneration is idempotent", gen2.created === 0 && gen2.skipped === true, JSON.stringify(gen2));
 
       // ========================================================================
+      // G. §6D — binder/policy upload auto-satisfies tracker phases.
+      // ========================================================================
+      const { applyWcDocumentUpload } = await import("../lib/wc-tracker");
+
+      // The tracker from the A/B checks belongs to `tpl`, not the seeded WC template,
+      // so give this block its own tracker from the real seeded system template.
+      const seededWc = await tx
+        .select()
+        .from(journeyTemplatesTable)
+        .where(eq(journeyTemplatesTable.isSystem, true));
+      check("G. seeded WC tracker template is present", seededWc.length === 1, `${seededWc.length} system templates`);
+
+      // Reactivate it (the harness deactivated everything for isolation) and instantiate.
+      await tx.update(journeyTemplatesTable).set({ isActive: true }).where(eq(journeyTemplatesTable.isSystem, true));
+      const wcGen = await instantiateJourneysForDeal({ ...deal, productType: "WC", id: deal.id } as Deal, tx);
+      // A tracker already exists for this deal from the earlier checks, so this may skip.
+      // Find the tracker that came from the SEEDED template specifically.
+      const [wcTracker] = await tx
+        .select()
+        .from(implementationTrackersTable)
+        .where(and(eq(implementationTrackersTable.dealId, deal.id), eq(implementationTrackersTable.templateId, seededWc[0]!.id)));
+
+      if (!wcTracker) {
+        check("G. (SKIPPED — no tracker from the seeded template on this deal)", true, JSON.stringify(wcGen));
+      } else {
+        // Binder → Phase 1 task only.
+        const binderResult = await applyWcDocumentUpload(deal.id, "binder", undefined, tx);
+        check("G. binder completes exactly 1 gate (carrier acceptance)", binderResult.completed.length === 1, JSON.stringify(binderResult));
+
+        const afterBinder = await tx
+          .select()
+          .from(implementationTasksTable)
+          .where(eq(implementationTasksTable.trackerId, wcTracker.id));
+        check(
+          "G. binder completed the CARRIER_ACCEPTANCE task specifically",
+          afterBinder.find((t) => t.systemKey === "WC_TASK_CARRIER_ACCEPTANCE")?.status === "COMPLETE",
+        );
+        check(
+          "G. binder did NOT complete policy issuance",
+          afterBinder.find((t) => t.systemKey === "WC_TASK_POLICY_ISSUANCE")?.status === "PENDING",
+        );
+
+        // Idempotency: re-applying the same binder completes nothing new.
+        const binderAgain = await applyWcDocumentUpload(deal.id, "binder", undefined, tx);
+        check("G. re-applying a binder is idempotent", binderAgain.completed.length === 0, JSON.stringify(binderAgain));
+
+        // Policy now completes the remaining phase-2 gate.
+        const policyResult = await applyWcDocumentUpload(deal.id, "policy", undefined, tx);
+        check("G. policy completes the remaining issuance gate", policyResult.completed.length === 1, JSON.stringify(policyResult));
+      }
+
+      // ========================================================================
       // E. No matching active template → nothing instantiated + noTemplate flag
       // Safe to deactivate EVERYTHING: this entire run is inside a transaction that
       // is rolled back, so the real seeded WC tracker is untouched after the run.

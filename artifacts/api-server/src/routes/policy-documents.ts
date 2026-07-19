@@ -8,6 +8,7 @@ import {
   activityLogTable,
 } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
+import { applyWcDocumentUpload } from "../lib/wc-tracker";
 
 const uploadDir = path.join(process.cwd(), "uploads", "policy-documents");
 if (!fs.existsSync(uploadDir)) {
@@ -61,31 +62,50 @@ router.post("/:dealId/upload", upload.single("file"), async (req: Request<{ deal
   }
 
   const storagePath = `policy-documents/${req.file.filename}`;
+  const file = req.file;
 
-  const [doc] = await db
-    .insert(policyDocumentsTable)
-    .values({
+  // One transaction: a tracker failure must not leave an orphaned "successful" doc row.
+  const result = await db.transaction(async (tx) => {
+    const [doc] = await tx
+      .insert(policyDocumentsTable)
+      .values({
+        dealId,
+        policyId: null, // a binder precedes the policy record
+        documentType,
+        fileName: file.originalname,
+        fileUrl: storagePath, // fileUrl is NOT NULL — store the disk path
+        fileSize: file.size,
+        source: "MANUAL", // §6C v1: internal rep uploads it
+        uploadedBy: req.user?.id ?? null,
+      })
+      .returning();
+
+    await tx.insert(activityLogTable).values({
       dealId,
-      policyId: null, // a binder precedes the policy record
-      documentType,
-      fileName: req.file.originalname,
-      fileUrl: storagePath, // fileUrl is NOT NULL — store the disk path
-      fileSize: req.file.size,
-      source: "MANUAL", // §6C v1: internal rep uploads it
-      uploadedBy: req.user?.id ?? null,
-    })
-    .returning();
+      entityType: "policy_document",
+      entityId: doc.id,
+      eventType: "policy_document_uploaded",
+      description: `${documentType === "binder" ? "Binder" : "Policy"} uploaded: ${file.originalname}`,
+      metadata: { storage_path: storagePath, document_type: documentType },
+    });
 
-  await db.insert(activityLogTable).values({
-    dealId,
-    entityType: "policy_document",
-    entityId: doc.id,
-    eventType: "policy_document_uploaded",
-    description: `${documentType === "binder" ? "Binder" : "Policy"} uploaded: ${req.file.originalname}`,
-    metadata: { storage_path: storagePath, document_type: documentType },
+    // §6D: this document is de facto carrier acceptance — advance the tracker.
+    const auto = await applyWcDocumentUpload(dealId, documentType as "binder" | "policy", req.user?.id, tx);
+    if (auto.completed.length > 0) {
+      await tx.insert(activityLogTable).values({
+        dealId,
+        entityType: "implementation_tracker",
+        entityId: auto.trackerId!,
+        eventType: "tracker_auto_advanced",
+        description: `${documentType === "policy" ? "Policy" : "Binder"} upload auto-satisfied ${auto.completed.length} tracker gate${auto.completed.length > 1 ? "s" : ""}.`,
+        metadata: { documentType, completedTaskIds: auto.completed },
+        createdBy: req.user?.id ?? null,
+      });
+    }
+    return { doc, auto };
   });
 
-  return res.json({ success: true, document: doc });
+  return res.json({ success: true, document: result.doc, autoSatisfied: result.auto });
 });
 
 router.delete("/:docId", async (req, res) => {
