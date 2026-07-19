@@ -54,6 +54,7 @@ import type {
   JourneyTemplateTask,
   Lead,
   LeadInput,
+  ListPolicyDocuments200,
   LoginRequest,
   MessageRequest,
   MessageResponse,
@@ -80,6 +81,8 @@ import type {
   UpdateSubjectivityRequest,
   UpdateUserProfileRequest,
   UpdateUserStatusRequest,
+  UploadPolicyDocument200,
+  UploadPolicyDocumentBody,
   UserActivityResponse,
   UserProfile,
   UserSummary,
@@ -5121,4 +5124,274 @@ export const useUpdateSubjectivity = <
   TContext
 > => {
   return useMutation(getUpdateSubjectivityMutationOptions(options));
+};
+
+/**
+ * @summary Upload a binder or policy document to a deal
+ */
+export const getUploadPolicyDocumentUrl = (dealId: string) => {
+  return `/api/policy-documents/${dealId}/upload`;
+};
+
+export const uploadPolicyDocument = async (
+  dealId: string,
+  uploadPolicyDocumentBody: UploadPolicyDocumentBody,
+  options?: RequestInit,
+): Promise<UploadPolicyDocument200> => {
+  const formData = new FormData();
+  formData.append(`file`, uploadPolicyDocumentBody.file);
+  formData.append(`documentType`, uploadPolicyDocumentBody.documentType);
+
+  return customFetch<UploadPolicyDocument200>(
+    getUploadPolicyDocumentUrl(dealId),
+    {
+      ...options,
+      method: "POST",
+      body: formData,
+    },
+  );
+};
+
+export const getUploadPolicyDocumentMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof uploadPolicyDocument>>,
+    TError,
+    { dealId: string; data: BodyType<UploadPolicyDocumentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof uploadPolicyDocument>>,
+  TError,
+  { dealId: string; data: BodyType<UploadPolicyDocumentBody> },
+  TContext
+> => {
+  const mutationKey = ["uploadPolicyDocument"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof uploadPolicyDocument>>,
+    { dealId: string; data: BodyType<UploadPolicyDocumentBody> }
+  > = (props) => {
+    const { dealId, data } = props ?? {};
+
+    return uploadPolicyDocument(dealId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UploadPolicyDocumentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof uploadPolicyDocument>>
+>;
+export type UploadPolicyDocumentMutationBody =
+  BodyType<UploadPolicyDocumentBody>;
+export type UploadPolicyDocumentMutationError = ErrorType<void>;
+
+/**
+ * @summary Upload a binder or policy document to a deal
+ */
+export const useUploadPolicyDocument = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof uploadPolicyDocument>>,
+    TError,
+    { dealId: string; data: BodyType<UploadPolicyDocumentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof uploadPolicyDocument>>,
+  TError,
+  { dealId: string; data: BodyType<UploadPolicyDocumentBody> },
+  TContext
+> => {
+  return useMutation(getUploadPolicyDocumentMutationOptions(options));
+};
+
+/**
+ * @summary List a deal's policy documents, newest first
+ */
+export const getListPolicyDocumentsUrl = (dealId: string) => {
+  return `/api/policy-documents/${dealId}`;
+};
+
+export const listPolicyDocuments = async (
+  dealId: string,
+  options?: RequestInit,
+): Promise<ListPolicyDocuments200> => {
+  return customFetch<ListPolicyDocuments200>(
+    getListPolicyDocumentsUrl(dealId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListPolicyDocumentsQueryKey = (dealId: string) => {
+  return [`/api/policy-documents/${dealId}`] as const;
+};
+
+export const getListPolicyDocumentsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listPolicyDocuments>>,
+  TError = ErrorType<unknown>,
+>(
+  dealId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listPolicyDocuments>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListPolicyDocumentsQueryKey(dealId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listPolicyDocuments>>
+  > = ({ signal }) =>
+    listPolicyDocuments(dealId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!dealId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listPolicyDocuments>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListPolicyDocumentsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listPolicyDocuments>>
+>;
+export type ListPolicyDocumentsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List a deal's policy documents, newest first
+ */
+
+export function useListPolicyDocuments<
+  TData = Awaited<ReturnType<typeof listPolicyDocuments>>,
+  TError = ErrorType<unknown>,
+>(
+  dealId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listPolicyDocuments>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListPolicyDocumentsQueryOptions(dealId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Delete a policy document
+ */
+export const getDeletePolicyDocumentUrl = (docId: string) => {
+  return `/api/policy-documents/${docId}`;
+};
+
+export const deletePolicyDocument = async (
+  docId: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeletePolicyDocumentUrl(docId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeletePolicyDocumentMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deletePolicyDocument>>,
+    TError,
+    { docId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deletePolicyDocument>>,
+  TError,
+  { docId: string },
+  TContext
+> => {
+  const mutationKey = ["deletePolicyDocument"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deletePolicyDocument>>,
+    { docId: string }
+  > = (props) => {
+    const { docId } = props ?? {};
+
+    return deletePolicyDocument(docId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeletePolicyDocumentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deletePolicyDocument>>
+>;
+
+export type DeletePolicyDocumentMutationError = ErrorType<void>;
+
+/**
+ * @summary Delete a policy document
+ */
+export const useDeletePolicyDocument = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deletePolicyDocument>>,
+    TError,
+    { docId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deletePolicyDocument>>,
+  TError,
+  { docId: string },
+  TContext
+> => {
+  return useMutation(getDeletePolicyDocumentMutationOptions(options));
 };

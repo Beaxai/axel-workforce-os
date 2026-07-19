@@ -55,6 +55,10 @@ router.post("/:dealId/upload", upload.single("file"), async (req: Request<{ deal
     return res.status(400).json({ error: "No file provided." });
   }
 
+  if (valuationDate && !/^\d{4}-\d{2}-\d{2}$/.test(String(valuationDate))) {
+    return res.status(400).json({ error: "valuationDate must be in YYYY-MM-DD format." });
+  }
+
   const storagePath = `loss-history/${req.file.filename}`;
 
   const [doc] = await db

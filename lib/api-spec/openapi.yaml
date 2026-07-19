@@ -1356,6 +1356,86 @@ paths:
                 $ref: "#/components/schemas/DealSubjectivity"
         "404":
           description: Subjectivity not found
+  /policy-documents/{dealId}/upload:
+    post:
+      operationId: uploadPolicyDocument
+      tags: [policy-documents]
+      summary: Upload a binder or policy document to a deal
+      parameters:
+        - name: dealId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                documentType:
+                  type: string
+                  enum: [binder, policy]
+              required: [file, documentType]
+      responses:
+        "200":
+          description: Uploaded document
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  document:
+                    $ref: "#/components/schemas/PolicyDocument"
+                required: [success, document]
+        "400":
+          description: Missing file or invalid documentType
+  /policy-documents/{dealId}:
+    get:
+      operationId: listPolicyDocuments
+      tags: [policy-documents]
+      summary: List a deal's policy documents, newest first
+      parameters:
+        - name: dealId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Policy documents for the deal
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  documents:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/PolicyDocument"
+                required: [documents]
+  /policy-documents/{docId}:
+    delete:
+      operationId: deletePolicyDocument
+      tags: [policy-documents]
+      summary: Delete a policy document
+      parameters:
+        - name: docId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Document not found
 components:
   schemas:
     SubmissionField:
@@ -2483,6 +2563,41 @@ components:
           format: uuid
           nullable: true
       required: [id, dealId, name, sortOrder, status, isBlocking]
+    PolicyDocument:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        dealId:
+          type: string
+          format: uuid
+          nullable: true
+        policyId:
+          type: string
+          format: uuid
+          nullable: true
+        documentType:
+          type: string
+          nullable: true
+        fileName:
+          type: string
+        fileUrl:
+          type: string
+        fileSize:
+          type: integer
+          nullable: true
+        source:
+          type: string
+          nullable: true
+        uploadedBy:
+          type: string
+          format: uuid
+          nullable: true
+        createdAt:
+          type: string
+          nullable: true
+      required: [id, fileName, fileUrl]
     UpdateSubjectivityRequest:
       type: object
       properties:

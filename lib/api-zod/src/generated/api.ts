@@ -1522,3 +1522,62 @@ export const UpdateSubjectivityResponse = zod.object({
   satisfiedAt: zod.string().nullish(),
   satisfiedBy: zod.string().uuid().nullish(),
 });
+
+/**
+ * @summary Upload a binder or policy document to a deal
+ */
+export const UploadPolicyDocumentParams = zod.object({
+  dealId: zod.coerce.string(),
+});
+
+export const UploadPolicyDocumentBody = zod.object({
+  file: zod.instanceof(File),
+  documentType: zod.enum(["binder", "policy"]),
+});
+
+export const UploadPolicyDocumentResponse = zod.object({
+  success: zod.boolean(),
+  document: zod.object({
+    id: zod.string().uuid(),
+    dealId: zod.string().uuid().nullish(),
+    policyId: zod.string().uuid().nullish(),
+    documentType: zod.string().nullish(),
+    fileName: zod.string(),
+    fileUrl: zod.string(),
+    fileSize: zod.number().nullish(),
+    source: zod.string().nullish(),
+    uploadedBy: zod.string().uuid().nullish(),
+    createdAt: zod.string().nullish(),
+  }),
+});
+
+/**
+ * @summary List a deal's policy documents, newest first
+ */
+export const ListPolicyDocumentsParams = zod.object({
+  dealId: zod.coerce.string(),
+});
+
+export const ListPolicyDocumentsResponse = zod.object({
+  documents: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      dealId: zod.string().uuid().nullish(),
+      policyId: zod.string().uuid().nullish(),
+      documentType: zod.string().nullish(),
+      fileName: zod.string(),
+      fileUrl: zod.string(),
+      fileSize: zod.number().nullish(),
+      source: zod.string().nullish(),
+      uploadedBy: zod.string().uuid().nullish(),
+      createdAt: zod.string().nullish(),
+    }),
+  ),
+});
+
+/**
+ * @summary Delete a policy document
+ */
+export const DeletePolicyDocumentParams = zod.object({
+  docId: zod.coerce.string(),
+});

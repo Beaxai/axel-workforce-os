@@ -651,6 +651,19 @@ export interface DealSubjectivity {
   satisfiedBy?: string | null;
 }
 
+export interface PolicyDocument {
+  id: string;
+  dealId?: string | null;
+  policyId?: string | null;
+  documentType?: string | null;
+  fileName: string;
+  fileUrl: string;
+  fileSize?: number | null;
+  source?: string | null;
+  uploadedBy?: string | null;
+  createdAt?: string | null;
+}
+
 export type UpdateSubjectivityRequestStatus =
   (typeof UpdateSubjectivityRequestStatus)[keyof typeof UpdateSubjectivityRequestStatus];
 
@@ -922,4 +935,26 @@ export type RecomputeDealSubjectivities200 = {
   updated: boolean;
   stale: boolean;
   reason?: string | null;
+};
+
+export type UploadPolicyDocumentBodyDocumentType =
+  (typeof UploadPolicyDocumentBodyDocumentType)[keyof typeof UploadPolicyDocumentBodyDocumentType];
+
+export const UploadPolicyDocumentBodyDocumentType = {
+  binder: "binder",
+  policy: "policy",
+} as const;
+
+export type UploadPolicyDocumentBody = {
+  file: Blob;
+  documentType: UploadPolicyDocumentBodyDocumentType;
+};
+
+export type UploadPolicyDocument200 = {
+  success: boolean;
+  document: PolicyDocument;
+};
+
+export type ListPolicyDocuments200 = {
+  documents: PolicyDocument[];
 };
