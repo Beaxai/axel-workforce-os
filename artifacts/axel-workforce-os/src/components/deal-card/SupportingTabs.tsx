@@ -13,6 +13,7 @@ import MultiLocationRatingPanel from "@/components/MultiLocationRatingPanel";
 import ProposalPanel from "@/components/ProposalPanel";
 import BindStatusPanel from "@/components/submission/BindStatusPanel";
 import UserMiniProfile from "@/components/user-profile/UserMiniProfile";
+import PolicyDocumentsPanel from "./PolicyDocumentsPanel";
 
 /* ---------------------------------------------------------------- Documents */
 type DealDocument = { id: string; name: string; documentType: string; status: string; generatedAt?: string };
@@ -47,28 +48,35 @@ export function DocumentsTab({ dealId }: { dealId: string }) {
     background: c.cardBg, border: `1px solid ${c.borderColor}`, borderRadius: 10, padding: "10px 12px",
   };
 
-  if (docs.length === 0 && pdfs.length === 0) {
-    return <div style={{ padding: "40px 0", textAlign: "center", fontSize: 13, color: c.textMuted }}>No documents on file.</div>;
-  }
-
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      {pdfs.map((p) => (
-        <a key={p.path} href={p.path} target="_blank" rel="noreferrer" style={{ ...row, textDecoration: "none" }}>
-          <span style={{ display: "flex", alignItems: "center", gap: 9, fontSize: 13, color: c.textPrimary }}>
-            <FileText style={{ width: 16, height: 16, color: c.textMuted }} />{p.label}
-          </span>
-          <Download style={{ width: 15, height: 15, color: "var(--accent-primary)" }} />
-        </a>
-      ))}
-      {docs.map((d) => (
-        <div key={d.id} style={row}>
-          <span style={{ display: "flex", alignItems: "center", gap: 9, fontSize: 13, color: c.textPrimary }}>
-            <FileText style={{ width: 16, height: 16, color: c.textMuted }} />{d.name}
-          </span>
-          <span style={{ fontSize: 11, color: c.textMuted }}>{d.status}</span>
+    <div>
+      {docs.length === 0 && pdfs.length === 0 ? (
+        <div style={{ padding: "24px 0", textAlign: "center", fontSize: 13, color: c.textMuted }}>
+          No submission documents on file.
         </div>
-      ))}
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {pdfs.map((p) => (
+            <a key={p.path} href={p.path} target="_blank" rel="noreferrer" style={{ ...row, textDecoration: "none" }}>
+              <span style={{ display: "flex", alignItems: "center", gap: 9, fontSize: 13, color: c.textPrimary }}>
+                <FileText style={{ width: 16, height: 16, color: c.textMuted }} />{p.label}
+              </span>
+              <Download style={{ width: 15, height: 15, color: "var(--accent-primary)" }} />
+            </a>
+          ))}
+          {docs.map((d) => (
+            <div key={d.id} style={row}>
+              <span style={{ display: "flex", alignItems: "center", gap: 9, fontSize: 13, color: c.textPrimary }}>
+                <FileText style={{ width: 16, height: 16, color: c.textMuted }} />{d.name}
+              </span>
+              <span style={{ fontSize: 11, color: c.textMuted }}>{d.status}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* §6C carrier binder / policy — always available, even with no other docs. */}
+      <PolicyDocumentsPanel dealId={dealId} />
     </div>
   );
 }

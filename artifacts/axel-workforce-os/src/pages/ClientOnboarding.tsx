@@ -4,11 +4,14 @@ import { GlassCard, SectionHeader, AxelBadge } from "@/components/ui/axel-index"
 import { CheckCircle, Circle, Clock } from "lucide-react";
 import { useThemeStore } from "@/lib/theme-store";
 
+// Client-facing copy for the four §6D WC tracker phases, in phase order:
+// Carrier acceptance · Policy issuance · Policy & claims kit delivery · Carrier billing setup.
+// These MUST stay aligned with the seeded phases — they are matched by position.
 const WC_LABELS = [
-  "We're issuing your binder",
-  "Your policy documents are on the way",
-  "Waiting for your signature",
-  "Your policy is active!",
+  "Your coverage is confirmed with the carrier",
+  "Your policy is being issued",
+  "Your policy and claims kit are on the way",
+  "Setting up your billing with the carrier",
 ];
 
 const PEO_LABELS = [
