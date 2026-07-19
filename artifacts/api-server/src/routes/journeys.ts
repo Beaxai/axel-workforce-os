@@ -177,6 +177,31 @@ async function advanceAccountToActiveClient(trackerId: string, dbc: DbOrTx): Pro
     },
     createdBy: null,
   });
+
+  // Keep the pipeline card in sync with the account: an Active Client's deal
+  // belongs in the CLIENT column, not BOUND. Same idempotent conditional-UPDATE
+  // pattern — only advances BOUND → CLIENT, never moves any other stage.
+  const dealAdvanced = await dbc
+    .update(dealsTable)
+    .set({ stage: "CLIENT" })
+    .where(and(eq(dealsTable.id, tracker.dealId), eq(dealsTable.stage, "BOUND")))
+    .returning({ id: dealsTable.id });
+
+  if (dealAdvanced.length > 0) {
+    await dbc.insert(activityLogTable).values({
+      dealId: tracker.dealId,
+      entityType: "deal",
+      entityId: tracker.dealId,
+      eventType: "stage_changed",
+      description: `Stage changed from "Bound" to "Client" (implementation tracker complete).`,
+      metadata: {
+        changes: [{ field: "stage", label: "Stage", from: "BOUND", to: "CLIENT" }],
+        trigger: "tracker_complete",
+        trackerId,
+      },
+      createdBy: null,
+    });
+  }
 }
 
 /**
