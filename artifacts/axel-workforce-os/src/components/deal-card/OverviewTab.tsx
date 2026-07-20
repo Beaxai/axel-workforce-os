@@ -1,8 +1,9 @@
 /**
  * Phase 4C / P6 — Overview = collaboration hub (Stitch layout, Axel tokens).
  *
- * A left timeline rail threads the day-grouped activity feed (real, from
- * activity_log) plus a sticky composer that persists a message. The RFI blocking
+ * A clean day-grouped activity feed (real, from activity_log) — avatar, name,
+ * timestamp, message bubble; no timeline rail — plus a sticky composer that
+ * persists a message. The RFI blocking
  * card is now LIVE (P6 iteration 1): real Request-For-Information items from
  * deal_rfis with a ticking countdown, internal create/resolve controls, and a
  * hard block on Approve enforced server-side. The AI quote-variation row remains
@@ -425,10 +426,6 @@ export default function OverviewTab({
     setMentionQuery(null);
   };
 
-  const node = (color: string) => (
-    <span style={{ position: "absolute", left: -25, top: 2, width: 12, height: 12, borderRadius: "50%", background: color, boxShadow: `0 0 0 3px ${c.bg}` }} />
-  );
-
   const card: React.CSSProperties = {
     background: c.cardBg, border: `1px solid ${c.borderColor}`, borderRadius: 10, padding: "10px 12px",
   };
@@ -442,25 +439,16 @@ export default function OverviewTab({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      <div style={{ position: "relative", marginLeft: 12, paddingLeft: 24, borderLeft: `2px solid ${c.borderColor}`, display: "flex", flexDirection: "column", gap: 14 }}>
-        {/* Today marker */}
-        <div style={{ position: "relative" }}>
-          {node(c.accentPrimary)}
-          <span style={dayPill}>Today</span>
-        </div>
-
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         {/* Real activity feed grouped by day */}
         {groups.length === 0 && (
-          <div style={{ position: "relative", fontSize: 12, color: c.textMuted }}>No activity yet.</div>
+          <div style={{ fontSize: 12, color: c.textMuted }}>No activity yet.</div>
         )}
         {groups.map(([day, rows]) => (
           <div key={day} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            {day !== "Today" && (
-              <div style={{ position: "relative" }}>
-                {node(c.textMuted)}
-                <span style={dayPill}>{day}</span>
-              </div>
-            )}
+            <div>
+              <span style={dayPill}>{day}</span>
+            </div>
             {rows.map((row) => {
               const author = authorOf(row);
               const role = roleOf(row);
@@ -475,8 +463,7 @@ export default function OverviewTab({
                 </div>
               );
               return (
-                <div key={row.id} style={{ position: "relative" }}>
-                  {node(c.accentPrimary)}
+                <div key={row.id}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
                     {row.createdBy ? (
                       <UserMiniProfile userId={row.createdBy}>
@@ -497,7 +484,7 @@ export default function OverviewTab({
                     {role && <span style={{ fontSize: 10.5, color: c.textMuted }}>{role}</span>}
                     <span style={{ fontSize: 10, color: c.textMuted }}>{"\u00b7"} {timeLabel(row.createdAt)}</span>
                   </div>
-                  <div style={{ ...card, borderLeft: `2px solid var(--accent-primary)` }}>
+                  <div style={card}>
                     <div style={{ fontSize: 12, color: c.textSecondary, lineHeight: 1.55 }}>
                       {renderWithMentions(row.description ?? "", mentionsOf(row))}
                     </div>
@@ -512,8 +499,7 @@ export default function OverviewTab({
             Temporarily hidden from deal cards (feature saved for later) — flip
             SHOW_AI_QUOTE_VARIATIONS to true to restore; all wiring stays intact. */}
         {SHOW_AI_QUOTE_VARIATIONS && isInternal && (
-          <div style={{ position: "relative" }}>
-            {node(c.accentSupport)}
+          <div>
             <div style={{ ...card, display: "flex", flexDirection: "column", gap: 10 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
@@ -619,8 +605,7 @@ export default function OverviewTab({
 
         {/* RFIs — live (P6 iteration 1) */}
         {(openRfis.length > 0 || closedRfis.length > 0 || isInternal) && (
-          <div style={{ position: "relative" }}>
-            {node(openRfis.length > 0 ? STATUS_COLORS.partial : c.textMuted)}
+          <div>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
               <span style={{ ...dayPill, color: openRfis.length > 0 ? STATUS_COLORS.partial : c.textMuted }}>
                 {openRfis.length > 0 ? `${openRfis.length} Open RFI${openRfis.length > 1 ? "s" : ""}` : "RFIs"}
