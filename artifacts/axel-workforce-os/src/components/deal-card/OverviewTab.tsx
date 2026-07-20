@@ -10,7 +10,7 @@
  * a STATIC placeholder deferred to P6 iteration 2.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Sparkles, AlertTriangle, ArrowUp, Plus, Check, CircleSlash, X, ArrowRight, SlidersHorizontal } from "lucide-react";
+import { Sparkles, AlertTriangle, ArrowUp, Plus, Check, CircleSlash, X, ArrowRight, SlidersHorizontal, FileUp, RefreshCw, Zap, Link2, FilePlus2 } from "lucide-react";
 import type { ActivityRow, RfiRow, QuoteVariation, VariationLevers, PreviewVariationResponse, DealDirectoryEntry } from "./types";
 import { STATUS_COLORS } from "./icons";
 import { useThemeColors } from "@/lib/use-theme-colors";
@@ -121,6 +121,38 @@ function roleOf(row: ActivityRow): string | null {
 
 function initials(name: string): string {
   return name.split(" ").map((p) => p[0]).filter(Boolean).slice(0, 2).join("").toUpperCase() || "?";
+}
+
+/** Acronyms that stay all-caps when prettifying ALL_CAPS tokens. */
+const KEEP_CAPS = new Set(["WC", "PEO", "ASO", "RFI", "AI", "UW", "FEIN", "LLC", "ACORD", "CSA", "ID"]);
+/** Bare (no-underscore) stage/status words that should still be prettified. */
+const PRETTY_WORDS = new Set(["INDICATION", "BOUND", "CLIENT", "LOST", "QUALIFIED"]);
+
+function titleCaseToken(token: string): string {
+  return token
+    .split("_")
+    .map((w) => (KEEP_CAPS.has(w) ? w : w.charAt(0) + w.slice(1).toLowerCase()))
+    .join(" ");
+}
+
+/** "Stage changed from INDICATION to BIND_ORDER." → "Stage changed from Indication to Bind Order." */
+function prettifyTokens(text: string): string {
+  return text.replace(/\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\b|\b[A-Z]{3,}\b/g, (tok) => {
+    if (tok.includes("_")) return titleCaseToken(tok);
+    if (PRETTY_WORDS.has(tok)) return titleCaseToken(tok);
+    return tok; // bare acronyms (ACORD, FEIN, …) stay as-is
+  });
+}
+
+/** Human-readable actor label + icon for rows with no person attached. */
+function systemEventMeta(eventType: string | null | undefined): { label: string; Icon: typeof Zap } {
+  const t = (eventType ?? "").toLowerCase();
+  if (t.includes("upload")) return { label: "Document uploaded", Icon: FileUp };
+  if (t.includes("stage")) return { label: "Stage update", Icon: ArrowRight };
+  if (t.includes("sync") || t.includes("auto")) return { label: "Auto update", Icon: RefreshCw };
+  if (t.includes("link")) return { label: "Record linked", Icon: Link2 };
+  if (t.includes("created")) return { label: "Record created", Icon: FilePlus2 };
+  return { label: titleCaseToken((eventType ?? "UPDATE").toUpperCase()), Icon: Zap };
 }
 
 function mentionsOf(row: ActivityRow): string[] {
@@ -450,12 +482,20 @@ export default function OverviewTab({
               <span style={dayPill}>{day}</span>
             </div>
             {rows.map((row) => {
-              const author = authorOf(row);
-              const role = roleOf(row);
+              const rawAuthor = authorOf(row);
+              const isSystem = !row.createdBy && rawAuthor === "System";
+              const sys = isSystem ? systemEventMeta(row.eventType) : null;
+              const author = sys ? sys.label : rawAuthor;
+              const role = isSystem ? null : roleOf(row);
               const photo = row.createdBy ? (membersById.get(row.createdBy)?.avatarUrl ?? null) : null;
+              const isUserText = row.eventType === "message" || row.eventType === "NOTE";
+              const description = row.description ?? "";
+              const displayText = isUserText ? description : prettifyTokens(description);
               const avatarCircle = (
                 <div style={{ width: 22, height: 22, borderRadius: "50%", background: c.hoverBg, color: c.textSecondary, fontSize: 9, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
-                  {photo ? (
+                  {sys ? (
+                    <sys.Icon style={{ width: 12, height: 12 }} />
+                  ) : photo ? (
                     <img src={photo} alt={author} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
                   ) : (
                     initials(author)
@@ -486,7 +526,7 @@ export default function OverviewTab({
                   </div>
                   <div style={card}>
                     <div style={{ fontSize: 12, color: c.textSecondary, lineHeight: 1.55 }}>
-                      {renderWithMentions(row.description ?? "", mentionsOf(row))}
+                      {renderWithMentions(displayText, mentionsOf(row))}
                     </div>
                   </div>
                 </div>
@@ -752,7 +792,7 @@ export default function OverviewTab({
 
       {/* Sticky composer — sender avatar · "Type a message" · arrow send */}
       {canPost && (
-        <div style={{ position: "sticky", bottom: 0, marginTop: 4 }}>
+        <div style={{ position: "sticky", bottom: 0, marginTop: 4, background: c.bg, padding: "8px 0 2px", boxShadow: `0 -12px 12px -6px ${c.bg}` }}>
           {/* @mention autocomplete dropdown */}
           {mentionQuery !== null && mentionCandidates.length > 0 && (
             <div

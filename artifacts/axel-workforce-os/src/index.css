@@ -146,6 +146,10 @@
   --overlay-bg: rgba(15,15,20,0.40);
   --overlay-blur: blur(12px);
 
+  /* Scrollbar tokens — LIGHT values. Thin, rounded, quiet. */
+  --scrollbar-thumb: rgba(15,15,20,0.22);
+  --scrollbar-thumb-hover: rgba(15,15,20,0.38);
+
   --app-font-sans: 'Inter', system-ui, sans-serif;
   --app-font-heading: 'Jost', 'Open Sans', system-ui, sans-serif;
   --app-font-serif: Georgia, serif;
@@ -252,6 +256,10 @@
 
   /* Modal overlay tokens — DARK values. Mirrored in lib/use-theme-colors.ts. */
   --overlay-bg: rgba(0,0,0,0.68);
+
+  /* Scrollbar tokens — DARK values. */
+  --scrollbar-thumb: rgba(255,255,255,0.16);
+  --scrollbar-thumb-hover: rgba(255,255,255,0.30);
 
   /* Real elevation scale derived from the heavy-glass modal shadow */
   --shadow-2xs: 0 1px 2px 0 rgba(0,0,0,0.30);
@@ -425,6 +433,30 @@
 
 html {
   font-size: 15px;
+}
+
+/* Stylized scrollbars — thin, rounded, token-driven (light/dark aware). */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-track,
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+  background-clip: padding-box;
 }
 
 body {
