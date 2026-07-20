@@ -497,7 +497,7 @@ export default function Pipeline() {
                 }}
               >
                 <FileEdit style={{ width: "14px", height: "14px" }} />
-                Drafts
+                In Progress
                 <span
                   style={{
                     minWidth: "18px",
