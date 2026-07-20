@@ -689,14 +689,16 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
                   ...(isDash
                     ? { color: hdrValue, textShadow: hdrValueGlow }
                     : label === "EXMOD" && exColor
-                      ? { color: exColor, textShadow: c.isDark ? `0 0 14px ${exColor}55` : "none" }
+                      ? {
+                          // Muted/pale version of the exmod rating color — no glow,
+                          // washed toward the header surface so it doesn't dominate.
+                          color: c.isDark
+                            ? `color-mix(in srgb, ${exColor} 55%, rgba(255,255,255,0.55))`
+                            : `color-mix(in srgb, ${exColor} 55%, rgba(15,15,20,0.35))`,
+                        }
                       : {
-                          // Accent gradient number (LOCATIONS / EMPLOYEES / PAYROLL).
-                          background: "var(--gradient-cta)",
-                          WebkitBackgroundClip: "text",
-                          backgroundClip: "text",
-                          color: "transparent",
-                          WebkitTextFillColor: "transparent",
+                          // Flat primary accent number (LOCATIONS / EMPLOYEES / PAYROLL).
+                          color: "var(--accent-primary)",
                         }),
                 };
                 return (
