@@ -173,6 +173,12 @@ function generateRefCode(): string {
 export default function Pipeline() {
   const { theme } = useThemeStore();
   const { members } = useTeamMembers();
+  // Card-face avatar row: surface members with real headshots first so the
+  // pipeline cards show photos instead of a wall of initials circles.
+  const faceMembers = useMemo(
+    () => [...members].sort((a, b) => Number(!!b.photoUrl) - Number(!!a.photoUrl)),
+    [members],
+  );
   const isDark = theme === "dark";
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
@@ -901,7 +907,7 @@ export default function Pipeline() {
 
                           <div style={{ display: "flex", alignItems: "center" }}>
                             {[0, 1, 2].map((i) => {
-                              const member = members[i];
+                              const member = faceMembers[i];
                               if (!member) return null;
                               
                               const photo = member.photoUrl;
