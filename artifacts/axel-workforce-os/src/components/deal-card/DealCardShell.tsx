@@ -206,6 +206,11 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
   // Backing quote for the header map (id + raw workforce profile) so popup
   // edits can be persisted via PATCH /quotes/:id.
   const [quoteRef, setQuoteRef] = useState<{ id: string; profile: WorkforceProfileRaw } | null>(null);
+  // WFS pricing from the deal's quote (monthly fee + PEPM) and the state of
+  // the one-click "Get Quote Now" generator on the right rail.
+  const [wfsPricing, setWfsPricing] = useState<{ monthly: string | null; pepm: string | null }>({ monthly: null, pepm: null });
+  const [wfsBusy, setWfsBusy] = useState(false);
+  const [wfsError, setWfsError] = useState<string | null>(null);
 
   const isInternal = !!user && INTERNAL.has(user.role);
   const canPost = !!user && (isInternal || user.role === "EMPLOYER");
@@ -281,6 +286,51 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
   const sections = payload?.sections ?? [];
   const deal = payload?.deal;
 
+  // One-click WFS quote: derive payroll + headcount from data already on the
+  // deal (quote workforce profile first, deal-level columns as fallback) and
+  // run the WFS rating engine, persisting the result onto the deal's quote.
+  const handleGetWfsQuote = useCallback(async () => {
+    if (wfsBusy) return;
+    setWfsBusy(true);
+    setWfsError(null);
+    try {
+      let annualPayroll = 0;
+      let headcount = 0;
+      const wpl = quoteRef?.profile?.locations;
+      if (Array.isArray(wpl) && wpl.length > 0) {
+        for (const l of wpl) {
+          for (const cc of l.classCodes ?? []) {
+            annualPayroll += Number(cc.annualPayroll) || 0;
+            headcount += (Number(cc.fullTimeEmployees) || 0) + (Number(cc.partTimeEmployees) || 0);
+          }
+        }
+      }
+      if (annualPayroll <= 0) annualPayroll = Number(deal?.annualPayroll) || 0;
+      if (headcount <= 0) headcount = Number(deal?.employeeCountFt) || 0;
+      if (annualPayroll <= 0 || headcount <= 0) {
+        setWfsError("Missing payroll or headcount on this deal — complete the workforce profile first.");
+        return;
+      }
+      const res = await api.post<{ success: boolean; data?: { result?: { monthlyWFSFee?: number; pepm?: number } }; error?: string }>(
+        "/rate/wfs",
+        { annualPayroll, headcount, dealId },
+      );
+      const r = res?.data?.result;
+      if (!res?.success || !r) {
+        setWfsError(res?.error || "Rating failed. Try again.");
+        return;
+      }
+      setWfsPricing({
+        monthly: r.monthlyWFSFee != null ? String(r.monthlyWFSFee) : null,
+        pepm: r.pepm != null ? String(r.pepm) : null,
+      });
+    } catch (e) {
+      setWfsError(e instanceof Error ? e.message : "Rating failed. Try again.");
+    } finally {
+      setWfsBusy(false);
+    }
+  }, [wfsBusy, quoteRef, deal, dealId]);
+
   // Resolve header-map markers: prefer the quote's workforce profile (per-location
   // state/zip + class-code headcounts); fall back to the deal-level state, dividing
   // the FT employee count evenly across numberOfLocations when the per-location
@@ -297,8 +347,19 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
       let locs: RawLoc[] = [];
       let stats: { locations: number | null; eMod: number | null } = { locations: null, eMod: null };
       let qref: { id: string; profile: WorkforceProfileRaw } | null = null;
+      // Reset WFS rail state so a previously-opened deal's pricing/error never
+      // bleeds into this deal while (or after) the quote hydrates.
+      setWfsPricing({ monthly: null, pepm: null });
+      setWfsError(null);
+      setWfsBusy(false);
       try {
-        const q = await api.get<{ id: string; workforceProfile?: WorkforceProfileRaw }>(`/quotes/by-deal/${dealId}`);
+        const q = await api.get<{ id: string; workforceProfile?: WorkforceProfileRaw; monthlyWfsFee?: string | null; pepm?: string | null }>(`/quotes/by-deal/${dealId}`);
+        if (active) {
+          setWfsPricing({
+            monthly: q?.monthlyWfsFee && parseFloat(q.monthlyWfsFee) > 0 ? q.monthlyWfsFee : null,
+            pepm: q?.pepm && parseFloat(q.pepm) > 0 ? q.pepm : null,
+          });
+        }
         const wp = q?.workforceProfile;
         const wpl = wp?.locations;
         if (Array.isArray(wpl) && wpl.length > 0) {
@@ -326,6 +387,7 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
         }
       } catch {
         /* no quote for this deal — fall back to deal-level fields */
+        if (active) setWfsPricing({ monthly: null, pepm: null });
       }
       if (active) {
         setQuoteStats(stats);
@@ -830,8 +892,11 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
             <div style={{ width: 224, flexShrink: 0, borderLeft: `1px solid ${c.borderColor}`, padding: "14px 14px 18px", display: "flex", flexDirection: "column", gap: 14, overflow: "auto" }}>
               <PricingRail
                 wcPremium={(deal?.wcPremium as string) ?? null}
-                wfsMonthly={null}
-                wfsPepm={(deal?.wfsPepmRate as string) ?? null}
+                wfsMonthly={wfsPricing.monthly}
+                wfsPepm={wfsPricing.pepm ?? ((deal?.wfsPepmRate as string) || null)}
+                wfsBusy={wfsBusy}
+                wfsError={wfsError}
+                onGetWfsQuote={handleGetWfsQuote}
                 canApprove={payload.canApprove}
                 busy={decisionBusy}
                 openBlocking={openBlocking}
