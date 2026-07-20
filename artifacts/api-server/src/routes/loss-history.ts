@@ -74,13 +74,18 @@ router.post("/:dealId/upload", upload.single("file"), async (req: Request<{ deal
     })
     .returning();
 
+  const actorUser = req.user;
+  const actorName = actorUser
+    ? [actorUser.firstName, actorUser.lastName].filter(Boolean).join(" ") || actorUser.email
+    : null;
   await db.insert(activityLogTable).values({
     dealId,
     entityType: "loss_history",
     entityId: doc.id,
     eventType: "loss_history_uploaded",
     description: `Loss run document uploaded: ${req.file.originalname}`,
-    metadata: { storage_path: storagePath, years_covered: yearsCovered, valuation_date: valuationDate || null },
+    metadata: { author: actorName ?? undefined, role: actorUser?.role ?? undefined, storage_path: storagePath, years_covered: yearsCovered, valuation_date: valuationDate || null },
+    createdBy: actorUser?.id,
   });
 
   // §6A item 9: a new loss run may clear (or change) the staleness flag.

@@ -12,13 +12,13 @@ import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "r
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import {
-  X, Star, LayoutDashboard, ClipboardList, Folder, CheckSquare, Calculator, Shield, UserRound,
+  X, Star, LayoutDashboard, ClipboardList, Folder, CheckSquare, Calculator, Shield,
   MapPin, Users, Banknote, Gauge, ShieldCheck,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { useAuthStore } from "@/lib/auth-store";
-import type { SectionView, SubmissionPayload, ActivityRow, SectionPatchResponse, RfiRow, RfiListResponse, QuoteVariation, QuoteVariationsResponse, ApplyVariationResponse, PreviewVariationResponse, VariationLevers, DealTeamMember } from "./types";
+import type { SectionView, SubmissionPayload, ActivityRow, SectionPatchResponse, RfiRow, RfiListResponse, QuoteVariation, QuoteVariationsResponse, ApplyVariationResponse, PreviewVariationResponse, VariationLevers, DealTeamMember, DealDirectoryEntry } from "./types";
 import UserMiniProfile from "@/components/user-profile/UserMiniProfile";
 import type { CreateRfiInput } from "./OverviewTab";
 import { PHASES, phaseIndex } from "./stage-map";
@@ -103,23 +103,19 @@ function teamInitials(name: string): string {
   return (parts[0]?.[0] ?? "?").toUpperCase();
 }
 
-/** Stock headshots used for a subset of deal-team members (rest get soft-grey acronym circles). */
-const AVATAR_PHOTOS = [
-  "/images/avatars/team_headshot_1.jpg",
-  "/images/avatars/team_headshot_2.jpg",
-  "/images/avatars/team_headshot_3.jpg",
-  "/images/avatars/team_headshot_4.jpg",
-];
-
 const AVATAR_SIZE = 38;
 
 /**
  * Deal-team avatar row (rendered under the company name, over the header map).
- * Every other member shows a stock headshot; the rest show soft-grey initials
- * circles that deliberately stay quiet against the map background. Each avatar
- * still opens the shared mini-profile popover.
+ * Members with a real headshot (users.avatar_url) show the photo; the rest show
+ * soft-grey initials circles that stay quiet against the map background. When a
+ * deal has no explicit team, we fall back to the first three entries of the
+ * deal-scoped directory (same people the Pipeline card face renders), so the
+ * two surfaces always match — and it works for external roles too, who cannot
+ * call the internal-sales-gated GET /api/users.
+ * Each avatar still opens the shared mini-profile popover.
  */
-function DealTeamAvatars({ team }: { team?: DealTeamMember[] }) {
+function DealTeamAvatars({ team, directory }: { team?: DealTeamMember[]; directory?: DealDirectoryEntry[] }) {
   const c = useThemeColors();
   const grey = c.isDark ? "rgba(255,255,255,0.13)" : "rgba(0,0,0,0.08)";
   const greyText = c.isDark ? "rgba(255,255,255,0.72)" : "rgba(0,0,0,0.6)";
@@ -129,50 +125,53 @@ function DealTeamAvatars({ team }: { team?: DealTeamMember[] }) {
     border: `2px solid ${ring}`, display: "flex", alignItems: "center", justifyContent: "center",
     flexShrink: 0, overflow: "hidden",
   };
-  if (!team || team.length === 0) {
-    return (
-      <div style={{ display: "flex", alignItems: "center" }}>
-        {[0, 1, 2].map((i) => (
-          <div key={i} style={{ ...base, background: grey, marginLeft: i === 0 ? 0 : -10 }}>
-            <UserRound style={{ width: 17, height: 17, color: greyText }} />
-          </div>
-        ))}
-      </div>
-    );
-  }
+  // Same people as the Pipeline card face: real team when present, otherwise
+  // the first three directory members (matching the card-face avatar row).
+  const people: Array<{ userId: string; name: string; relation?: string; photo: string | null }> =
+    team && team.length > 0
+      ? team.map((m) => ({ userId: m.userId, name: m.name, relation: m.relation, photo: m.avatarUrl ?? null }))
+      : (directory ?? []).slice(0, 3).map((m) => ({ userId: m.id, name: m.name, photo: m.avatarUrl }));
+  if (people.length === 0) return null;
   return (
     <div style={{ display: "flex", alignItems: "center" }}>
-      {team.map((m, i) => {
-        const photo = i % 2 === 0 ? AVATAR_PHOTOS[Math.floor(i / 2) % AVATAR_PHOTOS.length] : null;
-        return (
-          <UserMiniProfile key={m.userId} userId={m.userId} align="start">
-            <button
-              type="button"
-              title={`${m.name} · ${m.relation}`}
-              style={{
-                ...base,
-                background: grey,
-                marginLeft: i === 0 ? 0 : -10,
-                cursor: "pointer", padding: 0,
-                fontSize: 13, fontWeight: 600, color: greyText,
-                position: "relative", zIndex: team.length - i,
-              }}
-            >
-              {photo ? (
-                <img
-                  src={photo}
-                  alt={m.name}
-                  style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                />
-              ) : (
-                teamInitials(m.name)
-              )}
-            </button>
-          </UserMiniProfile>
-        );
-      })}
+      {people.map((m, i) => (
+        <UserMiniProfile key={m.userId} userId={m.userId} align="start">
+          <button
+            type="button"
+            title={m.relation ? `${m.name} · ${m.relation}` : m.name}
+            style={{
+              ...base,
+              background: grey,
+              marginLeft: i === 0 ? 0 : -10,
+              cursor: "pointer", padding: 0,
+              fontSize: 13, fontWeight: 600, color: greyText,
+              position: "relative", zIndex: people.length - i,
+            }}
+          >
+            {m.photo ? (
+              <img
+                src={m.photo}
+                alt={m.name}
+                style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+              />
+            ) : (
+              teamInitials(m.name)
+            )}
+          </button>
+        </UserMiniProfile>
+      ))}
     </div>
   );
+}
+
+/** EXMOD KPI color — mirrors the Hazometer gauge rating thresholds/colors. */
+function exModColor(value: number, isDark: boolean): string {
+  if (value > 2.0) return "#cc0022"; // Severe (crimson)
+  if (value > 1.5) return "#ff073a"; // High Risk (red)
+  if (value > 1.2) return "#ff6e27"; // Elevated (orange)
+  if (value > 1.0) return "#fff01f"; // Above Average (yellow)
+  if (value >= 0.95) return isDark ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.45)"; // Average (grey)
+  return "#39ff14"; // Excellent (green)
 }
 
 export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }: DealCardShellProps) {
@@ -433,10 +432,10 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
     }
   };
 
-  const handleSend = async (message: string) => {
+  const handleSend = async (message: string, mentions?: string[]) => {
     setPosting(true);
     try {
-      await api.post(`/deal-card/${dealId}/messages`, { message });
+      await api.post(`/deal-card/${dealId}/messages`, { message, mentions: mentions ?? [] });
       await fetchActivity();
     } catch {
       /* ignore */
@@ -575,11 +574,13 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
   const exModRaw = fieldValue(sections, "workforce", "emod") ?? quoteStats.eMod;
   const exModVal = exModRaw == null || exModRaw === "" || isNaN(Number(exModRaw)) ? null : Number(exModRaw).toFixed(2);
 
+  // EXMOD takes the Hazometer rating color; the other three take the accent gradient.
+  const exModNum = exModVal == null ? null : Number(exModVal);
   const kpis = [
-    { label: "LOCATIONS", Icon: MapPin, value: fmtNum(locationsVal) },
-    { label: "EMPLOYEES", Icon: Users, value: fmtNum(fieldValue(sections, "workforce", "employeeCountFt")) },
-    { label: "PAYROLL", Icon: Banknote, value: fmtMoneyShort(fieldValue(sections, "workforce", "annualPayroll")) },
-    { label: "EXMOD", Icon: Gauge, value: exModVal ?? "\u2014" },
+    { label: "LOCATIONS", Icon: MapPin, value: fmtNum(locationsVal), exModColor: null as string | null },
+    { label: "EMPLOYEES", Icon: Users, value: fmtNum(fieldValue(sections, "workforce", "employeeCountFt")), exModColor: null as string | null },
+    { label: "PAYROLL", Icon: Banknote, value: fmtMoneyShort(fieldValue(sections, "workforce", "annualPayroll")), exModColor: null as string | null },
+    { label: "EXMOD", Icon: Gauge, value: exModVal ?? "\u2014", exModColor: exModNum == null ? null : exModColor(exModNum, c.isDark) },
   ];
 
   // Header-over-map palette: glyphs sit on the map artwork, so these branch on
@@ -673,7 +674,7 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
                 </div>
               )}
               <div style={{ marginTop: 14, pointerEvents: "auto", width: "fit-content" }}>
-                <DealTeamAvatars team={payload?.team} />
+                <DealTeamAvatars team={payload?.team} directory={payload?.directory} />
               </div>
             </div>
             {/* KPI cluster — large glowing numbers with identifying icons, left of the X.
@@ -681,17 +682,33 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
             {/* KPI numbers are display-only — keep the cluster click-transparent
                 so markers underneath stay clickable; only the X re-enables. */}
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "flex-end", columnGap: 26, rowGap: 10, flex: "0 1 auto", minWidth: 0 }}>
-              {kpis.map(({ label, Icon, value }) => (
-                <div key={label} style={{ textAlign: "right" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 5, fontSize: 10, letterSpacing: "0.08em", fontWeight: 600, color: hdrSoftGrey, textTransform: "uppercase" }}>
-                    <Icon style={{ width: 13, height: 13, color: hdrSoftGrey }} />
-                    {label}
+              {kpis.map(({ label, Icon, value, exModColor: exColor }) => {
+                const isDash = value === "\u2014";
+                const numberStyle: CSSProperties = {
+                  fontSize: 26, fontWeight: 600, lineHeight: 1.15, marginTop: 3, fontVariantNumeric: "tabular-nums",
+                  ...(isDash
+                    ? { color: hdrValue, textShadow: hdrValueGlow }
+                    : label === "EXMOD" && exColor
+                      ? { color: exColor, textShadow: c.isDark ? `0 0 14px ${exColor}55` : "none" }
+                      : {
+                          // Accent gradient number (LOCATIONS / EMPLOYEES / PAYROLL).
+                          background: "var(--gradient-cta)",
+                          WebkitBackgroundClip: "text",
+                          backgroundClip: "text",
+                          color: "transparent",
+                          WebkitTextFillColor: "transparent",
+                        }),
+                };
+                return (
+                  <div key={label} style={{ textAlign: "right" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 5, fontSize: 10, letterSpacing: "0.08em", fontWeight: 600, color: hdrSoftGrey, textTransform: "uppercase" }}>
+                      <Icon style={{ width: 13, height: 13, color: hdrSoftGrey }} />
+                      {label}
+                    </div>
+                    <div style={numberStyle}>{value}</div>
                   </div>
-                  <div style={{ fontSize: 26, fontWeight: 600, lineHeight: 1.15, marginTop: 3, color: hdrValue, textShadow: hdrValueGlow, fontVariantNumeric: "tabular-nums" }}>
-                    {value}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
               <X onClick={onClose} style={{ width: 18, height: 18, color: c.textMuted, cursor: "pointer", flexShrink: 0, marginTop: 1, pointerEvents: "auto" }} />
             </div>
           </div>
@@ -777,6 +794,7 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
                     canPost={canPost}
                     posting={posting}
                     onSend={handleSend}
+                    directory={payload?.directory ?? []}
                     rfis={rfis}
                     isInternal={isInternal}
                     rfiBusy={rfiBusy}

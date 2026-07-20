@@ -60,6 +60,18 @@ export interface DealTeamMember {
   userId: string;
   name: string;
   relation: string;
+  avatarUrl?: string | null;
+}
+
+/** Scoped participant directory returned with the submission payload —
+ * available to every role that can view the deal card (unlike GET /api/users,
+ * which is internal-sales gated). Used for @mention candidates + avatar
+ * resolution. */
+export interface DealDirectoryEntry {
+  id: string;
+  name: string;
+  avatarUrl: string | null;
+  role: string | null;
 }
 
 export interface SubmissionPayload {
@@ -71,6 +83,7 @@ export interface SubmissionPayload {
   access: Record<string, boolean>;
   canApprove: boolean;
   team?: DealTeamMember[];
+  directory?: DealDirectoryEntry[];
 }
 
 export interface ActivityRow {

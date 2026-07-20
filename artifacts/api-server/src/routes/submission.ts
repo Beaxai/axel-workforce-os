@@ -376,6 +376,10 @@ router.post("/submit-for-approval", async (req, res) => {
 
   await db.insert(dealDocumentsTable).values(docRecords);
 
+  const actorUser = req.user;
+  const actorName = actorUser
+    ? [actorUser.firstName, actorUser.lastName].filter(Boolean).join(" ") || actorUser.email
+    : null;
   await db.insert(activityLogTable).values({
     dealId: deal.id,
     entityType: "deal",
@@ -383,10 +387,20 @@ router.post("/submit-for-approval", async (req, res) => {
     eventType: "submission_submitted",
     description: `Application submitted for underwriting review. ${docRecords.length} documents generated.`,
     metadata: {
+      author: actorName ?? undefined,
+      role: actorUser?.role ?? undefined,
       document_count: docRecords.length,
       loss_history_included: lossHistoryCount > 0,
       cannabis_application_persisted: !!parsedCannabisAnswers,
+      summary: {
+        businessName: businessName || null,
+        vertical: vertical || null,
+        state: businessState || null,
+        employees: totalEmployees ?? null,
+        annualPayroll: totalPayroll ?? null,
+      },
     },
+    createdBy: actorUser?.id,
   });
 
   await db.insert(activityLogTable).values({

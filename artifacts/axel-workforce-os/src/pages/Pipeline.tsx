@@ -904,7 +904,7 @@ export default function Pipeline() {
                               const member = members[i];
                               if (!member) return null;
                               
-                              const photo = i % 2 === 0 ? `/images/avatars/team_headshot_${(i % 4) + 1}.jpg` : null;
+                              const photo = member.photoUrl;
                               const initials = member.name ? member.name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase() : "?";
                               
                               return (
