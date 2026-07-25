@@ -13,7 +13,7 @@ import { useThemeColors } from "@/lib/use-theme-colors";
 import { useAuthStore } from "@/lib/auth-store";
 import { api } from "@/lib/api";
 import { stageLabel, type PipelineStageKey } from "@workspace/pipeline";
-import { ArrowLeft, Clock, User } from "lucide-react";
+import { ChevronRight, Clock, User } from "lucide-react";
 
 const CLIENT_STAGES = ["Prospect", "Active Prospect", "New Client", "Active Client"] as const;
 
@@ -192,11 +192,22 @@ export default function AccountDetail() {
 
   return (
     <div>
+      {/* Breadcrumb navigation strip — replaces the old inline Back button. */}
+      <nav aria-label="Breadcrumb" style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "12px", fontSize: "12px" }}>
+        <button
+          type="button"
+          onClick={() => navigate("/accounts")}
+          style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: textMuted, fontSize: "12px", fontFamily: "inherit" }}
+          onMouseEnter={(e) => { e.currentTarget.style.color = "var(--accent-primary)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = textMuted; }}
+        >
+          Accounts
+        </button>
+        <ChevronRight style={{ width: "13px", height: "13px", color: textMuted, flexShrink: 0 }} />
+        <span aria-current="page" style={{ color: textPrimary, fontWeight: 600 }}>{account.businessName}</span>
+      </nav>
+
       <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px" }}>
-        <GhostButton onClick={() => navigate("/accounts")} style={{ padding: "6px 12px", display: "flex", alignItems: "center", gap: "6px" }}>
-          <ArrowLeft style={{ width: "16px", height: "16px" }} />
-          Back
-        </GhostButton>
         <SectionHeader title={account.businessName} subtitle={`Account Detail`} />
         <div style={{ marginLeft: "auto" }}>
           <Badge label={account.clientStage || "Prospect"} color={STAGE_COLOR[account.clientStage || "Prospect"] || "gray"} />
