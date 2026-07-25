@@ -36,6 +36,13 @@ export const quotesTable = pgTable("quotes", {
   wfsRatingBreakdown: jsonb("wfs_rating_breakdown"),
   ratedAt: timestamp("rated_at", { withTimezone: true }),
   workforceProfile: jsonb("workforce_profile"),
+  // §Indication editing — client-visibility gate. While internal parties adjust
+  // indication parameters, `paramsPendingReview` is true and any client-facing
+  // read must serve `approvedSnapshot` (the last internally-agreed view:
+  // { workforceProfile, eMod, wcRatingBreakdown, wcIndicationMin, wcIndicationMax,
+  //   wcFinalPremium, wcPremium }) instead of the live columns.
+  approvedSnapshot: jsonb("approved_snapshot"),
+  paramsPendingReview: boolean("params_pending_review").default(false),
 });
 
 export const insertQuoteSchema = createInsertSchema(quotesTable).omit({ id: true, createdAt: true });

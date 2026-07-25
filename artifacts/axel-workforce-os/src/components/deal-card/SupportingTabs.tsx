@@ -10,6 +10,7 @@ import { api } from "@/lib/api";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { PinkButton, GhostButton } from "@/components/ui/axel-index";
 import IndicationBreakdownPanel from "@/components/IndicationBreakdownPanel";
+import IndicationDetailView, { type IndicationMetric, type WorkforceProfileShape } from "./IndicationDetailView";
 import ProposalPanel from "@/components/ProposalPanel";
 import BindStatusPanel from "@/components/submission/BindStatusPanel";
 import UserMiniProfile from "@/components/user-profile/UserMiniProfile";
@@ -186,12 +187,14 @@ type QuoteRecord = {
   wcIndicationMin?: string | null;
   wcIndicationMax?: string | null;
   wcFinalPremium?: string | null;
+  paramsPendingReview?: boolean | null;
 };
 
-export function QuoteTab({ dealId, businessName, productType, vertical, coverageEffectiveDate, onClose }: { dealId: string; businessName: string; productType?: string; vertical?: string; coverageEffectiveDate?: string | null; onClose: () => void }) {
+export function QuoteTab({ dealId, businessName, productType, vertical, coverageEffectiveDate, detailMetric, onCloseDetail, canEditParams, onQuoteUpdated, onClose }: { dealId: string; businessName: string; productType?: string; vertical?: string; coverageEffectiveDate?: string | null; detailMetric?: IndicationMetric | null; onCloseDetail?: () => void; canEditParams?: boolean; onQuoteUpdated?: () => void; onClose: () => void }) {
   const c = useThemeColors();
   const [quote, setQuote] = useState<QuoteRecord | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [version, setVersion] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -206,9 +209,28 @@ export function QuoteTab({ dealId, businessName, productType, vertical, coverage
       }
     })();
     return () => { active = false; };
-  }, [dealId]);
+  }, [dealId, version]);
 
   if (!loaded) return <div style={{ padding: "32px 0", textAlign: "center", fontSize: 13, color: c.textMuted }}>Loading quote\u2026</div>;
+
+  // A header KPI was clicked — show the editable detail view for that metric
+  // instead of the indication (works whenever the deal has a workforce profile).
+  if (detailMetric && quote?.workforceProfile) {
+    return (
+      <IndicationDetailView
+        dealId={dealId}
+        metric={detailMetric}
+        profile={quote.workforceProfile as WorkforceProfileShape}
+        pendingReview={!!quote.paramsPendingReview}
+        editable={!!canEditParams}
+        onBack={() => onCloseDetail?.()}
+        onSaved={() => {
+          setVersion((v) => v + 1); // refresh premium/table with re-rated numbers
+          onQuoteUpdated?.();
+        }}
+      />
+    );
+  }
 
   const wcBreakdown = quote?.wcRatingBreakdown?.data || quote?.wcRatingBreakdown;
   if (quote && wcBreakdown) {

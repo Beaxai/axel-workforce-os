@@ -5,7 +5,6 @@
  * saw when they received their estimate.
  */
 import { useThemeColors } from "@/lib/use-theme-colors";
-import { MapPin, Users, DollarSign, Gauge, type LucideIcon } from "lucide-react";
 import wcShieldIcon from "@assets/Shield-Icon_1780952893965.png";
 
 interface ClassCodeBreakdown {
@@ -98,15 +97,6 @@ export default function IndicationBreakdownPanel({
   );
 
   const totalPayroll = rows.reduce((sum, r) => sum + num(r.annualPayroll), 0);
-  const totalEmployees = (workforceProfile?.locations || []).reduce(
-    (sum, loc) =>
-      sum +
-      (loc.classCodes || []).reduce(
-        (s, cc) => s + num(cc.fullTimeEmployees) + num(cc.partTimeEmployees),
-        0,
-      ),
-    0,
-  );
   const classCodeCount = rows.length;
   const stateCount = new Set(locs.map((l) => l.state).filter(Boolean)).size || 1;
   const premiumLow = indicationLow != null && isFinite(indicationLow)
@@ -136,22 +126,8 @@ export default function IndicationBreakdownPanel({
       : d.toLocaleDateString("en-US", { month: "numeric", day: "numeric", year: "numeric" });
   })();
 
-  const fmtCompact = (n: number) =>
-    n >= 1_000_000
-      ? `$${(n / 1_000_000).toFixed(2)}M`
-      : n >= 10_000
-      ? `$${Math.round(n / 1_000)}K`
-      : `$${n.toLocaleString()}`;
-
   const panelBg = isDark ? "#13131f" : "#f8f8fc";
   const cardRadius = 14;
-
-  const statCards: Array<{ label: string; value: string; icon: LucideIcon }> = [
-    { label: "Number of Locations", value: String(locs.length || 1), icon: MapPin },
-    { label: "Number of Employees", value: String(totalEmployees), icon: Users },
-    { label: "Annual Payroll", value: fmtCompact(totalPayroll), icon: DollarSign },
-    { label: "Experience Mod", value: Number(eMod).toFixed(2), icon: Gauge },
-  ];
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 22, alignItems: "stretch" }}>
@@ -215,57 +191,9 @@ export default function IndicationBreakdownPanel({
         )}
       </div>
 
-      {/* Stat cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 16 }}>
-        {statCards.map((c) => {
-          const Icon = c.icon;
-          return (
-            <div
-              key={c.label}
-              style={{
-                padding: "18px 20px",
-                borderRadius: 12,
-                background: panelBg,
-                border: `1px solid ${borderColor}`,
-                borderLeft: "3px solid var(--accent-primary)",
-                display: "flex",
-                alignItems: "center",
-                gap: 14,
-              }}
-            >
-              <div
-                style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 10,
-                  background: "rgba(233,30,140,0.12)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                }}
-              >
-                <Icon style={{ width: 20, height: 20, color: "var(--accent-primary)" }} />
-              </div>
-              <div style={{ minWidth: 0 }}>
-                <div
-                  style={{
-                    fontSize: 11,
-                    color: textMuted,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.07em",
-                    fontFamily: "var(--app-font-heading)",
-                    marginBottom: 6,
-                  }}
-                >
-                  {c.label}
-                </div>
-                <div style={{ fontSize: 26, fontWeight: 700, color: textPrimary, lineHeight: 1 }}>{c.value}</div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      {/* Stat cards intentionally removed here — the deal card header KPIs
+          (LOCATIONS / EMPLOYEES / PAYROLL / EXMOD) carry these figures and
+          open the editable detail views. */}
 
       {/* Estimated annual premium range */}
       <div

@@ -34,6 +34,7 @@ import {
   type MultiLocationInput,
 } from "../utils/ratingEngine";
 import { z } from "zod/v4";
+import { reRateQuoteAfterParamsUpdate } from "../lib/indication-rerate";
 import {
   buildSections,
   canEditSection,
@@ -885,6 +886,247 @@ router.post("/:id/clear-rating-stale", async (req, res) => {
   });
 
   return res.json({ success: true, ratingStale: false });
+});
+
+/* --------------------------------------------------------------------------
+ * §Indication parameter editing — the deal card's Quote tab is a living
+ * indication that internal parties (broker/underwriter/admin) adjust as the
+ * deal progresses. Every field change is audited (before/after, actor,
+ * timestamp) and the quote auto re-rates through a single seam
+ * (see lib/indication-rerate.ts — flagged for owner review).
+ *
+ * Client gating: edits set `paramsPendingReview`; client-facing reads must
+ * serve `approvedSnapshot` until an internal party approves.
+ * ------------------------------------------------------------------------ */
+
+type IndicationMetric = "locations" | "employees" | "payroll" | "exmod";
+
+type ParamChange = { metric: IndicationMetric; field: string; before: unknown; after: unknown };
+
+const wpClassCodeSchema = z.object({
+  classCode: z.string().trim().min(1),
+  description: z.string().optional(),
+  annualPayroll: z.coerce.number().min(0),
+  fullTimeEmployees: z.coerce.number().int().min(0).optional(),
+  partTimeEmployees: z.coerce.number().int().min(0).optional(),
+}).loose();
+
+const wpLocationSchema = z.object({
+  state: z.string().trim().length(2),
+  zip: z.string().optional(),
+  classCodes: z.array(wpClassCodeSchema).min(1),
+}).loose();
+
+const indicationParamsSchema = z.object({
+  metric: z.enum(["locations", "employees", "payroll", "exmod"]),
+  workforceProfile: z.object({
+    locations: z.array(wpLocationSchema).min(1),
+    eMod: z.coerce.number().min(0.5).max(2.0).optional(),
+    scheduleRating: z.coerce.number().optional(),
+    isPEO: z.boolean().optional(),
+  }).loose(),
+});
+
+type WpLoc = z.infer<typeof wpLocationSchema>;
+
+/** Field-level diff between the previous and next workforce profile. */
+function diffIndicationParams(
+  prev: { locations?: WpLoc[]; eMod?: number } | null,
+  next: { locations: WpLoc[]; eMod?: number },
+): ParamChange[] {
+  const changes: ParamChange[] = [];
+  const prevLocs: WpLoc[] = prev?.locations ?? [];
+  const nextLocs = next.locations;
+
+  const prevEmod = prev?.eMod ?? null;
+  const nextEmod = next.eMod ?? null;
+  if (prevEmod !== nextEmod) {
+    changes.push({ metric: "exmod", field: "Experience Mod", before: prevEmod, after: nextEmod });
+  }
+
+  const maxLocs = Math.max(prevLocs.length, nextLocs.length);
+  for (let i = 0; i < maxLocs; i++) {
+    const p = prevLocs[i];
+    const n = nextLocs[i];
+    const locLabel = `Location ${i + 1}`;
+    if (!p && n) {
+      changes.push({ metric: "locations", field: `${locLabel}`, before: null, after: `${n.state}${n.zip ? ` ${n.zip}` : ""} (added)` });
+      continue;
+    }
+    if (p && !n) {
+      changes.push({ metric: "locations", field: `${locLabel}`, before: `${p.state}${p.zip ? ` ${p.zip}` : ""}`, after: "(removed)" });
+      continue;
+    }
+    if (!p || !n) continue;
+    if (p.state !== n.state) changes.push({ metric: "locations", field: `${locLabel} state`, before: p.state, after: n.state });
+    if ((p.zip || "") !== (n.zip || "")) changes.push({ metric: "locations", field: `${locLabel} ZIP`, before: p.zip || null, after: n.zip || null });
+
+    const maxCc = Math.max(p.classCodes.length, n.classCodes.length);
+    for (let j = 0; j < maxCc; j++) {
+      const pc = p.classCodes[j];
+      const nc = n.classCodes[j];
+      const ccLabel = `${locLabel} · class ${nc?.classCode ?? pc?.classCode ?? j + 1}`;
+      if (!pc && nc) {
+        changes.push({ metric: "locations", field: ccLabel, before: null, after: "(class code added)" });
+        continue;
+      }
+      if (pc && !nc) {
+        changes.push({ metric: "locations", field: ccLabel, before: pc.classCode, after: "(class code removed)" });
+        continue;
+      }
+      if (!pc || !nc) continue;
+      if (pc.classCode !== nc.classCode) changes.push({ metric: "locations", field: `${ccLabel} code`, before: pc.classCode, after: nc.classCode });
+      if (Number(pc.annualPayroll) !== Number(nc.annualPayroll)) {
+        changes.push({ metric: "payroll", field: `${ccLabel} annual payroll`, before: Number(pc.annualPayroll), after: Number(nc.annualPayroll) });
+      }
+      if (Number(pc.fullTimeEmployees ?? 0) !== Number(nc.fullTimeEmployees ?? 0)) {
+        changes.push({ metric: "employees", field: `${ccLabel} full-time`, before: Number(pc.fullTimeEmployees ?? 0), after: Number(nc.fullTimeEmployees ?? 0) });
+      }
+      if (Number(pc.partTimeEmployees ?? 0) !== Number(nc.partTimeEmployees ?? 0)) {
+        changes.push({ metric: "employees", field: `${ccLabel} part-time`, before: Number(pc.partTimeEmployees ?? 0), after: Number(nc.partTimeEmployees ?? 0) });
+      }
+    }
+  }
+  return changes;
+}
+
+function approvedSnapshotFrom(q: QuoteRow) {
+  return {
+    workforceProfile: q.workforceProfile,
+    eMod: q.eMod,
+    wcRatingBreakdown: q.wcRatingBreakdown,
+    wcIndicationMin: q.wcIndicationMin,
+    wcIndicationMax: q.wcIndicationMax,
+    wcFinalPremium: q.wcFinalPremium,
+    wcPremium: q.wcPremium,
+  };
+}
+
+// PATCH /deal-card/:id/indication-params — save edited parameters, audit each
+// field change, then re-rate through the seam.
+router.patch("/:id/indication-params", async (req, res) => {
+  const actor = actorFrom(req);
+  if (!INTERNAL_ROLES.has(actor.role)) {
+    return res.status(403).json({ error: "Only broker, underwriter, or admin may edit indication parameters" });
+  }
+  const deal = await loadDeal(req.params.id);
+  if (!deal) return res.status(404).json({ error: "Deal not found" });
+
+  const parsed = indicationParamsSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues });
+
+  const [quote] = await db.select().from(quotesTable).where(eq(quotesTable.dealId, deal.id)).limit(1);
+  if (!quote) return res.status(409).json({ error: "Deal has no quote to update" });
+
+  const prevProfile = (quote.workforceProfile ?? null) as { locations?: WpLoc[]; eMod?: number } | null;
+  const nextProfile = parsed.data.workforceProfile;
+  const changes = diffIndicationParams(prevProfile, nextProfile);
+  if (changes.length === 0) {
+    return res.json({ success: true, changed: 0, pendingReview: quote.paramsPendingReview ?? false });
+  }
+
+  // First edit since last approval: freeze the client-approved view.
+  const snapshot = quote.paramsPendingReview ? quote.approvedSnapshot : approvedSnapshotFrom(quote);
+
+  await db
+    .update(quotesTable)
+    .set({
+      workforceProfile: nextProfile,
+      eMod: nextProfile.eMod != null ? String(nextProfile.eMod) : quote.eMod,
+      approvedSnapshot: snapshot,
+      paramsPendingReview: true,
+    })
+    .where(eq(quotesTable.id, quote.id));
+
+  const u = req.user!;
+  const author = [u.firstName, u.lastName].filter(Boolean).join(" ") || u.email;
+  // One audit row per changed field: timestamp, before/after, acting party.
+  await db.insert(activityLogTable).values(
+    changes.map((ch) => ({
+      dealId: deal.id,
+      entityType: "quote",
+      entityId: quote.id,
+      eventType: "indication_param_edited",
+      description: `${author} changed ${ch.field}: ${ch.before ?? "—"} → ${ch.after ?? "—"}`,
+      // internal:true — hidden from external parties until approved.
+      metadata: { metric: ch.metric, field: ch.field, before: ch.before ?? null, after: ch.after ?? null, author, role: actor.role, internal: true },
+      createdBy: actor.id,
+    })),
+  );
+
+  const rerate = await reRateQuoteAfterParamsUpdate(quote.id, nextProfile as Parameters<typeof reRateQuoteAfterParamsUpdate>[1]);
+  const [fresh] = await db.select().from(quotesTable).where(eq(quotesTable.id, quote.id)).limit(1);
+
+  return res.json({
+    success: true,
+    changed: changes.length,
+    pendingReview: true,
+    rerate,
+    quote: fresh,
+  });
+});
+
+// POST /deal-card/:id/indication-params/approve — internal agreement reached;
+// the live values become the client-visible view.
+router.post("/:id/indication-params/approve", async (req, res) => {
+  const actor = actorFrom(req);
+  if (!INTERNAL_ROLES.has(actor.role)) {
+    return res.status(403).json({ error: "Only broker, underwriter, or admin may approve" });
+  }
+  const deal = await loadDeal(req.params.id);
+  if (!deal) return res.status(404).json({ error: "Deal not found" });
+  const [quote] = await db.select().from(quotesTable).where(eq(quotesTable.dealId, deal.id)).limit(1);
+  if (!quote) return res.status(409).json({ error: "Deal has no quote" });
+
+  await db
+    .update(quotesTable)
+    .set({ approvedSnapshot: approvedSnapshotFrom(quote), paramsPendingReview: false })
+    .where(eq(quotesTable.id, quote.id));
+
+  const u = req.user!;
+  const author = [u.firstName, u.lastName].filter(Boolean).join(" ") || u.email;
+  await db.insert(activityLogTable).values({
+    dealId: deal.id,
+    entityType: "quote",
+    entityId: quote.id,
+    eventType: "indication_params_approved",
+    description: `${author} approved the updated indication details for client visibility.`,
+    metadata: { author, role: actor.role },
+    createdBy: actor.id,
+  });
+
+  return res.json({ success: true, pendingReview: false });
+});
+
+// GET /deal-card/:id/indication-params/history?metric= — per-field change log
+// for the detail views (internal only; these entries are internal-flagged).
+router.get("/:id/indication-params/history", async (req, res) => {
+  const actor = actorFrom(req);
+  const deal = await loadDeal(req.params.id);
+  if (!deal) return res.status(404).json({ error: "Deal not found" });
+  if (!INTERNAL_ROLES.has(actor.role)) {
+    return res.status(403).json({ error: "Insufficient permissions" });
+  }
+
+  const rows = await db
+    .select()
+    .from(activityLogTable)
+    .where(and(
+      eq(activityLogTable.dealId, deal.id),
+      inArray(activityLogTable.eventType, ["indication_param_edited", "indication_params_approved"]),
+    ))
+    .orderBy(desc(activityLogTable.createdAt))
+    .limit(200);
+
+  const metric = typeof req.query.metric === "string" ? req.query.metric : null;
+  const filtered = metric
+    ? rows.filter((r) => {
+        const m = r.metadata as { metric?: string } | null;
+        return r.eventType === "indication_params_approved" || m?.metric === metric;
+      })
+    : rows;
+
+  return res.json({ history: filtered });
 });
 
 export default router;

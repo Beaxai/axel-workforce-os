@@ -32,6 +32,7 @@ import PricingRail from "./PricingRail";
 import ReRateBanner from "./ReRateBanner";
 import SectionEditorOverlay from "./SectionEditorOverlay";
 import { DocumentsTab, TasksTab, QuoteTab, PolicyTab } from "./SupportingTabs";
+import type { IndicationMetric } from "./IndicationDetailView";
 
 interface DealCardShellProps {
   dealId: string;
@@ -192,6 +193,12 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
   const [varLoading, setVarLoading] = useState(false);
   const [varApplying, setVarApplying] = useState<string | null>(null);
   const [tab, setTab] = useState<TabKey>("overview");
+  // Which indication detail view (if any) the Quote tab shows — set by
+  // clicking a header KPI; cleared by the detail view's back action.
+  const [quoteDetail, setQuoteDetail] = useState<IndicationMetric | null>(null);
+  // Bumped after indication-parameter edits so quote-derived header state
+  // (KPI fallbacks, map markers) refetches.
+  const [quoteVersion, setQuoteVersion] = useState(0);
   const [openSection, setOpenSection] = useState<string | null>(null);
   const [savingSection, setSavingSection] = useState(false);
   const [posting, setPosting] = useState(false);
@@ -423,7 +430,7 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
       if (active) setMapMarkers(spreadDuplicates(resolved));
     })();
     return () => { active = false; };
-  }, [isOpen, dealId, deal]);
+  }, [isOpen, dealId, deal, quoteVersion]);
 
   // Persist an edited/expanded class-code list for one location back onto the
   // quote's workforce profile, then refresh the local marker + popup state so
@@ -639,10 +646,10 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
   // EXMOD takes the Hazometer rating color; the other three take the accent gradient.
   const exModNum = exModVal == null ? null : Number(exModVal);
   const kpis = [
-    { label: "LOCATIONS", Icon: MapPin, value: fmtNum(locationsVal), exModColor: null as string | null },
-    { label: "EMPLOYEES", Icon: Users, value: fmtNum(fieldValue(sections, "workforce", "employeeCountFt")), exModColor: null as string | null },
-    { label: "PAYROLL", Icon: Banknote, value: fmtMoneyShort(fieldValue(sections, "workforce", "annualPayroll")), exModColor: null as string | null },
-    { label: "EXMOD", Icon: Gauge, value: exModVal ?? "\u2014", exModColor: exModNum == null ? null : exModColor(exModNum, c.isDark) },
+    { label: "LOCATIONS", metric: "locations" as IndicationMetric, Icon: MapPin, value: fmtNum(locationsVal), exModColor: null as string | null },
+    { label: "EMPLOYEES", metric: "employees" as IndicationMetric, Icon: Users, value: fmtNum(fieldValue(sections, "workforce", "employeeCountFt")), exModColor: null as string | null },
+    { label: "PAYROLL", metric: "payroll" as IndicationMetric, Icon: Banknote, value: fmtMoneyShort(fieldValue(sections, "workforce", "annualPayroll")), exModColor: null as string | null },
+    { label: "EXMOD", metric: "exmod" as IndicationMetric, Icon: Gauge, value: exModVal ?? "\u2014", exModColor: exModNum == null ? null : exModColor(exModNum, c.isDark) },
   ];
 
   // Header-over-map palette: glyphs sit on the map artwork, so these branch on
@@ -744,7 +751,7 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
             {/* KPI numbers are display-only — keep the cluster click-transparent
                 so markers underneath stay clickable; only the X re-enables. */}
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "flex-end", columnGap: 26, rowGap: 10, flex: "0 1 auto", minWidth: 0 }}>
-              {kpis.map(({ label, Icon, value, exModColor: exColor }) => {
+              {kpis.map(({ label, metric, Icon, value, exModColor: exColor }) => {
                 const isDash = value === "\u2014";
                 const numberStyle: CSSProperties = {
                   fontSize: 26, fontWeight: 600, lineHeight: 1.15, marginTop: 3, fontVariantNumeric: "tabular-nums",
@@ -764,7 +771,18 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
                         }),
                 };
                 return (
-                  <div key={label} style={{ textAlign: "right" }}>
+                  // KPI opens the Quote tab's editable detail view for this
+                  // metric (from any tab) — re-enables pointer events on the
+                  // otherwise click-transparent cluster.
+                  <div
+                    key={label}
+                    role="button"
+                    tabIndex={0}
+                    title={`Review & edit ${label.toLowerCase()}`}
+                    onClick={() => { setQuoteDetail(metric); setTab("quote"); }}
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setQuoteDetail(metric); setTab("quote"); } }}
+                    style={{ textAlign: "right", pointerEvents: "auto", cursor: "pointer" }}
+                  >
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 5, fontSize: 10, letterSpacing: "0.08em", fontWeight: 600, color: hdrSoftGrey, textTransform: "uppercase" }}>
                       <Icon style={{ width: 13, height: 13, color: hdrSoftGrey }} />
                       {label}
@@ -881,7 +899,20 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
                 {tab === "subjectivities" && <SubjectivitiesTab dealId={dealId} />}
                 {tab === "documents" && <DocumentsTab dealId={dealId} />}
                 {tab === "tasks" && <TasksTab dealId={dealId} />}
-                {tab === "quote" && <QuoteTab dealId={dealId} businessName={deal?.businessName || ""} productType={deal?.productType} vertical={deal?.vertical} coverageEffectiveDate={deal?.coverageEffectiveDate ? String(deal.coverageEffectiveDate) : null} onClose={onClose} />}
+                {tab === "quote" && (
+                  <QuoteTab
+                    dealId={dealId}
+                    businessName={deal?.businessName || ""}
+                    productType={deal?.productType}
+                    vertical={deal?.vertical}
+                    coverageEffectiveDate={deal?.coverageEffectiveDate ? String(deal.coverageEffectiveDate) : null}
+                    detailMetric={quoteDetail}
+                    onCloseDetail={() => setQuoteDetail(null)}
+                    canEditParams={isInternal}
+                    onQuoteUpdated={() => { setQuoteVersion((v) => v + 1); fetchActivity(); fetchSubmission(); }}
+                    onClose={onClose}
+                  />
+                )}
                 {tab === "policy" && <PolicyTab dealId={dealId} bindStatus={deal?.bindStatus} />}
               </>
             )}
