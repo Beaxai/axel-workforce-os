@@ -212,6 +212,13 @@ export default function AccountDetail() {
             </button>
             <ChevronRight style={{ width: "13px", height: "13px", color: textMuted, flexShrink: 0 }} />
             <span aria-current="page" style={{ color: textPrimary, fontWeight: 600 }}>{account.businessName}</span>
+            {!isReadOnly && (
+              <div style={{ marginLeft: "auto" }}>
+                <GhostButton onClick={() => { if (editMode) handleSave(); else setEditMode(true); }} style={{ padding: "4px 12px", fontSize: "12px" }}>
+                  {editMode ? "Save" : "Edit"}
+                </GhostButton>
+              </div>
+            )}
           </nav>
         );
       })()}
@@ -229,11 +236,6 @@ export default function AccountDetail() {
           <GlassCard padding="20px">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
               <h3 style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, margin: 0 }}>Business Info</h3>
-              {!isReadOnly && (
-                <GhostButton onClick={() => { if (editMode) handleSave(); else setEditMode(true); }} style={{ padding: "4px 12px", fontSize: "12px" }}>
-                  {editMode ? "Save" : "Edit"}
-                </GhostButton>
-              )}
             </div>
             {editMode ? (
               <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
