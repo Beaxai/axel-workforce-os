@@ -203,8 +203,9 @@ export default function AccountDetail() {
         >
           Accounts
         </button>
+        {/* Current page intentionally omitted — the page title directly below
+            already names it; the breadcrumb is just the trail back. */}
         <ChevronRight style={{ width: "13px", height: "13px", color: textMuted, flexShrink: 0 }} />
-        <span aria-current="page" style={{ color: textPrimary, fontWeight: 600 }}>{account.businessName}</span>
       </nav>
 
       <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px" }}>
