@@ -101,7 +101,13 @@ export default function Accounts() {
     { key: "clients", label: "Clients" },
   ];
 
-  const [activeTab, setActiveTab] = useState<TabKey>(canUseLeads ? "leads" : "prospects");
+  // Honor a ?tab= deep link (e.g. from the account-detail breadcrumb).
+  const [activeTab, setActiveTab] = useState<TabKey>(() => {
+    const t = new URLSearchParams(window.location.search).get("tab");
+    if (t === "prospects" || t === "clients") return t;
+    if (t === "leads" && canUseLeads) return "leads";
+    return canUseLeads ? "leads" : "prospects";
+  });
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [search, setSearch] = useState("");

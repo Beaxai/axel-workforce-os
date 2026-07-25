@@ -192,21 +192,29 @@ export default function AccountDetail() {
 
   return (
     <div>
-      {/* Breadcrumb navigation strip — replaces the old inline Back button. */}
-      <nav aria-label="Breadcrumb" style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "12px", fontSize: "12px" }}>
-        <button
-          type="button"
-          onClick={() => navigate("/accounts")}
-          style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: textMuted, fontSize: "12px", fontFamily: "inherit" }}
-          onMouseEnter={(e) => { e.currentTarget.style.color = "var(--accent-primary)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.color = textMuted; }}
-        >
-          Accounts
-        </button>
-        {/* Current page intentionally omitted — the page title directly below
-            already names it; the breadcrumb is just the trail back. */}
-        <ChevronRight style={{ width: "13px", height: "13px", color: textMuted, flexShrink: 0 }} />
-      </nav>
+      {/* Breadcrumb navigation strip: Accounts › Prospects|Clients › current page.
+          The middle crumb reflects the account's stage grouping and deep-links
+          to the matching tab on the Accounts page. */}
+      {(() => {
+        const isClient = account.clientStage === "New Client" || account.clientStage === "Active Client";
+        const groupLabel = isClient ? "Clients" : "Prospects";
+        const groupTab = isClient ? "clients" : "prospects";
+        const crumbBtn: React.CSSProperties = { background: "none", border: "none", padding: 0, cursor: "pointer", color: textMuted, fontSize: "12px", fontFamily: "inherit" };
+        const hover = (on: boolean) => (e: React.MouseEvent<HTMLButtonElement>) => { e.currentTarget.style.color = on ? "var(--accent-primary)" : textMuted; };
+        return (
+          <nav aria-label="Breadcrumb" style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "12px", fontSize: "12px" }}>
+            <button type="button" onClick={() => navigate("/accounts")} style={crumbBtn} onMouseEnter={hover(true)} onMouseLeave={hover(false)}>
+              Accounts
+            </button>
+            <ChevronRight style={{ width: "13px", height: "13px", color: textMuted, flexShrink: 0 }} />
+            <button type="button" onClick={() => navigate(`/accounts?tab=${groupTab}`)} style={crumbBtn} onMouseEnter={hover(true)} onMouseLeave={hover(false)}>
+              {groupLabel}
+            </button>
+            <ChevronRight style={{ width: "13px", height: "13px", color: textMuted, flexShrink: 0 }} />
+            <span aria-current="page" style={{ color: textPrimary, fontWeight: 600 }}>{account.businessName}</span>
+          </nav>
+        );
+      })()}
 
       <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px" }}>
         <SectionHeader title={account.businessName} subtitle={`Account Detail`} />
