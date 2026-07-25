@@ -48,8 +48,8 @@ export function TableRows() {
             </div>
           </div>
 
-          {/* Centered command-bar search — primary action of the page */}
-          <div className="flex justify-center mt-6">
+          {/* Search — top-left, first thing in the reading order below the tabs */}
+          <div className="flex justify-start mt-2">
             <div className="relative w-[480px]">
               <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" />
               <input
