@@ -46,14 +46,18 @@ export function TableRows() {
                 </button>
               ))}
             </div>
-            
-            <div className="relative mb-3">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
-              <input 
-                type="text" 
-                placeholder="Search accounts..." 
-                className="bg-white/[0.03] border border-white/10 rounded-md pl-9 pr-4 py-1.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-pink-500/50 focus:border-pink-500/50 w-64 transition-all"
+          </div>
+
+          {/* Centered command-bar search — primary action of the page */}
+          <div className="flex justify-center mt-6">
+            <div className="relative w-[480px]">
+              <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" />
+              <input
+                type="text"
+                placeholder="Search accounts..."
+                className="w-full bg-white/[0.04] border border-white/10 rounded-xl pl-11 pr-16 py-2.5 text-sm text-white placeholder:text-zinc-500 focus:outline-none focus:ring-1 focus:ring-pink-500/50 focus:border-pink-500/50 shadow-lg transition-all"
               />
+              <kbd className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-medium text-zinc-500 bg-white/[0.05] border border-white/10 rounded px-1.5 py-0.5">⌘K</kbd>
             </div>
           </div>
         </div>
