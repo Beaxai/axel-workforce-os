@@ -1,5 +1,5 @@
 import React from "react";
-import { Search, Plus, ChevronRight, Building2, MapPin, Users } from "lucide-react";
+import { Search, Plus, ChevronRight, ChevronDown, ArrowUpDown, Building2, MapPin, Users } from "lucide-react";
 
 export function TableRows() {
   const data = [
@@ -48,9 +48,9 @@ export function TableRows() {
             </div>
           </div>
 
-          {/* Search — top-left, first thing in the reading order below the tabs */}
-          <div className="flex justify-start mt-2">
-            <div className="relative w-[480px]">
+          {/* Toolbar: search (top-left) + filters + sort */}
+          <div className="flex items-center gap-3 mt-2 flex-wrap">
+            <div className="relative w-[380px]">
               <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" />
               <input
                 type="text"
@@ -59,6 +59,30 @@ export function TableRows() {
               />
               <kbd className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-medium text-zinc-500 bg-white/[0.05] border border-white/10 rounded px-1.5 py-0.5">⌘K</kbd>
             </div>
+
+            {/* Filter pills */}
+            {[
+              { label: "Vertical", value: "All" },
+              { label: "State", value: "All" },
+              { label: "Stage", value: "All" },
+            ].map((f) => (
+              <button
+                key={f.label}
+                className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/10 text-sm text-zinc-400 hover:text-white hover:border-pink-500/40 transition-all"
+              >
+                <span className="text-zinc-500">{f.label}:</span>
+                <span className="text-zinc-200 font-medium">{f.value}</span>
+                <ChevronDown className="w-3.5 h-3.5 text-zinc-500" />
+              </button>
+            ))}
+
+            {/* Sort control — pushed to the right edge */}
+            <button className="ml-auto flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/10 text-sm text-zinc-400 hover:text-white hover:border-pink-500/40 transition-all">
+              <ArrowUpDown className="w-3.5 h-3.5 text-zinc-500" />
+              <span className="text-zinc-500">Sort:</span>
+              <span className="text-zinc-200 font-medium">Most recent</span>
+              <ChevronDown className="w-3.5 h-3.5 text-zinc-500" />
+            </button>
           </div>
         </div>
 
