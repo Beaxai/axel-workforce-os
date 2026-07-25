@@ -9,7 +9,7 @@ import { FileText, Download, CheckSquare, Plus, Calculator, Shield } from "lucid
 import { api } from "@/lib/api";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { PinkButton, GhostButton } from "@/components/ui/axel-index";
-import MultiLocationRatingPanel from "@/components/MultiLocationRatingPanel";
+import IndicationBreakdownPanel from "@/components/IndicationBreakdownPanel";
 import ProposalPanel from "@/components/ProposalPanel";
 import BindStatusPanel from "@/components/submission/BindStatusPanel";
 import UserMiniProfile from "@/components/user-profile/UserMiniProfile";
@@ -188,7 +188,7 @@ type QuoteRecord = {
   wcFinalPremium?: string | null;
 };
 
-export function QuoteTab({ dealId, businessName, productType, onClose }: { dealId: string; businessName: string; productType?: string; onClose: () => void }) {
+export function QuoteTab({ dealId, businessName, productType, vertical, coverageEffectiveDate, onClose }: { dealId: string; businessName: string; productType?: string; vertical?: string; coverageEffectiveDate?: string | null; onClose: () => void }) {
   const c = useThemeColors();
   const [quote, setQuote] = useState<QuoteRecord | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -215,7 +215,7 @@ export function QuoteTab({ dealId, businessName, productType, onClose }: { dealI
     const isMulti = Array.isArray(wcBreakdown?.locations);
     if (isMulti) {
       return (
-        <MultiLocationRatingPanel
+        <IndicationBreakdownPanel
           businessName={businessName}
           wcBreakdown={wcBreakdown}
           workforceProfile={quote.workforceProfile || null}
@@ -223,6 +223,9 @@ export function QuoteTab({ dealId, businessName, productType, onClose }: { dealI
           indicationHigh={quote.wcIndicationMax != null ? Number(quote.wcIndicationMax) : null}
           finalPremiumFallback={quote.wcFinalPremium != null ? Number(quote.wcFinalPremium) : null}
           ratedAt={quote.ratedAt}
+          vertical={vertical}
+          productType={productType}
+          coverageEffectiveDate={coverageEffectiveDate}
         />
       );
     }

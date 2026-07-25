@@ -881,7 +881,7 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
                 {tab === "subjectivities" && <SubjectivitiesTab dealId={dealId} />}
                 {tab === "documents" && <DocumentsTab dealId={dealId} />}
                 {tab === "tasks" && <TasksTab dealId={dealId} />}
-                {tab === "quote" && <QuoteTab dealId={dealId} businessName={deal?.businessName || ""} productType={deal?.productType} onClose={onClose} />}
+                {tab === "quote" && <QuoteTab dealId={dealId} businessName={deal?.businessName || ""} productType={deal?.productType} vertical={deal?.vertical} coverageEffectiveDate={deal?.coverageEffectiveDate ? String(deal.coverageEffectiveDate) : null} onClose={onClose} />}
                 {tab === "policy" && <PolicyTab dealId={dealId} bindStatus={deal?.bindStatus} />}
               </>
             )}
