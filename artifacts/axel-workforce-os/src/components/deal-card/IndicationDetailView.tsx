@@ -301,8 +301,8 @@ export default function IndicationDetailView({
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {/* Header row */}
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-        <GhostButton onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 12px", fontSize: 12 }}>
-          <ArrowLeft style={{ width: 14, height: 14 }} />Back to indication
+        <GhostButton onClick={onBack} aria-label="Back" title="Back" style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: 7 }}>
+          <ArrowLeft style={{ width: 16, height: 16 }} />
         </GhostButton>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{ width: 34, height: 34, borderRadius: 9, background: c.accentPrimarySoft, display: "flex", alignItems: "center", justifyContent: "center" }}>
