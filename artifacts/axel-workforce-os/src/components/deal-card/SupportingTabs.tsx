@@ -344,7 +344,6 @@ export function DocumentsTab({ dealId }: { dealId: string }) {
     refreshPolicy();
   };
 
-  const hasPolicy = policyDocs.some((d) => d.documentType === "policy");
   const input: React.CSSProperties = {
     background: c.inputBg, border: `1px solid ${c.inputBorder}`, borderRadius: 8,
     color: c.inputText, fontFamily: "inherit", fontSize: 13, padding: "8px 10px",
@@ -352,14 +351,25 @@ export function DocumentsTab({ dealId }: { dealId: string }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      {/* Header: single quiet upload affordance. */}
+      {/* Header: single add affordance — click to pick or drag a PDF onto it. */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
         <GhostButton
           onClick={() => pickFile("binder")}
           data-testid="button-upload-document"
-          style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", fontSize: 12 }}
+          onDragOver={(e: React.DragEvent) => { e.preventDefault(); setDragOver(true); }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={(e: React.DragEvent) => {
+            e.preventDefault();
+            setDragOver(false);
+            handleDroppedFile(e.dataTransfer.files?.[0], "binder");
+          }}
+          style={{
+            display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", fontSize: 12,
+            ...(dragOver ? { border: `1px dashed var(--accent-primary)`, background: c.inputBg, color: c.textPrimary } : {}),
+          }}
         >
-          <Upload style={{ width: 13, height: 13 }} />Upload
+          <Upload style={{ width: 13, height: 13 }} />
+          {dragOver ? "Drop PDF to add" : "Add Document"}
         </GhostButton>
       </div>
 
@@ -497,32 +507,6 @@ export function DocumentsTab({ dealId }: { dealId: string }) {
           </div>
         );
       })()}
-
-      {/* Quiet dashed affordance for the missing policy document. Click or drop a PDF. */}
-      {!hasPolicy && (
-        <button
-          type="button"
-          data-testid="button-add-policy-document"
-          onClick={() => pickFile("policy")}
-          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={(e) => {
-            e.preventDefault();
-            setDragOver(false);
-            handleDroppedFile(e.dataTransfer.files?.[0], "policy");
-          }}
-          style={{
-            display: "flex", alignItems: "center", gap: 10, padding: "13px 16px",
-            border: `1px dashed ${dragOver ? "var(--accent-primary)" : c.borderColor}`, borderRadius: 10,
-            background: dragOver ? c.inputBg : "transparent",
-            color: dragOver ? c.textPrimary : c.textMuted, fontSize: 13, fontFamily: "inherit",
-            cursor: "pointer", textAlign: "left", transition: "border-color 120ms ease, background 120ms ease",
-          }}
-        >
-          <Plus style={{ width: 15, height: 15 }} />
-          {dragOver ? "Drop PDF to add policy document" : "Add policy document — or drag a PDF here"}
-        </button>
-      )}
 
       {preview && (
         <PdfPreviewModal url={preview.url} title={preview.title} onClose={() => setPreview(null)} />
