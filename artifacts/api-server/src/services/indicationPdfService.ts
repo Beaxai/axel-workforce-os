@@ -1,9 +1,10 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
 
 /**
- * Indication Summary PDF — generated on demand from the deal's current
- * indication data (deal row + latest quote snapshot). Unlike the application
- * PDFs there is no template on disk; the document is drawn programmatically.
+ * Indication Summary PDF — a white/print rendition of the web "Pricing
+ * Indication" screen (IndicationBreakdownPanel): same sections, headings, and
+ * copy, drawn programmatically with pdf-lib. Generated on demand from the
+ * deal row + latest quote snapshot.
  */
 
 export type IndicationPdfInput = {
@@ -12,6 +13,8 @@ export type IndicationPdfInput = {
   state?: string | null;
   fein?: string | null;
   entityType?: string | null;
+  vertical?: string | null;
+  productType?: string | null;
   coverageEffectiveDate?: string | null;
   premiumLow?: number | null;
   premiumHigh?: number | null;
@@ -21,246 +24,344 @@ export type IndicationPdfInput = {
   annualPayroll?: number | null;
   headcount?: number | null;
   ratedAt?: string | null;
-  breakdown?: {
-    locations?: Array<{
-      state: string;
-      classCodes: Array<{
-        classCode: string;
-        description?: string;
-        annualPayroll: number;
-        baseRate: number;
-        premium: number;
-        error?: string;
-      }>;
-      subtotal: number;
-    }>;
-    totalGrossPremium?: number;
-    peoDiscountAmount?: number;
-    finalPremium?: number;
-    minimumPremiumApplied?: boolean;
-  } | null;
+  breakdown?: unknown;
 };
 
+/* ---------------------------------------------------------------- palette */
 const PINK = rgb(0.914, 0.118, 0.549); // #E91E8C
-const INK = rgb(0.12, 0.12, 0.14);
-const MUTED = rgb(0.45, 0.45, 0.5);
-const LINE = rgb(0.85, 0.85, 0.88);
+const INK = rgb(0.08, 0.08, 0.1);
+const SECONDARY = rgb(0.3, 0.3, 0.34);
+const MUTED = rgb(0.5, 0.5, 0.55);
+const LINE = rgb(0.88, 0.88, 0.9);
+const PANEL = rgb(0.972, 0.972, 0.988); // #f8f8fc — same as the web light panel
+const AMBER = rgb(0.85, 0.6, 0.12);
+const GREEN = rgb(0.0, 0.65, 0.44);
 
-const money = (n: number | null | undefined) =>
-  n == null || Number.isNaN(Number(n))
-    ? "—"
-    : `$${Math.round(Number(n)).toLocaleString("en-US")}`;
+const PAGE_W = 612;
+const PAGE_H = 792;
+const MARGIN = 50;
+const CONTENT_W = PAGE_W - MARGIN * 2;
 
+/* ---------------------------------------------------------------- helpers */
 const num = (v: unknown): number | null => {
-  const n = Number(v);
-  return v == null || Number.isNaN(n) ? null : n;
+  const n = typeof v === "string" ? parseFloat(v) : (v as number);
+  return v == null || typeof n !== "number" || !isFinite(n) ? null : n;
 };
 const str = (v: unknown): string => (typeof v === "string" ? v : v == null ? "" : String(v));
-const clip = (s: string, max: number) => (s.length > max ? `${s.slice(0, max - 1)}…` : s);
+const money = (n: number | null | undefined) =>
+  n == null ? "—" : `$${Math.round(n).toLocaleString("en-US")}`;
 
-/**
- * Normalize a stored wcRatingBreakdown of unknown/legacy shape into the safe
- * subset we render. Wrong shapes degrade to empty sections instead of throwing.
- */
-function normalizeBreakdown(raw: IndicationPdfInput["breakdown"]): {
-  locations: Array<{
-    state: string;
-    subtotal: number | null;
-    classCodes: Array<{ classCode: string; description: string; annualPayroll: number | null; baseRate: number | null; premium: number | null; error?: string }>;
+type NormLoc = {
+  state: string;
+  subtotal: number | null;
+  subtotalBeforeTerritory: number | null;
+  caTerritory: number | null;
+  caTerritoryMultiplier: number | null;
+  classCodes: Array<{
+    classCode: string;
+    description: string;
+    annualPayroll: number | null;
+    baseRate: number | null;
+    premium: number | null;
+    error?: string;
   }>;
+};
+
+function normalizeBreakdown(raw: unknown): {
+  locations: NormLoc[];
   totalGrossPremium: number | null;
   peoDiscountAmount: number | null;
   finalPremium: number | null;
   minimumPremiumApplied: boolean;
+  eMod: number | null;
+  isPEO: boolean;
 } {
-  const b = raw && typeof raw === "object" ? raw : null;
-  const locations = Array.isArray(b?.locations)
-    ? b.locations
-        .filter((l): l is NonNullable<typeof l> => !!l && typeof l === "object")
+  const b = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const locations: NormLoc[] = Array.isArray(b.locations)
+    ? (b.locations as unknown[])
+        .filter((l): l is Record<string, unknown> => !!l && typeof l === "object")
         .map((l) => ({
-          state: str((l as { state?: unknown }).state) || "—",
-          subtotal: num((l as { subtotal?: unknown }).subtotal),
+          state: str(l.state) || "—",
+          subtotal: num(l.subtotal),
+          subtotalBeforeTerritory: num(l.subtotalBeforeTerritory),
+          caTerritory: num(l.caTerritory),
+          caTerritoryMultiplier: num(l.caTerritoryMultiplier),
           classCodes: Array.isArray(l.classCodes)
-            ? l.classCodes
-                .filter((cc): cc is NonNullable<typeof cc> => !!cc && typeof cc === "object")
+            ? (l.classCodes as unknown[])
+                .filter((cc): cc is Record<string, unknown> => !!cc && typeof cc === "object")
                 .map((cc) => ({
-                  classCode: str((cc as { classCode?: unknown }).classCode) || "—",
-                  description: str((cc as { description?: unknown }).description),
-                  annualPayroll: num((cc as { annualPayroll?: unknown }).annualPayroll),
-                  baseRate: num((cc as { baseRate?: unknown }).baseRate),
-                  premium: num((cc as { premium?: unknown }).premium),
-                  error: str((cc as { error?: unknown }).error) || undefined,
+                  classCode: str(cc.classCode) || "—",
+                  description: str(cc.description),
+                  annualPayroll: num(cc.annualPayroll),
+                  baseRate: num(cc.baseRate),
+                  premium: num(cc.premium),
+                  error: str(cc.error) || undefined,
                 }))
             : [],
         }))
     : [];
   return {
     locations,
-    totalGrossPremium: num(b?.totalGrossPremium),
-    peoDiscountAmount: num(b?.peoDiscountAmount),
-    finalPremium: num(b?.finalPremium),
-    minimumPremiumApplied: !!b?.minimumPremiumApplied,
+    totalGrossPremium: num(b.totalGrossPremium),
+    peoDiscountAmount: num(b.peoDiscountAmount),
+    finalPremium: num(b.finalPremium),
+    minimumPremiumApplied: !!b.minimumPremiumApplied,
+    eMod: num(b.eMod),
+    isPEO: !!b.isPEO,
   };
 }
 
-const PAGE_W = 612;
-const PAGE_H = 792;
-const MARGIN = 54;
+function wrapText(text: string, font: PDFFont, size: number, maxWidth: number): string[] {
+  const words = text.split(/\s+/);
+  const lines: string[] = [];
+  let line = "";
+  for (const w of words) {
+    const candidate = line ? `${line} ${w}` : w;
+    if (font.widthOfTextAtSize(candidate, size) <= maxWidth) {
+      line = candidate;
+    } else {
+      if (line) lines.push(line);
+      line = w;
+    }
+  }
+  if (line) lines.push(line);
+  return lines;
+}
 
+const clip = (s: string, font: PDFFont, size: number, maxWidth: number): string => {
+  if (font.widthOfTextAtSize(s, size) <= maxWidth) return s;
+  let out = s;
+  while (out.length > 1 && font.widthOfTextAtSize(`${out}…`, size) > maxWidth) out = out.slice(0, -1);
+  return `${out}…`;
+};
+
+/* ------------------------------------------------------------------ build */
 export async function buildIndicationSummaryPdf(input: IndicationPdfInput): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
   const font = await doc.embedFont(StandardFonts.Helvetica);
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
+  const italic = await doc.embedFont(StandardFonts.HelveticaOblique);
 
   let page = doc.addPage([PAGE_W, PAGE_H]);
   let y = PAGE_H - MARGIN;
 
-  const newPageIfNeeded = (needed: number) => {
+  const ensure = (needed: number) => {
     if (y - needed < MARGIN) {
       page = doc.addPage([PAGE_W, PAGE_H]);
       y = PAGE_H - MARGIN;
     }
   };
+  const text = (s: string, x: number, yy: number, size: number, f: PDFFont, color = INK) =>
+    page.drawText(s, { x, y: yy, size, font: f, color });
+  const textRight = (s: string, rightX: number, yy: number, size: number, f: PDFFont, color = INK) =>
+    page.drawText(s, { x: rightX - f.widthOfTextAtSize(s, size), y: yy, size, font: f, color });
 
-  const text = (
-    p: PDFPage,
-    str: string,
-    x: number,
-    yy: number,
-    size: number,
-    f: PDFFont,
-    color = INK,
-  ) => p.drawText(str, { x, y: yy, size, font: f, color });
+  const bd = normalizeBreakdown(input.breakdown);
+  const rows = bd.locations.flatMap((loc, locIdx) =>
+    loc.classCodes.map((cc) => ({ locIdx, state: loc.state, ...cc })),
+  );
+  const eMod = input.eMod ?? bd.eMod ?? 1.0;
+  const isPEO = input.isPeo ?? bd.isPEO;
+  const finalPremium = bd.finalPremium ?? 0;
+  const totalPremium = Math.round(bd.totalGrossPremium ?? finalPremium);
+  const totalPayroll = rows.reduce((s, r) => s + (r.annualPayroll ?? 0), 0);
+  const classCodeCount = rows.length;
+  const stateCount = new Set(bd.locations.map((l) => l.state).filter((s) => s !== "—")).size || 1;
+  const premiumLow = input.premiumLow != null ? Math.round(input.premiumLow) : Math.max(500, Math.round(finalPremium * 0.9));
+  const premiumHigh = input.premiumHigh != null ? Math.max(premiumLow, Math.round(input.premiumHigh)) : Math.max(premiumLow, Math.round(finalPremium * 1.1));
 
-  const rule = (yy: number) =>
-    page.drawLine({ start: { x: MARGIN, y: yy }, end: { x: PAGE_W - MARGIN, y: yy }, thickness: 0.7, color: LINE });
+  const coverageLabel =
+    isPEO || input.productType === "PEO"
+      ? "Workforce Solutions Program (PEO)"
+      : "Workers' Compensation Insurance";
 
-  /* ---- header ---- */
-  text(page, "AXEL WORKFORCE OS", MARGIN, y, 9, bold, PINK);
-  y -= 22;
-  text(page, "Workers' Compensation Rate Indication", MARGIN, y, 19, bold);
-  y -= 15;
-  const generatedOn = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
-  text(page, `Generated ${generatedOn}${input.referenceCode ? `  •  Ref ${input.referenceCode}` : ""}`, MARGIN, y, 9, font, MUTED);
-  y -= 14;
-  rule(y);
+  const quotedDate = input.ratedAt ? new Date(input.ratedAt) : null;
+  const quotedFormatted =
+    quotedDate && !isNaN(quotedDate.getTime())
+      ? quotedDate.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
+      : null;
+  const covEff = (() => {
+    if (!input.coverageEffectiveDate) return null;
+    const s = String(input.coverageEffectiveDate);
+    const d = new Date(s.includes("T") ? s : `${s}T00:00:00`);
+    return isNaN(d.getTime()) ? null : d.toLocaleDateString("en-US", { month: "numeric", day: "numeric", year: "numeric" });
+  })();
+
+  /* ---- header: badge + quoted date ---- */
+  const badgeLabel = "PRICING INDICATION";
+  const badgeW = bold.widthOfTextAtSize(badgeLabel, 8.5) + 18;
+  page.drawRectangle({ x: MARGIN, y: y - 6, width: badgeW, height: 18, borderColor: PINK, borderWidth: 0.9, color: undefined });
+  text(badgeLabel, MARGIN + 9, y - 1, 8.5, bold, PINK);
+  if (quotedFormatted) {
+    text(`•  QUOTED ${quotedFormatted.toUpperCase()}`, MARGIN + badgeW + 10, y - 1, 8.5, bold, MUTED);
+  }
+  y -= 32;
+
+  /* ---- business name + subtitle, coverage eff date right ---- */
+  const nameSize = 22;
+  text(clip(input.businessName || "Untitled Business", bold, nameSize, CONTENT_W - 160), MARGIN, y, nameSize, bold);
+  if (covEff) textRight(`Coverage Eff Date ${covEff}`, PAGE_W - MARGIN, y + 2, 12, bold, PINK);
+  y -= 18;
+  text(`${input.vertical ? `${input.vertical} | ` : ""}${coverageLabel}`, MARGIN, y, 11, font, MUTED);
+  y -= 28;
+
+  /* ---- Estimated Annual Premium Range card ---- */
+  const rangeSubline = `Based on $${totalPayroll.toLocaleString("en-US")} total payroll across ${classCodeCount} class code${classCodeCount !== 1 ? "s" : ""} in ${stateCount} state${stateCount !== 1 ? "s" : ""} • Experience modifier ${Number(eMod).toFixed(2)}`;
+  const uwNote =
+    "Final pricing is subject to underwriting review and may be adjusted through credits or debits based on historical loss experience and claims performance.";
+  const uwNoteLines = wrapText(uwNote, font, 9.5, CONTENT_W - 40);
+  const rangeCardH = 78 + uwNoteLines.length * 13;
+  ensure(rangeCardH + 10);
+  page.drawRectangle({ x: MARGIN, y: y - rangeCardH, width: CONTENT_W, height: rangeCardH, color: PANEL, borderColor: LINE, borderWidth: 0.7 });
+  page.drawRectangle({ x: MARGIN, y: y - rangeCardH, width: 3, height: rangeCardH, color: PINK });
+  let cy = y - 22;
+  text("ESTIMATED ANNUAL PREMIUM RANGE", MARGIN + 20, cy, 8.5, bold, MUTED);
+  cy -= 26;
+  text(`$${premiumLow.toLocaleString("en-US")} – $${premiumHigh.toLocaleString("en-US")}`, MARGIN + 20, cy, 24, bold);
+  cy -= 18;
+  text(clip(rangeSubline, font, 9.5, CONTENT_W - 40), MARGIN + 20, cy, 9.5, font, MUTED);
+  cy -= 15;
+  for (const ln of uwNoteLines) {
+    text(ln, MARGIN + 20, cy, 9.5, font, MUTED);
+    cy -= 13;
+  }
+  y -= rangeCardH + 20;
+
+  /* ---- Workers' Compensation Pricing hero ---- */
+  const heroParas = [
+    "Workers' compensation premium is calculated from current filed carrier rates applied to payroll across each class code and location, then adjusted for your experience modifier.",
+    "The figure shown reflects your total estimated annual premium and is finalized after underwriting review and audit.",
+    "Workers' compensation premiums are seamlessly integrated into payroll processing. Premiums are calculated and remitted on a pay-as-you-go basis using actual payroll processed.",
+  ];
+  const heroTextW = CONTENT_W - 200;
+  const heroLines = heroParas.map((p) => wrapText(p, font, 9.5, heroTextW - 24));
+  const heroTextH = heroLines.reduce((s, l) => s + l.length * 13 + 8, 0);
+  const heroH = Math.max(46 + heroTextH, 150);
+  ensure(heroH + 12);
+  page.drawRectangle({ x: MARGIN, y: y - heroH, width: CONTENT_W, height: heroH, color: PANEL, borderColor: LINE, borderWidth: 0.7 });
+  page.drawRectangle({ x: MARGIN, y: y - heroH, width: 3, height: heroH, color: PINK });
+  cy = y - 26;
+  text("WORKERS' COMPENSATION PRICING", MARGIN + 20, cy, 15, bold);
+  cy -= 22;
+  for (const para of heroLines) {
+    for (const ln of para) {
+      text(ln, MARGIN + 20, cy, 9.5, font, SECONDARY);
+      cy -= 13;
+    }
+    cy -= 8;
+  }
+  // total premium box on the right (white with pink border for print)
+  const boxW = 170;
+  const boxH = 84;
+  const boxX = PAGE_W - MARGIN - boxW - 14;
+  const boxY = y - heroH / 2 - boxH / 2;
+  page.drawRectangle({ x: boxX, y: boxY, width: boxW, height: boxH, color: rgb(1, 1, 1), borderColor: PINK, borderWidth: 1.6 });
+  const totalStr = `$${totalPremium.toLocaleString("en-US")}`;
+  page.drawText(totalStr, {
+    x: boxX + (boxW - bold.widthOfTextAtSize(totalStr, 22)) / 2,
+    y: boxY + boxH - 36,
+    size: 22, font: bold, color: INK,
+  });
+  page.drawLine({ start: { x: boxX + 26, y: boxY + 38 }, end: { x: boxX + boxW - 26, y: boxY + 38 }, thickness: 0.7, color: LINE });
+  const sub = "total annual premium";
+  page.drawText(sub, {
+    x: boxX + (boxW - font.widthOfTextAtSize(sub, 9.5)) / 2,
+    y: boxY + 20,
+    size: 9.5, font, color: MUTED,
+  });
+  y -= heroH + 20;
+
+  /* ---- Rate breakdown table ---- */
+  ensure(60);
+  text("WORKERS' COMPENSATION PREMIUM RATING", MARGIN, y, 10, bold);
+  const carrierStr = "Carrier: Benchmark    Rating: A (Excellent)";
+  textRight(carrierStr, PAGE_W - MARGIN, y, 9, font, SECONDARY);
+  y -= 18;
+
+  // Columns: Location | Class Code | Description | Payroll | Rate | Est. Premium
+  const col = {
+    loc: MARGIN,
+    code: MARGIN + 74,
+    desc: MARGIN + 138,
+    payrollR: MARGIN + 356, // right-aligned edges
+    rateR: MARGIN + 416,
+    premR: MARGIN + CONTENT_W,
+  };
+  const descW = 158;
+
+  const drawTableHeader = () => {
+    text("LOCATION", col.loc, y, 7.5, bold, MUTED);
+    text("CLASS CODE", col.code, y, 7.5, bold, MUTED);
+    text("DESCRIPTION", col.desc, y, 7.5, bold, MUTED);
+    textRight("PAYROLL", col.payrollR, y, 7.5, bold, MUTED);
+    textRight("RATE", col.rateR, y, 7.5, bold, MUTED);
+    textRight("EST. PREMIUM", col.premR, y, 7.5, bold, MUTED);
+    y -= 7;
+    page.drawLine({ start: { x: MARGIN, y }, end: { x: PAGE_W - MARGIN, y }, thickness: 0.7, color: LINE });
+    y -= 15;
+  };
+  drawTableHeader();
+
+  for (const r of rows) {
+    if (y - 16 < MARGIN) {
+      page = doc.addPage([PAGE_W, PAGE_H]);
+      y = PAGE_H - MARGIN;
+      drawTableHeader();
+    }
+    text(`Loc ${r.locIdx + 1} (${r.state})`, col.loc, y, 9, bold);
+    text(r.classCode, col.code, y, 9, bold, r.error ? AMBER : INK);
+    text(clip(r.description || "", font, 9, descW), col.desc, y, 9, font);
+    textRight(money(r.annualPayroll), col.payrollR, y, 9, font);
+    textRight(r.baseRate != null ? `$${r.baseRate.toFixed(2)}${r.error ? " !" : ""}` : "—", col.rateR, y, 9, font, r.error ? AMBER : INK);
+    textRight(money(r.premium), col.premR, y, 9, bold);
+    y -= 16;
+  }
+
+  // CA territory adjustment rows (matches the web table)
+  for (const loc of bd.locations) {
+    if (loc.caTerritory != null && loc.caTerritoryMultiplier != null && loc.caTerritoryMultiplier !== 1.0) {
+      ensure(16);
+      text(`CA Territory ${loc.caTerritory} Adjustment (${loc.state})`, col.loc, y, 8.5, font, MUTED);
+      textRight(`x${loc.caTerritoryMultiplier.toFixed(2)}`, col.rateR, y, 8.5, font, MUTED);
+      if (loc.subtotalBeforeTerritory != null && loc.subtotal != null) {
+        const delta = Math.round(loc.subtotal - loc.subtotalBeforeTerritory);
+        const deltaStr = `${delta < 0 ? "-" : "+"}$${Math.abs(delta).toLocaleString("en-US")}`;
+        textRight(deltaStr, col.premR, y, 8.5, font, SECONDARY);
+      }
+      y -= 16;
+    }
+  }
+
+  // Total row with pink top border
+  ensure(26);
+  page.drawLine({ start: { x: MARGIN, y: y + 10 }, end: { x: PAGE_W - MARGIN, y: y + 10 }, thickness: 1, color: PINK });
+  y -= 4;
+  text("Total", col.loc, y, 10, bold);
+  textRight(`$${totalPremium.toLocaleString("en-US")}`, col.premR, y, 10, bold);
   y -= 24;
 
-  /* ---- business details ---- */
-  const details: Array<[string, string]> = [
-    ["Business", clip(input.businessName || "—", 40)],
-    ["State", input.state || "—"],
-    ["FEIN", input.fein || "—"],
-    ["Entity type", input.entityType || "—"],
-    ["Coverage effective", input.coverageEffectiveDate ? new Date(input.coverageEffectiveDate).toLocaleDateString("en-US") : "—"],
-    ["Annual payroll", money(input.annualPayroll)],
-    ["Employees", input.headcount != null ? String(input.headcount) : "—"],
-    ["Experience mod", input.eMod != null ? String(input.eMod) : "—"],
-    ["Schedule rating", input.scheduleRating != null ? String(input.scheduleRating) : "—"],
-    ["PEO", input.isPeo ? "Yes" : "No"],
-  ];
-  const colW = (PAGE_W - MARGIN * 2) / 2;
-  for (let i = 0; i < details.length; i += 2) {
-    newPageIfNeeded(20);
-    for (let j = 0; j < 2 && i + j < details.length; j++) {
-      const [label, value] = details[i + j];
-      const x = MARGIN + j * colW;
-      text(page, label.toUpperCase(), x, y, 7.5, bold, MUTED);
-      text(page, value, x, y - 12, 10.5, font);
-    }
-    y -= 32;
+  /* ---- Notes ---- */
+  if (bd.minimumPremiumApplied) {
+    ensure(14);
+    text("Minimum premium of $500 applied", MARGIN, y, 9, font, AMBER);
+    y -= 14;
   }
-  y -= 4;
-
-  /* ---- indication range (hero) ---- */
-  newPageIfNeeded(70);
-  page.drawRectangle({
-    x: MARGIN, y: y - 52, width: PAGE_W - MARGIN * 2, height: 58,
-    color: rgb(0.98, 0.94, 0.965), borderColor: PINK, borderWidth: 0.8, opacity: 1,
-  });
-  text(page, "INDICATED PREMIUM RANGE", MARGIN + 16, y - 14, 8, bold, PINK);
-  text(
-    page,
-    `${money(input.premiumLow)}  –  ${money(input.premiumHigh)}`,
-    MARGIN + 16,
-    y - 38,
-    18,
-    bold,
-  );
-  y -= 76;
-
-  /* ---- class code breakdown ---- */
-  const bd = normalizeBreakdown(input.breakdown);
-  const locations = bd.locations;
-  if (locations.length > 0) {
-    newPageIfNeeded(40);
-    text(page, "Rating Breakdown", MARGIN, y, 13, bold);
-    y -= 22;
-
-    const cols = { code: MARGIN, desc: MARGIN + 60, payroll: MARGIN + 260, rate: MARGIN + 360, premium: MARGIN + 430 };
-    for (const loc of locations) {
-      newPageIfNeeded(36);
-      text(page, `Location — ${loc.state}`, MARGIN, y, 9.5, bold, MUTED);
-      y -= 16;
-      // table header
-      text(page, "CODE", cols.code, y, 7.5, bold, MUTED);
-      text(page, "DESCRIPTION", cols.desc, y, 7.5, bold, MUTED);
-      text(page, "PAYROLL", cols.payroll, y, 7.5, bold, MUTED);
-      text(page, "RATE", cols.rate, y, 7.5, bold, MUTED);
-      text(page, "PREMIUM", cols.premium, y, 7.5, bold, MUTED);
-      y -= 6;
-      rule(y);
-      y -= 14;
-
-      for (const cc of loc.classCodes) {
-        newPageIfNeeded(16);
-        text(page, cc.classCode, cols.code, y, 9, font);
-        text(page, clip(cc.description, 42) || "—", cols.desc, y, 9, font);
-        text(page, money(cc.annualPayroll), cols.payroll, y, 9, font);
-        text(page, cc.baseRate != null ? cc.baseRate.toFixed(2) : "—", cols.rate, y, 9, font);
-        text(page, cc.error ? "error" : money(cc.premium), cols.premium, y, 9, font, cc.error ? PINK : INK);
-        y -= 14;
-      }
-      newPageIfNeeded(16);
-      text(page, "Location subtotal", cols.rate - 90, y, 9, bold, MUTED);
-      text(page, money(loc.subtotal), cols.premium, y, 9, bold);
-      y -= 22;
-    }
-
-    /* totals */
-    newPageIfNeeded(60);
-    rule(y + 6);
-    const totals: Array<[string, string, boolean]> = [];
-    if (bd.totalGrossPremium != null) totals.push(["Gross premium", money(bd.totalGrossPremium), false]);
-    if (bd.peoDiscountAmount) totals.push(["PEO discount", `-${money(Math.abs(bd.peoDiscountAmount))}`, false]);
-    if (bd.finalPremium != null) totals.push(["Final rated premium", money(bd.finalPremium), true]);
-    for (const [label, value, strong] of totals) {
-      newPageIfNeeded(16);
-      text(page, label, MARGIN + 250, y, strong ? 10.5 : 9.5, strong ? bold : font, strong ? INK : MUTED);
-      text(page, value, MARGIN + 430, y, strong ? 10.5 : 9.5, strong ? bold : font);
-      y -= 16;
-    }
-    if (bd.minimumPremiumApplied) {
-      newPageIfNeeded(14);
-      text(page, "Minimum premium applied.", MARGIN + 250, y, 8, font, MUTED);
-      y -= 14;
-    }
+  if (isPEO && (bd.peoDiscountAmount ?? 0) > 0) {
+    ensure(14);
+    text(`PEO discount applied: -$${Math.round(bd.peoDiscountAmount!).toLocaleString("en-US")}`, MARGIN, y, 9, font, GREEN);
+    y -= 14;
   }
 
-  /* ---- footer disclaimer ---- */
-  newPageIfNeeded(48);
-  y = Math.min(y, MARGIN + 46);
-  rule(y + 10);
-  text(
-    page,
-    "This rate indication is an estimate based on the information provided and is not a quote or an offer of coverage.",
-    MARGIN, y - 4, 7.5, font, MUTED,
-  );
-  text(
-    page,
-    "Final premium is subject to underwriting review, carrier approval, and verification of payroll and class codes.",
-    MARGIN, y - 15, 7.5, font, MUTED,
-  );
+  /* ---- Disclaimer ---- */
+  const disclaimer =
+    "This indication is based on the information provided and is not a guarantee of final pricing. Actual premium is subject to full underwriting review, carrier approval, and final audit. Rates shown are based on current filed carrier rates.";
+  const discLines = wrapText(disclaimer, italic, 8.5, CONTENT_W);
+  ensure(discLines.length * 12 + 10);
+  y -= 6;
+  for (const ln of discLines) {
+    text(ln, MARGIN, y, 8.5, italic, MUTED);
+    y -= 12;
+  }
 
   return doc.save();
 }

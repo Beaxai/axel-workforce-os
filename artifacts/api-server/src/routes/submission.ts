@@ -536,6 +536,8 @@ router.get("/applications/:dealId/indication-summary.pdf", async (req, res) => {
       state: deal.state,
       fein: deal.fein,
       entityType: deal.entityType,
+      vertical: deal.vertical,
+      productType: deal.productType,
       coverageEffectiveDate: deal.coverageEffectiveDate ? String(deal.coverageEffectiveDate) : null,
       premiumLow: quote.wcIndicationMin != null ? Number(quote.wcIndicationMin) : null,
       premiumHigh: quote.wcIndicationMax != null ? Number(quote.wcIndicationMax) : null,
