@@ -267,7 +267,7 @@ export default function Accounts() {
       <SectionHeader title="Accounts" subtitle={`${count} ${activeTab}`} />
 
       {/* Tabs */}
-      <div style={{ display: "flex", gap: "4px", borderBottom: `1px solid ${inputBorder}`, marginBottom: "20px" }}>
+      <div style={{ display: "flex", gap: "4px", alignItems: "center", borderBottom: `1px solid ${inputBorder}`, marginBottom: "20px" }}>
         {TABS.map((t) => {
           const active = activeTab === t.key;
           return (
@@ -299,6 +299,18 @@ export default function Accounts() {
             </button>
           );
         })}
+        {canCreate && activeTab === "leads" && canUseLeads && (
+          <PinkButton onClick={() => setShowCreateLead(true)} style={{ display: "flex", alignItems: "center", gap: "6px", marginLeft: "auto", marginBottom: "8px" }}>
+            <Plus style={{ width: "16px", height: "16px" }} />
+            New Lead
+          </PinkButton>
+        )}
+        {canCreateAccount && activeTab !== "leads" && (
+          <PinkButton onClick={() => setShowCreateAccount(true)} style={{ display: "flex", alignItems: "center", gap: "6px", marginLeft: "auto", marginBottom: "8px" }}>
+            <Plus style={{ width: "16px", height: "16px" }} />
+            New Account
+          </PinkButton>
+        )}
       </div>
 
       {/* Toolbar */}
@@ -351,18 +363,6 @@ export default function Accounts() {
           </>
         )}
 
-        {canCreate && activeTab === "leads" && canUseLeads && (
-          <PinkButton onClick={() => setShowCreateLead(true)} style={{ display: "flex", alignItems: "center", gap: "6px", marginLeft: "auto" }}>
-            <Plus style={{ width: "16px", height: "16px" }} />
-            New Lead
-          </PinkButton>
-        )}
-        {canCreateAccount && activeTab !== "leads" && (
-          <PinkButton onClick={() => setShowCreateAccount(true)} style={{ display: "flex", alignItems: "center", gap: "6px", marginLeft: "auto" }}>
-            <Plus style={{ width: "16px", height: "16px" }} />
-            New Account
-          </PinkButton>
-        )}
       </div>
 
       {/* Content */}
