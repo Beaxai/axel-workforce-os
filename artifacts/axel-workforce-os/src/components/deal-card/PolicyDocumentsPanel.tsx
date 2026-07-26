@@ -9,7 +9,9 @@ import {
 } from "@workspace/api-client-react";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import AxelBadge from "@/components/ui/AxelBadge";
-import { Upload, FileText, Trash2, Loader2 } from "lucide-react";
+import { Upload, FileText, Eye, Download, Trash2, Loader2 } from "lucide-react";
+
+const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 const ERROR_RED = "#ef4444";
 
@@ -23,7 +25,13 @@ type DocType = "binder" | "policy";
  * policy release). We invalidate the journeys cache after a successful upload so
  * the Implementations view reflects the advance without a manual refresh.
  */
-export default function PolicyDocumentsPanel({ dealId }: { dealId: string }) {
+export default function PolicyDocumentsPanel({
+  dealId,
+  onPreview,
+}: {
+  dealId: string;
+  onPreview?: (url: string, title: string) => void;
+}) {
   const c = useThemeColors();
   const queryClient = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -67,14 +75,24 @@ export default function PolicyDocumentsPanel({ dealId }: { dealId: string }) {
   const labelStyle = { fontSize: 12, color: "var(--label-text)", marginBottom: 6, display: "block" } as const;
 
   return (
-    <div data-testid="panel-policy-documents" style={{ marginTop: 24 }}>
-      <h4 style={{ fontSize: 14, fontWeight: 600, color: c.textPrimary, margin: "0 0 4px" }}>
-        Carrier binder &amp; policy
-      </h4>
-      <p style={{ fontSize: 12, color: c.textMuted, margin: "0 0 16px", lineHeight: 1.5 }}>
-        Uploading a binder or policy is treated as carrier acceptance and advances the
-        implementation tracker automatically.
-      </p>
+    <div data-testid="panel-policy-documents">
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 10 }}>
+        <h4
+          style={{
+            fontSize: 11,
+            fontWeight: 600,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            color: c.textMuted,
+            margin: 0,
+          }}
+        >
+          Binder &amp; Policy
+        </h4>
+        <span style={{ fontSize: 11.5, color: c.textMuted }}>
+          Uploading a binder or policy marks the deal as carrier-bound
+        </span>
+      </div>
 
       {/* UPLOAD */}
       <div style={{ display: "flex", alignItems: "flex-end", gap: 12, flexWrap: "wrap", marginBottom: 16 }}>
@@ -180,6 +198,26 @@ export default function PolicyDocumentsPanel({ dealId }: { dealId: string }) {
                 label={doc.documentType === "policy" ? "Policy" : "Binder"}
                 color={doc.documentType === "policy" ? "purple" : "blue"}
               />
+              {onPreview && (
+                <button
+                  type="button"
+                  data-testid={`button-preview-policy-document-${doc.id}`}
+                  onClick={() => onPreview(`${API_BASE}/api/policy-documents/${doc.id}/file`, doc.fileName)}
+                  aria-label={`Preview ${doc.fileName}`}
+                  style={{ background: "transparent", border: "none", color: c.textMuted, cursor: "pointer", padding: 4, display: "inline-flex" }}
+                >
+                  <Eye style={{ width: 14, height: 14 }} />
+                </button>
+              )}
+              <a
+                href={`${API_BASE}/api/policy-documents/${doc.id}/file`}
+                download
+                data-testid={`button-download-policy-document-${doc.id}`}
+                aria-label={`Download ${doc.fileName}`}
+                style={{ color: "var(--accent-primary)", padding: 4, display: "inline-flex" }}
+              >
+                <Download style={{ width: 14, height: 14 }} />
+              </a>
               <button
                 type="button"
                 data-testid={`button-delete-policy-document-${doc.id}`}

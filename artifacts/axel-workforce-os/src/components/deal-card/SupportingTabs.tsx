@@ -5,7 +5,7 @@
  * the new collaboration experience.
  */
 import { useCallback, useEffect, useState } from "react";
-import { FileText, Download, CheckSquare, Plus, Calculator, Shield } from "lucide-react";
+import { FileText, File, Eye, Download, CheckSquare, Plus, Calculator, Shield } from "lucide-react";
 import { api } from "@/lib/api";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { PinkButton, GhostButton } from "@/components/ui/axel-index";
@@ -15,15 +15,96 @@ import ProposalPanel from "@/components/ProposalPanel";
 import BindStatusPanel from "@/components/submission/BindStatusPanel";
 import UserMiniProfile from "@/components/user-profile/UserMiniProfile";
 import PolicyDocumentsPanel from "./PolicyDocumentsPanel";
+import PdfPreviewModal from "./PdfPreviewModal";
 
 /* ---------------------------------------------------------------- Documents */
-type DealDocument = { id: string; name: string; documentType: string; status: string; generatedAt?: string };
+type DealDocument = {
+  id: string;
+  name: string;
+  documentType: string;
+  status: string;
+  generatedAt?: string;
+  metadata?: { downloadPath?: string } | null;
+};
 type CannabisPdf = { documentType: string; label: string; path: string };
+
+/** One uniform document row: icon, name, muted meta, preview/download actions. */
+function DocRow({
+  icon,
+  name,
+  meta,
+  url,
+  onPreview,
+  last,
+  testId,
+}: {
+  icon: React.ReactNode;
+  name: string;
+  meta?: string;
+  url?: string;
+  onPreview?: () => void;
+  last?: boolean;
+  testId: string;
+}) {
+  const c = useThemeColors();
+  return (
+    <div
+      data-testid={testId}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        padding: "11px 14px",
+        borderBottom: last ? "none" : `1px solid ${c.borderColor}`,
+      }}
+    >
+      {icon}
+      <span style={{ fontSize: 13, fontWeight: 500, color: c.textPrimary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        {name}
+      </span>
+      {meta && (
+        <span style={{ fontSize: 11.5, color: c.textMuted, whiteSpace: "nowrap" }}>• {meta}</span>
+      )}
+      <span style={{ flex: 1 }} />
+      {url && onPreview && (
+        <button
+          type="button"
+          onClick={onPreview}
+          aria-label={`Preview ${name}`}
+          data-testid={`${testId}-preview`}
+          style={{ display: "inline-flex", padding: 5, background: "transparent", border: "none", color: c.textMuted, cursor: "pointer" }}
+        >
+          <Eye style={{ width: 15, height: 15 }} />
+        </button>
+      )}
+      {url && (
+        <a
+          href={url}
+          download
+          aria-label={`Download ${name}`}
+          data-testid={`${testId}-download`}
+          style={{ display: "inline-flex", padding: 5, color: "var(--accent-primary)" }}
+        >
+          <Download style={{ width: 15, height: 15 }} />
+        </a>
+      )}
+    </div>
+  );
+}
+
+const SECTION_LABEL: React.CSSProperties = {
+  fontSize: 11,
+  fontWeight: 600,
+  letterSpacing: "0.08em",
+  textTransform: "uppercase",
+  margin: "0 0 10px",
+};
 
 export function DocumentsTab({ dealId }: { dealId: string }) {
   const c = useThemeColors();
   const [docs, setDocs] = useState<DealDocument[]>([]);
   const [pdfs, setPdfs] = useState<CannabisPdf[]>([]);
+  const [preview, setPreview] = useState<{ url: string; title: string } | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -44,40 +125,70 @@ export function DocumentsTab({ dealId }: { dealId: string }) {
     return () => { active = false; };
   }, [dealId]);
 
-  const row: React.CSSProperties = {
-    display: "flex", alignItems: "center", justifyContent: "space-between",
-    background: c.cardBg, border: `1px solid ${c.borderColor}`, borderRadius: 10, padding: "10px 12px",
+  const card: React.CSSProperties = {
+    background: c.cardBg,
+    border: `1px solid ${c.borderColor}`,
+    borderRadius: 12,
+    overflow: "hidden",
   };
 
   return (
-    <div>
-      {docs.length === 0 && pdfs.length === 0 ? (
-        <div style={{ padding: "24px 0", textAlign: "center", fontSize: 13, color: c.textMuted }}>
-          No submission documents on file.
-        </div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {pdfs.map((p) => (
-            <a key={p.path} href={p.path} target="_blank" rel="noreferrer" style={{ ...row, textDecoration: "none" }}>
-              <span style={{ display: "flex", alignItems: "center", gap: 9, fontSize: 13, color: c.textPrimary }}>
-                <FileText style={{ width: 16, height: 16, color: c.textMuted }} />{p.label}
-              </span>
-              <Download style={{ width: 15, height: 15, color: "var(--accent-primary)" }} />
-            </a>
-          ))}
-          {docs.map((d) => (
-            <div key={d.id} style={row}>
-              <span style={{ display: "flex", alignItems: "center", gap: 9, fontSize: 13, color: c.textPrimary }}>
-                <FileText style={{ width: 16, height: 16, color: c.textMuted }} />{d.name}
-              </span>
-              <span style={{ fontSize: 11, color: c.textMuted }}>{d.status}</span>
-            </div>
-          ))}
-        </div>
-      )}
+    <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
+      {/* Applications — submission PDFs generated by the platform. */}
+      <section>
+        <h3 style={{ ...SECTION_LABEL, color: c.textMuted }}>Applications</h3>
+        {pdfs.length === 0 ? (
+          <p style={{ fontSize: 12.5, color: c.textMuted, margin: 0 }}>No application documents yet.</p>
+        ) : (
+          <div style={card}>
+            {pdfs.map((p, i) => (
+              <DocRow
+                key={p.path}
+                icon={<FileText style={{ width: 16, height: 16, color: c.textMuted, flexShrink: 0 }} />}
+                name={p.label}
+                meta="PDF"
+                url={p.path}
+                onPreview={() => setPreview({ url: p.path, title: p.label })}
+                last={i === pdfs.length - 1}
+                testId={`row-application-${p.documentType}`}
+              />
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Generated documents — deal docs produced as the deal progresses. */}
+      <section>
+        <h3 style={{ ...SECTION_LABEL, color: c.textMuted }}>Generated Documents</h3>
+        {docs.length === 0 ? (
+          <p style={{ fontSize: 12.5, color: c.textMuted, margin: 0 }}>No generated documents yet.</p>
+        ) : (
+          <div style={card}>
+            {docs.map((d, i) => {
+              const url = d.metadata?.downloadPath || undefined;
+              return (
+                <DocRow
+                  key={d.id}
+                  icon={<File style={{ width: 16, height: 16, color: c.textMuted, flexShrink: 0 }} />}
+                  name={d.name}
+                  meta={d.status}
+                  url={url}
+                  onPreview={url ? () => setPreview({ url, title: d.name }) : undefined}
+                  last={i === docs.length - 1}
+                  testId={`row-generated-${d.id}`}
+                />
+              );
+            })}
+          </div>
+        )}
+      </section>
 
       {/* §6C carrier binder / policy — always available, even with no other docs. */}
-      <PolicyDocumentsPanel dealId={dealId} />
+      <PolicyDocumentsPanel dealId={dealId} onPreview={(url, title) => setPreview({ url, title })} />
+
+      {preview && (
+        <PdfPreviewModal url={preview.url} title={preview.title} onClose={() => setPreview(null)} />
+      )}
     </div>
   );
 }

@@ -108,6 +108,37 @@ router.post("/:dealId/upload", upload.single("file"), async (req: Request<{ deal
   return res.json({ success: true, document: result.doc, autoSatisfied: result.auto });
 });
 
+// Serve an uploaded binder/policy PDF inline so the client can preview it
+// without downloading. Two path segments, so it can't collide with GET /:dealId.
+router.get("/:docId/file", async (req, res) => {
+  const [doc] = await db
+    .select()
+    .from(policyDocumentsTable)
+    .where(eq(policyDocumentsTable.id, req.params.docId));
+
+  if (!doc) return res.status(404).json({ error: "Document not found." });
+
+  const uploadsRoot = path.join(process.cwd(), "uploads");
+  const filePath = path.resolve(uploadsRoot, doc.fileUrl);
+  if (!filePath.startsWith(uploadsRoot + path.sep)) {
+    return res.status(400).json({ error: "Invalid document path." });
+  }
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: "Document file is missing from storage." });
+  }
+
+  const safeName = doc.fileName.replace(/[^a-zA-Z0-9._ -]/g, "_");
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", `inline; filename="${safeName}"`);
+  const stream = fs.createReadStream(filePath);
+  stream.on("error", () => {
+    if (!res.headersSent) res.status(500).json({ error: "Failed to read document file." });
+    else res.destroy();
+  });
+  stream.pipe(res);
+  return undefined;
+});
+
 router.delete("/:docId", async (req, res) => {
   const { docId } = req.params;
 
