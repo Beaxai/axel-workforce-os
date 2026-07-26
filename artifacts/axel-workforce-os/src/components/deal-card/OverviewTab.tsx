@@ -465,6 +465,13 @@ export default function OverviewTab({
     fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", color: c.textMuted,
     background: c.cardBg, borderRadius: 9999, padding: "3px 10px", display: "inline-block",
   };
+  /** E1 "Soft Bubbles" feed anatomy — comments vs. everything else. */
+  const AVATAR_W = 28;
+  const ROW_GAP = 10;
+  const dayHeader: React.CSSProperties = {
+    fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", fontWeight: 600,
+    color: c.textMuted, paddingLeft: AVATAR_W + ROW_GAP,
+  };
   const previewTag: React.CSSProperties = {
     fontSize: 9.5, color: c.textMuted, marginTop: 6, fontStyle: "italic",
   };
@@ -477,57 +484,86 @@ export default function OverviewTab({
           <div style={{ fontSize: 12, color: c.textMuted }}>No activity yet.</div>
         )}
         {groups.map(([day, rows]) => (
-          <div key={day} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <div>
-              <span style={dayPill}>{day}</span>
-            </div>
+          <div key={day} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={dayHeader}>{day}</div>
             {rows.map((row) => {
               const rawAuthor = authorOf(row);
               const isSystem = !row.createdBy && rawAuthor === "System";
               const sys = isSystem ? systemEventMeta(row.eventType) : null;
-              const author = sys ? sys.label : rawAuthor;
+              const author = sys ? "System" : rawAuthor;
               const role = isSystem ? null : roleOf(row);
               const photo = row.createdBy ? (membersById.get(row.createdBy)?.avatarUrl ?? null) : null;
               const isUserText = row.eventType === "message" || row.eventType === "NOTE";
               const description = row.description ?? "";
               const displayText = isUserText ? description : prettifyTokens(description);
-              const avatarCircle = (
-                <div style={{ width: 22, height: 22, borderRadius: "50%", background: c.hoverBg, color: c.textSecondary, fontSize: 9, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
-                  {sys ? (
-                    <sys.Icon style={{ width: 12, height: 12 }} />
-                  ) : photo ? (
-                    <img src={photo} alt={author} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-                  ) : (
-                    initials(author)
-                  )}
-                </div>
-              );
-              return (
-                <div key={row.id}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+
+              if (isUserText) {
+                // Comment — avatar + soft bubble (E1 "Soft Bubbles").
+                const avatarCircle = (
+                  <div style={{ width: AVATAR_W, height: AVATAR_W, borderRadius: "50%", background: c.hoverBg, border: `1px solid ${c.borderColor}`, color: c.textSecondary, fontSize: 10, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0, marginTop: 2 }}>
+                    {photo ? (
+                      <img src={photo} alt={author} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                    ) : (
+                      initials(author)
+                    )}
+                  </div>
+                );
+                return (
+                  <div key={row.id} style={{ display: "flex", alignItems: "flex-start", gap: ROW_GAP }}>
                     {row.createdBy ? (
                       <UserMiniProfile userId={row.createdBy}>
-                        <button
-                          type="button"
-                          style={{ display: "flex", alignItems: "center", gap: 8, background: "none", border: "none", padding: 0, cursor: "pointer" }}
-                        >
+                        <button type="button" aria-label={`View profile of ${author}`} style={{ background: "none", border: "none", padding: 0, cursor: "pointer" }}>
                           {avatarCircle}
-                          <span style={{ fontSize: 12, fontWeight: 600, color: c.textPrimary }}>{author}</span>
                         </button>
                       </UserMiniProfile>
                     ) : (
-                      <>
-                        {avatarCircle}
-                        <span style={{ fontSize: 12, fontWeight: 600, color: c.textPrimary }}>{author}</span>
-                      </>
+                      avatarCircle
                     )}
-                    {role && <span style={{ fontSize: 10.5, color: c.textMuted }}>{role}</span>}
-                    <span style={{ fontSize: 10, color: c.textMuted }}>{"\u00b7"} {timeLabel(row.createdAt)}</span>
-                  </div>
-                  <div style={card}>
-                    <div style={{ fontSize: 12, color: c.textSecondary, lineHeight: 1.55 }}>
-                      {renderWithMentions(displayText, mentionsOf(row))}
+                    <div style={{ flex: 1, minWidth: 0, background: c.cardBg, borderRadius: 14, padding: "10px 13px" }}>
+                      <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 3 }}>
+                        {row.createdBy ? (
+                          <UserMiniProfile userId={row.createdBy}>
+                            <button type="button" style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, fontWeight: 600, color: c.textPrimary }}>
+                              {author}
+                            </button>
+                          </UserMiniProfile>
+                        ) : (
+                          <span style={{ fontSize: 12.5, fontWeight: 600, color: c.textPrimary }}>{author}</span>
+                        )}
+                        {role && <span style={{ fontSize: 10, color: c.textMuted, textTransform: "uppercase", letterSpacing: "0.05em" }}>{role}</span>}
+                        <span style={{ fontSize: 10.5, color: c.textMuted }}>{timeLabel(row.createdAt)}</span>
+                      </div>
+                      <div style={{ fontSize: 12.5, color: c.textSecondary, lineHeight: 1.6, overflowWrap: "anywhere" }}>
+                        {renderWithMentions(displayText, mentionsOf(row))}
+                      </div>
                     </div>
+                  </div>
+                );
+              }
+
+              // Everything else — quiet one-liner with a small dot marker.
+              const isApproval = /approv/i.test(row.eventType ?? "") || /approved/i.test(description);
+              return (
+                <div key={row.id} style={{ display: "flex", alignItems: "flex-start", gap: ROW_GAP }}>
+                  <div style={{ flexShrink: 0, width: AVATAR_W, height: 20, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <span style={{ width: 4, height: 4, borderRadius: "50%", background: isApproval ? "var(--accent-primary)" : c.textMuted, opacity: isApproval ? 1 : 0.6, display: "block" }} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0, fontSize: 12, color: c.textMuted, lineHeight: "20px", overflowWrap: "anywhere" }}>
+                    {sys ? (
+                      <span style={{ color: c.textSecondary, fontWeight: 500 }}>{sys.label}</span>
+                    ) : row.createdBy ? (
+                      <UserMiniProfile userId={row.createdBy}>
+                        <button type="button" aria-label={`View profile of ${author}`} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 12, color: c.textSecondary, fontWeight: 500 }}>
+                          {author}
+                        </button>
+                      </UserMiniProfile>
+                    ) : (
+                      <span style={{ color: c.textSecondary, fontWeight: 500 }}>{author}</span>
+                    )}
+                    <span style={{ margin: "0 6px", opacity: 0.5 }}>{"\u00b7"}</span>
+                    <span>{renderWithMentions(displayText, mentionsOf(row))}</span>
+                    <span style={{ margin: "0 6px", opacity: 0.5 }}>{"\u00b7"}</span>
+                    <span style={{ whiteSpace: "nowrap" }}>{timeLabel(row.createdAt)}</span>
                   </div>
                 </div>
               );
