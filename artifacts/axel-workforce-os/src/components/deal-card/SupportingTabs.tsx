@@ -36,7 +36,15 @@ type DealDocument = {
 };
 type CannabisPdf = { documentType: string; label: string; path: string };
 
-type PolicyDoc = { id: string; fileName?: string | null; documentType?: string | null };
+type PolicyDoc = {
+  id: string;
+  fileName?: string | null;
+  documentType?: string | null;
+  createdAt?: string | null;
+  uploadedByName?: string | null;
+};
+
+const fmtDate = (d?: string | null) => (d ? new Date(d).toLocaleDateString() : "—");
 
 /** Muted one-word kind labels — the only secondary text a row is allowed. */
 const DEAL_DOC_KIND: Record<string, string> = {
@@ -50,6 +58,8 @@ const DEAL_DOC_KIND: Record<string, string> = {
 function QuietRow({
   name,
   kind,
+  date,
+  by,
   onOpen,
   onRename,
   onDelete,
@@ -59,6 +69,8 @@ function QuietRow({
 }: {
   name: string;
   kind: string;
+  date: string;
+  by: string;
   onOpen?: () => void;
   onRename?: (next: string) => Promise<void>;
   onDelete?: () => void;
@@ -150,7 +162,13 @@ function QuietRow({
           <Trash2 style={{ width: 14, height: 14 }} />
         </button>
       )}
-      {!editing && <span style={{ fontSize: 11.5, color: c.textMuted, whiteSpace: "nowrap" }}>{kind}</span>}
+      {!editing && (
+        <>
+          <span style={{ width: 92, fontSize: 11.5, color: c.textMuted, whiteSpace: "nowrap" }}>{kind}</span>
+          <span style={{ width: 88, fontSize: 11.5, color: c.textMuted, whiteSpace: "nowrap" }}>{date}</span>
+          <span style={{ width: 120, fontSize: 11.5, color: c.textMuted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{by}</span>
+        </>
+      )}
       {renaming ? null : null}
     </div>
   );
@@ -332,13 +350,17 @@ export function DocumentsTab({ dealId }: { dealId: string }) {
             >
               <span style={{ width: 16, flexShrink: 0 }} />
               <span style={{ flex: 1 }}>Document</span>
-              <span>Type</span>
+              <span style={{ width: 92 }}>Type</span>
+              <span style={{ width: 88 }}>Uploaded</span>
+              <span style={{ width: 120 }}>By</span>
             </div>
             {pdfs.map((p) => (
               <QuietRow
                 key={p.path}
                 name={p.label}
                 kind="Application"
+                date="—"
+                by="System"
                 onOpen={() => setPreview({ url: p.path, title: p.label })}
                 last={isLast()}
                 testId={`row-application-${p.documentType}`}
@@ -355,6 +377,8 @@ export function DocumentsTab({ dealId }: { dealId: string }) {
                   key={d.id}
                   name={d.name}
                   kind={DEAL_DOC_KIND[d.documentType] || "Document"}
+                  date={fmtDate(d.generatedAt)}
+                  by="System"
                   onOpen={url ? () => setPreview({ url, title: d.name }) : undefined}
                   onRename={(next) => renameDealDoc(d.id, next)}
                   last={isLast()}
@@ -367,6 +391,8 @@ export function DocumentsTab({ dealId }: { dealId: string }) {
                 key={d.id}
                 name={d.fileName || "Document"}
                 kind={d.documentType === "policy" ? "Policy" : "Binder"}
+                date={fmtDate(d.createdAt)}
+                by={d.uploadedByName || "—"}
                 onOpen={() => setPreview({ url: `${API_BASE}/api/policy-documents/${d.id}/file`, title: d.fileName || "Document" })}
                 onRename={(next) => renamePolicyDoc(d.id, next)}
                 onDelete={() =>

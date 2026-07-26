@@ -6,6 +6,7 @@ import {
   db,
   policyDocumentsTable,
   activityLogTable,
+  usersTable,
 } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import { applyWcDocumentUpload } from "../lib/wc-tracker";
@@ -40,11 +41,21 @@ const router: IRouter = Router();
 
 router.get("/:dealId", async (req, res) => {
   const rows = await db
-    .select()
+    .select({
+      doc: policyDocumentsTable,
+      uploaderFirstName: usersTable.firstName,
+      uploaderLastName: usersTable.lastName,
+    })
     .from(policyDocumentsTable)
+    .leftJoin(usersTable, eq(policyDocumentsTable.uploadedBy, usersTable.id))
     .where(eq(policyDocumentsTable.dealId, req.params.dealId))
     .orderBy(desc(policyDocumentsTable.createdAt));
-  res.json({ documents: rows });
+  res.json({
+    documents: rows.map((r) => ({
+      ...r.doc,
+      uploadedByName: [r.uploaderFirstName, r.uploaderLastName].filter(Boolean).join(" ") || null,
+    })),
+  });
 });
 
 router.post("/:dealId/upload", upload.single("file"), async (req: Request<{ dealId: string }>, res: Response) => {
