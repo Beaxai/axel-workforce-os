@@ -288,6 +288,40 @@
     color: var(--input-placeholder);
     opacity: 1;
   }
+
+  /* =====================================================================
+     NATIVE SELECT / DROPDOWN THEMING
+     Native <select> popups are OS-rendered; color-scheme is the only way
+     to make the popup itself dark. Without it, dark mode shows a white
+     popup with unreadable light text. --select-option-bg must be a SOLID
+     color (glass transparency is not supported inside the popup).
+     ===================================================================== */
+  :root {
+    color-scheme: light;
+    --select-option-bg: #ffffff;
+    --select-option-text: #1a2333;
+  }
+  .dark {
+    color-scheme: dark;
+    --select-option-bg: #1e1533;
+    --select-option-text: #ffffff;
+  }
+
+  select {
+    background-color: var(--input-bg);
+    color: var(--input-text);
+    border-color: var(--input-border);
+    accent-color: var(--accent-primary);
+  }
+  select option,
+  select optgroup {
+    background-color: var(--select-option-bg);
+    color: var(--select-option-text);
+  }
+  select option:checked {
+    background-color: var(--accent-primary-soft);
+    color: var(--select-option-text);
+  }
 }
 
 /**
