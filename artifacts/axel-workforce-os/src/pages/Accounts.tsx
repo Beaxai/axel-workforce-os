@@ -7,12 +7,13 @@ import {
   Badge,
   SectionHeader,
   Modal,
+  AxelDropdown,
 } from "@/components/ui/axel-index";
 import { useThemeStore } from "@/lib/theme-store";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { useAuthStore } from "@/lib/auth-store";
 import { api } from "@/lib/api";
-import { Search, Plus, Users, Building2, MapPin, ArrowRight, Mail, Phone, ChevronDown, ChevronRight, ArrowUpDown } from "lucide-react";
+import { Search, Plus, Users, Building2, MapPin, ArrowRight, Mail, Phone, ChevronRight, ArrowUpDown } from "lucide-react";
 
 type TabKey = "leads" | "prospects" | "clients";
 
@@ -239,29 +240,6 @@ export default function Accounts() {
 
   const count = activeTab === "leads" ? leads.length : visibleAccounts.length;
 
-  const pillStyle: React.CSSProperties = {
-    display: "flex",
-    alignItems: "center",
-    gap: "6px",
-    padding: "9px 12px",
-    borderRadius: "10px",
-    border: `1px solid ${inputBorder}`,
-    background: inputBg,
-    color: textMuted,
-    fontSize: "13px",
-    cursor: "pointer",
-  };
-  const pillSelectStyle: React.CSSProperties = {
-    background: "transparent",
-    border: "none",
-    outline: "none",
-    color: textPrimary,
-    fontSize: "13px",
-    fontWeight: 500,
-    cursor: "pointer",
-    appearance: "auto",
-  };
-
   return (
     <div>
       <SectionHeader title="Accounts" subtitle={`${count} ${activeTab}`} />
@@ -330,36 +308,22 @@ export default function Accounts() {
 
         {activeTab !== "leads" && (
           <>
-            <label style={pillStyle}>
-              <span>Vertical:</span>
-              <select value={filterVertical} onChange={(e) => setFilterVertical(e.target.value)} style={pillSelectStyle}>
-                <option value="All">All</option>
-                {VERTICALS.map((v) => <option key={v} value={v}>{v}</option>)}
-              </select>
-            </label>
-            <label style={pillStyle}>
-              <span>State:</span>
-              <select value={filterState} onChange={(e) => setFilterState(e.target.value)} style={pillSelectStyle}>
-                <option value="All">All</option>
-                {stateOptions.map((s) => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </label>
-            <label style={pillStyle}>
-              <span>Stage:</span>
-              <select value={filterStage} onChange={(e) => setFilterStage(e.target.value)} style={pillSelectStyle}>
-                <option value="All">All</option>
-                {CLIENT_STAGES.map((s) => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </label>
-            <label style={{ ...pillStyle, marginLeft: "auto" }}>
-              <ArrowUpDown style={{ width: "13px", height: "13px" }} />
-              <span>Sort:</span>
-              <select value={sortBy} onChange={(e) => setSortBy(e.target.value as "recent" | "alpha" | "oldest")} style={pillSelectStyle}>
-                <option value="recent">Most recent</option>
-                <option value="alpha">Alphabetical</option>
-                <option value="oldest">Oldest first</option>
-              </select>
-            </label>
+            <AxelDropdown label="Vertical" value={filterVertical} onChange={setFilterVertical} options={["All", ...VERTICALS]} />
+            <AxelDropdown label="State" value={filterState} onChange={setFilterState} options={["All", ...stateOptions]} />
+            <AxelDropdown label="Stage" value={filterStage} onChange={setFilterStage} options={["All", ...CLIENT_STAGES]} />
+            <AxelDropdown
+              label="Sort"
+              alignRight
+              style={{ marginLeft: "auto" }}
+              icon={<ArrowUpDown style={{ width: "13px", height: "13px" }} />}
+              value={sortBy}
+              onChange={(v) => setSortBy(v as "recent" | "alpha" | "oldest")}
+              options={[
+                { value: "recent", label: "Most recent" },
+                { value: "alpha", label: "Alphabetical" },
+                { value: "oldest", label: "Oldest first" },
+              ]}
+            />
           </>
         )}
 
