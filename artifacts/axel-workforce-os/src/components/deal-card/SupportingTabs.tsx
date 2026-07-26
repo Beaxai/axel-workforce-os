@@ -165,7 +165,13 @@ export function DocumentsTab({ dealId }: { dealId: string }) {
         ) : (
           <div style={card}>
             {docs.map((d, i) => {
-              const url = d.metadata?.downloadPath || undefined;
+              // Older rate_indication rows predate downloadPath — the PDF is
+              // generated on demand, so the path is derivable from the deal.
+              const url =
+                d.metadata?.downloadPath ||
+                (d.documentType === "rate_indication"
+                  ? `/api/submission/applications/${dealId}/indication-summary.pdf`
+                  : undefined);
               return (
                 <DocRow
                   key={d.id}
