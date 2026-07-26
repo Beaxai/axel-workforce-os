@@ -54,6 +54,7 @@ function QuietRow({
   onRename,
   onDelete,
   renaming,
+  last,
   testId,
 }: {
   name: string;
@@ -62,6 +63,7 @@ function QuietRow({
   onRename?: (next: string) => Promise<void>;
   onDelete?: () => void;
   renaming?: boolean;
+  last?: boolean;
   testId: string;
 }) {
   const c = useThemeColors();
@@ -91,7 +93,8 @@ function QuietRow({
       role={onOpen && !editing ? "button" : undefined}
       style={{
         display: "flex", alignItems: "center", gap: 12, padding: "13px 16px",
-        cursor: onOpen && !editing ? "pointer" : "default", borderRadius: 10,
+        cursor: onOpen && !editing ? "pointer" : "default",
+        borderBottom: last ? "none" : `1px solid ${c.inputBorder}`,
         background: hover && onOpen && !editing ? c.inputBg : "transparent",
         transition: "background 120ms ease",
       }}
@@ -307,55 +310,78 @@ export function DocumentsTab({ dealId }: { dealId: string }) {
         <p data-testid="text-upload-error" style={{ fontSize: 12.5, color: "#ef4444", margin: 0 }}>{error}</p>
       )}
 
-      {/* One quiet list — no sections. */}
-      <div>
-        {pdfs.map((p) => (
-          <QuietRow
-            key={p.path}
-            name={p.label}
-            kind="Application"
-            onOpen={() => setPreview({ url: p.path, title: p.label })}
-            testId={`row-application-${p.documentType}`}
-          />
-        ))}
-        {docs
-          // Hide only rows that mirror a generated application PDF; rows with a
-          // known generated kind (indication, summary, …) are never suppressed.
-          .filter((d) => DEAL_DOC_KIND[d.documentType] || !pdfs.some((p) => p.documentType === d.documentType))
-          .map((d) => {
-          const url =
-            d.metadata?.downloadPath ||
-            (d.documentType === "rate_indication"
-              ? `/api/submission/applications/${dealId}/indication-summary.pdf`
-              : undefined);
-          return (
-            <QuietRow
-              key={d.id}
-              name={d.name}
-              kind={DEAL_DOC_KIND[d.documentType] || "Document"}
-              onOpen={url ? () => setPreview({ url, title: d.name }) : undefined}
-              onRename={(next) => renameDealDoc(d.id, next)}
-              testId={`row-generated-${d.id}`}
-            />
-          );
-        })}
-        {policyDocs.map((d) => (
-          <QuietRow
-            key={d.id}
-            name={d.fileName || "Document"}
-            kind={d.documentType === "policy" ? "Policy" : "Binder"}
-            onOpen={() => setPreview({ url: `${API_BASE}/api/policy-documents/${d.id}/file`, title: d.fileName || "Document" })}
-            onRename={(next) => renamePolicyDoc(d.id, next)}
-            onDelete={() =>
-              removePolicy.mutate({ docId: d.id }, { onSuccess: refreshPolicy, onError: () => setError("Could not delete that document.") })
-            }
-            testId={`policy-document-${d.id}`}
-          />
-        ))}
-        {pdfs.length === 0 && docs.length === 0 && policyDocs.length === 0 && (
-          <p style={{ fontSize: 12.5, color: c.textMuted, margin: "6px 0 0", padding: "0 16px" }}>No documents yet.</p>
-        )}
-      </div>
+      {/* One quiet list — no sections. Header + light dividers, like the accounts table. */}
+      {(() => {
+        // Hide only rows that mirror a generated application PDF; rows with a
+        // known generated kind (indication, summary, …) are never suppressed.
+        const visibleDocs = docs.filter(
+          (d) => DEAL_DOC_KIND[d.documentType] || !pdfs.some((p) => p.documentType === d.documentType),
+        );
+        const total = pdfs.length + visibleDocs.length + policyDocs.length;
+        let idx = 0;
+        const isLast = () => ++idx === total;
+        return (
+          <div style={{ border: `1px solid ${c.borderColor}`, borderRadius: 12, overflow: "hidden", background: c.cardBg }}>
+            <div
+              data-testid="documents-list-header"
+              style={{
+                display: "flex", alignItems: "center", gap: 12, padding: "12px 16px",
+                borderBottom: `1px solid ${c.inputBorder}`,
+                fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: c.textMuted,
+              }}
+            >
+              <span style={{ width: 16, flexShrink: 0 }} />
+              <span style={{ flex: 1 }}>Document</span>
+              <span>Type</span>
+            </div>
+            {pdfs.map((p) => (
+              <QuietRow
+                key={p.path}
+                name={p.label}
+                kind="Application"
+                onOpen={() => setPreview({ url: p.path, title: p.label })}
+                last={isLast()}
+                testId={`row-application-${p.documentType}`}
+              />
+            ))}
+            {visibleDocs.map((d) => {
+              const url =
+                d.metadata?.downloadPath ||
+                (d.documentType === "rate_indication"
+                  ? `/api/submission/applications/${dealId}/indication-summary.pdf`
+                  : undefined);
+              return (
+                <QuietRow
+                  key={d.id}
+                  name={d.name}
+                  kind={DEAL_DOC_KIND[d.documentType] || "Document"}
+                  onOpen={url ? () => setPreview({ url, title: d.name }) : undefined}
+                  onRename={(next) => renameDealDoc(d.id, next)}
+                  last={isLast()}
+                  testId={`row-generated-${d.id}`}
+                />
+              );
+            })}
+            {policyDocs.map((d) => (
+              <QuietRow
+                key={d.id}
+                name={d.fileName || "Document"}
+                kind={d.documentType === "policy" ? "Policy" : "Binder"}
+                onOpen={() => setPreview({ url: `${API_BASE}/api/policy-documents/${d.id}/file`, title: d.fileName || "Document" })}
+                onRename={(next) => renamePolicyDoc(d.id, next)}
+                onDelete={() =>
+                  removePolicy.mutate({ docId: d.id }, { onSuccess: refreshPolicy, onError: () => setError("Could not delete that document.") })
+                }
+                last={isLast()}
+                testId={`policy-document-${d.id}`}
+              />
+            ))}
+            {total === 0 && (
+              <p style={{ fontSize: 12.5, color: c.textMuted, margin: 0, padding: "14px 16px" }}>No documents yet.</p>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Quiet dashed affordance for the missing policy document. */}
       {!hasPolicy && (
