@@ -263,6 +263,18 @@ export function DocumentsTab({ dealId }: { dealId: string }) {
   const [pending, setPending] = useState<{ file: File; name: string; type: "binder" | "policy" } | null>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+
+  /** Shared entry point for dropped files — routes into the same naming step as click-to-upload. */
+  const handleDroppedFile = (file: File | undefined, type: "binder" | "policy") => {
+    setError(null);
+    if (!file) return;
+    if (file.type !== "application/pdf" && !/\.pdf$/i.test(file.name)) {
+      setError("Upload failed. PDF only, 25MB maximum.");
+      return;
+    }
+    setPending({ file, name: file.name.replace(/\.pdf$/i, ""), type });
+  };
 
   const policyQuery = useListPolicyDocuments(dealId);
   const policyDocs: PolicyDoc[] = policyQuery.data?.documents ?? [];
@@ -486,19 +498,29 @@ export function DocumentsTab({ dealId }: { dealId: string }) {
         );
       })()}
 
-      {/* Quiet dashed affordance for the missing policy document. */}
+      {/* Quiet dashed affordance for the missing policy document. Click or drop a PDF. */}
       {!hasPolicy && (
         <button
           type="button"
           data-testid="button-add-policy-document"
           onClick={() => pickFile("policy")}
+          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragOver(false);
+            handleDroppedFile(e.dataTransfer.files?.[0], "policy");
+          }}
           style={{
             display: "flex", alignItems: "center", gap: 10, padding: "13px 16px",
-            border: `1px dashed ${c.borderColor}`, borderRadius: 10, background: "transparent",
-            color: c.textMuted, fontSize: 13, fontFamily: "inherit", cursor: "pointer", textAlign: "left",
+            border: `1px dashed ${dragOver ? "var(--accent-primary)" : c.borderColor}`, borderRadius: 10,
+            background: dragOver ? c.inputBg : "transparent",
+            color: dragOver ? c.textPrimary : c.textMuted, fontSize: 13, fontFamily: "inherit",
+            cursor: "pointer", textAlign: "left", transition: "border-color 120ms ease, background 120ms ease",
           }}
         >
-          <Plus style={{ width: 15, height: 15 }} />Add policy document
+          <Plus style={{ width: 15, height: 15 }} />
+          {dragOver ? "Drop PDF to add policy document" : "Add policy document — or drag a PDF here"}
         </button>
       )}
 
