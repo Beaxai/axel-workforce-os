@@ -164,6 +164,7 @@ export default function UserMiniProfile({
         style={{
           width: 280,
           padding: 0,
+          zIndex: 200,
           background: c.dropdownBg,
           border: `1px solid ${c.borderColor}`,
           borderRadius: 12,
