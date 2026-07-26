@@ -35,9 +35,9 @@ function ProfileShell({ profile }: { profile: any }) {
         <span className="text-sm font-medium text-white/60">Viewing as: <span className="text-white/90">{profile.name}</span> <span className="text-white/40">({profile.type})</span></span>
       </div>
       
-      <div className="flex flex-col xl:flex-row gap-6">
+      <div className="flex flex-col xl:flex-row gap-6 items-stretch">
         {/* Fixed Left Rail */}
-        <div className="w-full xl:w-80 shrink-0 space-y-4">
+        <div className="w-full xl:w-80 shrink-0 flex flex-col gap-6">
           
           {/* Identity Card */}
           <div className="bg-white/[0.03] border border-white/[0.08] rounded-[12px] backdrop-blur-xl p-6 flex flex-col items-center text-center relative overflow-hidden">
@@ -72,7 +72,7 @@ function ProfileShell({ profile }: { profile: any }) {
           </div>
 
           {/* Contact & Meta */}
-          <div className="bg-white/[0.03] border border-white/[0.08] rounded-[12px] backdrop-blur-xl p-5 space-y-5">
+          <div className="bg-white/[0.03] border border-white/[0.08] rounded-[12px] backdrop-blur-xl p-5 flex flex-col flex-1">
             
             <div className="space-y-4">
               <div className="flex items-start gap-3.5">
@@ -106,7 +106,7 @@ function ProfileShell({ profile }: { profile: any }) {
               </div>
             </div>
 
-            <div className="h-px w-full bg-white/[0.06]" />
+            <div className="h-px w-full bg-white/[0.06] my-5" />
             
             <div className="space-y-3">
               {profile.credentials.map((cred: any, i: number) => (
@@ -117,16 +117,18 @@ function ProfileShell({ profile }: { profile: any }) {
               ))}
             </div>
             
-            <div className="h-px w-full bg-white/[0.06]" />
+            <div className="mt-auto pt-5">
+              <div className="h-px w-full bg-white/[0.06] mb-5" />
 
-            <div className="space-y-3">
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-white/40">Joined</span>
-                <span className="text-white/60 tabular-nums">{profile.contact.joined}</span>
-              </div>
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-white/40">Last Active</span>
-                <span className="text-white/60 tabular-nums">{profile.contact.lastActive}</span>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-white/40">Joined</span>
+                  <span className="text-white/60 tabular-nums">{profile.contact.joined}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-white/40">Last Active</span>
+                  <span className="text-white/60 tabular-nums">{profile.contact.lastActive}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -215,7 +217,7 @@ function ProfileShell({ profile }: { profile: any }) {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1">
             {/* Associated List (Deals/Relations) */}
-            <div className="bg-white/[0.03] border border-white/[0.08] rounded-[12px] p-6 lg:p-8 backdrop-blur-xl flex flex-col">
+            <div className="bg-white/[0.03] border border-white/[0.08] rounded-[12px] p-6 lg:p-8 backdrop-blur-xl flex flex-col h-full">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-sm font-medium text-white flex items-center gap-2.5">
                   <div className="w-6 h-6 rounded bg-blue-500/10 flex items-center justify-center">
@@ -252,7 +254,7 @@ function ProfileShell({ profile }: { profile: any }) {
             </div>
 
             {/* Activity Timeline */}
-            <div className="bg-white/[0.03] border border-white/[0.08] rounded-[12px] p-6 lg:p-8 backdrop-blur-xl flex flex-col">
+            <div className="bg-white/[0.03] border border-white/[0.08] rounded-[12px] p-6 lg:p-8 backdrop-blur-xl flex flex-col h-full">
               <div className="flex items-center justify-between mb-8">
                 <h3 className="text-sm font-medium text-white flex items-center gap-2.5">
                   <div className="w-6 h-6 rounded bg-purple-500/10 flex items-center justify-center">
