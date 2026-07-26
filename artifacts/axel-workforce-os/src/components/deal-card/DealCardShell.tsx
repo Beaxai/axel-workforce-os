@@ -729,6 +729,9 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
               <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
                 <Star style={{ width: 18, height: 18, color: c.textMuted, flexShrink: 0 }} />
                 <div style={{ fontSize: 18, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{deal?.businessName || "Deal"}</div>
+                <div style={{ pointerEvents: "auto", flexShrink: 0 }}>
+                  <DealTeamAvatars team={payload?.team} directory={payload?.directory} />
+                </div>
               </div>
               {(badges.length > 0 || effectiveDate) && (
                 <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
@@ -742,9 +745,6 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
                   )}
                 </div>
               )}
-              <div style={{ marginTop: 14, pointerEvents: "auto", width: "fit-content" }}>
-                <DealTeamAvatars team={payload?.team} directory={payload?.directory} />
-              </div>
             </div>
             {/* KPI cluster — large glowing numbers with identifying icons, left of the X.
                 Wraps under the identity block on narrow widths instead of colliding. */}
