@@ -331,72 +331,97 @@ export default function Accounts() {
 
       {/* Content */}
       {activeTab === "leads" ? (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(360px, 1fr))", gap: "16px" }}>
-          {leads.map((l) => {
+        <GlassCard padding="0" style={{ overflow: "visible" }}>
+          {/* Leads table header — mirrors the prospects/clients table */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "2fr 1.8fr 1fr 0.6fr 1.1fr 280px",
+              gap: "16px",
+              padding: "14px 24px",
+              borderBottom: `1px solid ${inputBorder}`,
+              fontSize: "11px",
+              fontWeight: 600,
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
+              color: textMuted,
+            }}
+          >
+            <div>Company</div>
+            <div>Contact</div>
+            <div>Vertical</div>
+            <div>State</div>
+            <div>Status</div>
+            <div />
+          </div>
+          {/* Leads table rows */}
+          {leads.map((l, i) => {
             const isConverted = l.status === "converted" || !!l.convertedAccountId;
             return (
-              <GlassCard key={l.id} padding="20px">
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "10px" }}>
-                  <div>
-                    <h3 style={{ fontSize: "16px", fontWeight: 600, color: textPrimary, margin: 0 }}>{l.companyName}</h3>
-                    <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "4px", flexWrap: "wrap" }}>
-                      {l.vertical && (
-                        <span style={{ fontSize: "12px", color: textMuted, display: "flex", alignItems: "center", gap: "4px" }}>
-                          <Building2 style={{ width: "12px", height: "12px" }} />{l.vertical}
-                        </span>
-                      )}
-                      {l.state && (
-                        <span style={{ fontSize: "12px", color: textMuted, display: "flex", alignItems: "center", gap: "4px" }}>
-                          <MapPin style={{ width: "12px", height: "12px" }} />{l.state}
-                        </span>
-                      )}
+              <div
+                key={l.id}
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "2fr 1.8fr 1fr 0.6fr 1.1fr 280px",
+                  gap: "16px",
+                  alignItems: "center",
+                  padding: "12px 24px",
+                  borderBottom: i === leads.length - 1 ? "none" : `1px solid ${inputBorder}`,
+                  transition: "background 0.15s",
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = isDark ? "rgba(236,72,153,0.05)" : "rgba(236,72,153,0.04)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+              >
+                <div style={{ fontSize: "14px", fontWeight: 600, color: textPrimary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.companyName}</div>
+                <div style={{ minWidth: 0 }}>
+                  {l.contactName && <div style={{ fontSize: "13px", color: textPrimary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.contactName}</div>}
+                  {l.email && (
+                    <div style={{ fontSize: "12px", color: textMuted, display: "flex", alignItems: "center", gap: "5px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <Mail style={{ width: "12px", height: "12px", flexShrink: 0 }} />{l.email}
                     </div>
-                  </div>
-                  <Badge label={isConverted ? "Converted" : (LEAD_STATUS_LABEL[l.status || "new"] || "New")} color={LEAD_STATUS_COLOR[l.status || "new"] || "gray"} />
+                  )}
+                  {!l.contactName && !l.email && <span style={{ fontSize: "13px", color: textMuted }}>—</span>}
                 </div>
-
-                {(l.contactName || l.email || l.phone) && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "4px", marginBottom: "12px" }}>
-                    {l.contactName && <span style={{ fontSize: "13px", color: textPrimary }}>{l.contactName}</span>}
-                    {l.email && <span style={{ fontSize: "12px", color: textMuted, display: "flex", alignItems: "center", gap: "5px" }}><Mail style={{ width: "12px", height: "12px" }} />{l.email}</span>}
-                    {l.phone && <span style={{ fontSize: "12px", color: textMuted, display: "flex", alignItems: "center", gap: "5px" }}><Phone style={{ width: "12px", height: "12px" }} />{l.phone}</span>}
-                  </div>
-                )}
-
-                {!isConverted ? (
-                  <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
-                    <select
+                <div style={{ fontSize: "13px", color: textMuted }}>{l.vertical || "—"}</div>
+                <div style={{ fontSize: "13px", color: textMuted }}>{l.state || "—"}</div>
+                <div>
+                  {isConverted ? (
+                    <Badge label="Converted" color="green" />
+                  ) : canCreate ? (
+                    <AxelDropdown
                       value={l.status || "new"}
-                      onChange={(e) => handleLeadStatus(l, e.target.value)}
-                      style={{ ...inputStyle, width: "auto", padding: "6px 10px", fontSize: "12px", cursor: "pointer", appearance: "auto" }}
-                    >
-                      {LEAD_STATUSES.map((s) => <option key={s} value={s}>{LEAD_STATUS_LABEL[s]}</option>)}
-                    </select>
-                    <div style={{ marginLeft: "auto", display: "flex", gap: "8px" }}>
+                      onChange={(v) => handleLeadStatus(l, v)}
+                      options={LEAD_STATUSES.map((s) => ({ value: s, label: LEAD_STATUS_LABEL[s] }))}
+                    />
+                  ) : (
+                    <Badge label={LEAD_STATUS_LABEL[l.status || "new"] || "New"} color={LEAD_STATUS_COLOR[l.status || "new"] || "gray"} />
+                  )}
+                </div>
+                <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+                  {!isConverted && canCreate ? (
+                    <>
                       <GhostButton onClick={() => handleConvert(l, false)} disabled={converting === l.id} style={{ padding: "6px 12px", fontSize: "12px" }}>
                         {converting === l.id ? "…" : "Convert"}
                       </GhostButton>
                       <PinkButton onClick={() => handleConvert(l, true)} disabled={converting === l.id} style={{ padding: "6px 12px", fontSize: "12px", display: "flex", alignItems: "center", gap: "4px" }}>
                         Convert &amp; Start <ArrowRight style={{ width: "12px", height: "12px" }} />
                       </PinkButton>
-                    </div>
-                  </div>
-                ) : (
-                  l.convertedAccountId && (
+                    </>
+                  ) : isConverted && l.convertedAccountId ? (
                     <GhostButton onClick={() => navigate(`/accounts/${l.convertedAccountId}`)} style={{ padding: "6px 12px", fontSize: "12px" }}>
                       View Account
                     </GhostButton>
-                  )
-                )}
-              </GlassCard>
+                  ) : null}
+                </div>
+              </div>
             );
           })}
           {leads.length === 0 && (
-            <GlassCard padding="40px" style={{ gridColumn: "1 / -1", textAlign: "center" }}>
-              <p style={{ color: textMuted, fontSize: "15px", margin: 0 }}>No leads yet.{canCreate ? " Add your first lead to get started." : ""}</p>
-            </GlassCard>
+            <p style={{ color: textMuted, fontSize: "15px", margin: 0, padding: "40px", textAlign: "center" }}>
+              No leads yet.{canCreate ? " Add your first lead to get started." : ""}
+            </p>
           )}
-        </div>
+        </GlassCard>
       ) : (
         <GlassCard padding="0" style={{ overflow: "hidden" }}>
           {/* Table header */}
