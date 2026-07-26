@@ -7,8 +7,8 @@
  * `reRateQuoteAfterParamsUpdate`, so changing INDICATION_RERATE_MODE is the
  * only switch needed.
  */
-import { db, quotesTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { db, quotesTable, dealDocumentsTable } from "@workspace/db";
+import { eq, and } from "drizzle-orm";
 import { calculateMultiLocationWC, type MultiLocationInput } from "../utils/ratingEngine";
 
 export type IndicationRerateMode = "auto" | "manual" | "flag";
@@ -81,6 +81,34 @@ export async function reRateQuoteAfterParamsUpdate(
         ratedAt: new Date(),
       })
       .where(eq(quotesTable.id, quoteId));
+
+    // Keep the Documents tab in sync: every deal with an indication must have
+    // a rate_indication document row (name + metadata reflect the new range).
+    const [quote] = await db.select().from(quotesTable).where(eq(quotesTable.id, quoteId));
+    if (quote?.dealId) {
+      const name = `Rate Indication — $${low.toLocaleString("en-US")} to $${high.toLocaleString("en-US")}`;
+      const metadata = {
+        premiumLow: low,
+        premiumHigh: high,
+        generatedBy: "system",
+        downloadPath: `/api/submission/applications/${quote.dealId}/indication-summary.pdf`,
+      };
+      const [existing] = await db
+        .select({ id: dealDocumentsTable.id })
+        .from(dealDocumentsTable)
+        .where(and(eq(dealDocumentsTable.dealId, quote.dealId), eq(dealDocumentsTable.documentType, "rate_indication")))
+        .limit(1);
+      if (existing) {
+        await db.update(dealDocumentsTable).set({ name, metadata }).where(eq(dealDocumentsTable.id, existing.id));
+      } else {
+        await db.insert(dealDocumentsTable).values({
+          dealId: quote.dealId,
+          name,
+          documentType: "rate_indication",
+          metadata,
+        });
+      }
+    }
     return { mode: "auto", ok: true };
   } catch (err) {
     return { mode: "auto", ok: false, error: err instanceof Error ? err.message : "Rating failed" };
