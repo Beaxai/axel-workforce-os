@@ -2,11 +2,11 @@ import React from 'react';
 import { FileText, Pencil, Trash2 } from 'lucide-react';
 
 const docs = [
-  { id: 1, name: "Rate Indication — $126,713 to $154,872", type: "Indication", date: "7/2/2026", user: "System" },
-  { id: 2, name: "Application Summary", type: "Summary", date: "7/2/2026", user: "System" },
+  { id: 1, name: "Rate Indication — $126,713 to $154,872", type: "Indication", date: "7/2/2026 9:14 AM", user: "System" },
+  { id: 2, name: "Application Summary", type: "Summary", date: "7/2/2026 9:14 AM", user: "System" },
   { id: 3, name: "WC Application", type: "Application", date: "—", user: "System" },
-  { id: 4, name: "Emerald Coast Binder", type: "Binder", date: "7/26/2026", user: "Sarah Mitchell", hover: true },
-  { id: 5, name: "Signed Policy 2026", type: "Policy", date: "7/26/2026", user: "Marcus Chen" },
+  { id: 4, name: "Emerald Coast Binder", type: "Binder", date: "7/26/2026 2:41 PM", user: "Sarah Mitchell", hover: true },
+  { id: 5, name: "Signed Policy 2026", type: "Policy", date: "7/26/2026 4:07 PM", user: "Marcus Chen" },
 ];
 
 const InlineMetaVariant = ({ isNarrow = false }: { isNarrow?: boolean }) => {

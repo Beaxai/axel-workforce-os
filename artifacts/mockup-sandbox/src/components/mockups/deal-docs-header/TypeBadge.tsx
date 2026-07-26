@@ -2,11 +2,11 @@ import React from 'react';
 import { FileText, Pencil, Trash2 } from 'lucide-react';
 
 const data = [
-  { name: 'Rate Indication — $126,713 to $154,872', type: 'Indication', date: '7/2/2026', by: 'System' },
-  { name: 'Application Summary', type: 'Summary', date: '7/2/2026', by: 'System' },
+  { name: 'Rate Indication — $126,713 to $154,872', type: 'Indication', date: '7/2/2026 9:14 AM', by: 'System' },
+  { name: 'Application Summary', type: 'Summary', date: '7/2/2026 9:14 AM', by: 'System' },
   { name: 'WC Application', type: 'Application', date: '—', by: 'System' },
-  { name: 'Emerald Coast Binder', type: 'Binder', date: '7/26/2026', by: 'Sarah Mitchell', hovered: true },
-  { name: 'Signed Policy 2026', type: 'Policy', date: '7/26/2026', by: 'Marcus Chen' },
+  { name: 'Emerald Coast Binder', type: 'Binder', date: '7/26/2026 2:41 PM', by: 'Sarah Mitchell', hovered: true },
+  { name: 'Signed Policy 2026', type: 'Policy', date: '7/26/2026 4:07 PM', by: 'Marcus Chen' },
 ];
 
 function DocumentList({ containerWidth }: { containerWidth?: number | string }) {
@@ -26,7 +26,7 @@ function DocumentList({ containerWidth }: { containerWidth?: number | string }) 
         >
           <div className="w-[16px] flex-none" /> {/* Icon spacer */}
           <div className="flex-1 min-w-0">Document</div>
-          <div className="w-[130px] hidden tb-show-on-wide text-right">Uploaded / By</div>
+          <div className="w-[150px] hidden tb-show-on-wide text-right">Uploaded / By</div>
         </div>
 
         {/* Rows */}
@@ -93,7 +93,7 @@ function DocumentList({ containerWidth }: { containerWidth?: number | string }) 
               </div>
 
               {/* Desktop Meta (Hidden on < 560px) */}
-              <div className="w-[130px] hidden tb-show-on-wide-flex flex-col items-end gap-[3px] shrink-0">
+              <div className="w-[150px] hidden tb-show-on-wide-flex flex-col items-end gap-[3px] shrink-0">
                 <div className="text-[11.5px] font-[500] leading-none" style={{ color: 'rgba(255,255,255,0.7)' }}>
                   {doc.date}
                 </div>

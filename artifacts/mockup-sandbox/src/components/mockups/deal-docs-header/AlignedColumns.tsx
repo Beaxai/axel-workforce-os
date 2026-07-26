@@ -2,11 +2,11 @@ import React from 'react';
 import { FileText, Pencil, Trash2 } from 'lucide-react';
 
 const MOCK_DATA = [
-  { id: 1, name: "Rate Indication — $126,713 to $154,872", type: "Indication", date: "7/2/2026", by: "System" },
-  { id: 2, name: "Application Summary", type: "Summary", date: "7/2/2026", by: "System" },
+  { id: 1, name: "Rate Indication — $126,713 to $154,872", type: "Indication", date: "7/2/2026 9:14 AM", by: "System" },
+  { id: 2, name: "Application Summary", type: "Summary", date: "7/2/2026 9:14 AM", by: "System" },
   { id: 3, name: "WC Application", type: "Application", date: "—", by: "System" },
-  { id: 4, name: "Emerald Coast Binder", type: "Binder", date: "7/26/2026", by: "Sarah Mitchell", hover: true },
-  { id: 5, name: "Signed Policy 2026", type: "Policy", date: "7/26/2026", by: "Marcus Chen" },
+  { id: 4, name: "Emerald Coast Binder", type: "Binder", date: "7/26/2026 2:41 PM", by: "Sarah Mitchell", hover: true },
+  { id: 5, name: "Signed Policy 2026", type: "Policy", date: "7/26/2026 4:07 PM", by: "Marcus Chen" },
 ];
 
 export default function AlignedColumns() {
@@ -46,7 +46,7 @@ export default function AlignedColumns() {
 
         .ac-grid {
           display: grid;
-          grid-template-columns: 16px minmax(0, 1fr) 92px 88px 120px;
+          grid-template-columns: 16px minmax(0, 1fr) 92px 138px 120px;
           gap: 12px;
           align-items: center;
         }
