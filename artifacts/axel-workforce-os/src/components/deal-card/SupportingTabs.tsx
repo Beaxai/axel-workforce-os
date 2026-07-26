@@ -151,8 +151,9 @@ function QuietRow({
             >
               {name}
             </span>
-            <span className="docs-ac-meta-mobile">
-              {kind} · {date} · {by}
+            <span className="docs-ac-sub" style={{ color: c.textMuted }}>
+              <span className="docs-ac-kind-inline">{kind} · </span>
+              {date} · {by}
             </span>
             {hover && (onRename || onDelete) && (
               <span className="docs-ac-actions" onClick={(e) => e.stopPropagation()}>
@@ -182,8 +183,6 @@ function QuietRow({
             )}
           </span>
           <span className="docs-ac-meta docs-ac-col" style={{ color: c.textMuted }}>{kind}</span>
-          <span className="docs-ac-meta docs-ac-col" style={{ color: c.textMuted }}>{date}</span>
-          <span className="docs-ac-meta docs-ac-col" style={{ color: c.textMuted }}>{by}</span>
         </>
       )}
       {renaming ? null : null}
@@ -202,7 +201,7 @@ function DocsListStyles({ hoverBg }: { hoverBg: string }) {
       .docs-ac-container { container-type: inline-size; }
       .docs-ac-grid {
         display: grid;
-        grid-template-columns: 16px minmax(0, 1fr) 92px 148px 120px;
+        grid-template-columns: 16px minmax(0, 1fr) 92px;
         gap: 12px;
         align-items: center;
       }
@@ -233,19 +232,19 @@ function DocsListStyles({ hoverBg }: { hoverBg: string }) {
         background: ${hoverBg};
         border-radius: 6px;
       }
-      .docs-ac-meta-mobile {
-        display: none;
+      .docs-ac-sub {
+        display: block;
         font-size: 11.5px;
         margin-top: 3px;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
       }
+      .docs-ac-kind-inline { display: none; }
       @container (max-width: 640px) {
         .docs-ac-grid { grid-template-columns: 16px minmax(0, 1fr); }
         .docs-ac-col { display: none; }
-        .docs-ac-meta-mobile { display: block; color: inherit; }
-        .docs-ac-name-cell .docs-ac-meta-mobile { color: var(--docs-muted, rgba(255,255,255,0.55)); }
+        .docs-ac-kind-inline { display: inline; }
       }
     `}</style>
   );
@@ -430,8 +429,6 @@ export function DocumentsTab({ dealId }: { dealId: string }) {
               <span />
               <span>Document</span>
               <span className="docs-ac-col">Type</span>
-              <span className="docs-ac-col">Uploaded</span>
-              <span className="docs-ac-col">By</span>
             </div>
             {pdfs.map((p) => (
               <QuietRow
