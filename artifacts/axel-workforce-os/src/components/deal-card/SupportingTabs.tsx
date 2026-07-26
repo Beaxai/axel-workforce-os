@@ -264,6 +264,7 @@ export function DocumentsTab({ dealId }: { dealId: string }) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const dragDepth = useRef(0);
 
   /** Shared entry point for dropped files — routes into the same naming step as click-to-upload. */
   const handleDroppedFile = (file: File | undefined, type: "binder" | "policy") => {
@@ -350,26 +351,31 @@ export function DocumentsTab({ dealId }: { dealId: string }) {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      {/* Header: single add affordance — click to pick or drag a PDF onto it. */}
+    <div
+      style={{ display: "flex", flexDirection: "column", gap: 10 }}
+      onDragEnter={(e) => {
+        if (e.dataTransfer.types.includes("Files")) { dragDepth.current += 1; setDragOver(true); }
+      }}
+      onDragOver={(e) => { if (e.dataTransfer.types.includes("Files")) e.preventDefault(); }}
+      onDragLeave={() => {
+        dragDepth.current = Math.max(0, dragDepth.current - 1);
+        if (dragDepth.current === 0) setDragOver(false);
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        dragDepth.current = 0;
+        setDragOver(false);
+        handleDroppedFile(e.dataTransfer.files?.[0], "binder");
+      }}
+    >
+      {/* Header: quiet add affordance; the whole tab is also a drop target. */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
         <GhostButton
           onClick={() => pickFile("binder")}
           data-testid="button-upload-document"
-          onDragOver={(e: React.DragEvent) => { e.preventDefault(); setDragOver(true); }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={(e: React.DragEvent) => {
-            e.preventDefault();
-            setDragOver(false);
-            handleDroppedFile(e.dataTransfer.files?.[0], "binder");
-          }}
-          style={{
-            display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", fontSize: 12,
-            ...(dragOver ? { border: `1px dashed var(--accent-primary)`, background: c.inputBg, color: c.textPrimary } : {}),
-          }}
+          style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", fontSize: 12 }}
         >
-          <Upload style={{ width: 13, height: 13 }} />
-          {dragOver ? "Drop PDF to add" : "Add Document"}
+          <Upload style={{ width: 13, height: 13 }} />Add Document
         </GhostButton>
       </div>
 
@@ -439,7 +445,13 @@ export function DocumentsTab({ dealId }: { dealId: string }) {
         return (
           <div className="docs-ac-container" style={{ ["--docs-muted" as string]: c.textMuted }}>
             <DocsListStyles hoverBg={c.inputBg} />
-            <div style={{ border: `1px solid ${c.borderColor}`, borderRadius: 12, overflow: "hidden", background: c.cardBg }}>
+            <div
+              style={{
+                border: dragOver ? `1px dashed var(--accent-primary)` : `1px solid ${c.borderColor}`,
+                borderRadius: 12, overflow: "hidden", background: c.cardBg,
+                transition: "border-color 120ms ease",
+              }}
+            >
             <div
               data-testid="documents-list-header"
               className="docs-ac-grid docs-ac-header"
@@ -501,7 +513,24 @@ export function DocumentsTab({ dealId }: { dealId: string }) {
               />
             ))}
             {total === 0 && (
-              <p style={{ fontSize: 12.5, color: c.textMuted, margin: 0, padding: "14px 16px" }}>No documents yet.</p>
+              <div
+                data-testid="documents-dropzone"
+                onClick={() => pickFile("binder")}
+                role="button"
+                style={{
+                  display: "flex", flexDirection: "column", alignItems: "center", gap: 8,
+                  padding: "44px 16px", margin: 12, cursor: "pointer", borderRadius: 10,
+                  border: `1px dashed ${dragOver ? "var(--accent-primary)" : c.borderColor}`,
+                  background: dragOver ? c.inputBg : "transparent",
+                  transition: "border-color 120ms ease, background 120ms ease",
+                }}
+              >
+                <Upload style={{ width: 22, height: 22, color: dragOver ? "var(--accent-primary)" : c.textMuted }} />
+                <span style={{ fontSize: 13.5, fontWeight: 500, color: c.textPrimary }}>
+                  {dragOver ? "Drop your PDF here" : "Drag & drop a PDF here"}
+                </span>
+                <span style={{ fontSize: 12, color: c.textMuted }}>or click to browse — 25MB max</span>
+              </div>
             )}
             </div>
           </div>
