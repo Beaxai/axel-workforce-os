@@ -37,7 +37,7 @@ function ProfileShell({ profile }: { profile: any }) {
       
       <div className="flex flex-col xl:flex-row gap-6 items-stretch">
         {/* Fixed Left Rail */}
-        <div className="w-full xl:w-80 shrink-0 flex flex-col gap-6">
+        <div className="w-full xl:w-80 shrink-0 flex flex-col gap-6 justify-between">
           
           {/* Identity Card */}
           <div className="bg-white/[0.03] border border-white/[0.08] rounded-[12px] backdrop-blur-xl p-6 flex flex-col items-center text-center relative overflow-hidden">
@@ -71,9 +71,8 @@ function ProfileShell({ profile }: { profile: any }) {
             </div>
           </div>
 
-          {/* Contact & Meta */}
-          <div className="bg-white/[0.03] border border-white/[0.08] rounded-[12px] backdrop-blur-xl p-5 flex flex-col flex-1">
-            
+          {/* Contact Card */}
+          <div className="bg-white/[0.03] border border-white/[0.08] rounded-[12px] backdrop-blur-xl p-5">
             <div className="space-y-4">
               <div className="flex items-start gap-3.5">
                 <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/[0.04] flex items-center justify-center shrink-0">
@@ -105,9 +104,10 @@ function ProfileShell({ profile }: { profile: any }) {
                 </div>
               </div>
             </div>
+          </div>
 
-            <div className="h-px w-full bg-white/[0.06] my-5" />
-            
+          {/* Credentials & Meta Card */}
+          <div className="bg-white/[0.03] border border-white/[0.08] rounded-[12px] backdrop-blur-xl p-5">
             <div className="space-y-3">
               {profile.credentials.map((cred: any, i: number) => (
                 <div key={i} className="flex justify-between items-center">
@@ -117,18 +117,16 @@ function ProfileShell({ profile }: { profile: any }) {
               ))}
             </div>
             
-            <div className="mt-auto pt-5">
-              <div className="h-px w-full bg-white/[0.06] mb-5" />
+            <div className="h-px w-full bg-white/[0.06] my-4" />
 
-              <div className="space-y-3">
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-white/40">Joined</span>
-                  <span className="text-white/60 tabular-nums">{profile.contact.joined}</span>
-                </div>
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-white/40">Last Active</span>
-                  <span className="text-white/60 tabular-nums">{profile.contact.lastActive}</span>
-                </div>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-white/40">Joined</span>
+                <span className="text-white/60 tabular-nums">{profile.contact.joined}</span>
+              </div>
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-white/40">Last Active</span>
+                <span className="text-white/60 tabular-nums">{profile.contact.lastActive}</span>
               </div>
             </div>
           </div>
