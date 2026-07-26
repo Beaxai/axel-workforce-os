@@ -4,8 +4,15 @@
  * deal card's prior capabilities while the Overview + Submission tabs deliver
  * the new collaboration experience.
  */
-import { useCallback, useEffect, useState } from "react";
-import { FileText, File, Eye, Download, CheckSquare, Plus, Calculator, Shield } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  useListPolicyDocuments,
+  useDeletePolicyDocument,
+  getListPolicyDocumentsQueryKey,
+  getGetJourneysQueryKey,
+} from "@workspace/api-client-react";
+import { FileText, CheckSquare, Plus, Calculator, Shield, Upload, Pencil, Trash2, Loader2, Check, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { PinkButton, GhostButton } from "@/components/ui/axel-index";
@@ -14,8 +21,9 @@ import IndicationDetailView, { type IndicationMetric, type WorkforceProfileShape
 import ProposalPanel from "@/components/ProposalPanel";
 import BindStatusPanel from "@/components/submission/BindStatusPanel";
 import UserMiniProfile from "@/components/user-profile/UserMiniProfile";
-import PolicyDocumentsPanel from "./PolicyDocumentsPanel";
 import PdfPreviewModal from "./PdfPreviewModal";
+
+const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 /* ---------------------------------------------------------------- Documents */
 type DealDocument = {
@@ -28,169 +36,342 @@ type DealDocument = {
 };
 type CannabisPdf = { documentType: string; label: string; path: string };
 
-/** One uniform document row: icon, name, muted meta, preview/download actions. */
-function DocRow({
-  icon,
+type PolicyDoc = { id: string; fileName?: string | null; documentType?: string | null };
+
+/** Muted one-word kind labels — the only secondary text a row is allowed. */
+const DEAL_DOC_KIND: Record<string, string> = {
+  rate_indication: "Indication",
+  application_summary: "Summary",
+  coverage_verification: "Verification",
+  loss_history_bundle: "Loss History",
+};
+
+/** One quiet row: icon, name, muted kind word. Click anywhere to view. */
+function QuietRow({
   name,
-  meta,
-  url,
-  onPreview,
-  last,
+  kind,
+  onOpen,
+  onRename,
+  onDelete,
+  renaming,
   testId,
 }: {
-  icon: React.ReactNode;
   name: string;
-  meta?: string;
-  url?: string;
-  onPreview?: () => void;
-  last?: boolean;
+  kind: string;
+  onOpen?: () => void;
+  onRename?: (next: string) => Promise<void>;
+  onDelete?: () => void;
+  renaming?: boolean;
   testId: string;
 }) {
   const c = useThemeColors();
+  const [hover, setHover] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(name);
+  const [saving, setSaving] = useState(false);
+
+  const commit = async () => {
+    const next = draft.trim();
+    if (!onRename || !next || next === name) { setEditing(false); setDraft(name); return; }
+    setSaving(true);
+    try { await onRename(next); setEditing(false); } finally { setSaving(false); }
+  };
+
+  const iconBtn: React.CSSProperties = {
+    display: "inline-flex", padding: 5, background: "transparent", border: "none",
+    color: c.textMuted, cursor: "pointer", borderRadius: 6,
+  };
+
   return (
     <div
       data-testid={testId}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      onClick={editing || !onOpen ? undefined : onOpen}
+      role={onOpen && !editing ? "button" : undefined}
       style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-        padding: "11px 14px",
-        borderBottom: last ? "none" : `1px solid ${c.borderColor}`,
+        display: "flex", alignItems: "center", gap: 12, padding: "13px 16px",
+        cursor: onOpen && !editing ? "pointer" : "default", borderRadius: 10,
+        background: hover && onOpen && !editing ? c.inputBg : "transparent",
+        transition: "background 120ms ease",
       }}
     >
-      {icon}
-      <span style={{ fontSize: 13, fontWeight: 500, color: c.textPrimary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-        {name}
-      </span>
-      {meta && (
-        <span style={{ fontSize: 11.5, color: c.textMuted, whiteSpace: "nowrap" }}>• {meta}</span>
+      <FileText style={{ width: 16, height: 16, color: c.textMuted, flexShrink: 0 }} />
+      {editing ? (
+        <span style={{ display: "flex", alignItems: "center", gap: 6, flex: 1 }} onClick={(e) => e.stopPropagation()}>
+          <input
+            autoFocus
+            value={draft}
+            data-testid={`${testId}-rename-input`}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") commit();
+              if (e.key === "Escape") { setEditing(false); setDraft(name); }
+            }}
+            style={{
+              flex: 1, background: c.inputBg, border: `1px solid var(--accent-primary)`,
+              borderRadius: 8, color: c.inputText, fontFamily: "inherit", fontSize: 13, padding: "6px 10px",
+            }}
+          />
+          <button type="button" onClick={commit} aria-label="Save name" data-testid={`${testId}-rename-save`} style={{ ...iconBtn, color: "var(--accent-primary)" }}>
+            {saving ? <Loader2 style={{ width: 14, height: 14 }} className="animate-spin" /> : <Check style={{ width: 15, height: 15 }} />}
+          </button>
+          <button type="button" onClick={() => { setEditing(false); setDraft(name); }} aria-label="Cancel rename" style={iconBtn}>
+            <X style={{ width: 15, height: 15 }} />
+          </button>
+        </span>
+      ) : (
+        <span style={{ flex: 1, fontSize: 13.5, fontWeight: 500, color: c.textPrimary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {name}
+        </span>
       )}
-      <span style={{ flex: 1 }} />
-      {url && onPreview && (
+      {!editing && hover && onRename && (
         <button
           type="button"
-          onClick={onPreview}
-          aria-label={`Preview ${name}`}
-          data-testid={`${testId}-preview`}
-          style={{ display: "inline-flex", padding: 5, background: "transparent", border: "none", color: c.textMuted, cursor: "pointer" }}
+          aria-label={`Rename ${name}`}
+          data-testid={`${testId}-rename`}
+          onClick={(e) => { e.stopPropagation(); setDraft(name); setEditing(true); }}
+          style={iconBtn}
         >
-          <Eye style={{ width: 15, height: 15 }} />
+          <Pencil style={{ width: 14, height: 14 }} />
         </button>
       )}
-      {url && (
-        <a
-          href={url}
-          download
-          aria-label={`Download ${name}`}
-          data-testid={`${testId}-download`}
-          style={{ display: "inline-flex", padding: 5, color: "var(--accent-primary)" }}
+      {!editing && hover && onDelete && (
+        <button
+          type="button"
+          aria-label={`Delete ${name}`}
+          data-testid={`${testId}-delete`}
+          onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          style={{ ...iconBtn, color: "#ef4444" }}
         >
-          <Download style={{ width: 15, height: 15 }} />
-        </a>
+          <Trash2 style={{ width: 14, height: 14 }} />
+        </button>
       )}
+      {!editing && <span style={{ fontSize: 11.5, color: c.textMuted, whiteSpace: "nowrap" }}>{kind}</span>}
+      {renaming ? null : null}
     </div>
   );
 }
 
-const SECTION_LABEL: React.CSSProperties = {
-  fontSize: 11,
-  fontWeight: 600,
-  letterSpacing: "0.08em",
-  textTransform: "uppercase",
-  margin: "0 0 10px",
-};
-
 export function DocumentsTab({ dealId }: { dealId: string }) {
   const c = useThemeColors();
+  const queryClient = useQueryClient();
+  const fileRef = useRef<HTMLInputElement>(null);
+
   const [docs, setDocs] = useState<DealDocument[]>([]);
   const [pdfs, setPdfs] = useState<CannabisPdf[]>([]);
   const [preview, setPreview] = useState<{ url: string; title: string } | null>(null);
 
+  // Upload naming step: after picking a file, the user confirms a name + type.
+  const [pending, setPending] = useState<{ file: File; name: string; type: "binder" | "policy" } | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const policyQuery = useListPolicyDocuments(dealId);
+  const policyDocs: PolicyDoc[] = policyQuery.data?.documents ?? [];
+  const removePolicy = useDeletePolicyDocument();
+
+  const loadDealDocs = useCallback(async () => {
+    try {
+      const res = await api.get<{ documents: DealDocument[] }>(`/submission/deal-documents/${dealId}`);
+      setDocs(res.documents || []);
+    } catch { setDocs([]); }
+  }, [dealId]);
+
   useEffect(() => {
     let active = true;
     (async () => {
-      try {
-        const res = await api.get<{ documents: DealDocument[] }>(`/submission/deal-documents/${dealId}`);
-        if (active) setDocs(res.documents || []);
-      } catch {
-        if (active) setDocs([]);
-      }
+      await loadDealDocs();
       try {
         const res = await api.get<{ pdfs: CannabisPdf[] }>(`/submission/applications/${dealId}`);
         if (active) setPdfs(res.pdfs || []);
-      } catch {
-        if (active) setPdfs([]);
-      }
+      } catch { if (active) setPdfs([]); }
     })();
     return () => { active = false; };
-  }, [dealId]);
+  }, [dealId, loadDealDocs]);
 
-  const card: React.CSSProperties = {
-    background: c.cardBg,
-    border: `1px solid ${c.borderColor}`,
-    borderRadius: 12,
-    overflow: "hidden",
+  const refreshPolicy = () => {
+    queryClient.invalidateQueries({ queryKey: getListPolicyDocumentsQueryKey(dealId) });
+    // Uploads may advance the WC tracker — refresh journeys too.
+    queryClient.invalidateQueries({ queryKey: getGetJourneysQueryKey() });
+  };
+
+  const pickFile = (presetType: "binder" | "policy") => {
+    setError(null);
+    fileRef.current?.setAttribute("data-doctype", presetType);
+    fileRef.current?.click();
+  };
+
+  const confirmUpload = async () => {
+    if (!pending || uploading) return;
+    setUploading(true);
+    setError(null);
+    try {
+      const form = new FormData();
+      form.append("file", pending.file);
+      form.append("documentType", pending.type);
+      form.append("displayName", pending.name.trim() || pending.file.name);
+      const res = await fetch(`${API_BASE}/api/policy-documents/${dealId}/upload`, {
+        method: "POST",
+        body: form,
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("upload failed");
+      setPending(null);
+      refreshPolicy();
+    } catch {
+      setError("Upload failed. PDF only, 25MB maximum.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const renameDealDoc = async (docId: string, name: string) => {
+    await api.patch(`/submission/deal-documents/doc/${docId}`, { name });
+    await loadDealDocs();
+  };
+  const renamePolicyDoc = async (docId: string, name: string) => {
+    await api.patch(`/policy-documents/${docId}`, { name });
+    refreshPolicy();
+  };
+
+  const hasPolicy = policyDocs.some((d) => d.documentType === "policy");
+  const input: React.CSSProperties = {
+    background: c.inputBg, border: `1px solid ${c.inputBorder}`, borderRadius: 8,
+    color: c.inputText, fontFamily: "inherit", fontSize: 13, padding: "8px 10px",
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
-      {/* Applications — submission PDFs generated by the platform. */}
-      <section>
-        <h3 style={{ ...SECTION_LABEL, color: c.textMuted }}>Applications</h3>
-        {pdfs.length === 0 ? (
-          <p style={{ fontSize: 12.5, color: c.textMuted, margin: 0 }}>No application documents yet.</p>
-        ) : (
-          <div style={card}>
-            {pdfs.map((p, i) => (
-              <DocRow
-                key={p.path}
-                icon={<FileText style={{ width: 16, height: 16, color: c.textMuted, flexShrink: 0 }} />}
-                name={p.label}
-                meta="PDF"
-                url={p.path}
-                onPreview={() => setPreview({ url: p.path, title: p.label })}
-                last={i === pdfs.length - 1}
-                testId={`row-application-${p.documentType}`}
-              />
-            ))}
-          </div>
-        )}
-      </section>
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {/* Header: single quiet upload affordance. */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
+        <GhostButton
+          onClick={() => pickFile("binder")}
+          data-testid="button-upload-document"
+          style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", fontSize: 12 }}
+        >
+          <Upload style={{ width: 13, height: 13 }} />Upload
+        </GhostButton>
+      </div>
 
-      {/* Generated documents — deal docs produced as the deal progresses. */}
-      <section>
-        <h3 style={{ ...SECTION_LABEL, color: c.textMuted }}>Generated Documents</h3>
-        {docs.length === 0 ? (
-          <p style={{ fontSize: 12.5, color: c.textMuted, margin: 0 }}>No generated documents yet.</p>
-        ) : (
-          <div style={card}>
-            {docs.map((d, i) => {
-              // Older rate_indication rows predate downloadPath — the PDF is
-              // generated on demand, so the path is derivable from the deal.
-              const url =
-                d.metadata?.downloadPath ||
-                (d.documentType === "rate_indication"
-                  ? `/api/submission/applications/${dealId}/indication-summary.pdf`
-                  : undefined);
-              return (
-                <DocRow
-                  key={d.id}
-                  icon={<File style={{ width: 16, height: 16, color: c.textMuted, flexShrink: 0 }} />}
-                  name={d.name}
-                  meta={d.status}
-                  url={url}
-                  onPreview={url ? () => setPreview({ url, title: d.name }) : undefined}
-                  last={i === docs.length - 1}
-                  testId={`row-generated-${d.id}`}
-                />
-              );
-            })}
-          </div>
-        )}
-      </section>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="application/pdf"
+        data-testid="input-upload-document"
+        style={{ display: "none" }}
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          const preset = (fileRef.current?.getAttribute("data-doctype") as "binder" | "policy") || "binder";
+          if (f) setPending({ file: f, name: f.name.replace(/\.pdf$/i, ""), type: preset });
+          if (fileRef.current) fileRef.current.value = "";
+        }}
+      />
 
-      {/* §6C carrier binder / policy — always available, even with no other docs. */}
-      <PolicyDocumentsPanel dealId={dealId} onPreview={(url, title) => setPreview({ url, title })} />
+      {/* Name-on-upload step. */}
+      {pending && (
+        <div
+          data-testid="panel-upload-naming"
+          style={{ display: "flex", flexDirection: "column", gap: 10, background: c.cardBg, border: `1px solid ${c.borderColor}`, borderRadius: 12, padding: 14 }}
+        >
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+            <input
+              autoFocus
+              value={pending.name}
+              data-testid="input-upload-name"
+              onChange={(e) => setPending((p) => (p ? { ...p, name: e.target.value } : p))}
+              onKeyDown={(e) => { if (e.key === "Enter") confirmUpload(); }}
+              placeholder="Document name"
+              style={{ ...input, flex: 1, minWidth: 220 }}
+            />
+            <select
+              value={pending.type}
+              data-testid="select-upload-type"
+              onChange={(e) => setPending((p) => (p ? { ...p, type: e.target.value as "binder" | "policy" } : p))}
+              style={{ ...input, cursor: "pointer" }}
+            >
+              <option value="binder">Binder</option>
+              <option value="policy">Policy</option>
+            </select>
+            <PinkButton onClick={confirmUpload} data-testid="button-confirm-upload" style={{ padding: "8px 16px", fontSize: 12 }}>
+              {uploading ? "Uploading…" : "Upload"}
+            </PinkButton>
+            <GhostButton onClick={() => setPending(null)} style={{ padding: "8px 12px", fontSize: 12 }}>Cancel</GhostButton>
+          </div>
+          <span style={{ fontSize: 11.5, color: c.textMuted }}>
+            Uploading a binder or policy marks the deal as carrier-bound.
+          </span>
+        </div>
+      )}
+      {error && (
+        <p data-testid="text-upload-error" style={{ fontSize: 12.5, color: "#ef4444", margin: 0 }}>{error}</p>
+      )}
+
+      {/* One quiet list — no sections. */}
+      <div>
+        {pdfs.map((p) => (
+          <QuietRow
+            key={p.path}
+            name={p.label}
+            kind="Application"
+            onOpen={() => setPreview({ url: p.path, title: p.label })}
+            testId={`row-application-${p.documentType}`}
+          />
+        ))}
+        {docs
+          // Hide only rows that mirror a generated application PDF; rows with a
+          // known generated kind (indication, summary, …) are never suppressed.
+          .filter((d) => DEAL_DOC_KIND[d.documentType] || !pdfs.some((p) => p.documentType === d.documentType))
+          .map((d) => {
+          const url =
+            d.metadata?.downloadPath ||
+            (d.documentType === "rate_indication"
+              ? `/api/submission/applications/${dealId}/indication-summary.pdf`
+              : undefined);
+          return (
+            <QuietRow
+              key={d.id}
+              name={d.name}
+              kind={DEAL_DOC_KIND[d.documentType] || "Document"}
+              onOpen={url ? () => setPreview({ url, title: d.name }) : undefined}
+              onRename={(next) => renameDealDoc(d.id, next)}
+              testId={`row-generated-${d.id}`}
+            />
+          );
+        })}
+        {policyDocs.map((d) => (
+          <QuietRow
+            key={d.id}
+            name={d.fileName || "Document"}
+            kind={d.documentType === "policy" ? "Policy" : "Binder"}
+            onOpen={() => setPreview({ url: `${API_BASE}/api/policy-documents/${d.id}/file`, title: d.fileName || "Document" })}
+            onRename={(next) => renamePolicyDoc(d.id, next)}
+            onDelete={() =>
+              removePolicy.mutate({ docId: d.id }, { onSuccess: refreshPolicy, onError: () => setError("Could not delete that document.") })
+            }
+            testId={`policy-document-${d.id}`}
+          />
+        ))}
+        {pdfs.length === 0 && docs.length === 0 && policyDocs.length === 0 && (
+          <p style={{ fontSize: 12.5, color: c.textMuted, margin: "6px 0 0", padding: "0 16px" }}>No documents yet.</p>
+        )}
+      </div>
+
+      {/* Quiet dashed affordance for the missing policy document. */}
+      {!hasPolicy && (
+        <button
+          type="button"
+          data-testid="button-add-policy-document"
+          onClick={() => pickFile("policy")}
+          style={{
+            display: "flex", alignItems: "center", gap: 10, padding: "13px 16px",
+            border: `1px dashed ${c.borderColor}`, borderRadius: 10, background: "transparent",
+            color: c.textMuted, fontSize: 13, fontFamily: "inherit", cursor: "pointer", textAlign: "left",
+          }}
+        >
+          <Plus style={{ width: 15, height: 15 }} />Add policy document
+        </button>
+      )}
 
       {preview && (
         <PdfPreviewModal url={preview.url} title={preview.title} onClose={() => setPreview(null)} />

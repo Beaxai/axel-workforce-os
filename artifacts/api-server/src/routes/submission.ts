@@ -558,6 +558,19 @@ router.get("/applications/:dealId/indication-summary.pdf", async (req, res) => {
   }
 });
 
+// Rename a generated deal document (Documents tab inline rename).
+router.patch("/deal-documents/doc/:docId", async (req, res) => {
+  const name = String(req.body?.name || "").trim().slice(0, 200);
+  if (!name) return res.status(400).json({ error: "A non-empty name is required." });
+  const [doc] = await db
+    .update(dealDocumentsTable)
+    .set({ name })
+    .where(eq(dealDocumentsTable.id, req.params.docId))
+    .returning();
+  if (!doc) return res.status(404).json({ error: "Document not found." });
+  return res.json({ success: true, document: doc });
+});
+
 router.get("/deal-documents/:dealId", async (req, res) => {
   const { dealId } = req.params;
   const docs = await db

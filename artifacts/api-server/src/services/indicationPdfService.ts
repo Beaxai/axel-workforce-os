@@ -76,7 +76,12 @@ function normalizeBreakdown(raw: unknown): {
   eMod: number | null;
   isPEO: boolean;
 } {
-  const b = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  // Some quotes store the breakdown wrapped as { data: {...} } (see proposals.ts).
+  const unwrapped =
+    raw && typeof raw === "object" && "data" in (raw as Record<string, unknown>) && (raw as Record<string, unknown>).data
+      ? (raw as Record<string, unknown>).data
+      : raw;
+  const b = unwrapped && typeof unwrapped === "object" ? (unwrapped as Record<string, unknown>) : {};
   const locations: NormLoc[] = Array.isArray(b.locations)
     ? (b.locations as unknown[])
         .filter((l): l is Record<string, unknown> => !!l && typeof l === "object")

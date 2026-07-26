@@ -63,6 +63,8 @@ router.post("/:dealId/upload", upload.single("file"), async (req: Request<{ deal
 
   const storagePath = `policy-documents/${req.file.filename}`;
   const file = req.file;
+  // Optional user-provided display name (rename-on-upload).
+  const displayName = String(req.body.displayName || "").trim().slice(0, 200) || file.originalname;
 
   // One transaction: a tracker failure must not leave an orphaned "successful" doc row.
   const result = await db.transaction(async (tx) => {
@@ -72,7 +74,7 @@ router.post("/:dealId/upload", upload.single("file"), async (req: Request<{ deal
         dealId,
         policyId: null, // a binder precedes the policy record
         documentType,
-        fileName: file.originalname,
+        fileName: displayName,
         fileUrl: storagePath, // fileUrl is NOT NULL — store the disk path
         fileSize: file.size,
         source: "MANUAL", // §6C v1: internal rep uploads it
@@ -85,7 +87,7 @@ router.post("/:dealId/upload", upload.single("file"), async (req: Request<{ deal
       entityType: "policy_document",
       entityId: doc.id,
       eventType: "policy_document_uploaded",
-      description: `${documentType === "binder" ? "Binder" : "Policy"} uploaded: ${file.originalname}`,
+      description: `${documentType === "binder" ? "Binder" : "Policy"} uploaded: ${displayName}`,
       metadata: { storage_path: storagePath, document_type: documentType },
     });
 
@@ -106,6 +108,19 @@ router.post("/:dealId/upload", upload.single("file"), async (req: Request<{ deal
   });
 
   return res.json({ success: true, document: result.doc, autoSatisfied: result.auto });
+});
+
+// Rename an uploaded binder/policy document.
+router.patch("/:docId", async (req, res) => {
+  const name = String(req.body?.name || "").trim().slice(0, 200);
+  if (!name) return res.status(400).json({ error: "A non-empty name is required." });
+  const [doc] = await db
+    .update(policyDocumentsTable)
+    .set({ fileName: name })
+    .where(eq(policyDocumentsTable.id, req.params.docId))
+    .returning();
+  if (!doc) return res.status(404).json({ error: "Document not found." });
+  return res.json({ success: true, document: doc });
 });
 
 // Serve an uploaded binder/policy PDF inline so the client can preview it
