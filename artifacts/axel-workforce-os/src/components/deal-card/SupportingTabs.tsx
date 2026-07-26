@@ -540,6 +540,21 @@ export function TasksTab({ dealId }: { dealId: string }) {
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState({ taskName: "", assignedTo: "", dueDate: "" });
   const [saving, setSaving] = useState(false);
+  const [people, setPeople] = useState<{ id: string; name: string; role?: string | null }[]>([]);
+
+  // People attached to this deal (team + scoped directory) for the assignee dropdown.
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const res = await api.get<{ directory?: { id: string; name: string; role?: string | null }[] }>(
+          `/deal-card/${dealId}/submission`,
+        );
+        if (active) setPeople(res.directory ?? []);
+      } catch { if (active) setPeople([]); }
+    })();
+    return () => { active = false; };
+  }, [dealId]);
 
   const load = useCallback(async () => {
     try {
@@ -588,7 +603,19 @@ export function TasksTab({ dealId }: { dealId: string }) {
       {adding && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8, background: c.cardBg, border: `1px solid ${c.borderColor}`, borderRadius: 10, padding: 12 }}>
           <input style={input} placeholder="Task name" value={form.taskName} onChange={(e) => setForm((f) => ({ ...f, taskName: e.target.value }))} />
-          <input style={input} placeholder="Assigned to (optional)" value={form.assignedTo} onChange={(e) => setForm((f) => ({ ...f, assignedTo: e.target.value }))} />
+          <select
+            style={{ ...input, cursor: "pointer", color: form.assignedTo ? c.inputText : c.textMuted }}
+            data-testid="select-task-assignee"
+            value={form.assignedTo}
+            onChange={(e) => setForm((f) => ({ ...f, assignedTo: e.target.value }))}
+          >
+            <option value="">Unassigned</option>
+            {people.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}{p.role ? ` — ${p.role}` : ""}
+              </option>
+            ))}
+          </select>
           <input style={input} type="date" value={form.dueDate} onChange={(e) => setForm((f) => ({ ...f, dueDate: e.target.value }))} />
           <PinkButton onClick={create} style={{ padding: "8px 16px", fontSize: 12 }}>{saving ? "Saving\u2026" : "Create task"}</PinkButton>
         </div>
