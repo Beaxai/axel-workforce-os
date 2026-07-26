@@ -1,5 +1,71 @@
-import React from "react";
-import { Search, Plus, ChevronRight, ChevronDown, ArrowUpDown, Building2, MapPin, Users } from "lucide-react";
+import React, { useState, useRef, useEffect } from "react";
+import { Search, Plus, ChevronRight, ChevronDown, ArrowUpDown, Building2, MapPin, Users, Check } from "lucide-react";
+
+/* Interactive glass dropdown — fully custom-rendered so every part of the
+   look & feel (panel, items, hover, selected state) is adjustable here. */
+function FilterPill({
+  label,
+  options,
+  icon,
+  align = "left",
+}: {
+  label?: string;
+  options: string[];
+  icon?: React.ReactNode;
+  align?: "left" | "right";
+}) {
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState(options[0]);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, []);
+
+  return (
+    <div ref={ref} className={`relative ${align === "right" ? "ml-auto" : ""}`}>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-white/[0.04] border text-sm text-zinc-400 hover:text-white transition-all ${
+          open ? "border-pink-500/50 ring-1 ring-pink-500/30 text-white" : "border-white/10 hover:border-pink-500/40"
+        }`}
+      >
+        {icon}
+        {label && <span className="text-zinc-500">{label}:</span>}
+        <span className="text-zinc-200 font-medium">{value}</span>
+        <ChevronDown className={`w-3.5 h-3.5 text-zinc-500 transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      {open && (
+        <div
+          className={`absolute z-50 mt-2 min-w-[180px] rounded-xl border border-white/10 bg-[#17121f]/95 backdrop-blur-xl shadow-[0_16px_48px_-8px_rgba(0,0,0,0.7)] py-1.5 ${
+            align === "right" ? "right-0" : "left-0"
+          }`}
+        >
+          {options.map((opt) => {
+            const selected = opt === value;
+            return (
+              <button
+                key={opt}
+                onClick={() => { setValue(opt); setOpen(false); }}
+                className={`w-full flex items-center justify-between gap-3 px-3.5 py-2 text-sm text-left transition-colors ${
+                  selected ? "text-pink-300 bg-pink-500/[0.08]" : "text-zinc-300 hover:bg-white/[0.06] hover:text-white"
+                }`}
+              >
+                {opt}
+                {selected && <Check className="w-3.5 h-3.5 text-pink-400" />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function TableRows() {
   const data = [
@@ -60,29 +126,18 @@ export function TableRows() {
               <kbd className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-medium text-zinc-500 bg-white/[0.05] border border-white/10 rounded px-1.5 py-0.5">⌘K</kbd>
             </div>
 
-            {/* Filter pills */}
-            {[
-              { label: "Vertical", value: "All" },
-              { label: "State", value: "All" },
-              { label: "Stage", value: "All" },
-            ].map((f) => (
-              <button
-                key={f.label}
-                className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/10 text-sm text-zinc-400 hover:text-white hover:border-pink-500/40 transition-all"
-              >
-                <span className="text-zinc-500">{f.label}:</span>
-                <span className="text-zinc-200 font-medium">{f.value}</span>
-                <ChevronDown className="w-3.5 h-3.5 text-zinc-500" />
-              </button>
-            ))}
+            {/* Filter pills — interactive glass dropdowns */}
+            <FilterPill label="Vertical" options={["All", "Cannabis", "Construction", "Staffing", "Healthcare", "Hospitality", "Transportation", "Manufacturing", "Retail"]} />
+            <FilterPill label="State" options={["All", "CA", "CT", "OR"]} />
+            <FilterPill label="Stage" options={["All", "Prospect", "Active Prospect", "New Client", "Active Client"]} />
 
             {/* Sort control — pushed to the right edge */}
-            <button className="ml-auto flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/10 text-sm text-zinc-400 hover:text-white hover:border-pink-500/40 transition-all">
-              <ArrowUpDown className="w-3.5 h-3.5 text-zinc-500" />
-              <span className="text-zinc-500">Sort:</span>
-              <span className="text-zinc-200 font-medium">Most recent</span>
-              <ChevronDown className="w-3.5 h-3.5 text-zinc-500" />
-            </button>
+            <FilterPill
+              label="Sort"
+              align="right"
+              icon={<ArrowUpDown className="w-3.5 h-3.5 text-zinc-500" />}
+              options={["Most recent", "Alphabetical", "Oldest first"]}
+            />
           </div>
         </div>
 
