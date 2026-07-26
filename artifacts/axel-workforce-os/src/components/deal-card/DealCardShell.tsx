@@ -8,9 +8,9 @@
  * renders + dispatches. Completeness lives on the Submission tab (per the
  * 2026-06-22 Stitch §8 update). Tokens only; verified light + dark.
  */
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   X, Star, LayoutDashboard, ClipboardList, Folder, CheckSquare, Calculator, Shield,
   MapPin, Users, Banknote, Gauge, ShieldCheck,
@@ -179,6 +179,18 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
   const c = useThemeColors();
   const navigate = useNavigate();
   const { user } = useAuthStore();
+  const { pathname } = useLocation();
+
+  // Close the modal on any route change (e.g. "View full profile" from a
+  // mini-profile popover) so the destination page isn't hidden underneath.
+  const prevPathRef = useRef(pathname);
+  useEffect(() => {
+    if (prevPathRef.current !== pathname) {
+      prevPathRef.current = pathname;
+      if (isOpen) onClose();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- close only when the route changes
+  }, [pathname]);
 
   const [payload, setPayload] = useState<SubmissionPayload | null>(null);
   const [activity, setActivity] = useState<ActivityRow[]>([]);
