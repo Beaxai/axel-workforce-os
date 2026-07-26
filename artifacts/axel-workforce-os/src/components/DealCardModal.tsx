@@ -9,7 +9,8 @@
  *   - `openDealCard(dealId)` — dispatches the `open-deal-card` window event
  *   - `<GlobalDealCardHost />` — listens for that event and renders the card
  */
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import DealCardShell from "@/components/deal-card/DealCardShell";
 
 interface DealCardModalProps {
@@ -29,20 +30,38 @@ export function openDealCard(dealId: string): void {
 }
 
 export function GlobalDealCardHost() {
-  const [dealId, setDealId] = useState<string | null>(null);
+  // URL-driven: the open deal lives in the `?deal=` search param so browser
+  // history restores the exact card (e.g. back from "View full profile").
+  const [searchParams, setSearchParams] = useSearchParams();
+  const dealId = searchParams.get("deal");
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail;
-      if (detail?.dealId) setDealId(detail.dealId);
+      if (detail?.dealId) {
+        setSearchParams((prev) => {
+          const next = new URLSearchParams(prev);
+          next.set("deal", detail.dealId);
+          return next;
+        });
+      }
     };
     window.addEventListener("open-deal-card", handler);
     return () => window.removeEventListener("open-deal-card", handler);
-  }, []);
+  }, [setSearchParams]);
   return (
     <DealCardModal
       dealId={dealId || ""}
       isOpen={!!dealId}
-      onClose={() => setDealId(null)}
+      onClose={() =>
+        setSearchParams(
+          (prev) => {
+            const next = new URLSearchParams(prev);
+            next.delete("deal");
+            return next;
+          },
+          { replace: true },
+        )
+      }
     />
   );
 }

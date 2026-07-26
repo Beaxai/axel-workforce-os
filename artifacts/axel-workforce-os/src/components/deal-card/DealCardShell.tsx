@@ -9,8 +9,9 @@
  * 2026-06-22 Stitch §8 update). Tokens only; verified light + dark.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import GhostButton from "@/components/ui/GhostButton";
 import { createPortal } from "react-dom";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   X, Star, LayoutDashboard, ClipboardList, Folder, CheckSquare, Calculator, Shield,
   MapPin, Users, Banknote, Gauge, ShieldCheck,
@@ -179,18 +180,10 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
   const c = useThemeColors();
   const navigate = useNavigate();
   const { user } = useAuthStore();
-  const { pathname } = useLocation();
-
-  // Close the modal on any route change (e.g. "View full profile" from a
-  // mini-profile popover) so the destination page isn't hidden underneath.
-  const prevPathRef = useRef(pathname);
-  useEffect(() => {
-    if (prevPathRef.current !== pathname) {
-      prevPathRef.current = pathname;
-      if (isOpen) onClose();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- close only when the route changes
-  }, [pathname]);
+  // Note: no path-change close effect here — the URL-driven host
+  // (GlobalDealCardHost) owns the open/close lifecycle via the ?deal= param.
+  // Navigating away drops the param, which closes the card without touching
+  // history (so Back can restore the exact card).
 
   const [payload, setPayload] = useState<SubmissionPayload | null>(null);
   const [activity, setActivity] = useState<ActivityRow[]>([]);
@@ -234,30 +227,47 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
   const isInternal = !!user && INTERNAL.has(user.role);
   const canPost = !!user && (isInternal || user.role === "EMPLOYER");
 
+  // Monotonic load sequence: bumped whenever the target deal changes so
+  // slower responses from a previous deal can't overwrite the current one
+  // (e.g. rapid deal switching or back/forward through ?deal= history).
+  const loadSeqRef = useRef(0);
+  const [loadError, setLoadError] = useState(false);
+
   const fetchSubmission = useCallback(async () => {
+    const seq = loadSeqRef.current;
     try {
       const res = await api.get<SubmissionPayload>(`/deal-card/${dealId}/submission`);
+      if (seq !== loadSeqRef.current) return;
       setPayload(res);
+      setLoadError(false);
     } catch {
+      if (seq !== loadSeqRef.current) return;
       setPayload(null);
+      setLoadError(true);
     }
   }, [dealId]);
 
   const fetchActivity = useCallback(async () => {
+    const seq = loadSeqRef.current;
     try {
       const res = await api.get<{ activity: ActivityRow[] }>(`/deal-card/${dealId}/activity`);
+      if (seq !== loadSeqRef.current) return;
       setActivity(res.activity || []);
     } catch {
+      if (seq !== loadSeqRef.current) return;
       setActivity([]);
     }
   }, [dealId]);
 
   const fetchRfis = useCallback(async () => {
+    const seq = loadSeqRef.current;
     try {
       const res = await api.get<RfiListResponse>(`/deal-card/${dealId}/rfis`);
+      if (seq !== loadSeqRef.current) return;
       setRfis(res.rfis || []);
       setOpenBlocking(res.openBlocking || 0);
     } catch {
+      if (seq !== loadSeqRef.current) return;
       setRfis([]);
       setOpenBlocking(0);
     }
@@ -282,6 +292,8 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
 
   useEffect(() => {
     if (!isOpen || !dealId) return;
+    loadSeqRef.current += 1;
+    setLoadError(false);
     setPayload(null);
     setActivity([]);
     setRfis([]);
@@ -878,7 +890,19 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
           {/* Content */}
           <div style={{ flex: 1, minWidth: 0, padding: 14, overflow: "auto" }}>
             {!payload ? (
-              <div style={{ padding: "40px 0", textAlign: "center", fontSize: 13, color: c.textMuted }}>Loading deal\u2026</div>
+              loadError ? (
+                <div style={{ padding: "40px 0", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600 }}>Deal unavailable</div>
+                  <div style={{ fontSize: 12.5, color: c.textMuted, maxWidth: 360 }}>
+                    This deal could not be loaded — it may not exist or you may not have access to it.
+                  </div>
+                  <GhostButton onClick={onClose} data-testid="button-close-unavailable-deal" style={{ padding: "6px 14px", fontSize: 12.5 }}>
+                    Close
+                  </GhostButton>
+                </div>
+              ) : (
+                <div style={{ padding: "40px 0", textAlign: "center", fontSize: 13, color: c.textMuted }}>Loading deal\u2026</div>
+              )
             ) : (
               <>
                 {tab === "submission" && <ReRateBanner show={!!deal?.ratingStale} onReRate={handleReRate} />}
