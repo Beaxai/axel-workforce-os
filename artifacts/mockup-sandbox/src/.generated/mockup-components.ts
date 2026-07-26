@@ -4,10 +4,10 @@ export const modules: ModuleMap = {
   "./components/mockups/accounts-list/GroupedRows.tsx": () => import("../components/mockups/accounts-list/GroupedRows.tsx"),
   "./components/mockups/accounts-list/ListRows.tsx": () => import("../components/mockups/accounts-list/ListRows.tsx"),
   "./components/mockups/accounts-list/TableRows.tsx": () => import("../components/mockups/accounts-list/TableRows.tsx"),
-  "./components/mockups/implementations-view/CommandCenter.tsx": () => import("../components/mockups/implementations-view/CommandCenter.tsx"),
-  "./components/mockups/implementations-view/GoLiveTimeline.tsx": () => import("../components/mockups/implementations-view/GoLiveTimeline.tsx"),
-  "./components/mockups/implementations-view/PhaseBoard.tsx": () => import("../components/mockups/implementations-view/PhaseBoard.tsx"),
   "./components/mockups/aesthetic-refresh/DashboardPreview.tsx": () => import("../components/mockups/aesthetic-refresh/DashboardPreview.tsx"),
   "./components/mockups/aesthetic-refresh/MarketplacePreview.tsx": () => import("../components/mockups/aesthetic-refresh/MarketplacePreview.tsx"),
-  "./components/mockups/aesthetic-refresh/SidebarPreview.tsx": () => import("../components/mockups/aesthetic-refresh/SidebarPreview.tsx")
+  "./components/mockups/aesthetic-refresh/SidebarPreview.tsx": () => import("../components/mockups/aesthetic-refresh/SidebarPreview.tsx"),
+  "./components/mockups/implementations-view/CommandCenter.tsx": () => import("../components/mockups/implementations-view/CommandCenter.tsx"),
+  "./components/mockups/implementations-view/GoLiveTimeline.tsx": () => import("../components/mockups/implementations-view/GoLiveTimeline.tsx"),
+  "./components/mockups/implementations-view/PhaseBoard.tsx": () => import("../components/mockups/implementations-view/PhaseBoard.tsx")
 };

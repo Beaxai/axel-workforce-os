@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   GlassCard,
   PinkButton,
@@ -12,7 +12,7 @@ import { useThemeStore } from "@/lib/theme-store";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { useAuthStore } from "@/lib/auth-store";
 import { api } from "@/lib/api";
-import { Search, Plus, Users, Building2, MapPin, ArrowRight, Mail, Phone } from "lucide-react";
+import { Search, Plus, Users, Building2, MapPin, ArrowRight, Mail, Phone, ChevronDown, ChevronRight, ArrowUpDown } from "lucide-react";
 
 type TabKey = "leads" | "prospects" | "clients";
 
@@ -56,6 +56,7 @@ interface Account {
   clientStage?: string;
   primaryContact?: string;
   assignedCsa?: string;
+  createdAt?: string;
 }
 
 interface Lead {
@@ -101,16 +102,22 @@ export default function Accounts() {
     { key: "clients", label: "Clients" },
   ];
 
-  // Honor a ?tab= deep link (e.g. from the account-detail breadcrumb).
-  const [activeTab, setActiveTab] = useState<TabKey>(() => {
-    const t = new URLSearchParams(window.location.search).get("tab");
-    if (t === "prospects" || t === "clients") return t;
-    if (t === "leads" && canUseLeads) return "leads";
-    return canUseLeads ? "leads" : "prospects";
-  });
+  // Tab state is URL-synced two-way: ?tab= is the source of truth so deep links,
+  // back/forward, and share links all behave consistently.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const rawTab = searchParams.get("tab");
+  const activeTab: TabKey =
+    rawTab === "prospects" || rawTab === "clients" ? rawTab
+    : rawTab === "leads" && canUseLeads ? "leads"
+    : canUseLeads ? "leads" : "prospects";
+  const setActiveTab = (t: TabKey) => setSearchParams({ tab: t });
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [search, setSearch] = useState("");
+  const [filterVertical, setFilterVertical] = useState("All");
+  const [filterState, setFilterState] = useState("All");
+  const [filterStage, setFilterStage] = useState("All");
+  const [sortBy, setSortBy] = useState<"recent" | "alpha" | "oldest">("recent");
 
   const [showCreateAccount, setShowCreateAccount] = useState(false);
   const [showCreateLead, setShowCreateLead] = useState(false);
@@ -217,7 +224,43 @@ export default function Accounts() {
     }
   };
 
-  const count = activeTab === "leads" ? leads.length : accounts.length;
+  // Client-side filter + sort for the account table (prospects/clients tabs)
+  const stateOptions = Array.from(new Set(accounts.map((a) => a.state).filter(Boolean) as string[])).sort();
+  const visibleAccounts = accounts
+    .filter((a) => filterVertical === "All" || a.vertical === filterVertical)
+    .filter((a) => filterState === "All" || a.state === filterState)
+    .filter((a) => filterStage === "All" || (a.clientStage || "Prospect") === filterStage)
+    .sort((a, b) => {
+      if (sortBy === "alpha") return a.businessName.localeCompare(b.businessName);
+      const ta = a.createdAt ? Date.parse(a.createdAt) : 0;
+      const tb = b.createdAt ? Date.parse(b.createdAt) : 0;
+      return sortBy === "oldest" ? ta - tb : tb - ta;
+    });
+
+  const count = activeTab === "leads" ? leads.length : visibleAccounts.length;
+
+  const pillStyle: React.CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    gap: "6px",
+    padding: "9px 12px",
+    borderRadius: "10px",
+    border: `1px solid ${inputBorder}`,
+    background: inputBg,
+    color: textMuted,
+    fontSize: "13px",
+    cursor: "pointer",
+  };
+  const pillSelectStyle: React.CSSProperties = {
+    background: "transparent",
+    border: "none",
+    outline: "none",
+    color: textPrimary,
+    fontSize: "13px",
+    fontWeight: 500,
+    cursor: "pointer",
+    appearance: "auto",
+  };
 
   return (
     <div>
@@ -230,7 +273,15 @@ export default function Accounts() {
           return (
             <button
               key={t.key}
-              onClick={() => { setActiveTab(t.key); setSearch(""); }}
+              onClick={() => {
+                setActiveTab(t.key);
+                setSearch("");
+                // Reset account filters so a stale filter from the other tab
+                // can't mask valid rows behind a false empty state.
+                setFilterVertical("All");
+                setFilterState("All");
+                setFilterStage("All");
+              }}
               style={{
                 padding: "10px 18px",
                 fontSize: "14px",
@@ -264,6 +315,41 @@ export default function Accounts() {
             onBlur={(e) => (e.currentTarget.style.borderColor = inputBorder)}
           />
         </div>
+
+        {activeTab !== "leads" && (
+          <>
+            <label style={pillStyle}>
+              <span>Vertical:</span>
+              <select value={filterVertical} onChange={(e) => setFilterVertical(e.target.value)} style={pillSelectStyle}>
+                <option value="All">All</option>
+                {VERTICALS.map((v) => <option key={v} value={v}>{v}</option>)}
+              </select>
+            </label>
+            <label style={pillStyle}>
+              <span>State:</span>
+              <select value={filterState} onChange={(e) => setFilterState(e.target.value)} style={pillSelectStyle}>
+                <option value="All">All</option>
+                {stateOptions.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </label>
+            <label style={pillStyle}>
+              <span>Stage:</span>
+              <select value={filterStage} onChange={(e) => setFilterStage(e.target.value)} style={pillSelectStyle}>
+                <option value="All">All</option>
+                {CLIENT_STAGES.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </label>
+            <label style={{ ...pillStyle, marginLeft: "auto" }}>
+              <ArrowUpDown style={{ width: "13px", height: "13px" }} />
+              <span>Sort:</span>
+              <select value={sortBy} onChange={(e) => setSortBy(e.target.value as "recent" | "alpha" | "oldest")} style={pillSelectStyle}>
+                <option value="recent">Most recent</option>
+                <option value="alpha">Alphabetical</option>
+                <option value="oldest">Oldest first</option>
+              </select>
+            </label>
+          </>
+        )}
 
         {canCreate && activeTab === "leads" && canUseLeads && (
           <PinkButton onClick={() => setShowCreateLead(true)} style={{ display: "flex", alignItems: "center", gap: "6px", marginLeft: "auto" }}>
@@ -348,49 +434,69 @@ export default function Accounts() {
           )}
         </div>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(400px, 1fr))", gap: "16px" }}>
-          {accounts.map((a) => (
-            <GlassCard
+        <GlassCard padding="0" style={{ overflow: "hidden" }}>
+          {/* Table header */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "2.5fr 1fr 0.7fr 1fr 0.8fr 1.3fr 24px",
+              gap: "16px",
+              padding: "14px 24px",
+              borderBottom: `1px solid ${inputBorder}`,
+              fontSize: "11px",
+              fontWeight: 600,
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
+              color: textMuted,
+            }}
+          >
+            <div>Company</div>
+            <div>Vertical</div>
+            <div>State</div>
+            <div style={{ textAlign: "right" }}>Annual Payroll</div>
+            <div style={{ textAlign: "right" }}>Employees</div>
+            <div style={{ paddingLeft: "16px" }}>Stage</div>
+            <div />
+          </div>
+          {/* Table rows */}
+          {visibleAccounts.map((a, i) => (
+            <div
               key={a.id}
-              padding="20px"
-              style={{ cursor: "pointer", transition: "border-color 0.15s" }}
               onClick={() => navigate(`/accounts/${a.id}`)}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "2.5fr 1fr 0.7fr 1fr 0.8fr 1.3fr 24px",
+                gap: "16px",
+                alignItems: "center",
+                padding: "14px 24px",
+                borderBottom: i === visibleAccounts.length - 1 ? "none" : `1px solid ${inputBorder}`,
+                cursor: "pointer",
+                transition: "background 0.15s",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = isDark ? "rgba(236,72,153,0.05)" : "rgba(236,72,153,0.04)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
             >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "12px" }}>
-                <div>
-                  <h3 style={{ fontSize: "16px", fontWeight: 600, color: textPrimary, margin: 0 }}>{a.businessName}</h3>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "4px" }}>
-                    {a.vertical && (
-                      <span style={{ fontSize: "13px", color: textMuted, display: "flex", alignItems: "center", gap: "4px" }}>
-                        <Building2 style={{ width: "12px", height: "12px" }} />
-                        {a.vertical}
-                      </span>
-                    )}
-                    {a.state && (
-                      <span style={{ fontSize: "13px", color: textMuted, display: "flex", alignItems: "center", gap: "4px" }}>
-                        <MapPin style={{ width: "12px", height: "12px" }} />
-                        {a.state}
-                      </span>
-                    )}
-                  </div>
-                </div>
+              <div style={{ fontSize: "14px", fontWeight: 600, color: textPrimary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.businessName}</div>
+              <div style={{ fontSize: "13px", color: textMuted }}>{a.vertical || "—"}</div>
+              <div style={{ fontSize: "13px", color: textMuted }}>{a.state || "—"}</div>
+              <div style={{ fontSize: "13px", color: textPrimary, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
+                {a.annualPayroll && parseFloat(a.annualPayroll) > 0
+                  ? parseFloat(a.annualPayroll).toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0 })
+                  : "—"}
+              </div>
+              <div style={{ fontSize: "13px", color: textPrimary, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{a.headcount ?? "—"}</div>
+              <div style={{ paddingLeft: "16px" }}>
                 <Badge label={a.clientStage || "Prospect"} color={STAGE_COLOR[a.clientStage || "Prospect"] || "gray"} />
               </div>
-
-              <div style={{ display: "flex", gap: "20px", fontSize: "13px", color: textMuted }}>
-                {a.annualPayroll && parseFloat(a.annualPayroll) > 0 && (
-                  <span>Payroll: {parseFloat(a.annualPayroll).toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0 })}</span>
-                )}
-                {a.headcount ? <span style={{ display: "flex", alignItems: "center", gap: "4px" }}><Users style={{ width: "12px", height: "12px" }} />{a.headcount} employees</span> : null}
-              </div>
-            </GlassCard>
+              <ChevronRight style={{ width: "16px", height: "16px", color: textMuted }} />
+            </div>
           ))}
-          {accounts.length === 0 && (
-            <GlassCard padding="40px" style={{ gridColumn: "1 / -1", textAlign: "center" }}>
-              <p style={{ color: textMuted, fontSize: "15px", margin: 0 }}>No {activeTab} found.</p>
-            </GlassCard>
+          {visibleAccounts.length === 0 && (
+            <p style={{ color: textMuted, fontSize: "15px", margin: 0, padding: "40px", textAlign: "center" }}>
+              No {activeTab} found{accounts.length > 0 ? " matching your filters" : ""}.
+            </p>
           )}
-        </div>
+        </GlassCard>
       )}
 
       {/* New Account modal */}
