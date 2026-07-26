@@ -44,7 +44,10 @@ type PolicyDoc = {
   uploadedByName?: string | null;
 };
 
-const fmtDate = (d?: string | null) => (d ? new Date(d).toLocaleDateString() : "—");
+const fmtDate = (d?: string | null) =>
+  d
+    ? `${new Date(d).toLocaleDateString()} ${new Date(d).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`
+    : "—";
 
 /** Muted one-word kind labels — the only secondary text a row is allowed. */
 const DEAL_DOC_KIND: Record<string, string> = {
@@ -99,12 +102,12 @@ function QuietRow({
   return (
     <div
       data-testid={testId}
+      className="docs-ac-grid docs-ac-row"
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       onClick={editing || !onOpen ? undefined : onOpen}
       role={onOpen && !editing ? "button" : undefined}
       style={{
-        display: "flex", alignItems: "center", gap: 12, padding: "13px 16px",
         cursor: onOpen && !editing ? "pointer" : "default",
         borderBottom: last ? "none" : `1px solid ${c.inputBorder}`,
         background: hover && onOpen && !editing ? c.inputBg : "transparent",
@@ -113,7 +116,10 @@ function QuietRow({
     >
       <FileText style={{ width: 16, height: 16, color: c.textMuted, flexShrink: 0 }} />
       {editing ? (
-        <span style={{ display: "flex", alignItems: "center", gap: 6, flex: 1 }} onClick={(e) => e.stopPropagation()}>
+        <span
+          style={{ display: "flex", alignItems: "center", gap: 6, gridColumn: "2 / -1", minWidth: 0 }}
+          onClick={(e) => e.stopPropagation()}
+        >
           <input
             autoFocus
             value={draft}
@@ -136,41 +142,112 @@ function QuietRow({
           </button>
         </span>
       ) : (
-        <span style={{ flex: 1, fontSize: 13.5, fontWeight: 500, color: c.textPrimary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          {name}
-        </span>
-      )}
-      {!editing && hover && onRename && (
-        <button
-          type="button"
-          aria-label={`Rename ${name}`}
-          data-testid={`${testId}-rename`}
-          onClick={(e) => { e.stopPropagation(); setDraft(name); setEditing(true); }}
-          style={iconBtn}
-        >
-          <Pencil style={{ width: 14, height: 14 }} />
-        </button>
-      )}
-      {!editing && hover && onDelete && (
-        <button
-          type="button"
-          aria-label={`Delete ${name}`}
-          data-testid={`${testId}-delete`}
-          onClick={(e) => { e.stopPropagation(); onDelete(); }}
-          style={{ ...iconBtn, color: "#ef4444" }}
-        >
-          <Trash2 style={{ width: 14, height: 14 }} />
-        </button>
-      )}
-      {!editing && (
         <>
-          <span style={{ width: 92, fontSize: 11.5, color: c.textMuted, whiteSpace: "nowrap" }}>{kind}</span>
-          <span style={{ width: 88, fontSize: 11.5, color: c.textMuted, whiteSpace: "nowrap" }}>{date}</span>
-          <span style={{ width: 120, fontSize: 11.5, color: c.textMuted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{by}</span>
+          {/* Name cell: name + mobile meta subline + hover action overlay. */}
+          <span className="docs-ac-name-cell">
+            <span
+              title={name}
+              style={{ fontSize: 13.5, fontWeight: 500, color: c.textPrimary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}
+            >
+              {name}
+            </span>
+            <span className="docs-ac-meta-mobile">
+              {kind} · {date} · {by}
+            </span>
+            {hover && (onRename || onDelete) && (
+              <span className="docs-ac-actions" onClick={(e) => e.stopPropagation()}>
+                {onRename && (
+                  <button
+                    type="button"
+                    aria-label={`Rename ${name}`}
+                    data-testid={`${testId}-rename`}
+                    onClick={() => { setDraft(name); setEditing(true); }}
+                    style={iconBtn}
+                  >
+                    <Pencil style={{ width: 14, height: 14 }} />
+                  </button>
+                )}
+                {onDelete && (
+                  <button
+                    type="button"
+                    aria-label={`Delete ${name}`}
+                    data-testid={`${testId}-delete`}
+                    onClick={onDelete}
+                    style={{ ...iconBtn, color: "#ef4444" }}
+                  >
+                    <Trash2 style={{ width: 14, height: 14 }} />
+                  </button>
+                )}
+              </span>
+            )}
+          </span>
+          <span className="docs-ac-meta docs-ac-col" style={{ color: c.textMuted }}>{kind}</span>
+          <span className="docs-ac-meta docs-ac-col" style={{ color: c.textMuted }}>{date}</span>
+          <span className="docs-ac-meta docs-ac-col" style={{ color: c.textMuted }}>{by}</span>
         </>
       )}
       {renaming ? null : null}
     </div>
+  );
+}
+
+/**
+ * Grid + container-query rules for the documents list ("Aligned Columns"
+ * layout). Columns stay perfectly aligned at any width; below 640px the
+ * meta columns collapse into a muted subline under the document name.
+ */
+function DocsListStyles({ hoverBg }: { hoverBg: string }) {
+  return (
+    <style>{`
+      .docs-ac-container { container-type: inline-size; }
+      .docs-ac-grid {
+        display: grid;
+        grid-template-columns: 16px minmax(0, 1fr) 92px 148px 120px;
+        gap: 12px;
+        align-items: center;
+      }
+      .docs-ac-header { padding: 12px 16px; }
+      .docs-ac-row { padding: 13px 16px; }
+      .docs-ac-meta {
+        font-size: 11.5px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .docs-ac-name-cell {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        min-width: 0;
+        padding-right: 4px;
+      }
+      .docs-ac-row:hover .docs-ac-name-cell { padding-right: 68px; }
+      .docs-ac-actions {
+        position: absolute;
+        right: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        display: flex;
+        gap: 4px;
+        background: ${hoverBg};
+        border-radius: 6px;
+      }
+      .docs-ac-meta-mobile {
+        display: none;
+        font-size: 11.5px;
+        margin-top: 3px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      @container (max-width: 640px) {
+        .docs-ac-grid { grid-template-columns: 16px minmax(0, 1fr); }
+        .docs-ac-col { display: none; }
+        .docs-ac-meta-mobile { display: block; color: inherit; }
+        .docs-ac-name-cell .docs-ac-meta-mobile { color: var(--docs-muted, rgba(255,255,255,0.55)); }
+      }
+    `}</style>
   );
 }
 
@@ -339,20 +416,22 @@ export function DocumentsTab({ dealId }: { dealId: string }) {
         let idx = 0;
         const isLast = () => ++idx === total;
         return (
-          <div style={{ border: `1px solid ${c.borderColor}`, borderRadius: 12, overflow: "hidden", background: c.cardBg }}>
+          <div className="docs-ac-container" style={{ ["--docs-muted" as string]: c.textMuted }}>
+            <DocsListStyles hoverBg={c.inputBg} />
+            <div style={{ border: `1px solid ${c.borderColor}`, borderRadius: 12, overflow: "hidden", background: c.cardBg }}>
             <div
               data-testid="documents-list-header"
+              className="docs-ac-grid docs-ac-header"
               style={{
-                display: "flex", alignItems: "center", gap: 12, padding: "12px 16px",
                 borderBottom: `1px solid ${c.inputBorder}`,
                 fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: c.textMuted,
               }}
             >
-              <span style={{ width: 16, flexShrink: 0 }} />
-              <span style={{ flex: 1 }}>Document</span>
-              <span style={{ width: 92 }}>Type</span>
-              <span style={{ width: 88 }}>Uploaded</span>
-              <span style={{ width: 120 }}>By</span>
+              <span />
+              <span>Document</span>
+              <span className="docs-ac-col">Type</span>
+              <span className="docs-ac-col">Uploaded</span>
+              <span className="docs-ac-col">By</span>
             </div>
             {pdfs.map((p) => (
               <QuietRow
@@ -405,6 +484,7 @@ export function DocumentsTab({ dealId }: { dealId: string }) {
             {total === 0 && (
               <p style={{ fontSize: 12.5, color: c.textMuted, margin: 0, padding: "14px 16px" }}>No documents yet.</p>
             )}
+            </div>
           </div>
         );
       })()}
