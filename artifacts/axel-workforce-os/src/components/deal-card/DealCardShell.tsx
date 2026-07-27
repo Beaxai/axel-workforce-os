@@ -227,18 +227,31 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
   // smoothly from node to node — much more responsive than per-node
   // pointerenter, and works on touch and between nodes.
   const phaseRowRef = useRef<HTMLDivElement | null>(null);
+  // While dragging, the handle follows the actual pointer (x in row-content
+  // coordinates); the span endpoint only snaps to a node once the pointer
+  // gets close to that node's center — not from far away.
+  const [phaseDragX, setPhaseDragX] = useState<number | null>(null);
   useEffect(() => {
+    const PAD = 18; // row horizontal padding
+    const SNAP = 0.35; // snap radius as a fraction of one cell width
     const move = (e: PointerEvent) => {
       const anchor = phaseDragRef.current;
       const row = phaseRowRef.current;
       if (anchor == null || !row) return;
       const r = row.getBoundingClientRect();
-      if (r.width <= 0) return;
-      // Nodes are flex:1 equal-width cells; snap to the nearest cell.
-      const idx = Math.max(0, Math.min(PHASES.length - 1, Math.floor(((e.clientX - r.left) / r.width) * PHASES.length)));
-      setPhaseSel((prev) => (prev && prev.a === anchor && prev.b === idx ? prev : { a: anchor, b: idx }));
+      const w = r.width - PAD * 2;
+      if (w <= 0) return;
+      const cw = w / PHASES.length; // nodes are flex:1 equal-width cells
+      const x = Math.max(0, Math.min(w, e.clientX - r.left - PAD));
+      setPhaseDragX(x);
+      const nearest = Math.max(0, Math.min(PHASES.length - 1, Math.floor(x / cw)));
+      const center = (nearest + 0.5) * cw;
+      // Only commit the endpoint when the pointer is near the node's center.
+      if (Math.abs(x - center) <= cw * SNAP) {
+        setPhaseSel((prev) => (prev && prev.a === anchor && prev.b === nearest ? prev : { a: anchor, b: nearest }));
+      }
     };
-    const up = () => { phaseDragRef.current = null; };
+    const up = () => { phaseDragRef.current = null; setPhaseDragX(null); };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
     window.addEventListener("pointercancel", up);
@@ -1012,7 +1025,23 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
                 </div>
               )}
             </div>
-            <div ref={phaseRowRef} style={{ display: "flex", alignItems: "flex-start", padding: "10px 18px 12px" }}>
+            <div ref={phaseRowRef} style={{ position: "relative", display: "flex", alignItems: "flex-start", padding: "10px 18px 12px" }}>
+              {/* Live drag feedback: a pink handle rides at the exact pointer
+                  position with a pull-line back to the anchor node; the span
+                  itself only snaps when the handle nears a node. */}
+              {phaseDragX != null && phaseSel && phaseRowRef.current && (() => {
+                const w = phaseRowRef.current.getBoundingClientRect().width - 36;
+                if (w <= 0) return null;
+                const cw = w / PHASES.length;
+                const ax = 18 + (phaseSel.a + 0.5) * cw; // anchor node center
+                const px = 18 + phaseDragX; // pointer position
+                return (
+                  <div style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 2 }} data-testid="drag-phase-overlay">
+                    <div style={{ position: "absolute", top: 15, left: Math.min(ax, px), width: Math.abs(px - ax), height: 2, background: "var(--accent-primary)", opacity: 0.8 }} />
+                    <div style={{ position: "absolute", top: 9, left: px - 7, width: 14, height: 14, borderRadius: "50%", background: "var(--accent-primary)", boxShadow: "0 0 12px rgba(233,30,140,0.8)", border: "2px solid rgba(255,255,255,0.85)" }} />
+                  </div>
+                );
+              })()}
               {PHASES.map((label, i) => {
                 const done = i < currentPhase;
                 const current = i === currentPhase;
