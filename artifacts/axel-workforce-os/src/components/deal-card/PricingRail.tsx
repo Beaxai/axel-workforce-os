@@ -1,7 +1,8 @@
 /**
- * Phase 4C — right-rail pricing + decision block (Stitch layout, Axel tokens).
- * Three carded sections: Workers' Compensation Pricing, WFS Pricing, and
- * Submission Actions. Approve (gradient CTA — the single primary CTA per spec)
+ * Pricing + decision block — formerly the deal-card right rail, now rendered
+ * as a card row at the top of the Quote tab (header carries the quiet
+ * est-premium bubble). Three carded sections: Workers' Compensation Pricing,
+ * WFS Pricing, and Submission Actions. Approve (gradient CTA — the single primary CTA per spec)
  * and Decline render only when the server grants `canApprove`
  * (UNDERWRITER/ADMIN, §8). Tokens only; verified light + dark.
  */
@@ -80,7 +81,7 @@ export default function PricingRail({
         <div style={card}>
           <div style={subLabel}>Total Est. Premium</div>
           <div style={{ fontSize: 22, fontWeight: 600, color: c.textPrimary, marginTop: 2 }}>{fmtUsd(wcPremium)}</div>
-          <button style={modifyBtn} onClick={onModify}>Modify</button>
+          {onModify && <button style={modifyBtn} onClick={onModify}>Modify</button>}
           <div style={{ fontSize: 10, color: c.textMuted, marginTop: 8, fontStyle: "italic" }}>
             Required documents missing for binding.
           </div>
@@ -97,7 +98,7 @@ export default function PricingRail({
               <div style={{ fontSize: 22, fontWeight: 600, color: c.textPrimary, marginTop: 2 }}>{fmtUsd(wfsMonthly)}</div>
               <div style={{ ...subLabel, marginTop: 8 }}>Per Employee</div>
               <div style={{ fontSize: 13, fontWeight: 500, color: c.textPrimary }}>{hasValue(wfsPepm) ? `$${wfsPepm}` : "\u2014"}</div>
-              <button style={modifyBtn} onClick={onModify}>Modify</button>
+              {onModify && <button style={modifyBtn} onClick={onModify}>Modify</button>}
             </>
           ) : (
             <>

@@ -166,14 +166,14 @@ function DealTeamAvatars({ team, directory }: { team?: DealTeamMember[]; directo
   );
 }
 
-/** EXMOD KPI color — mirrors the Hazometer gauge rating thresholds/colors. */
-function exModColor(value: number, isDark: boolean): string {
-  if (value > 2.0) return "#cc0022"; // Severe (crimson)
-  if (value > 1.5) return "#ff073a"; // High Risk (red)
-  if (value > 1.2) return "#ff6e27"; // Elevated (orange)
-  if (value > 1.0) return "#fff01f"; // Above Average (yellow)
-  if (value >= 0.95) return isDark ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.45)"; // Average (grey)
-  return "#39ff14"; // Excellent (green)
+/** EXMOD health dot — three-tier good / medium / bad scale (Status Dot design).
+ *  Below 1.00 is better-than-average loss experience (good), up to 1.25 is
+ *  watch territory (medium), above that is bad. Hex colors so the soft-glow
+ *  shadow (`${color}55`) stays a valid 8-digit hex. */
+function exModColor(value: number): string {
+  if (value > 1.25) return "#ef4444"; // bad (red)
+  if (value > 1.0) return "#FFB547"; // medium (amber)
+  return "#00D68F"; // good (green)
 }
 
 export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }: DealCardShellProps) {
@@ -213,6 +213,7 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
   // KPI fallbacks sourced from the deal's quote workforce profile (the deal-level
   // columns are often unset when the deal was created from the quote flow).
   const [quoteStats, setQuoteStats] = useState<{ locations: number | null; eMod: number | null }>({ locations: null, eMod: null });
+  const [quoteWcPremium, setQuoteWcPremium] = useState<string | null>(null);
   // Marker popup: which location detail panel is open + where to anchor it.
   const [markerPopup, setMarkerPopup] = useState<{ marker: GeoMarker; info: MarkerClickInfo } | null>(null);
   // Backing quote for the header map (id + raw workforce profile) so popup
@@ -308,6 +309,8 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
     setOpenSection(null);
     setMapMarkers([]);
     setQuoteStats({ locations: null, eMod: null });
+    setQuoteWcPremium(null); // primary reset — never show prior deal's premium bubble while loading
+    setQuoteDetail(null); // don't reopen a prior deal's KPI detail view (would hide the pricing row)
     setMarkerPopup(null);
     fetchSubmission();
     fetchActivity();
@@ -383,13 +386,17 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
       setWfsPricing({ monthly: null, pepm: null });
       setWfsError(null);
       setWfsBusy(false);
+      setQuoteWcPremium(null);
       try {
-        const q = await api.get<{ id: string; workforceProfile?: WorkforceProfileRaw; monthlyWfsFee?: string | null; pepm?: string | null }>(`/quotes/by-deal/${dealId}`);
+        const q = await api.get<{ id: string; workforceProfile?: WorkforceProfileRaw; monthlyWfsFee?: string | null; pepm?: string | null; wcPremium?: string | null }>(`/quotes/by-deal/${dealId}`);
         if (active) {
           setWfsPricing({
             monthly: q?.monthlyWfsFee && parseFloat(q.monthlyWfsFee) > 0 ? q.monthlyWfsFee : null,
             pepm: q?.pepm && parseFloat(q.pepm) > 0 ? q.pepm : null,
           });
+          // Deals priced through the quote flow carry the premium on the quote
+          // row, not deals.wcPremium — keep it as the header-bubble fallback.
+          setQuoteWcPremium(q?.wcPremium && parseFloat(q.wcPremium) > 0 ? q.wcPremium : null);
         }
         const wp = q?.workforceProfile;
         const wpl = wp?.locations;
@@ -673,8 +680,17 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
     { label: "LOCATIONS", metric: "locations" as IndicationMetric, Icon: MapPin, value: fmtNum(locationsVal), exModColor: null as string | null },
     { label: "EMPLOYEES", metric: "employees" as IndicationMetric, Icon: Users, value: fmtNum(fieldValue(sections, "workforce", "employeeCountFt")), exModColor: null as string | null },
     { label: "PAYROLL", metric: "payroll" as IndicationMetric, Icon: Banknote, value: fmtMoneyShort(fieldValue(sections, "workforce", "annualPayroll")), exModColor: null as string | null },
-    { label: "EXMOD", metric: "exmod" as IndicationMetric, Icon: Gauge, value: exModVal ?? "\u2014", exModColor: exModNum == null ? null : exModColor(exModNum, c.isDark) },
+    { label: "EXMOD", metric: "exmod" as IndicationMetric, Icon: Gauge, value: exModVal ?? "\u2014", exModColor: exModNum == null ? null : exModColor(exModNum) },
   ];
+
+  // Est. premium for the header bubble — deal-level column first, then the
+  // quote-row premium (quote-flow deals never backfill deals.wcPremium).
+  // Hidden entirely until the deal has a priced WC premium.
+  const wcPremiumSrc = deal?.wcPremium != null && deal.wcPremium !== "" ? deal.wcPremium : quoteWcPremium;
+  const wcPremiumNum = wcPremiumSrc == null || wcPremiumSrc === "" ? NaN : parseFloat(String(wcPremiumSrc));
+  const estPremiumFmt = !isNaN(wcPremiumNum) && wcPremiumNum > 0
+    ? wcPremiumNum.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 })
+    : null;
 
   // Header-over-map palette: glyphs sit on the map artwork, so these branch on
   // theme like the map itself (intentional artwork greys, not surface tokens).
@@ -779,21 +795,16 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
                 const isDash = value === "\u2014";
                 const numberStyle: CSSProperties = {
                   fontSize: 26, fontWeight: 600, lineHeight: 1.15, marginTop: 3, fontVariantNumeric: "tabular-nums",
-                  ...(isDash
-                    ? { color: hdrValue, textShadow: hdrValueGlow }
-                    : label === "EXMOD" && exColor
-                      ? {
-                          // Muted/pale version of the exmod rating color — no glow,
-                          // washed toward the header surface so it doesn't dominate.
-                          color: c.isDark
-                            ? `color-mix(in srgb, ${exColor} 55%, rgba(255,255,255,0.55))`
-                            : `color-mix(in srgb, ${exColor} 55%, rgba(15,15,20,0.35))`,
-                        }
-                      : {
-                          // Flat primary accent number (LOCATIONS / EMPLOYEES / PAYROLL).
-                          color: "var(--accent-primary)",
-                        }),
+                  ...(isDash || label === "EXMOD"
+                    ? // EXMOD stays neutral like the other header text — health is
+                      // conveyed by the status dot beside it, never by tinted numerals.
+                      { color: hdrValue, textShadow: hdrValueGlow }
+                    : {
+                        // Flat primary accent number (LOCATIONS / EMPLOYEES / PAYROLL).
+                        color: "var(--accent-primary)",
+                      }),
                 };
+                const showDot = label === "EXMOD" && !isDash && exColor;
                 return (
                   // KPI opens the Quote tab's editable detail view for this
                   // metric (from any tab) — re-enables pointer events on the
@@ -811,13 +822,54 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
                       <Icon style={{ width: 13, height: 13, color: hdrSoftGrey }} />
                       {label}
                     </div>
-                    <div style={numberStyle}>{value}</div>
+                    {showDot ? (
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6 }}>
+                        <div style={numberStyle} data-testid="text-exmod-value">{value}</div>
+                        <span
+                          data-testid="dot-exmod-health"
+                          style={{
+                            width: 7, height: 7, borderRadius: "50%", flexShrink: 0, marginTop: 3,
+                            background: exColor as string,
+                            boxShadow: `0 0 8px ${exColor}55`,
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <div style={numberStyle}>{value}</div>
+                    )}
                   </div>
                 );
               })}
               <X onClick={onClose} style={{ width: 18, height: 18, color: c.textMuted, cursor: "pointer", flexShrink: 0, marginTop: 1, pointerEvents: "auto" }} />
             </div>
           </div>
+
+          {/* Est. premium bubble — quiet pill under the KPI row ("Ghost Line"
+              graduation). Whisper-weight: no CTA look; clicking opens the
+              Quote tab where pricing actions now live. */}
+          {estPremiumFmt && (
+            <div style={{ position: "relative", zIndex: 1, display: "flex", justifyContent: "flex-end", padding: "10px 44px 0 18px", pointerEvents: "none" }}>
+              <div
+                role="button"
+                tabIndex={0}
+                data-testid="bubble-est-premium"
+                title="View quote details"
+                onClick={() => setTab("quote")}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setTab("quote"); } }}
+                style={{
+                  pointerEvents: "auto", cursor: "pointer", display: "flex", alignItems: "center", gap: 8,
+                  padding: "6px 12px", borderRadius: 9999,
+                  background: c.isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)",
+                  border: `1px solid ${c.isDark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.10)"}`,
+                  boxShadow: "0 2px 10px rgba(0,0,0,0.25)",
+                }}
+              >
+                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "rgba(233,30,140,0.6)", flexShrink: 0 }} />
+                <span style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600, color: hdrSoftGrey }}>Est. Premium</span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: hdrValue, fontVariantNumeric: "tabular-nums" }}>{estPremiumFmt}</span>
+              </div>
+            </div>
+          )}
 
           {/* 6-phase macro tracker (display-only) — map continues behind it.
               Completed = soft grey; current = hollow glowing node.
@@ -935,6 +987,27 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
                 {tab === "subjectivities" && <SubjectivitiesTab dealId={dealId} />}
                 {tab === "documents" && <DocumentsTab dealId={dealId} />}
                 {tab === "tasks" && <TasksTab dealId={dealId} />}
+                {/* Pricing & decisions — formerly the right rail; now a card row
+                    at the top of the Quote tab (hidden while a KPI detail view
+                    is open to keep that surface focused). */}
+                {tab === "quote" && !quoteDetail && payload && (
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14, alignItems: "start", marginBottom: 18 }}>
+                    <PricingRail
+                      wcPremium={((deal?.wcPremium as string) || quoteWcPremium) ?? null}
+                      wfsMonthly={wfsPricing.monthly}
+                      wfsPepm={wfsPricing.pepm ?? ((deal?.wfsPepmRate as string) || null)}
+                      wfsBusy={wfsBusy}
+                      wfsError={wfsError}
+                      onGetWfsQuote={handleGetWfsQuote}
+                      canApprove={payload.canApprove}
+                      busy={decisionBusy}
+                      openBlocking={openBlocking}
+                      approveError={approveError}
+                      onApprove={handleApprove}
+                      onDecline={handleDecline}
+                    />
+                  </div>
+                )}
                 {tab === "quote" && (
                   <QuoteTab
                     dealId={dealId}
@@ -954,26 +1027,8 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
             )}
           </div>
 
-          {/* Right rail */}
-          {payload && (
-            <div style={{ width: 224, flexShrink: 0, borderLeft: `1px solid ${c.borderColor}`, padding: "14px 14px 18px", display: "flex", flexDirection: "column", gap: 14, overflow: "auto" }}>
-              <PricingRail
-                wcPremium={(deal?.wcPremium as string) ?? null}
-                wfsMonthly={wfsPricing.monthly}
-                wfsPepm={wfsPricing.pepm ?? ((deal?.wfsPepmRate as string) || null)}
-                wfsBusy={wfsBusy}
-                wfsError={wfsError}
-                onGetWfsQuote={handleGetWfsQuote}
-                canApprove={payload.canApprove}
-                busy={decisionBusy}
-                openBlocking={openBlocking}
-                approveError={approveError}
-                onApprove={handleApprove}
-                onDecline={handleDecline}
-                onModify={() => setTab("quote")}
-              />
-            </div>
-          )}
+          {/* Right rail removed — pricing & decisions moved into the Quote tab;
+              tabs get the full card width. */}
         </div>
       </div>
 
