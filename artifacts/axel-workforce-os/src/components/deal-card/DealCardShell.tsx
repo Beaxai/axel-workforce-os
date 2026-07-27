@@ -222,10 +222,31 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
   // period the deal spent in the selected phases.
   const [phaseSel, setPhaseSel] = useState<{ a: number; b: number } | null>(null);
   const phaseDragRef = useRef<number | null>(null);
+  // Row containing the phase nodes; during a drag we hit-test the pointer's
+  // x position against it (window-level pointermove) so the selection pulls
+  // smoothly from node to node — much more responsive than per-node
+  // pointerenter, and works on touch and between nodes.
+  const phaseRowRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
+    const move = (e: PointerEvent) => {
+      const anchor = phaseDragRef.current;
+      const row = phaseRowRef.current;
+      if (anchor == null || !row) return;
+      const r = row.getBoundingClientRect();
+      if (r.width <= 0) return;
+      // Nodes are flex:1 equal-width cells; snap to the nearest cell.
+      const idx = Math.max(0, Math.min(PHASES.length - 1, Math.floor(((e.clientX - r.left) / r.width) * PHASES.length)));
+      setPhaseSel((prev) => (prev && prev.a === anchor && prev.b === idx ? prev : { a: anchor, b: idx }));
+    };
     const up = () => { phaseDragRef.current = null; };
+    window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
-    return () => window.removeEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+    return () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+    };
   }, []);
   // Backing quote for the header map (id + raw workforce profile) so popup
   // edits can be persisted via PATCH /quotes/:id.
@@ -991,7 +1012,7 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
                 </div>
               )}
             </div>
-            <div style={{ display: "flex", alignItems: "flex-start", padding: "10px 18px 12px" }}>
+            <div ref={phaseRowRef} style={{ display: "flex", alignItems: "flex-start", padding: "10px 18px 12px" }}>
               {PHASES.map((label, i) => {
                 const done = i < currentPhase;
                 const current = i === currentPhase;
@@ -1009,8 +1030,8 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
                     data-testid={`node-phase-${i}`}
                     onPointerDown={(e) => {
                       e.preventDefault();
-                      // release implicit capture (touch) so pointerenter fires on
-                      // sibling nodes while dragging across the bar
+                      // release implicit capture (touch) so the window-level
+                      // pointermove drag hit-testing keeps receiving events
                       (e.target as Element).releasePointerCapture?.(e.pointerId);
                       // Click semantics: 1st click selects a stage, 2nd click
                       // (on another node) draws the span between them, 3rd
@@ -1023,15 +1044,14 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
                           setPhaseSel(null);
                           return;
                         }
-                        // 2nd click: extend single selection into a span
+                        // 2nd click: extend single selection into a span; keep
+                        // dragging from the original anchor to adjust it live
+                        phaseDragRef.current = lo;
                         setPhaseSel({ a: lo, b: i });
                         return;
                       }
                       phaseDragRef.current = i;
                       setPhaseSel({ a: i, b: i });
-                    }}
-                    onPointerEnter={(e) => {
-                      if (phaseDragRef.current != null && e.buttons === 1) setPhaseSel({ a: phaseDragRef.current, b: i });
                     }}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === " ") {
