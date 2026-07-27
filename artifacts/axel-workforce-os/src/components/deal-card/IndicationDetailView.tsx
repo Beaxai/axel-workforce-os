@@ -7,7 +7,7 @@
  * in the Overview activity feed. Saving re-rates the quote automatically
  * (owner-review flag: see api-server lib/indication-rerate.ts).
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, MapPin, Users, DollarSign, Gauge, Plus, Trash2, History, CheckCircle2, AlertTriangle, Pencil, Search, ChevronDown } from "lucide-react";
 import { api } from "@/lib/api";
 import { useThemeColors } from "@/lib/use-theme-colors";
@@ -34,6 +34,7 @@ type WpLocation = {
 };
 
 type AddressSuggestion = { label: string; street1: string; city: string; state: string; zip: string };
+type ClassCodeSuggestion = { classCode: string; description: string; confidence: number; reasoning: string };
 export type WorkforceProfileShape = {
   locations?: WpLocation[];
   eMod?: number;
@@ -100,6 +101,88 @@ export default function IndicationDetailView({
   const [addManual, setAddManual] = useState(false);
   const [newLoc, setNewLoc] = useState<Partial<WpLocation>>({ state: "" });
 
+  // Class-code advisor (Employees view) — mirrors the application wizard's AI
+  // Class Code Advisor: describe the work in plain language, get NCCI
+  // suggestions from POST /ai/classify (server-side cached). `ci: null` means
+  // "add a new class code to location li"; a number reclassifies that row.
+  const [ccTarget, setCcTarget] = useState<{ li: number; ci: number | null } | null>(null);
+  const [ccQuery, setCcQuery] = useState("");
+  const [ccSuggestions, setCcSuggestions] = useState<ClassCodeSuggestion[]>([]);
+  const [ccLoading, setCcLoading] = useState(false);
+  const [ccError, setCcError] = useState<string | null>(null);
+
+  // Every advisor open/close bumps this token; in-flight classify responses
+  // that don't match the latest token are dropped, so stale suggestions can
+  // never be applied to a different target row/location.
+  const ccReqSeq = useRef(0);
+
+  const openCcAdvisor = (li: number, ci: number | null) => {
+    ccReqSeq.current += 1;
+    setCcTarget({ li, ci });
+    setCcQuery("");
+    setCcSuggestions([]);
+    setCcError(null);
+    setCcLoading(false);
+  };
+  const closeCcAdvisor = () => {
+    ccReqSeq.current += 1;
+    setCcTarget(null);
+    setCcSuggestions([]);
+    setCcError(null);
+    setCcLoading(false);
+  };
+
+  const runCcSuggest = async () => {
+    const q = ccQuery.trim();
+    if (q.length < 5 || ccLoading || !ccTarget) return;
+    const token = ++ccReqSeq.current;
+    setCcLoading(true);
+    setCcError(null);
+    setCcSuggestions([]);
+    try {
+      const state = (draft.locations ?? [])[ccTarget.li]?.state || undefined;
+      const res = await api.post<{ success: boolean; data: ClassCodeSuggestion[] }>("/ai/classify", { description: q, state });
+      if (token !== ccReqSeq.current) return; // advisor moved on — drop stale response
+      setCcSuggestions(res.data || []);
+      if (!res.data?.length) setCcError("No matching class codes found — try describing the day-to-day duties in more detail.");
+    } catch {
+      if (token === ccReqSeq.current) setCcError("Could not get suggestions. Please try again.");
+    } finally {
+      if (token === ccReqSeq.current) setCcLoading(false);
+    }
+  };
+
+  const applyCcSuggestion = (sug: ClassCodeSuggestion) => {
+    if (!ccTarget) return;
+    const { li, ci } = ccTarget;
+    setDraft((d) => {
+      const locs = [...(d.locations ?? [])];
+      const loc = { ...locs[li] };
+      const ccs = [...(loc.classCodes ?? [])];
+      if (ci == null) {
+        ccs.push({ classCode: sug.classCode, description: sug.description, fullTimeEmployees: 0, partTimeEmployees: 0, annualPayroll: 0 });
+      } else {
+        ccs[ci] = { ...ccs[ci], classCode: sug.classCode, description: sug.description };
+      }
+      loc.classCodes = ccs;
+      locs[li] = loc;
+      return { ...d, locations: locs };
+    });
+    closeCcAdvisor();
+  };
+
+  const removeClassCode = (li: number, ci: number) => {
+    setDraft((d) => {
+      const locs = [...(d.locations ?? [])];
+      const loc = { ...locs[li] };
+      loc.classCodes = (loc.classCodes ?? []).filter((_, i) => i !== ci);
+      locs[li] = loc;
+      return { ...d, locations: locs };
+    });
+    // keep the advisor coherent if it pointed at/after the removed row
+    setCcTarget((t) => (t && t.li === li && t.ci != null && t.ci >= ci ? null : t));
+  };
+
   // Debounced address lookup for the smart-add bar.
   useEffect(() => {
     if (metric !== "locations" || addManual) return;
@@ -129,6 +212,13 @@ export default function IndicationDetailView({
 
   useEffect(() => {
     setDraft(JSON.parse(JSON.stringify(profile || {})));
+    // Draft reset invalidates advisor row indices — close it and drop any
+    // in-flight classify response.
+    ccReqSeq.current += 1;
+    setCcTarget(null);
+    setCcSuggestions([]);
+    setCcError(null);
+    setCcLoading(false);
   }, [profile, metric]);
   useEffect(() => setIsPending(pendingReview), [pendingReview]);
 
@@ -422,6 +512,59 @@ export default function IndicationDetailView({
     </div>
   );
 
+  // Inline AI class-code advisor panel — rendered under the row being
+  // reclassified, or at the bottom of a location card when adding.
+  const renderCcAdvisor = (li: number) => (
+    <div style={{ border: `1px solid ${c.borderColor}`, borderRadius: 10, padding: 12, background: c.hoverBg, display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ fontSize: 11, letterSpacing: "0.06em", textTransform: "uppercase", fontWeight: 600, color: c.textMuted }}>
+        {ccTarget?.ci == null ? "Add a class code" : "Reclassify this work"}
+      </div>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <input
+          data-testid="input-cc-advisor"
+          autoFocus
+          value={ccQuery}
+          onChange={(e) => setCcQuery(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") runCcSuggest(); if (e.key === "Escape") closeCcAdvisor(); }}
+          placeholder="Describe the work — e.g. “greenhouse workers tending cannabis plants”"
+          style={{ ...inputStyle, flex: "1 1 260px", minWidth: 0 }}
+        />
+        <PinkButton
+          data-testid="button-cc-suggest"
+          onClick={runCcSuggest}
+          style={{ padding: "8px 16px", fontSize: 12, opacity: ccLoading || ccQuery.trim().length < 5 ? 0.6 : 1 }}
+        >
+          {ccLoading ? "Thinking…" : "Suggest codes"}
+        </PinkButton>
+        <GhostButton data-testid="button-cc-cancel" onClick={closeCcAdvisor} style={{ padding: "8px 14px", fontSize: 12 }}>Cancel</GhostButton>
+      </div>
+      {ccError && <div style={{ fontSize: 12, color: "#FFB547" }}>{ccError}</div>}
+      {ccSuggestions.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {ccSuggestions.map((sug, i) => (
+            <button
+              key={`${sug.classCode}-${i}`}
+              type="button"
+              data-testid={`button-cc-suggestion-${i}`}
+              onClick={() => applyCcSuggestion(sug)}
+              style={{ textAlign: "left", background: c.cardBg, border: `1px solid ${c.borderColor}`, borderRadius: 8, padding: "8px 10px", cursor: "pointer", fontFamily: "inherit", color: c.textPrimary }}
+            >
+              <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+                <span style={{ fontSize: 12.5, fontWeight: 700 }}>Class {sug.classCode}</span>
+                <span style={{ fontSize: 12, color: c.textSecondary }}>{sug.description}</span>
+                <span style={{ marginLeft: "auto", fontSize: 10.5, color: c.textMuted }}>{Math.round((sug.confidence || 0) * 100)}% match</span>
+              </div>
+              {sug.reasoning && <div style={{ fontSize: 11, color: c.textMuted, marginTop: 3, lineHeight: 1.45 }}>{sug.reasoning}</div>}
+            </button>
+          ))}
+        </div>
+      )}
+      <div style={{ fontSize: 10.5, color: c.textMuted }}>
+        Suggestions use the location&rsquo;s state ({(draft.locations ?? [])[li]?.state || "—"}) — pick one to apply it{ccTarget?.ci == null ? ", then fill in headcounts" : ""}.
+      </div>
+    </div>
+  );
+
   const renderPerClassCodeEditor = (kind: "employees" | "payroll") => (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {locations.map((loc, li) => (
@@ -431,35 +574,79 @@ export default function IndicationDetailView({
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {(loc.classCodes || []).map((cc, ci) => (
-              <div key={ci} style={{ display: "flex", alignItems: "flex-end", gap: 10, flexWrap: "wrap", borderTop: ci > 0 ? `1px solid ${c.borderColor}` : undefined, paddingTop: ci > 0 ? 10 : 0 }}>
-                <div style={{ flex: "1 1 180px", minWidth: 0 }}>
-                  <div style={labelStyle}>Class {cc.classCode || "—"}</div>
-                  <div style={{ fontSize: 12, color: c.textMuted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                    {cc.description || "No description"}
+              <div key={ci} style={{ display: "flex", flexDirection: "column", gap: 10, borderTop: ci > 0 ? `1px solid ${c.borderColor}` : undefined, paddingTop: ci > 0 ? 10 : 0 }}>
+                <div style={{ display: "flex", alignItems: "flex-end", gap: 10, flexWrap: "wrap" }}>
+                  <div style={{ flex: "1 1 180px", minWidth: 0 }}>
+                    <div style={labelStyle}>Class {cc.classCode || "—"}</div>
+                    <div style={{ fontSize: 12, color: c.textMuted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {cc.description || "No description"}
+                    </div>
                   </div>
+                  {kind === "employees" ? (
+                    <>
+                      <div style={{ width: 110 }}>
+                        <div style={labelStyle}>Full-time</div>
+                        <input type="number" min={0} disabled={!editable} value={Number(cc.fullTimeEmployees) || 0}
+                          onChange={(e) => patchClassCode(li, ci, { fullTimeEmployees: Math.max(0, Math.floor(Number(e.target.value) || 0)) })} style={inputStyle} />
+                      </div>
+                      <div style={{ width: 110 }}>
+                        <div style={labelStyle}>Part-time</div>
+                        <input type="number" min={0} disabled={!editable} value={Number(cc.partTimeEmployees) || 0}
+                          onChange={(e) => patchClassCode(li, ci, { partTimeEmployees: Math.max(0, Math.floor(Number(e.target.value) || 0)) })} style={inputStyle} />
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ width: 180 }}>
+                      <div style={labelStyle}>Annual payroll ($)</div>
+                      <input type="number" min={0} step={1000} disabled={!editable} value={Number(cc.annualPayroll) || 0}
+                        onChange={(e) => patchClassCode(li, ci, { annualPayroll: Math.max(0, Number(e.target.value) || 0) })} style={inputStyle} />
+                    </div>
+                  )}
+                  {kind === "employees" && editable && (
+                    <div style={{ display: "flex", gap: 6, paddingBottom: 5 }}>
+                      <GhostButton
+                        data-testid={`button-reclassify-cc-${li}-${ci}`}
+                        title="Reclassify — describe the work and pick a better class code"
+                        onClick={() => openCcAdvisor(li, ci)}
+                        style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 10px", fontSize: 11.5 }}
+                      >
+                        <Search style={{ width: 12, height: 12 }} />Reclassify
+                      </GhostButton>
+                      {(loc.classCodes?.length ?? 0) > 1 && (
+                        // each location must keep at least one class code (server enforces it)
+                        <GhostButton
+                          data-testid={`button-remove-cc-${li}-${ci}`}
+                          title="Remove this class code"
+                          onClick={() => removeClassCode(li, ci)}
+                          style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: 6 }}
+                        >
+                          <Trash2 style={{ width: 13, height: 13 }} />
+                        </GhostButton>
+                      )}
+                    </div>
+                  )}
                 </div>
-                {kind === "employees" ? (
-                  <>
-                    <div style={{ width: 110 }}>
-                      <div style={labelStyle}>Full-time</div>
-                      <input type="number" min={0} disabled={!editable} value={Number(cc.fullTimeEmployees) || 0}
-                        onChange={(e) => patchClassCode(li, ci, { fullTimeEmployees: Math.max(0, Math.floor(Number(e.target.value) || 0)) })} style={inputStyle} />
-                    </div>
-                    <div style={{ width: 110 }}>
-                      <div style={labelStyle}>Part-time</div>
-                      <input type="number" min={0} disabled={!editable} value={Number(cc.partTimeEmployees) || 0}
-                        onChange={(e) => patchClassCode(li, ci, { partTimeEmployees: Math.max(0, Math.floor(Number(e.target.value) || 0)) })} style={inputStyle} />
-                    </div>
-                  </>
-                ) : (
-                  <div style={{ width: 180 }}>
-                    <div style={labelStyle}>Annual payroll ($)</div>
-                    <input type="number" min={0} step={1000} disabled={!editable} value={Number(cc.annualPayroll) || 0}
-                      onChange={(e) => patchClassCode(li, ci, { annualPayroll: Math.max(0, Number(e.target.value) || 0) })} style={inputStyle} />
-                  </div>
-                )}
+                {ccTarget && ccTarget.li === li && ccTarget.ci === ci && renderCcAdvisor(li)}
               </div>
             ))}
+            {kind === "employees" && editable && (
+              ccTarget && ccTarget.li === li && ccTarget.ci == null ? (
+                renderCcAdvisor(li)
+              ) : (
+                <button
+                  type="button"
+                  data-testid={`button-add-classcode-${li}`}
+                  onClick={() => openCcAdvisor(li, null)}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 6, alignSelf: "flex-start",
+                    background: "none", border: `1px dashed ${c.borderColor}`, borderRadius: 8,
+                    padding: "6px 12px", fontSize: 12, color: c.textSecondary, cursor: "pointer", fontFamily: "inherit",
+                  }}
+                >
+                  <Plus style={{ width: 13, height: 13 }} />Add class code
+                </button>
+              )
+            )}
           </div>
         </div>
       ))}
