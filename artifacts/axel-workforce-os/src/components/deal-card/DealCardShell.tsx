@@ -949,14 +949,17 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
           )}
 
           {/* 6-phase macro tracker — map continues behind it. Also a slide bar:
-              click a node (or drag across nodes) to select a phase span, which
-              becomes a global time filter for the dialog (activity, RFIs,
-              documents, tasks). Click the single selected node again — or the
-              × on the pill — to clear. pointerEvents: none on the row lets map
-              clicks through; each node re-enables them. */}
+              1st click selects a stage, 2nd click on another node draws the
+              span between them, 3rd click reverts to the full timeline. The
+              selection is a global time filter for the dialog (activity, RFIs,
+              documents, tasks). The pill slot has a fixed height so the dialog
+              never resizes. pointerEvents: none on the row lets map clicks
+              through; each node re-enables them. */}
           <div style={{ position: "relative", zIndex: 1, marginTop: "auto", pointerEvents: "none" }}>
-            {timeWindow && (
-              <div style={{ display: "flex", justifyContent: "center", padding: "0 18px" }}>
+            {/* Fixed-height slot so showing/hiding the pill never changes the
+                dialog size (no jump on screen). */}
+            <div style={{ display: "flex", justifyContent: "center", padding: "0 18px", height: 26, alignItems: "center" }}>
+              {timeWindow && (
                 <div
                   data-testid="pill-phase-filter"
                   style={{
@@ -984,8 +987,8 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
                     <X style={{ width: 12, height: 12, color: "var(--accent-primary)" }} />
                   </button>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
             <div style={{ display: "flex", alignItems: "flex-start", padding: "10px 18px 12px" }}>
               {PHASES.map((label, i) => {
                 const done = i < currentPhase;
@@ -1007,14 +1010,19 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
                       // release implicit capture (touch) so pointerenter fires on
                       // sibling nodes while dragging across the bar
                       (e.target as Element).releasePointerCapture?.(e.pointerId);
-                      // shift-click extends the existing selection to this node
-                      if (e.shiftKey && phaseSel) {
-                        setPhaseSel({ a: phaseSel.a, b: i });
-                        return;
-                      }
-                      // toggle off when re-clicking the lone selected node
-                      if (phaseSel && Math.min(phaseSel.a, phaseSel.b) === i && Math.max(phaseSel.a, phaseSel.b) === i) {
-                        setPhaseSel(null);
+                      // Click semantics: 1st click selects a stage, 2nd click
+                      // (on another node) draws the span between them, 3rd
+                      // click anywhere reverts to the full timeline.
+                      if (phaseSel) {
+                        const lo = Math.min(phaseSel.a, phaseSel.b);
+                        const hi = Math.max(phaseSel.a, phaseSel.b);
+                        if (lo !== hi || lo === i) {
+                          // span already drawn, or re-click of the lone node → clear
+                          setPhaseSel(null);
+                          return;
+                        }
+                        // 2nd click: extend single selection into a span
+                        setPhaseSel({ a: lo, b: i });
                         return;
                       }
                       phaseDragRef.current = i;
@@ -1027,14 +1035,24 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
                       if (e.key === "Enter" || e.key === " ") {
                         e.preventDefault();
                         setPhaseSel((prev) => {
-                          if (prev && Math.min(prev.a, prev.b) === i && Math.max(prev.a, prev.b) === i) return null;
-                          if (e.shiftKey && prev) return { a: prev.a, b: i };
+                          if (prev) {
+                            const lo = Math.min(prev.a, prev.b);
+                            const hi = Math.max(prev.a, prev.b);
+                            if (lo !== hi || lo === i) return null;
+                            return { a: lo, b: i };
+                          }
                           return { a: i, b: i };
                         });
                       }
                     }}
                     style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", position: "relative", minWidth: 0, pointerEvents: "auto", cursor: "pointer", touchAction: "none", paddingTop: 8, marginTop: -8 }}
-                    title={selected ? "Selected — drag to extend, click × to clear" : "Click to filter the deal to this stage; drag across stages for a span"}
+                    title={
+                      timeWindow && timeWindow.lo !== timeWindow.hi
+                        ? "Click to show the full timeline"
+                        : selected
+                          ? "Click a second stage to draw a span; click again to show the full timeline"
+                          : "Click to filter the deal to this stage"
+                    }
                   >
                     {i > 0 && <div style={{ position: "absolute", top: 13, left: "-50%", width: "100%", height: 2, background: connSelected ? "var(--accent-primary)" : i <= currentPhase ? hdrSoftGrey : hdrFaint, opacity: connSelected ? 0.7 : 1 }} />}
                     <span
