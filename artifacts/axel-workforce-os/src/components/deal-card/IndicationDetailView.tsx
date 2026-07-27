@@ -565,107 +565,143 @@ export default function IndicationDetailView({
     </div>
   );
 
-  const renderPerClassCodeEditor = (kind: "employees" | "payroll") => (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      {locations.map((loc, li) => (
-        <div key={li} style={cardStyle}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: c.textPrimary, marginBottom: 10 }}>
-            Location {li + 1} · {loc.state || "—"}{loc.zip ? ` ${loc.zip}` : ""}
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {(loc.classCodes || []).map((cc, ci) => (
-              <div key={ci} style={{ display: "flex", flexDirection: "column", gap: 10, borderTop: ci > 0 ? `1px solid ${c.borderColor}` : undefined, paddingTop: ci > 0 ? 10 : 0 }}>
-                <div style={{ display: "flex", alignItems: "flex-end", gap: 10, flexWrap: "wrap" }}>
-                  <div style={{ flex: "1 1 180px", minWidth: 0 }}>
-                    <div style={labelStyle}>Class {cc.classCode || "—"}</div>
-                    <div style={{ fontSize: 12, color: c.textMuted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {cc.description || "No description"}
+  // Employees / Payroll — same ledger aesthetic as the Locations editor:
+  // one bordered table, column header, numbered-chip rows, quiet icon actions,
+  // location group headers, and a docked pink "Add class code" affordance.
+  const renderPerClassCodeEditor = (kind: "employees" | "payroll") => {
+    const compactInput: React.CSSProperties = { ...inputStyle, padding: "6px 8px", fontSize: 12.5 };
+    return (
+      <div style={{ border: `1px solid ${c.borderColor}`, borderRadius: 12, background: c.cardBg, overflow: "visible" }}>
+        {/* Ledger header */}
+        <div style={{ display: "flex", alignItems: "center", padding: "10px 14px", borderBottom: `1px solid ${c.borderColor}`, ...labelStyle, marginBottom: 0 }}>
+          <div style={{ width: 30 }} />
+          <div style={{ flex: 1 }}>Class code / Description</div>
+          {kind === "employees" ? (
+            <>
+              <div style={{ width: 100 }}>Full-time</div>
+              <div style={{ width: 100 }}>Part-time</div>
+            </>
+          ) : (
+            <div style={{ width: 150 }}>Annual payroll</div>
+          )}
+          <div style={{ width: kind === "employees" && editable ? 60 : 0 }} />
+        </div>
+
+        {locations.map((loc, li) => (
+          <div key={li}>
+            {/* Location group header */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 14px", background: c.hoverBg, borderBottom: `1px solid ${c.borderColor}`, fontSize: 10.5, letterSpacing: "0.07em", textTransform: "uppercase", fontWeight: 600, color: c.textMuted }}>
+              <MapPin style={{ width: 12, height: 12, color: "var(--accent-primary)", flexShrink: 0 }} />
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                Location {li + 1}{fmtAddress(loc) ? ` · ${fmtAddress(loc)}` : loc.state ? ` · ${loc.state}` : ""}
+              </span>
+            </div>
+
+            {/* Class-code rows */}
+            {(loc.classCodes || []).map((cc, ci) => {
+              const advisorHere = ccTarget && ccTarget.li === li && ccTarget.ci === ci;
+              return (
+                <div key={ci} style={{ borderBottom: `1px solid ${c.borderColor}` }}>
+                  <div style={{ display: "flex", alignItems: "center", padding: "11px 14px", background: advisorHere ? c.accentPrimarySoft : undefined }}>
+                    <div style={{ width: 30 }}>
+                      <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 20, height: 20, borderRadius: "50%", border: `1px solid ${c.borderColor}`, fontSize: 10, fontWeight: 700, color: c.textMuted }}>{ci + 1}</span>
                     </div>
+                    <div style={{ flex: 1, minWidth: 0, paddingRight: 10 }}>
+                      <span style={{ fontSize: 13, fontWeight: 500, color: c.textPrimary }}>Class {cc.classCode || "—"}</span>
+                      <span style={{ display: "block", fontSize: 11.5, color: c.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {cc.description || "No description"}
+                      </span>
+                    </div>
+                    {kind === "employees" ? (
+                      <>
+                        <div style={{ width: 100, paddingRight: 10 }}>
+                          <input type="number" min={0} disabled={!editable} value={Number(cc.fullTimeEmployees) || 0} aria-label="Full-time"
+                            onChange={(e) => patchClassCode(li, ci, { fullTimeEmployees: Math.max(0, Math.floor(Number(e.target.value) || 0)) })} style={compactInput} />
+                        </div>
+                        <div style={{ width: 100, paddingRight: 10 }}>
+                          <input type="number" min={0} disabled={!editable} value={Number(cc.partTimeEmployees) || 0} aria-label="Part-time"
+                            onChange={(e) => patchClassCode(li, ci, { partTimeEmployees: Math.max(0, Math.floor(Number(e.target.value) || 0)) })} style={compactInput} />
+                        </div>
+                      </>
+                    ) : (
+                      <div style={{ width: 150, paddingRight: 10 }}>
+                        <input type="number" min={0} step={1000} disabled={!editable} value={Number(cc.annualPayroll) || 0} aria-label="Annual payroll"
+                          onChange={(e) => patchClassCode(li, ci, { annualPayroll: Math.max(0, Number(e.target.value) || 0) })} style={compactInput} />
+                      </div>
+                    )}
+                    {kind === "employees" && editable && (
+                      <div style={{ width: 60, display: "flex", justifyContent: "flex-end", gap: 2 }}>
+                        <button type="button" title="Reclassify — describe the work and pick a better class code" aria-label={`Reclassify class code ${cc.classCode || ci + 1}`} data-testid={`button-reclassify-cc-${li}-${ci}`}
+                          onClick={() => (advisorHere ? closeCcAdvisor() : openCcAdvisor(li, ci))}
+                          style={{ background: advisorHere ? c.accentPrimarySoft : "none", border: "none", cursor: "pointer", padding: 6, borderRadius: 6 }}>
+                          <Search style={{ width: 14, height: 14, color: advisorHere ? "var(--accent-primary)" : c.textMuted }} />
+                        </button>
+                        {(loc.classCodes?.length ?? 0) > 1 && (
+                          // each location must keep at least one class code (server enforces it)
+                          <button type="button" title="Remove this class code" aria-label={`Remove class code ${cc.classCode || ci + 1}`} data-testid={`button-remove-cc-${li}-${ci}`}
+                            onClick={() => removeClassCode(li, ci)}
+                            style={{ background: "none", border: "none", cursor: "pointer", padding: 6 }}>
+                            <Trash2 style={{ width: 14, height: 14, color: c.textMuted }} />
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  {kind === "employees" ? (
-                    <>
-                      <div style={{ width: 110 }}>
-                        <div style={labelStyle}>Full-time</div>
-                        <input type="number" min={0} disabled={!editable} value={Number(cc.fullTimeEmployees) || 0}
-                          onChange={(e) => patchClassCode(li, ci, { fullTimeEmployees: Math.max(0, Math.floor(Number(e.target.value) || 0)) })} style={inputStyle} />
-                      </div>
-                      <div style={{ width: 110 }}>
-                        <div style={labelStyle}>Part-time</div>
-                        <input type="number" min={0} disabled={!editable} value={Number(cc.partTimeEmployees) || 0}
-                          onChange={(e) => patchClassCode(li, ci, { partTimeEmployees: Math.max(0, Math.floor(Number(e.target.value) || 0)) })} style={inputStyle} />
-                      </div>
-                    </>
-                  ) : (
-                    <div style={{ width: 180 }}>
-                      <div style={labelStyle}>Annual payroll ($)</div>
-                      <input type="number" min={0} step={1000} disabled={!editable} value={Number(cc.annualPayroll) || 0}
-                        onChange={(e) => patchClassCode(li, ci, { annualPayroll: Math.max(0, Number(e.target.value) || 0) })} style={inputStyle} />
-                    </div>
-                  )}
-                  {kind === "employees" && editable && (
-                    <div style={{ display: "flex", gap: 6, paddingBottom: 5 }}>
-                      <GhostButton
-                        data-testid={`button-reclassify-cc-${li}-${ci}`}
-                        title="Reclassify — describe the work and pick a better class code"
-                        onClick={() => openCcAdvisor(li, ci)}
-                        style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 10px", fontSize: 11.5 }}
-                      >
-                        <Search style={{ width: 12, height: 12 }} />Reclassify
-                      </GhostButton>
-                      {(loc.classCodes?.length ?? 0) > 1 && (
-                        // each location must keep at least one class code (server enforces it)
-                        <GhostButton
-                          data-testid={`button-remove-cc-${li}-${ci}`}
-                          title="Remove this class code"
-                          onClick={() => removeClassCode(li, ci)}
-                          style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: 6 }}
-                        >
-                          <Trash2 style={{ width: 13, height: 13 }} />
-                        </GhostButton>
-                      )}
-                    </div>
-                  )}
+                  {advisorHere && <div style={{ padding: "0 14px 14px 44px" }}>{renderCcAdvisor(li)}</div>}
                 </div>
-                {ccTarget && ccTarget.li === li && ccTarget.ci === ci && renderCcAdvisor(li)}
-              </div>
-            ))}
+              );
+            })}
+
+            {/* Docked add bar per location (Employees only) */}
             {kind === "employees" && editable && (
-              ccTarget && ccTarget.li === li && ccTarget.ci == null ? (
-                renderCcAdvisor(li)
-              ) : (
-                <button
-                  type="button"
-                  data-testid={`button-add-classcode-${li}`}
-                  onClick={() => openCcAdvisor(li, null)}
-                  style={{
-                    display: "flex", alignItems: "center", gap: 6, alignSelf: "flex-start",
-                    background: "none", border: `1px dashed ${c.borderColor}`, borderRadius: 8,
-                    padding: "6px 12px", fontSize: 12, color: c.textSecondary, cursor: "pointer", fontFamily: "inherit",
-                  }}
-                >
-                  <Plus style={{ width: 13, height: 13 }} />Add class code
-                </button>
-              )
+              <div style={{ padding: "10px 14px", borderBottom: li < locations.length - 1 ? `1px solid ${c.borderColor}` : undefined }}>
+                {ccTarget && ccTarget.li === li && ccTarget.ci == null ? (
+                  renderCcAdvisor(li)
+                ) : (
+                  <button
+                    type="button"
+                    data-testid={`button-add-classcode-${li}`}
+                    onClick={() => openCcAdvisor(li, null)}
+                    style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex", alignItems: "center", gap: 5, ...labelStyle, marginBottom: 0, color: "var(--accent-primary)" }}
+                  >
+                    <Plus style={{ width: 12, height: 12 }} />Add class code
+                  </button>
+                )}
+              </div>
             )}
           </div>
-        </div>
-      ))}
-    </div>
-  );
-
-  const renderExmodEditor = () => (
-    <div style={{ ...cardStyle, display: "flex", alignItems: "flex-end", gap: 16, flexWrap: "wrap" }}>
-      <div style={{ width: 160 }}>
-        <div style={labelStyle}>Experience Mod (0.50 – 2.00)</div>
-        <input
-          type="number" min={0.5} max={2} step={0.01} disabled={!editable}
-          value={draft.eMod ?? 1.0}
-          onChange={(e) => setDraft((d) => ({ ...d, eMod: Number(e.target.value) }))}
-          style={inputStyle}
-        />
+        ))}
       </div>
-      <div style={{ flex: 1, fontSize: 12, color: c.textMuted, paddingBottom: 9, minWidth: 220 }}>
-        Below 1.00 reflects better-than-average loss experience; above 1.00 increases the rated premium proportionally.
+    );
+  };
+
+  // Exmod — same ledger aesthetic: bordered table with a column header and a
+  // single numbered row.
+  const renderExmodEditor = () => (
+    <div style={{ border: `1px solid ${c.borderColor}`, borderRadius: 12, background: c.cardBg }}>
+      <div style={{ display: "flex", alignItems: "center", padding: "10px 14px", borderBottom: `1px solid ${c.borderColor}`, ...labelStyle, marginBottom: 0 }}>
+        <div style={{ width: 30 }} />
+        <div style={{ flex: 1 }}>Experience modifier</div>
+        <div style={{ width: 150 }}>Value (0.50 – 2.00)</div>
+      </div>
+      <div style={{ display: "flex", alignItems: "center", padding: "11px 14px" }}>
+        <div style={{ width: 30 }}>
+          <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 20, height: 20, borderRadius: "50%", border: `1px solid ${c.borderColor}`, fontSize: 10, fontWeight: 700, color: c.textMuted }}>1</span>
+        </div>
+        <div style={{ flex: 1, minWidth: 0, paddingRight: 10 }}>
+          <span style={{ fontSize: 13, fontWeight: 500, color: c.textPrimary }}>Experience mod</span>
+          <span style={{ display: "block", fontSize: 11.5, color: c.textMuted }}>
+            Below 1.00 reflects better-than-average loss experience; above 1.00 increases the rated premium proportionally.
+          </span>
+        </div>
+        <div style={{ width: 150 }}>
+          <input
+            type="number" min={0.5} max={2} step={0.01} disabled={!editable}
+            value={draft.eMod ?? 1.0}
+            onChange={(e) => setDraft((d) => ({ ...d, eMod: Number(e.target.value) }))}
+            style={{ ...inputStyle, padding: "6px 8px", fontSize: 12.5 }}
+          />
+        </div>
       </div>
     </div>
   );
