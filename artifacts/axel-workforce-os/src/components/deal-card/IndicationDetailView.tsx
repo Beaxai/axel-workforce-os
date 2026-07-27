@@ -106,6 +106,8 @@ export default function IndicationDetailView({
   // suggestions from POST /ai/classify (server-side cached). `ci: null` means
   // "add a new class code to location li"; a number reclassifies that row.
   const [ccTarget, setCcTarget] = useState<{ li: number; ci: number | null } | null>(null);
+  // Employees view — which location's rows are shown (null = all locations)
+  const [empLocFilter, setEmpLocFilter] = useState<number | null>(null);
   const [ccQuery, setCcQuery] = useState("");
   const [ccSuggestions, setCcSuggestions] = useState<ClassCodeSuggestion[]>([]);
   const [ccLoading, setCcLoading] = useState(false);
@@ -570,8 +572,42 @@ export default function IndicationDetailView({
   // location group headers, and a docked pink "Add class code" affordance.
   const renderPerClassCodeEditor = (kind: "employees" | "payroll") => {
     const compactInput: React.CSSProperties = { ...inputStyle, padding: "6px 8px", fontSize: 12.5 };
+    // Guard against a stale filter after the deal/profile changes or a location is removed
+    const locFilter = empLocFilter != null && empLocFilter < locations.length ? empLocFilter : null;
     return (
       <div style={{ border: `1px solid ${c.borderColor}`, borderRadius: 12, background: c.cardBg, overflow: "visible" }}>
+        {/* Location picker — Employees only, when there is more than one location */}
+        {kind === "employees" && locations.length > 1 && (
+          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", padding: "10px 14px", borderBottom: `1px solid ${c.borderColor}` }}>
+            {[null, ...locations.map((_, i) => i)].map((idx) => {
+              const active = locFilter === idx;
+              const loc = idx == null ? null : locations[idx];
+              const label = idx == null
+                ? "All locations"
+                : `Location ${idx + 1}${loc?.city ? ` · ${loc.city}` : loc?.state ? ` · ${loc.state}` : ""}`;
+              return (
+                <button
+                  key={idx ?? "all"}
+                  type="button"
+                  data-testid={idx == null ? "button-emp-loc-filter-all" : `button-emp-loc-filter-${idx}`}
+                  onClick={() => {
+                    setEmpLocFilter(idx);
+                    // Don't leave an advisor open on a row the filter just hid
+                    if (ccTarget && idx != null && ccTarget.li !== idx) closeCcAdvisor();
+                  }}
+                  style={{
+                    background: active ? c.accentPrimarySoft : "none",
+                    border: `1px solid ${active ? "rgba(233,30,140,0.45)" : c.borderColor}`,
+                    borderRadius: 999, padding: "4px 12px", cursor: "pointer", fontFamily: "inherit",
+                    fontSize: 11, fontWeight: 600, color: active ? "var(--accent-primary)" : c.textMuted,
+                  }}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        )}
         {/* Ledger header */}
         <div style={{ display: "flex", alignItems: "center", padding: "10px 14px", borderBottom: `1px solid ${c.borderColor}`, ...labelStyle, marginBottom: 0 }}>
           <div style={{ width: 30 }} />
@@ -587,7 +623,9 @@ export default function IndicationDetailView({
           <div style={{ width: kind === "employees" && editable ? 60 : 0 }} />
         </div>
 
-        {locations.map((loc, li) => (
+        {locations.map((loc, li) => {
+          if (kind === "employees" && locFilter != null && locFilter !== li) return null;
+          return (
           <div key={li}>
             {/* Location group header */}
             <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 14px", background: c.hoverBg, borderBottom: `1px solid ${c.borderColor}`, fontSize: 10.5, letterSpacing: "0.07em", textTransform: "uppercase", fontWeight: 600, color: c.textMuted }}>
@@ -670,7 +708,8 @@ export default function IndicationDetailView({
               </div>
             )}
           </div>
-        ))}
+          );
+        })}
       </div>
     );
   };
