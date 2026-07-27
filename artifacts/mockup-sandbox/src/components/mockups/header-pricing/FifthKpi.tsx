@@ -5,11 +5,7 @@ import {
   Users, 
   Banknote, 
   Gauge, 
-  X,
-  FileWarning,
-  ChevronRight,
-  ShieldCheck,
-  Ban
+  X
 } from 'lucide-react';
 
 export function FifthKpi() {
@@ -65,12 +61,12 @@ export function FifthKpi() {
             </div>
 
             {/* Top Right: KPIs & Actions */}
-            <div className="flex flex-col items-end gap-3 mt-1 relative">
+            <div className="flex flex-col items-end mt-1 relative w-[400px]">
               <div className="absolute -top-3 -right-2 p-1.5 rounded-full hover:bg-white/10 cursor-pointer text-zinc-500 hover:text-zinc-300 transition-colors">
                 <X className="w-4 h-4" />
               </div>
 
-              {/* KPI Cluster */}
+              {/* KPI Cluster (4 Core Items) */}
               <div className="flex items-end gap-8 mr-6">
                 
                 {/* Location */}
@@ -108,50 +104,19 @@ export function FifthKpi() {
                   </div>
                   <div className="text-[26px] font-semibold text-amber-400/90 leading-none">1.12</div>
                 </div>
-
-                {/* PREMIUM - The 5th KPI */}
-                <div className="flex flex-col items-end group cursor-pointer">
-                  <div className="flex items-center gap-1.5 text-[#E91E8C]/70 mb-1">
-                    <Banknote className="w-[13px] h-[13px] group-hover:text-[#E91E8C] transition-colors" />
-                    <span className="text-[10px] uppercase tracking-widest font-semibold text-[#E91E8C]/80 group-hover:text-[#E91E8C] transition-colors">Premium</span>
-                  </div>
-                  <div className="text-[26px] font-semibold text-[#E91E8C] leading-none group-hover:drop-shadow-[0_0_8px_rgba(233,30,140,0.4)] transition-all">
-                    $140,792
-                  </div>
-                </div>
-
               </div>
 
-              {/* Action Bar Line */}
-              <div className="flex items-center gap-4 mr-6 pt-1">
-                {/* Warning / Caveat */}
-                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded group cursor-help relative">
-                  <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shadow-[0_0_4px_rgba(245,158,11,0.8)]" />
-                  <span className="text-[10px] font-medium tracking-wide text-amber-500/80 group-hover:text-amber-400 transition-colors">Docs required to bind</span>
-                </div>
-
-                <div className="w-[1px] h-3 bg-white/10" />
-
-                {/* WFS Quote Chip */}
-                <button className="flex items-center gap-1 text-[11px] font-medium text-zinc-300 hover:text-white transition-colors bg-white/5 hover:bg-white/10 px-2 py-1 rounded-md border border-white/5">
-                  Get WFS Quote
-                  <ChevronRight className="w-3 h-3 opacity-50" />
-                </button>
-
-                <div className="w-[1px] h-3 bg-white/10" />
-
-                {/* Underwriter Actions */}
-                <div className="flex items-center gap-2">
-                  <button className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold text-zinc-300 hover:text-white hover:bg-white/5 transition-colors">
-                    <Ban className="w-3 h-3 opacity-70" />
-                    Decline
-                  </button>
-                  <button className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold text-white bg-gradient-to-r from-[#E91E8C] to-purple-600 shadow-[0_0_10px_rgba(233,30,140,0.2)] hover:shadow-[0_0_15px_rgba(233,30,140,0.4)] border border-white/10 transition-all">
-                    <ShieldCheck className="w-3 h-3" />
-                    Approve
-                  </button>
+              {/* GHOST LINE: Subtle Premium */}
+              <div className="flex justify-end mt-2.5 mr-6">
+                <div className="flex items-center gap-2 group cursor-pointer hover:bg-white/5 px-2 py-1 -mr-2 rounded transition-colors" title="View Quote Details">
+                  <div className="w-1 h-1 rounded-full bg-zinc-700 group-hover:bg-amber-500/60 transition-colors" />
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-[11px] uppercase tracking-wider font-semibold text-zinc-500 group-hover:text-zinc-400 transition-colors">Est. Premium</span>
+                    <span className="text-[13px] font-medium text-zinc-200 tabular-nums group-hover:text-white transition-colors">$140,792</span>
+                  </div>
                 </div>
               </div>
+
             </div>
           </div>
 

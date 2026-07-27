@@ -1,7 +1,6 @@
 import React from 'react';
 import {
-  Star, MapPin, Users, Banknote, Gauge, X,
-  AlertCircle, Pencil
+  Star, MapPin, Users, Banknote, Gauge, X
 } from 'lucide-react';
 
 export function ChipBar() {
@@ -50,10 +49,15 @@ export function ChipBar() {
                 <div className="bg-white/10 text-white/80 border border-white/5 rounded-full px-3 py-0.5 text-[10px] uppercase tracking-widest font-semibold">Cannabis</div>
                 <div className="bg-white/10 text-white/80 border border-white/5 rounded-full px-3 py-0.5 text-[10px] uppercase tracking-widest font-semibold">WC</div>
                 <div className="bg-[#E91E8C]/20 text-[#E91E8C] border border-[#E91E8C]/10 rounded-full px-3 py-0.5 text-[10px] uppercase tracking-widest font-semibold">Effective 8/31/2026</div>
+                
+                {/* Subtle Pricing Whisper Badge */}
+                <button className="bg-white/10 text-white/80 border border-white/5 hover:bg-white/15 hover:text-white transition-colors rounded-full px-3 py-0.5 text-[11px] uppercase tracking-widest font-semibold flex items-center gap-1 cursor-pointer group">
+                  $140,792 <span className="opacity-50 group-hover:opacity-80 transition-opacity">EST.</span>
+                </button>
               </div>
             </div>
 
-            {/* Right: KPIs and Pricing Chips */}
+            {/* Right: KPIs */}
             <div className="flex flex-col items-end gap-5 relative">
               {/* Close Button - absolute to the container via negative margins to push it out of the flow */}
               <button className="absolute -top-2 -right-2 text-white/40 hover:text-white transition-colors p-2">
@@ -67,29 +71,13 @@ export function ChipBar() {
                 <Kpi label="PAYROLL" value="$1.9M" icon={<Banknote className="w-3.5 h-3.5" />} color="pink" />
                 <Kpi label="EXMOD" value="1.12" icon={<Gauge className="w-3.5 h-3.5" />} color="amber" />
               </div>
-
-              {/* Hypothesis 3: Pricing Chip Bar */}
-              <div className="flex items-center gap-2 mr-8">
-                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#f59e0b]/15 text-[#f59e0b] border border-[#f59e0b]/20 text-xs font-medium cursor-help" title="Required documents missing for binding.">
-                  <AlertCircle className="w-3.5 h-3.5" />
-                  Docs to bind
-                </div>
-                <button className="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-white/5 text-white/80 border border-white/10 hover:bg-white/10 text-xs font-medium transition-colors">
-                  WFS: Get Quote
-                </button>
-                <button className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#E91E8C]/15 text-[#E91E8C] border border-[#E91E8C]/30 hover:bg-[#E91E8C]/25 transition-colors group">
-                  <span className="font-semibold tabular-nums tracking-tight">$140,792</span>
-                  <span className="text-xs opacity-80 font-medium">est. premium</span>
-                  <Pencil className="w-3 h-3 opacity-60 group-hover:opacity-100 transition-opacity ml-1" />
-                </button>
-              </div>
             </div>
           </div>
 
           {/* Spacer */}
           <div className="flex-grow" />
 
-          {/* Bottom Row: Milestone Tracker + Actions */}
+          {/* Bottom Row: Milestone Tracker */}
           <div className="flex items-end justify-between w-full mt-10">
             {/* Timeline */}
             <div className="flex items-center w-full max-w-xl pr-12 relative mb-2">
@@ -104,16 +92,6 @@ export function ChipBar() {
               <PhaseNode label="Bind" state="future" />
               <PhaseLine state="future" />
               <PhaseNode label="Active" state="future" />
-            </div>
-
-            {/* Actions (Underwriter View) docked at the far right of the timeline row */}
-            <div className="flex items-center gap-3">
-              <button className="px-5 py-2 rounded-lg text-white/70 hover:text-white bg-[rgba(255,255,255,0.04)] hover:bg-[rgba(255,255,255,0.08)] border border-white/10 text-sm font-medium transition-colors shadow-sm">
-                Decline
-              </button>
-              <button className="px-6 py-2 rounded-lg text-white bg-gradient-to-r from-[#E91E8C] to-[#9b2cba] hover:from-[#f52b9a] hover:to-[#a834c9] text-sm font-medium shadow-[0_0_15px_rgba(233,30,140,0.3)] hover:shadow-[0_0_20px_rgba(233,30,140,0.5)] border border-white/10 transition-all">
-                Approve
-              </button>
             </div>
           </div>
 

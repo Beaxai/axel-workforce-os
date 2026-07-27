@@ -6,9 +6,7 @@ import {
   Banknote, 
   Gauge, 
   X, 
-  Check, 
-  AlertTriangle, 
-  PenLine 
+  Check 
 } from "lucide-react";
 
 export function PricingStrip() {
@@ -56,80 +54,60 @@ export function PricingStrip() {
             </div>
           </div>
 
-          {/* Top Right: KPIs & Pricing Strip */}
+          {/* Top Right: KPIs */}
           <div className="flex flex-col items-end relative mr-8">
             <button className="absolute -top-3 -right-10 p-1.5 text-white/30 hover:text-white rounded-md hover:bg-white/5 transition-colors">
               <X className="w-4 h-4" />
             </button>
             
-            {/* KPI Cluster */}
-            <div className="flex gap-8 mb-5 mt-1">
-              <div className="flex flex-col items-end gap-1">
+            {/* KPI Cluster + Quiet 5th Metric */}
+            <div className="flex gap-7 items-start mt-1">
+              {/* Existing 4 KPIs */}
+              <div className="flex flex-col items-end gap-1 group cursor-pointer hover:opacity-80 transition-opacity">
                 <div className="flex items-center gap-1.5 text-white/40">
                   <MapPin className="w-3.5 h-3.5" />
                   <span className="text-[10px] uppercase tracking-wider font-semibold">Locations</span>
                 </div>
                 <span className="text-[26px] font-semibold text-white leading-none tabular-nums">1</span>
               </div>
-              <div className="flex flex-col items-end gap-1">
+              <div className="flex flex-col items-end gap-1 group cursor-pointer hover:opacity-80 transition-opacity">
                 <div className="flex items-center gap-1.5 text-white/40">
                   <Users className="w-3.5 h-3.5" />
                   <span className="text-[10px] uppercase tracking-wider font-semibold">Employees</span>
                 </div>
                 <span className="text-[26px] font-semibold text-white leading-none tabular-nums">24</span>
               </div>
-              <div className="flex flex-col items-end gap-1">
+              <div className="flex flex-col items-end gap-1 group cursor-pointer hover:opacity-80 transition-opacity">
                 <div className="flex items-center gap-1.5 text-white/40">
                   <Banknote className="w-3.5 h-3.5" />
                   <span className="text-[10px] uppercase tracking-wider font-semibold">Payroll</span>
                 </div>
                 <span className="text-[26px] font-semibold text-[#E91E8C] leading-none tabular-nums">$1.9M</span>
               </div>
-              <div className="flex flex-col items-end gap-1">
+              <div className="flex flex-col items-end gap-1 group cursor-pointer hover:opacity-80 transition-opacity">
                 <div className="flex items-center gap-1.5 text-amber-500/70">
                   <Gauge className="w-3.5 h-3.5" />
                   <span className="text-[10px] uppercase tracking-wider font-semibold">Exmod</span>
                 </div>
                 <span className="text-[26px] font-semibold text-amber-500 leading-none tabular-nums">1.12</span>
               </div>
-            </div>
 
-            {/* HYPOTHESIS 2: Pricing Strip */}
-            <div className="flex items-center h-12 bg-white/[0.03] border border-white/[0.08] rounded-full pl-5 pr-2 gap-5 backdrop-blur-md shadow-2xl relative">
-              <div className="absolute inset-0 rounded-full shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)] pointer-events-none"></div>
-              
-              <div className="flex items-center gap-2.5 relative z-10">
-                <span className="text-[10px] uppercase tracking-wider font-semibold text-white/40">WC Premium</span>
-                <span className="text-[17px] font-bold text-[#E91E8C] tabular-nums">$140,792</span>
-                <button className="text-white/30 hover:text-white p-1 -ml-1 transition-colors"><PenLine className="w-3.5 h-3.5" /></button>
-              </div>
-              
-              <div className="w-[1px] h-5 bg-white/10 relative z-10"></div>
-              
-              <div className="flex items-center gap-2.5 relative z-10">
-                <span className="text-[10px] uppercase tracking-wider font-semibold text-white/40">WFS</span>
-                <button className="h-[22px] px-3 rounded-full bg-gradient-to-r from-[#E91E8C] to-purple-500 text-[9px] font-bold text-white uppercase tracking-wider hover:opacity-90 shadow-[0_0_10px_rgba(233,30,140,0.2)] transition-opacity">
-                  Get Quote
-                </button>
-              </div>
+              {/* Vertical Divider */}
+              <div className="w-[1px] h-10 bg-white/[0.08] self-center mx-1"></div>
 
-              <div className="w-[1px] h-5 bg-white/10 relative z-10"></div>
-
-              <div className="flex items-center gap-2 relative z-10 group cursor-help">
-                <AlertTriangle className="w-4 h-4 text-amber-500" />
-                <span className="text-[11px] font-medium text-amber-500/90 whitespace-nowrap">Docs missing for binding</span>
-              </div>
-
-              <div className="flex items-center gap-1.5 ml-4 relative z-10">
-                <button className="h-8 px-4 rounded-full border border-white/10 text-[11px] font-semibold text-white hover:bg-white/5 transition-colors">
-                  Decline
-                </button>
-                <button className="h-8 px-5 rounded-full bg-gradient-to-r from-[#E91E8C] to-[#8f00ff] text-[11px] font-bold text-white hover:opacity-90 transition-opacity shadow-[0_2px_15px_-3px_rgba(233,30,140,0.4)]">
-                  Approve
-                </button>
+              {/* Quiet 5th Metric: Premium */}
+              <div className="flex flex-col items-end gap-[9px] group cursor-pointer hover:opacity-80 transition-opacity">
+                <div className="flex items-center gap-1.5 text-white/40">
+                  <Banknote className="w-3.5 h-3.5" />
+                  <span className="text-[10px] uppercase tracking-wider font-semibold">Premium</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-amber-500/30" title="Docs required to bind" />
+                  <span className="text-[16px] font-medium text-white/70 leading-none tabular-nums">$140,792</span>
+                </div>
               </div>
             </div>
-            
+
           </div>
         </div>
 
