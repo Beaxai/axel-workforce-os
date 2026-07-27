@@ -250,7 +250,20 @@ function DocsListStyles({ hoverBg }: { hoverBg: string }) {
   );
 }
 
-export function DocumentsTab({ dealId }: { dealId: string }) {
+// Global stage-span time filter from the deal-card header slide bar.
+// Undated rows (e.g. application PDFs, undated tasks) stay visible — only
+// dated rows outside the window are hidden.
+export type TimeWindow = { empty?: boolean; intervals: Array<{ from?: number; to?: number }> } | null;
+const winHas = (win: TimeWindow, iso?: string | null): boolean => {
+  if (!win) return true;
+  if (!iso) return true;
+  const t = new Date(iso).getTime();
+  if (isNaN(t)) return true;
+  if (win.empty) return false;
+  return win.intervals.some((iv) => (iv.from == null || t >= iv.from) && (iv.to == null || t <= iv.to));
+};
+
+export function DocumentsTab({ dealId, timeWindow = null }: { dealId: string; timeWindow?: TimeWindow }) {
   const c = useThemeColors();
   const queryClient = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -437,9 +450,10 @@ export function DocumentsTab({ dealId }: { dealId: string }) {
         // Hide only rows that mirror a generated application PDF; rows with a
         // known generated kind (indication, summary, …) are never suppressed.
         const visibleDocs = docs.filter(
-          (d) => DEAL_DOC_KIND[d.documentType] || !pdfs.some((p) => p.documentType === d.documentType),
+          (d) => (DEAL_DOC_KIND[d.documentType] || !pdfs.some((p) => p.documentType === d.documentType)) && winHas(timeWindow, d.generatedAt),
         );
-        const total = pdfs.length + visibleDocs.length + policyDocs.length;
+        const shownPolicyDocs = policyDocs.filter((d) => winHas(timeWindow, d.createdAt));
+        const total = pdfs.length + visibleDocs.length + shownPolicyDocs.length;
         let idx = 0;
         const isLast = () => ++idx === total;
         return (
@@ -496,7 +510,7 @@ export function DocumentsTab({ dealId }: { dealId: string }) {
                 />
               );
             })}
-            {policyDocs.map((d) => (
+            {shownPolicyDocs.map((d) => (
               <QuietRow
                 key={d.id}
                 name={d.fileName || "Document"}
@@ -547,7 +561,7 @@ export function DocumentsTab({ dealId }: { dealId: string }) {
 /* -------------------------------------------------------------------- Tasks */
 type TaskEntry = { id: string; taskName: string; assignedTo?: string | null; assigneeName?: string | null; dueDate?: string; status?: string };
 
-export function TasksTab({ dealId }: { dealId: string }) {
+export function TasksTab({ dealId, timeWindow = null }: { dealId: string; timeWindow?: TimeWindow }) {
   const c = useThemeColors();
   const [tasks, setTasks] = useState<TaskEntry[]>([]);
   const [adding, setAdding] = useState(false);
@@ -634,10 +648,12 @@ export function TasksTab({ dealId }: { dealId: string }) {
         </div>
       )}
 
-      {tasks.length === 0 && !adding && (
-        <div style={{ padding: "32px 0", textAlign: "center", fontSize: 13, color: c.textMuted }}>No tasks yet.</div>
+      {tasks.filter((t) => winHas(timeWindow, t.dueDate)).length === 0 && !adding && (
+        <div style={{ padding: "32px 0", textAlign: "center", fontSize: 13, color: c.textMuted }}>
+          {tasks.length === 0 ? "No tasks yet." : "No tasks in the selected time frame."}
+        </div>
       )}
-      {tasks.map((t) => (
+      {tasks.filter((t) => winHas(timeWindow, t.dueDate)).map((t) => (
         <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 9, background: c.cardBg, border: `1px solid ${c.borderColor}`, borderRadius: 10, padding: "10px 12px" }}>
           <CheckSquare style={{ width: 16, height: 16, color: t.status === "completed" ? "#4caf50" : c.textMuted }} />
           <div style={{ flex: 1 }}>

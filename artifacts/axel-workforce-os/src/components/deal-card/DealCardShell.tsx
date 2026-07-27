@@ -216,6 +216,17 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
   const [quoteWcPremium, setQuoteWcPremium] = useState<string | null>(null);
   // Marker popup: which location detail panel is open + where to anchor it.
   const [markerPopup, setMarkerPopup] = useState<{ marker: GeoMarker; info: MarkerClickInfo } | null>(null);
+  // Stage-span time filter — phase range selected on the milestone tracker
+  // (click a node, or drag across nodes). Acts as a global time filter for
+  // the dialog: activity, RFIs, documents, and tasks are narrowed to the
+  // period the deal spent in the selected phases.
+  const [phaseSel, setPhaseSel] = useState<{ a: number; b: number } | null>(null);
+  const phaseDragRef = useRef<number | null>(null);
+  useEffect(() => {
+    const up = () => { phaseDragRef.current = null; };
+    window.addEventListener("pointerup", up);
+    return () => window.removeEventListener("pointerup", up);
+  }, []);
   // Backing quote for the header map (id + raw workforce profile) so popup
   // edits can be persisted via PATCH /quotes/:id.
   const [quoteRef, setQuoteRef] = useState<{ id: string; profile: WorkforceProfileRaw } | null>(null);
@@ -307,6 +318,7 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
     setVarUsedAi(false);
     setTab("overview");
     setOpenSection(null);
+    setPhaseSel(null);
     setMapMarkers([]);
     setQuoteStats({ locations: null, eMod: null });
     setQuoteWcPremium(null); // primary reset — never show prior deal's premium bubble while loading
@@ -507,6 +519,71 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
     () => (openSection ? sections.find((s) => s.key === openSection) ?? null : null),
     [openSection, sections],
   );
+
+  // Global time window derived from the selected phase span. Reconstructs the
+  // deal's phase timeline from stage-move activity events — STAGE_CHANGE plus
+  // deal_approved / deal_declined, which also carry from_stage/to_stage — and
+  // keeps a TRUE multi-interval union of the segments spent in the selected
+  // phases (a deal can leave the span and re-enter; the gap must not count).
+  // An interval with `to === undefined` is still open (deal currently in
+  // span); `empty` means the deal never visited the selected phases.
+  // `from`/`to` are the envelope, used only for the pill label.
+  const STAGE_MOVE_EVENTS = ["STAGE_CHANGE", "deal_approved", "deal_declined"];
+  const timeWindow = useMemo(() => {
+    if (!phaseSel) return null;
+    const lo = Math.min(phaseSel.a, phaseSel.b);
+    const hi = Math.max(phaseSel.a, phaseSel.b);
+    const changes = activity
+      .filter((a) => STAGE_MOVE_EVENTS.includes(a.eventType || "") && a.createdAt && a.metadata?.to_stage)
+      .map((a) => ({
+        t: new Date(String(a.createdAt)).getTime(),
+        from: phaseIndex(a.metadata?.from_stage as string | undefined),
+        to: phaseIndex(a.metadata?.to_stage as string | undefined),
+      }))
+      .filter((x) => !isNaN(x.t))
+      .sort((x, y) => x.t - y.t);
+    const dealCreated = payload?.deal?.createdAt ? new Date(String(payload.deal.createdAt)).getTime() : undefined;
+    const segs: Array<{ phase: number; start?: number; end?: number }> = [];
+    let curStart = dealCreated;
+    let curPhase = changes.length > 0 ? changes[0].from : phaseIndex(payload?.deal?.stage);
+    for (const ch of changes) {
+      segs.push({ phase: curPhase, start: curStart, end: ch.t });
+      curStart = ch.t;
+      curPhase = ch.to;
+    }
+    segs.push({ phase: curPhase, start: curStart, end: undefined });
+    // Merge adjacent/contiguous in-span segments into intervals (segments are
+    // already in chronological order; consecutive in-span segments share a
+    // boundary timestamp, so they merge into one interval).
+    const intervals: Array<{ from?: number; to?: number }> = [];
+    for (const s of segs) {
+      if (s.phase < lo || s.phase > hi) continue;
+      const last = intervals[intervals.length - 1];
+      if (last && last.to != null && s.start != null && s.start <= last.to) {
+        last.to = s.end;
+      } else {
+        intervals.push({ from: s.start, to: s.end });
+      }
+    }
+    if (intervals.length === 0) return { lo, hi, from: undefined as number | undefined, to: undefined as number | undefined, intervals, empty: true };
+    const from = intervals[0].from;
+    const ends = intervals.map((iv) => iv.to);
+    const to = ends.some((e) => e == null) ? undefined : Math.max(...(ends as number[]));
+    return { lo, hi, from, to, intervals, empty: false };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phaseSel, activity, payload?.deal]);
+
+  const inWindow = useCallback((iso?: string | null) => {
+    if (!timeWindow) return true;
+    if (timeWindow.empty) return false;
+    if (!iso) return false;
+    const t = new Date(iso).getTime();
+    if (isNaN(t)) return false;
+    return timeWindow.intervals.some((iv) => (iv.from == null || t >= iv.from) && (iv.to == null || t <= iv.to));
+  }, [timeWindow]);
+
+  const filteredActivity = useMemo(() => (timeWindow ? activity.filter((a) => inWindow(a.createdAt)) : activity), [timeWindow, activity, inWindow]);
+  const filteredRfis = useMemo(() => (timeWindow ? rfis.filter((r) => inWindow(r.createdAt)) : rfis), [timeWindow, rfis, inWindow]);
 
   const handleSaveSection = async (fields: Record<string, unknown>) => {
     if (!openSection) return;
@@ -871,35 +948,110 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
             </div>
           )}
 
-          {/* 6-phase macro tracker (display-only) — map continues behind it.
-              Completed = soft grey; current = hollow glowing node.
-              marginTop: auto pins it to the bottom of the taller header so the
-              map dots get breathing room; pointerEvents: none lets clicks reach
-              the markers behind it. */}
-          <div style={{ position: "relative", zIndex: 1, display: "flex", alignItems: "flex-start", padding: "18px 18px 12px", marginTop: "auto", pointerEvents: "none" }}>
-            {PHASES.map((label, i) => {
-              const done = i < currentPhase;
-              const current = i === currentPhase;
-              const declinedNode = current && declined;
-              const nodeColor = declinedNode ? "#ef4444" : current ? hdrGlowNode : done ? hdrSoftGrey : hdrFaint;
-              const lblColor = declinedNode ? "#ef4444" : current ? hdrValue : done ? hdrSoftGrey : c.textMuted;
-              return (
-                <div key={label} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", position: "relative", minWidth: 0 }}>
-                  {i > 0 && <div style={{ position: "absolute", top: 5, left: "-50%", width: "100%", height: 2, background: i <= currentPhase ? hdrSoftGrey : hdrFaint }} />}
-                  <span
-                    style={{
-                      width: 12, height: 12, borderRadius: "50%", border: `2px solid ${nodeColor}`,
-                      background: done ? hdrSoftGrey : "transparent",
-                      position: "relative", zIndex: 1,
-                      boxShadow: current ? hdrNodeGlow : "none",
-                    }}
-                  />
-                  <span style={{ fontSize: 10, marginTop: 8, color: lblColor, textAlign: "center", lineHeight: 1.3, maxWidth: 92, textTransform: "uppercase", letterSpacing: "0.07em", fontWeight: 500, textShadow: current ? hdrValueGlow : "none" }}>
-                    {declinedNode ? "Declined" : label}
+          {/* 6-phase macro tracker — map continues behind it. Also a slide bar:
+              click a node (or drag across nodes) to select a phase span, which
+              becomes a global time filter for the dialog (activity, RFIs,
+              documents, tasks). Click the single selected node again — or the
+              × on the pill — to clear. pointerEvents: none on the row lets map
+              clicks through; each node re-enables them. */}
+          <div style={{ position: "relative", zIndex: 1, marginTop: "auto", pointerEvents: "none" }}>
+            {timeWindow && (
+              <div style={{ display: "flex", justifyContent: "center", padding: "0 18px" }}>
+                <div
+                  data-testid="pill-phase-filter"
+                  style={{
+                    pointerEvents: "auto", display: "flex", alignItems: "center", gap: 8,
+                    padding: "4px 6px 4px 12px", borderRadius: 9999,
+                    background: c.accentPrimarySoft, border: "1px solid rgba(233,30,140,0.45)",
+                  }}
+                >
+                  <span style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600, color: "var(--accent-primary)" }}>
+                    {timeWindow.lo === timeWindow.hi ? PHASES[timeWindow.lo] : `${PHASES[timeWindow.lo]} → ${PHASES[timeWindow.hi]}`}
                   </span>
+                  <span style={{ fontSize: 10.5, color: hdrValue, fontWeight: 500 }}>
+                    {timeWindow.empty
+                      ? "not reached yet"
+                      : `${timeWindow.from != null ? new Date(timeWindow.from).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "start"} – ${timeWindow.to != null ? new Date(timeWindow.to).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "now"}`}
+                  </span>
+                  <button
+                    type="button"
+                    data-testid="button-clear-phase-filter"
+                    title="Clear time filter"
+                    aria-label="Clear time filter"
+                    onClick={() => setPhaseSel(null)}
+                    style={{ background: "none", border: "none", cursor: "pointer", padding: "2px 4px", display: "flex", alignItems: "center" }}
+                  >
+                    <X style={{ width: 12, height: 12, color: "var(--accent-primary)" }} />
+                  </button>
                 </div>
-              );
-            })}
+              </div>
+            )}
+            <div style={{ display: "flex", alignItems: "flex-start", padding: "10px 18px 12px" }}>
+              {PHASES.map((label, i) => {
+                const done = i < currentPhase;
+                const current = i === currentPhase;
+                const declinedNode = current && declined;
+                const selected = timeWindow != null && i >= timeWindow.lo && i <= timeWindow.hi;
+                const nodeColor = selected ? "var(--accent-primary)" : declinedNode ? "#ef4444" : current ? hdrGlowNode : done ? hdrSoftGrey : hdrFaint;
+                const lblColor = selected ? "var(--accent-primary)" : declinedNode ? "#ef4444" : current ? hdrValue : done ? hdrSoftGrey : c.textMuted;
+                const connSelected = timeWindow != null && i > timeWindow.lo && i <= timeWindow.hi;
+                return (
+                  <div
+                    key={label}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Filter to ${label}${selected ? " (selected)" : ""}`}
+                    data-testid={`node-phase-${i}`}
+                    onPointerDown={(e) => {
+                      e.preventDefault();
+                      // release implicit capture (touch) so pointerenter fires on
+                      // sibling nodes while dragging across the bar
+                      (e.target as Element).releasePointerCapture?.(e.pointerId);
+                      // shift-click extends the existing selection to this node
+                      if (e.shiftKey && phaseSel) {
+                        setPhaseSel({ a: phaseSel.a, b: i });
+                        return;
+                      }
+                      // toggle off when re-clicking the lone selected node
+                      if (phaseSel && Math.min(phaseSel.a, phaseSel.b) === i && Math.max(phaseSel.a, phaseSel.b) === i) {
+                        setPhaseSel(null);
+                        return;
+                      }
+                      phaseDragRef.current = i;
+                      setPhaseSel({ a: i, b: i });
+                    }}
+                    onPointerEnter={(e) => {
+                      if (phaseDragRef.current != null && e.buttons === 1) setPhaseSel({ a: phaseDragRef.current, b: i });
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setPhaseSel((prev) => {
+                          if (prev && Math.min(prev.a, prev.b) === i && Math.max(prev.a, prev.b) === i) return null;
+                          if (e.shiftKey && prev) return { a: prev.a, b: i };
+                          return { a: i, b: i };
+                        });
+                      }
+                    }}
+                    style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", position: "relative", minWidth: 0, pointerEvents: "auto", cursor: "pointer", touchAction: "none", paddingTop: 8, marginTop: -8 }}
+                    title={selected ? "Selected — drag to extend, click × to clear" : "Click to filter the deal to this stage; drag across stages for a span"}
+                  >
+                    {i > 0 && <div style={{ position: "absolute", top: 13, left: "-50%", width: "100%", height: 2, background: connSelected ? "var(--accent-primary)" : i <= currentPhase ? hdrSoftGrey : hdrFaint, opacity: connSelected ? 0.7 : 1 }} />}
+                    <span
+                      style={{
+                        width: 12, height: 12, borderRadius: "50%", border: `2px solid ${nodeColor}`,
+                        background: selected ? "var(--accent-primary)" : done ? hdrSoftGrey : "transparent",
+                        position: "relative", zIndex: 1,
+                        boxShadow: selected ? "0 0 10px rgba(233,30,140,0.6)" : current ? hdrNodeGlow : "none",
+                      }}
+                    />
+                    <span style={{ fontSize: 10, marginTop: 8, color: lblColor, textAlign: "center", lineHeight: 1.3, maxWidth: 92, textTransform: "uppercase", letterSpacing: "0.07em", fontWeight: 500, textShadow: current && !selected ? hdrValueGlow : "none" }}>
+                      {declinedNode ? "Declined" : label}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
           {/* Location detail popup — portaled to <body> so it renders on top of
@@ -960,12 +1112,12 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
                 {tab === "submission" && <ReRateBanner show={!!deal?.ratingStale} onReRate={handleReRate} />}
                 {tab === "overview" && (
                   <OverviewTab
-                    activity={activity}
+                    activity={filteredActivity}
                     canPost={canPost}
                     posting={posting}
                     onSend={handleSend}
                     directory={payload?.directory ?? []}
-                    rfis={rfis}
+                    rfis={filteredRfis}
                     isInternal={isInternal}
                     rfiBusy={rfiBusy}
                     onCreateRfi={handleCreateRfi}
@@ -985,8 +1137,8 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
                 )}
                 {tab === "submission" && <SubmissionTab sections={sections} aggregateComplete={payload.aggregateComplete} total={payload.total} onOpenSection={setOpenSection} />}
                 {tab === "subjectivities" && <SubjectivitiesTab dealId={dealId} />}
-                {tab === "documents" && <DocumentsTab dealId={dealId} />}
-                {tab === "tasks" && <TasksTab dealId={dealId} />}
+                {tab === "documents" && <DocumentsTab dealId={dealId} timeWindow={timeWindow} />}
+                {tab === "tasks" && <TasksTab dealId={dealId} timeWindow={timeWindow} />}
                 {/* Pricing & decisions — formerly the right rail; now a card row
                     at the top of the Quote tab (hidden while a KPI detail view
                     is open to keep that surface focused). */}
