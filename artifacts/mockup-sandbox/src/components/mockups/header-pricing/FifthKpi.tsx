@@ -108,11 +108,11 @@ export function FifthKpi() {
 
               {/* GHOST LINE: Subtle Premium */}
               <div className="flex justify-end mt-2.5 mr-6">
-                <div className="flex items-center gap-2 group cursor-pointer hover:bg-white/5 px-2 py-1 -mr-2 rounded transition-colors" title="View Quote Details">
-                  <div className="w-1 h-1 rounded-full bg-zinc-700 group-hover:bg-amber-500/60 transition-colors" />
+                <div className="flex items-center gap-2 group cursor-pointer bg-white/[0.05] hover:bg-white/[0.09] border border-white/10 hover:border-white/20 px-3 py-1.5 rounded-full shadow-[0_2px_10px_rgba(0,0,0,0.25)] transition-colors" title="View Quote Details">
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#E91E8C]/50 group-hover:bg-[#E91E8C]/80 transition-colors" />
                   <div className="flex items-baseline gap-1.5">
-                    <span className="text-[11px] uppercase tracking-wider font-semibold text-zinc-500 group-hover:text-zinc-400 transition-colors">Est. Premium</span>
-                    <span className="text-[13px] font-medium text-zinc-200 tabular-nums group-hover:text-white transition-colors">$140,792</span>
+                    <span className="text-[11px] uppercase tracking-wider font-semibold text-zinc-400 group-hover:text-zinc-300 transition-colors">Est. Premium</span>
+                    <span className="text-[13px] font-semibold text-white tabular-nums transition-colors">$140,792</span>
                   </div>
                 </div>
               </div>

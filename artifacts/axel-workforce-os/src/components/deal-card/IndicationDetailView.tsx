@@ -8,7 +8,7 @@
  * (owner-review flag: see api-server lib/indication-rerate.ts).
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowLeft, MapPin, Users, DollarSign, Gauge, Plus, Trash2, History, CheckCircle2, AlertTriangle } from "lucide-react";
+import { ArrowLeft, MapPin, Users, DollarSign, Gauge, Plus, Trash2, History, CheckCircle2, AlertTriangle, Pencil, Search, ChevronDown } from "lucide-react";
 import { api } from "@/lib/api";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { PinkButton, GhostButton } from "@/components/ui/axel-index";
@@ -23,7 +23,17 @@ type WpClassCode = {
   partTimeEmployees?: number;
   [k: string]: unknown;
 };
-type WpLocation = { state?: string; zip?: string; classCodes?: WpClassCode[]; [k: string]: unknown };
+type WpLocation = {
+  state?: string;
+  zip?: string;
+  street1?: string;
+  street2?: string;
+  city?: string;
+  classCodes?: WpClassCode[];
+  [k: string]: unknown;
+};
+
+type AddressSuggestion = { label: string; street1: string; city: string; state: string; zip: string };
 export type WorkforceProfileShape = {
   locations?: WpLocation[];
   eMod?: number;
@@ -41,7 +51,7 @@ type HistoryRow = {
 };
 
 const METRIC_META: Record<IndicationMetric, { title: string; Icon: typeof MapPin; blurb: string }> = {
-  locations: { title: "Locations", Icon: MapPin, blurb: "Where the business operates — state and ZIP per location." },
+  locations: { title: "Locations", Icon: MapPin, blurb: "Where the business operates — full address per location." },
   employees: { title: "Employees", Icon: Users, blurb: "Full-time and part-time headcounts per location and class code." },
   payroll: { title: "Annual Payroll", Icon: DollarSign, blurb: "Annual payroll per location and class code." },
   exmod: { title: "Experience Mod", Icon: Gauge, blurb: "The experience modifier applied to the rated premium." },
@@ -75,6 +85,47 @@ export default function IndicationDetailView({
   const [notice, setNotice] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryRow[]>([]);
   const [isPending, setIsPending] = useState(pendingReview);
+  const [showHistory, setShowHistory] = useState(false);
+
+  // Dirty when the draft differs from the last-loaded profile — drives the
+  // header save button (grey/dormant until a change is made).
+  const dirty = useMemo(() => JSON.stringify(draft) !== JSON.stringify(profile || {}), [draft, profile]);
+
+  // Locations ledger state — which row is expanded for editing, plus the
+  // docked smart-add bar (Census-geocoder autocomplete with manual fallback).
+  const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
+  const [addQuery, setAddQuery] = useState("");
+  const [addSuggestions, setAddSuggestions] = useState<AddressSuggestion[]>([]);
+  const [addSearching, setAddSearching] = useState(false);
+  const [addManual, setAddManual] = useState(false);
+  const [newLoc, setNewLoc] = useState<Partial<WpLocation>>({ state: "" });
+
+  // Debounced address lookup for the smart-add bar.
+  useEffect(() => {
+    if (metric !== "locations" || addManual) return;
+    const q = addQuery.trim();
+    if (q.length < 4) {
+      setAddSuggestions([]);
+      setAddSearching(false);
+      return;
+    }
+    setAddSearching(true);
+    let stale = false; // guards against out-of-order responses overwriting newer input
+    const t = setTimeout(async () => {
+      try {
+        const res = await api.get<{ suggestions: AddressSuggestion[] }>(`/geo/address-suggest?q=${encodeURIComponent(q)}`);
+        if (!stale) setAddSuggestions(res.suggestions || []);
+      } catch {
+        if (!stale) setAddSuggestions([]);
+      } finally {
+        if (!stale) setAddSearching(false);
+      }
+    }, 450);
+    return () => {
+      stale = true;
+      clearTimeout(t);
+    };
+  }, [addQuery, addManual, metric]);
 
   useEffect(() => {
     setDraft(JSON.parse(JSON.stringify(profile || {})));
@@ -175,63 +226,198 @@ export default function IndicationDetailView({
 
   const fmtWhen = (iso?: string) => (iso ? new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" }) : "");
 
+  const fmtAddress = (loc: WpLocation) => {
+    const street = [loc.street1, loc.street2].filter(Boolean).join(", ");
+    return [street, loc.city, [loc.state, loc.zip].filter(Boolean).join(" ")].filter(Boolean).join(", ");
+  };
+  const fmtPayroll = (loc: WpLocation) => {
+    const total = (loc.classCodes || []).reduce((s, cc) => s + (Number(cc.annualPayroll) || 0), 0);
+    if (!total) return "—";
+    if (total >= 1_000_000) return `$${(total / 1_000_000).toFixed(1)}M`;
+    if (total >= 1_000) return `$${Math.round(total / 1_000)}k`;
+    return `$${total}`;
+  };
+  const emptyClassCodes = () => [{ classCode: "", description: "", annualPayroll: 0, fullTimeEmployees: 0, partTimeEmployees: 0 }];
+  const appendLocation = (loc: WpLocation, expand: boolean) => {
+    setDraft((d) => ({ ...d, locations: [...(d.locations ?? []), loc] }));
+    setExpandedIdx(expand ? locations.length : null);
+    setAddQuery("");
+    setAddSuggestions([]);
+    setAddManual(false);
+    setNewLoc({ state: "" });
+  };
+
+  const renderAddressGrid = (loc: Partial<WpLocation>, patch: (p: Partial<WpLocation>) => void) => {
+    const isCA = (loc.state || "").toUpperCase() === "CA";
+    const zipShort = isCA && (loc.zip || "").replace(/\D/g, "").length < 5;
+    return (
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(12, 1fr)", gap: 10 }}>
+        <div style={{ gridColumn: "span 8" }}>
+          <div style={labelStyle}>Street address</div>
+          <input value={loc.street1 || ""} disabled={!editable} placeholder="Street address" data-testid="input-street1"
+            onChange={(e) => patch({ street1: e.target.value })} style={inputStyle} />
+        </div>
+        <div style={{ gridColumn: "span 4" }}>
+          <div style={labelStyle}>Suite/Unit (opt)</div>
+          <input value={loc.street2 || ""} disabled={!editable} placeholder="Suite, unit…" data-testid="input-street2"
+            onChange={(e) => patch({ street2: e.target.value })} style={inputStyle} />
+        </div>
+        <div style={{ gridColumn: "span 5" }}>
+          <div style={labelStyle}>City</div>
+          <input value={loc.city || ""} disabled={!editable} placeholder="City" data-testid="input-city"
+            onChange={(e) => patch({ city: e.target.value })} style={inputStyle} />
+        </div>
+        <div style={{ gridColumn: "span 3" }}>
+          <div style={labelStyle}>State</div>
+          <select value={loc.state || ""} disabled={!editable} data-testid="select-state"
+            onChange={(e) => patch({ state: e.target.value })} style={{ ...inputStyle, appearance: "auto" }}>
+            <option value="">State…</option>
+            {US_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
+        <div style={{ gridColumn: "span 4" }}>
+          <div style={labelStyle}>ZIP{isCA ? " — 5-digit req" : ""}</div>
+          <input value={loc.zip || ""} disabled={!editable} maxLength={10} placeholder="ZIP code" data-testid="input-zip"
+            onChange={(e) => patch({ zip: e.target.value })}
+            style={{ ...inputStyle, borderColor: zipShort ? "rgba(255,181,71,0.5)" : c.inputBorder }} />
+        </div>
+      </div>
+    );
+  };
+
   const renderLocationsEditor = () => (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      {locations.map((loc, li) => (
-        <div key={li} style={cardStyle}>
-          <div style={{ display: "flex", alignItems: "flex-end", gap: 10, flexWrap: "wrap" }}>
-            <div style={{ width: 120 }}>
-              <div style={labelStyle}>Location {li + 1} — State</div>
-              <select
-                value={loc.state || ""}
-                disabled={!editable}
-                onChange={(e) => patchLocation(li, { state: e.target.value })}
-                style={{ ...inputStyle, appearance: "auto" }}
-              >
-                <option value="">State…</option>
-                {US_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
-              </select>
+    <div style={{ border: `1px solid ${c.borderColor}`, borderRadius: 12, background: c.cardBg, overflow: "visible" }}>
+      {/* Ledger header */}
+      <div style={{ display: "flex", alignItems: "center", padding: "10px 14px", borderBottom: `1px solid ${c.borderColor}`, ...labelStyle, marginBottom: 0 }}>
+        <div style={{ width: 30 }} />
+        <div style={{ flex: 1 }}>Location / Address</div>
+        <div style={{ width: 100 }}>Class codes</div>
+        <div style={{ width: 100 }}>Employees</div>
+        <div style={{ width: 90 }}>Est. payroll</div>
+        <div style={{ width: 60 }} />
+      </div>
+
+      {/* Rows */}
+      {locations.map((loc, li) => {
+        const isEditing = expandedIdx === li;
+        const isCA = (loc.state || "").toUpperCase() === "CA";
+        const zipShort = isCA && (loc.zip || "").replace(/\D/g, "").length < 5;
+        const employees = (loc.classCodes || []).reduce((s, cc) => s + (Number(cc.fullTimeEmployees) || 0) + (Number(cc.partTimeEmployees) || 0), 0);
+        const address = fmtAddress(loc);
+        return (
+          <div key={li} style={{ borderBottom: `1px solid ${c.borderColor}` }}>
+            <div style={{ display: "flex", alignItems: "center", padding: "11px 14px", background: isEditing ? c.accentPrimarySoft : undefined }}>
+              <div style={{ width: 30 }}>
+                <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 20, height: 20, borderRadius: "50%", border: `1px solid ${c.borderColor}`, fontSize: 10, fontWeight: 700, color: c.textMuted }}>{li + 1}</span>
+              </div>
+              <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                <span data-testid={`text-location-address-${li}`} style={{ fontSize: 13, fontWeight: 500, color: address ? c.textPrimary : c.textMuted, fontStyle: address ? undefined : "italic", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {address || "New location"}
+                </span>
+                {zipShort && !isEditing && <AlertTriangle style={{ width: 14, height: 14, color: "#FFB547", flexShrink: 0 }} />}
+              </div>
+              <div style={{ width: 100, fontSize: 12, color: c.textMuted }}><span style={{ color: c.textPrimary, fontWeight: 500 }}>{(loc.classCodes || []).length}</span> classes</div>
+              <div style={{ width: 100, fontSize: 12, color: c.textMuted }}><span style={{ color: c.textPrimary, fontWeight: 500 }}>{employees}</span> emp</div>
+              <div style={{ width: 90, fontSize: 12, color: c.textMuted }}>{fmtPayroll(loc)}</div>
+              <div style={{ width: 60, display: "flex", justifyContent: "flex-end", gap: 2 }}>
+                {editable && (
+                  <button type="button" title={isEditing ? "Collapse" : "Edit location"} data-testid={`button-edit-location-${li}`}
+                    onClick={() => setExpandedIdx(isEditing ? null : li)}
+                    style={{ background: isEditing ? c.accentPrimarySoft : "none", border: "none", cursor: "pointer", padding: 6, borderRadius: 6 }}>
+                    <Pencil style={{ width: 14, height: 14, color: isEditing ? "var(--accent-primary)" : c.textMuted }} />
+                  </button>
+                )}
+                {editable && locations.length > 1 && (
+                  <button type="button" title="Remove location" data-testid={`button-remove-location-${li}`}
+                    onClick={() => {
+                      setDraft((d) => ({ ...d, locations: (d.locations ?? []).filter((_, i) => i !== li) }));
+                      setExpandedIdx(null);
+                    }}
+                    style={{ background: "none", border: "none", cursor: "pointer", padding: 6 }}>
+                    <Trash2 style={{ width: 14, height: 14, color: c.textMuted }} />
+                  </button>
+                )}
+              </div>
             </div>
-            <div style={{ width: 140 }}>
-              <div style={labelStyle}>ZIP{(loc.state || "").toUpperCase() === "CA" ? " (required for CA)" : ""}</div>
-              <input
-                value={loc.zip || ""}
-                disabled={!editable}
-                maxLength={10}
-                placeholder="ZIP code"
-                onChange={(e) => patchLocation(li, { zip: e.target.value })}
-                style={inputStyle}
-              />
-            </div>
-            <div style={{ flex: 1, fontSize: 12, color: c.textMuted, paddingBottom: 9 }}>
-              {(loc.classCodes || []).length} class code{(loc.classCodes || []).length === 1 ? "" : "s"} ·{" "}
-              {(loc.classCodes || []).reduce((s, cc) => s + (Number(cc.fullTimeEmployees) || 0) + (Number(cc.partTimeEmployees) || 0), 0)} employees
-            </div>
-            {editable && locations.length > 1 && (
-              <button
-                type="button"
-                title="Remove location"
-                onClick={() => setDraft((d) => ({ ...d, locations: (d.locations ?? []).filter((_, i) => i !== li) }))}
-                style={{ background: "none", border: "none", cursor: "pointer", padding: 6, marginBottom: 3 }}
-              >
-                <Trash2 style={{ width: 16, height: 16, color: c.textMuted }} />
-              </button>
+            {isEditing && (
+              <div style={{ padding: "14px 14px 16px 44px" }}>
+                {renderAddressGrid(loc, (p) => patchLocation(li, p))}
+                {zipShort && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, fontSize: 11, color: "#FFB547", background: "rgba(255,181,71,0.10)", border: "1px solid rgba(255,181,71,0.25)", borderRadius: 8, padding: "7px 10px" }}>
+                    <AlertTriangle style={{ width: 13, height: 13, flexShrink: 0 }} />
+                    California locations require a 5-digit ZIP for territorial rating.
+                  </div>
+                )}
+                <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 12 }}>
+                  <GhostButton onClick={() => setExpandedIdx(null)} style={{ padding: "6px 14px", fontSize: 12 }}>Done</GhostButton>
+                </div>
+              </div>
             )}
           </div>
-        </div>
-      ))}
+        );
+      })}
+
+      {/* Docked smart-add bar */}
       {editable && (
-        <GhostButton
-          onClick={() =>
-            setDraft((d) => ({
-              ...d,
-              locations: [...(d.locations ?? []), { state: "", zip: "", classCodes: [{ classCode: "", description: "", annualPayroll: 0, fullTimeEmployees: 0, partTimeEmployees: 0 }] }],
-            }))
-          }
-          style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", fontSize: 12, alignSelf: "flex-start" }}
-        >
-          <Plus style={{ width: 14, height: 14 }} />Add location
-        </GhostButton>
+        <div style={{ padding: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+            <span style={{ ...labelStyle, marginBottom: 0, color: "var(--accent-primary)", display: "flex", alignItems: "center", gap: 5 }}>
+              <Plus style={{ width: 12, height: 12 }} />Add location
+            </span>
+            <button type="button" data-testid="button-toggle-manual-add"
+              onClick={() => { setAddManual((m) => !m); setAddSuggestions([]); }}
+              style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, fontWeight: 500, color: "var(--accent-primary)", padding: 0 }}>
+              {addManual ? "Switch to smart entry" : "Enter manually"}
+            </button>
+          </div>
+          {!addManual ? (
+            <div style={{ position: "relative" }}>
+              <Search style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", width: 15, height: 15, color: "var(--accent-primary)" }} />
+              <input
+                value={addQuery}
+                data-testid="input-smart-add-address"
+                onChange={(e) => setAddQuery(e.target.value)}
+                placeholder="Start typing an address to add a location…"
+                style={{ ...inputStyle, paddingLeft: 32, borderColor: "rgba(233,30,140,0.45)" }}
+              />
+              {addQuery.trim().length >= 4 && (
+                <div style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, right: 0, background: c.cardBg, border: `1px solid ${c.borderColor}`, borderRadius: 10, boxShadow: "0 10px 40px rgba(0,0,0,0.5)", zIndex: 30, overflow: "hidden" }}>
+                  {addSuggestions.map((s, si) => (
+                    <button key={si} type="button" data-testid={`button-suggestion-${si}`}
+                      onClick={() => appendLocation({ street1: s.street1, city: s.city, state: s.state, zip: s.zip, classCodes: emptyClassCodes() }, false)}
+                      style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", background: "none", border: "none", cursor: "pointer", padding: "9px 12px" }}>
+                      <MapPin style={{ width: 15, height: 15, color: "var(--accent-primary)", flexShrink: 0 }} />
+                      <span>
+                        <span style={{ display: "block", fontSize: 13, color: c.textPrimary, fontWeight: 500 }}>{s.street1}</span>
+                        <span style={{ display: "block", fontSize: 11, color: c.textMuted, marginTop: 1 }}>{[s.city, s.state].filter(Boolean).join(", ")} {s.zip}</span>
+                      </span>
+                    </button>
+                  ))}
+                  <div style={{ padding: "7px 12px", borderTop: `1px solid ${c.borderColor}`, fontSize: 11, color: c.textMuted }}>
+                    {addSearching ? "Searching…" : addSuggestions.length === 0 ? "No matches — try a fuller address, or enter manually." : "US Census address lookup"}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div style={{ background: c.inputBg, border: `1px solid ${c.borderColor}`, borderRadius: 10, padding: 14 }}>
+              {renderAddressGrid(newLoc, (p) => setNewLoc((prev) => ({ ...prev, ...p })))}
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
+                <GhostButton onClick={() => { setAddManual(false); setNewLoc({ state: "" }); }} style={{ padding: "6px 14px", fontSize: 12 }}>Cancel</GhostButton>
+                <PinkButton
+                  data-testid="button-add-manual-location"
+                  onClick={() => {
+                    if (!newLoc.state) return;
+                    appendLocation({ street1: newLoc.street1 || "", street2: newLoc.street2 || "", city: newLoc.city || "", state: newLoc.state || "", zip: newLoc.zip || "", classCodes: emptyClassCodes() }, false);
+                  }}
+                  style={{ padding: "6px 16px", fontSize: 12, opacity: newLoc.state ? 1 : 0.5 }}
+                >
+                  Add location
+                </PinkButton>
+              </div>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
@@ -313,6 +499,31 @@ export default function IndicationDetailView({
             <div style={{ fontSize: 12, color: c.textMuted }}>{meta.blurb}</div>
           </div>
         </div>
+        {editable && (
+          <button
+            type="button"
+            data-testid="button-save-rerate"
+            onClick={dirty && !saving ? save : undefined}
+            disabled={!dirty || saving}
+            style={{
+              marginLeft: "auto",
+              padding: "7px 16px",
+              fontSize: 12,
+              fontWeight: 600,
+              fontFamily: "inherit",
+              borderRadius: 8,
+              cursor: dirty && !saving ? "pointer" : "default",
+              transition: "all 0.15s ease",
+              background: dirty ? "var(--accent-primary)" : c.hoverBg,
+              color: dirty ? "#fff" : c.textMuted,
+              border: dirty ? "1px solid var(--accent-primary)" : `1px solid ${c.borderColor}`,
+              boxShadow: dirty ? "0 2px 14px rgba(233,30,140,0.35)" : "none",
+              opacity: saving || (dirty && metric === "locations" && caMissingZip) ? 0.6 : 1,
+            }}
+          >
+            {saving ? "Saving…" : "Save & re-rate"}
+          </button>
+        )}
       </div>
 
       {/* Pending-review banner — internal edits are not client-visible until approved. */}
@@ -345,46 +556,53 @@ export default function IndicationDetailView({
       {metric === "payroll" && renderPerClassCodeEditor("payroll")}
       {metric === "exmod" && renderExmodEditor()}
 
-      {/* Save row */}
-      <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-        {editable ? (
-          <PinkButton
-            onClick={save}
-            style={{ padding: "9px 22px", fontSize: 13, opacity: saving || (metric === "locations" && caMissingZip) ? 0.6 : 1 }}
-          >
-            {saving ? "Saving…" : "Save & re-rate"}
-          </PinkButton>
-        ) : (
-          <span style={{ fontSize: 12, color: c.textMuted }}>Read-only — editing is limited to broker, underwriter, and admin.</span>
-        )}
-        {notice && <span style={{ fontSize: 12, color: "#00D68F" }}>{notice}</span>}
-        {error && <span style={{ fontSize: 12, color: "#ef4444" }}>{error}</span>}
-      </div>
-
-      {/* Inline change history for this metric */}
-      <div style={{ marginTop: 4 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, color: c.textMuted, marginBottom: 8 }}>
-          <History style={{ width: 14, height: 14 }} />Change history
+      {/* Status row — save action lives in the header; this row carries messages. */}
+      {(!editable || notice || error) && (
+        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          {!editable && (
+            <span style={{ fontSize: 12, color: c.textMuted }}>Read-only — editing is limited to broker, underwriter, and admin.</span>
+          )}
+          {notice && <span style={{ fontSize: 12, color: "#00D68F" }}>{notice}</span>}
+          {error && <span style={{ fontSize: 12, color: "#ef4444" }}>{error}</span>}
         </div>
-        {history.length === 0 ? (
-          <div style={{ fontSize: 12, color: c.textMuted, padding: "10px 0" }}>No changes recorded yet.</div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {history.map((h) => (
-              <div key={h.id} style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "8px 12px", borderRadius: 8, background: c.cardBg, border: `1px solid ${c.borderColor}`, flexWrap: "wrap" }}>
-                <span style={{ fontSize: 12, color: c.textPrimary, flex: 1, minWidth: 220 }}>
-                  {h.eventType === "indication_params_approved" ? (
-                    <span style={{ color: "#00D68F" }}>{h.description}</span>
-                  ) : (
-                    h.description
-                  )}
-                </span>
-                <span style={{ fontSize: 11, color: c.textMuted, whiteSpace: "nowrap" }}>
-                  {h.metadata?.role ? `${h.metadata.role} · ` : ""}{fmtWhen(h.createdAt)}
-                </span>
-              </div>
-            ))}
-          </div>
+      )}
+
+      {/* Inline change history for this metric — collapsed until requested. */}
+      <div style={{ marginTop: 4 }}>
+        <button
+          type="button"
+          data-testid="button-toggle-change-history"
+          onClick={() => setShowHistory((v) => !v)}
+          aria-expanded={showHistory}
+          style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, color: c.textMuted, background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", marginBottom: showHistory ? 10 : 0 }}
+        >
+          <History style={{ width: 14, height: 14 }} />
+          Change history{history.length > 0 ? ` (${history.length})` : ""}
+          <ChevronDown style={{ width: 13, height: 13, transform: showHistory ? "rotate(180deg)" : undefined, transition: "transform 0.15s ease" }} />
+        </button>
+        {showHistory && (
+          history.length === 0 ? (
+            <div style={{ fontSize: 12, color: c.textMuted, padding: "10px 0" }}>No changes recorded yet.</div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {history.map((h) => {
+                const isApproval = h.eventType === "indication_params_approved";
+                return (
+                  <div key={h.id} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                    <div style={{ flexShrink: 0, width: 16, height: 20, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <span style={{ width: 4, height: 4, borderRadius: "50%", background: isApproval ? "var(--accent-primary)" : c.textMuted, opacity: isApproval ? 1 : 0.6, display: "block" }} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0, fontSize: 12, color: c.textMuted, lineHeight: "20px", overflowWrap: "anywhere" }}>
+                      <span style={{ color: c.textSecondary, fontWeight: isApproval ? 500 : 400 }}>{h.description}</span>
+                      <span style={{ fontSize: 10.5, marginLeft: 8, whiteSpace: "nowrap" }}>
+                        {h.metadata?.role ? `${h.metadata.role} · ` : ""}{fmtWhen(h.createdAt)}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )
         )}
       </div>
     </div>

@@ -960,6 +960,13 @@ function diffIndicationParams(
     if (!p || !n) continue;
     if (p.state !== n.state) changes.push({ metric: "locations", field: `${locLabel} state`, before: p.state, after: n.state });
     if ((p.zip || "") !== (n.zip || "")) changes.push({ metric: "locations", field: `${locLabel} ZIP`, before: p.zip || null, after: n.zip || null });
+    // Full-address fields (pass-through keys on the loose schema).
+    const addrFields: Array<[string, string]> = [["street1", "street"], ["street2", "suite/unit"], ["city", "city"]];
+    for (const [key, label] of addrFields) {
+      const pv = String((p as Record<string, unknown>)[key] ?? "");
+      const nv = String((n as Record<string, unknown>)[key] ?? "");
+      if (pv !== nv) changes.push({ metric: "locations", field: `${locLabel} ${label}`, before: pv || null, after: nv || null });
+    }
 
     const maxCc = Math.max(p.classCodes.length, n.classCodes.length);
     for (let j = 0; j < maxCc; j++) {
