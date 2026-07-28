@@ -222,6 +222,9 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
   // period the deal spent in the selected phases.
   const [phaseSel, setPhaseSel] = useState<{ a: number; b: number } | null>(null);
   const phaseDragRef = useRef<number | null>(null);
+  // Last node clicked while a selection is active — re-clicking it clears
+  // the time frame (unlimited extend clicks otherwise).
+  const phaseLastClickRef = useRef<number | null>(null);
   // Row containing the phase nodes; during a drag we hit-test the pointer's
   // x position against it (window-level pointermove) so the selection pulls
   // smoothly from node to node — much more responsive than per-node
@@ -352,6 +355,7 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
     setVarUsedAi(false);
     setTab("overview");
     setOpenSection(null);
+    phaseLastClickRef.current = null;
     setPhaseSel(null);
     setMapMarkers([]);
     setQuoteStats({ locations: null, eMod: null });
@@ -1017,7 +1021,7 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
                     data-testid="button-clear-phase-filter"
                     title="Clear time filter"
                     aria-label="Clear time filter"
-                    onClick={() => setPhaseSel(null)}
+                    onClick={() => { phaseLastClickRef.current = null; setPhaseSel(null); }}
                     style={{ background: "none", border: "none", cursor: "pointer", padding: "2px 4px", display: "flex", alignItems: "center" }}
                   >
                     <X style={{ width: 12, height: 12, color: "var(--accent-primary)" }} />
@@ -1062,24 +1066,29 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
                       // release implicit capture (touch) so the window-level
                       // pointermove drag hit-testing keeps receiving events
                       (e.target as Element).releasePointerCapture?.(e.pointerId);
-                      // Click semantics: 1st click selects a stage, 2nd click
-                      // (on another node) draws the span between them, 3rd
-                      // click anywhere reverts to the full timeline.
+                      // Click semantics: every click on a new node extends the
+                      // span to include it (unlimited clicks); re-clicking the
+                      // node you just clicked reverts to the full timeline.
                       if (phaseSel) {
-                        const lo = Math.min(phaseSel.a, phaseSel.b);
-                        const hi = Math.max(phaseSel.a, phaseSel.b);
-                        if (lo !== hi || lo === i) {
-                          // span already drawn, or re-click of the lone node → clear
+                        if (phaseLastClickRef.current === i) {
+                          // re-click of the node just clicked → clear
+                          phaseLastClickRef.current = null;
                           setPhaseSel(null);
                           return;
                         }
-                        // 2nd click: extend single selection into a span; keep
-                        // dragging from the original anchor to adjust it live
-                        phaseDragRef.current = lo;
-                        setPhaseSel({ a: lo, b: i });
+                        const lo = Math.min(phaseSel.a, phaseSel.b);
+                        const hi = Math.max(phaseSel.a, phaseSel.b);
+                        const nlo = Math.min(lo, i);
+                        const nhi = Math.max(hi, i);
+                        // keep dragging from the endpoint farther from the
+                        // click so the near side can still be adjusted live
+                        phaseDragRef.current = i - nlo >= nhi - i ? nlo : nhi;
+                        phaseLastClickRef.current = i;
+                        setPhaseSel({ a: nlo, b: nhi });
                         return;
                       }
                       phaseDragRef.current = i;
+                      phaseLastClickRef.current = i;
                       setPhaseSel({ a: i, b: i });
                     }}
                     onKeyDown={(e) => {
@@ -1087,22 +1096,23 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
                         e.preventDefault();
                         setPhaseSel((prev) => {
                           if (prev) {
-                            const lo = Math.min(prev.a, prev.b);
-                            const hi = Math.max(prev.a, prev.b);
-                            if (lo !== hi || lo === i) return null;
-                            return { a: lo, b: i };
+                            if (phaseLastClickRef.current === i) {
+                              phaseLastClickRef.current = null;
+                              return null;
+                            }
+                            phaseLastClickRef.current = i;
+                            return { a: Math.min(prev.a, prev.b, i), b: Math.max(prev.a, prev.b, i) };
                           }
+                          phaseLastClickRef.current = i;
                           return { a: i, b: i };
                         });
                       }
                     }}
                     style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", position: "relative", minWidth: 0, pointerEvents: "auto", cursor: "pointer", touchAction: "none", paddingTop: 8, marginTop: -8 }}
                     title={
-                      timeWindow && timeWindow.lo !== timeWindow.hi
-                        ? "Click to show the full timeline"
-                        : selected
-                          ? "Click a second stage to draw a span; click again to show the full timeline"
-                          : "Click to filter the deal to this stage"
+                      timeWindow
+                        ? "Click another stage to extend the time frame; re-click the last stage to show the full timeline"
+                        : "Click to filter the deal to this stage"
                     }
                   >
                     {i > 0 && <div style={{ position: "absolute", top: 13, left: "-50%", width: "100%", height: 2, background: connSelected ? "var(--accent-primary)" : i <= currentPhase ? hdrSoftGrey : hdrFaint, opacity: connSelected ? 0.7 : 1 }} />}
