@@ -37,12 +37,6 @@ import TaskDrawer from "./TaskDrawer";
 import ActionStrip from "./ActionStrip";
 import wcShieldIcon from "@assets/Shield-Icon_1780952893965.png";
 
-/** True when a WFS pricing value is present and positive. */
-function hasWfsValue(val: string | null): boolean {
-  if (val == null || val === "") return false;
-  const n = parseFloat(val);
-  return !isNaN(n) && n > 0;
-}
 import type { IndicationMetric } from "./IndicationDetailView";
 
 interface DealCardShellProps {
@@ -281,9 +275,6 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
   // WFS pricing from the deal's quote (monthly fee + PEPM) and the state of
   // the one-click "Get Quote Now" generator on the right rail.
   const [wfsPricing, setWfsPricing] = useState<{ monthly: string | null; pepm: string | null }>({ monthly: null, pepm: null });
-  // False while the quote fetch is in flight so the ActionStrip never flashes
-  // "Get Quote Now" for a deal whose pricing simply hasn't hydrated yet.
-  const [wfsResolved, setWfsResolved] = useState(false);
   const [wfsBusy, setWfsBusy] = useState(false);
   const [wfsError, setWfsError] = useState<string | null>(null);
 
@@ -448,7 +439,6 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
       // Reset WFS rail state so a previously-opened deal's pricing/error never
       // bleeds into this deal while (or after) the quote hydrates.
       setWfsPricing({ monthly: null, pepm: null });
-      setWfsResolved(false);
       setWfsError(null);
       setWfsBusy(false);
       setQuoteWcPremium(null);
@@ -493,7 +483,6 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
         if (active) setWfsPricing({ monthly: null, pepm: null });
       }
       if (active) {
-        setWfsResolved(true);
         setQuoteStats(stats);
         setQuoteRef(qref);
       }
@@ -789,6 +778,71 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
     navigate("/marketplace");
   };
 
+  // Reopens the indication form (quote wizard) prefilled from the deal + its
+  // saved workforce profile so the broker can edit, update, and complete it.
+  // Lands on the first wizard step whose submission section is incomplete
+  // (the spots required before requesting a proposal). Closes the dialog.
+  // NOTE: must stay above the `if (!isOpen)` early return — it's a hook.
+  const openIndicationForm = useCallback(() => {
+    if (!deal) return;
+    const wp = quoteRef?.profile;
+    const locations = Array.isArray(wp?.locations)
+      ? wp.locations.map((l, i) => ({
+          id: `deal-loc-${i}`,
+          streetAddress: "",
+          city: "",
+          state: l.state ?? "",
+          zip: l.zip ?? "",
+          classCodes: (l.classCodes ?? []).map((cc) => ({
+            classCode: String(cc.classCode ?? ""),
+            description: cc.description ?? "",
+            fullTimeEmployees: Number(cc.fullTimeEmployees) || 0,
+            partTimeEmployees: Number(cc.partTimeEmployees) || 0,
+            annualPayroll: Number(cc.annualPayroll) || 0,
+          })),
+        }))
+      : [];
+    const eModNum = typeof wp?.eMod === "number" && wp.eMod > 0
+      ? wp.eMod
+      : deal.emod != null && parseFloat(String(deal.emod)) > 0
+        ? parseFloat(String(deal.emod))
+        : NaN;
+    const prefill: Record<string, unknown> = {
+      businessName: deal.businessName || "",
+      businessState: deal.state || "",
+      fein: typeof deal.fein === "string" ? deal.fein : "",
+      entityType: typeof deal.entityType === "string" ? deal.entityType : "",
+      yearsInBusiness: deal.yearsInBusiness != null ? String(deal.yearsInBusiness) : "",
+      statesOfOperation: Array.isArray(deal.statesOfOperation) ? deal.statesOfOperation : [],
+      coverageEffectiveDate: deal.coverageEffectiveDate || "",
+      ...(locations.length > 0 ? { locations, locationCount: String(locations.length) } : {}),
+      ...(!isNaN(eModNum) ? { hasExperienceMod: "Yes", experienceMod: String(eModNum) } : {}),
+    };
+    // Land on the first phase-1 wizard step whose submission section is still
+    // incomplete; when everything is complete, go straight to the indication
+    // step (5) where the proposal is requested. If sections haven't hydrated
+    // yet, start at step 1 rather than assuming everything is complete.
+    const stepForSection: Record<string, number> = {
+      business: 1, locations: 2, workforce: 2, operations: 4, coverage: 4, loss: 4,
+    };
+    const sections = payload?.sections;
+    const firstIncomplete = sections?.find((s) => s.status !== "complete");
+    prefill.phase = 1;
+    prefill.currentStep = !sections?.length
+      ? 1
+      : firstIncomplete
+        ? (stepForSection[firstIncomplete.key] ?? 5)
+        : 5;
+    onClose();
+    navigate("/marketplace/quote/wizard", {
+      state: {
+        vertical: deal.vertical || "Cannabis",
+        coverageType: deal.productType || "WC",
+        prefill,
+      },
+    });
+  }, [deal, quoteRef, payload, onClose, navigate]);
+
   if (!isOpen) return null;
 
   const stage = deal?.stage;
@@ -1008,7 +1062,7 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
                   <MiniBadge
                     value={estPremiumFmt}
                     label="wc annual premium"
-                    onClick={() => setTab("quote")}
+                    onClick={openIndicationForm}
                   />
                 )}
                 {hasPeoBadge && peoBadgeValue && (
@@ -1016,7 +1070,7 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
                     value={peoBadgeValue}
                     sub={peoBadgeSub}
                     label={peoBadgeLabel}
-                    onClick={() => setTab("quote")}
+                    onClick={openIndicationForm}
                   />
                 )}
               </div>
@@ -1209,15 +1263,8 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
           <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
           {payload && (
             <ActionStrip
-              canApprove={payload.canApprove}
-              busy={decisionBusy}
-              openBlocking={openBlocking}
-              approveError={approveError}
-              onApprove={handleApprove}
-              hasWfsPricing={hasWfsValue(wfsPricing.monthly) || hasWfsValue(wfsPricing.pepm ?? ((deal?.wfsPepmRate as string) || null))}
-              wfsResolved={wfsResolved}
-              wfsBusy={wfsBusy}
-              onGetWfsQuote={handleGetWfsQuote}
+              incompleteSections={(payload.sections ?? []).filter((s) => s.status !== "complete").length}
+              onRequestProposal={openIndicationForm}
             />
           )}
           <div style={{ flex: 1, minWidth: 0, minHeight: 0, padding: 14, overflow: "auto" }}>
@@ -1280,6 +1327,9 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
                       onGetWfsQuote={handleGetWfsQuote}
                       canApprove={payload.canApprove}
                       busy={decisionBusy}
+                      openBlocking={openBlocking}
+                      approveError={approveError}
+                      onApprove={handleApprove}
                       onDecline={handleDecline}
                     />
                   </div>
