@@ -828,14 +828,19 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
   // brokers quote in conversation), falling back to the monthly fee.
   const pepmNum = wfsPricing.pepm != null ? parseFloat(wfsPricing.pepm) : NaN;
   const monthlyNum = wfsPricing.monthly != null ? parseFloat(wfsPricing.monthly) : NaN;
-  const hasPeoBadge = (!isNaN(pepmNum) && pepmNum > 0) || (!isNaN(monthlyNum) && monthlyNum > 0);
-  const peoBadgeValue = !isNaN(pepmNum) && pepmNum > 0
-    ? pepmNum.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 })
-    : !isNaN(monthlyNum) && monthlyNum > 0
-      ? monthlyNum.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 })
-      : null;
-  const peoBadgeSub = !isNaN(pepmNum) && pepmNum > 0 ? "/ee/mo" : "/mo";
-  const peoBadgeLabel = !isNaN(pepmNum) && pepmNum > 0 ? "peo per employee" : "peo monthly fee";
+  const hasPepm = !isNaN(pepmNum) && pepmNum > 0;
+  const hasMonthly = !isNaN(monthlyNum) && monthlyNum > 0;
+  const hasPeoBadge = hasPepm || hasMonthly;
+  const fmtUsd0 = (n: number) => n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+  // Headline is the monthly fee; the per-employee rate rides in the label row
+  // so both prices fit without growing the badge (same 3 rows, same width).
+  const peoBadgeValue = hasMonthly ? fmtUsd0(monthlyNum) : hasPepm ? fmtUsd0(pepmNum) : null;
+  const peoBadgeSub = hasMonthly ? "/mo" : "/ee/mo";
+  const peoBadgeLabel = hasMonthly && hasPepm
+    ? `peo · ${fmtUsd0(pepmNum)}/employee`
+    : hasPepm
+      ? "peo per employee"
+      : "peo monthly fee";
 
   // Header-over-map palette: glyphs sit on the map artwork, so these branch on
   // theme like the map itself (intentional artwork greys, not surface tokens).
@@ -937,11 +942,13 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
                 Wraps under the identity block on narrow widths instead of colliding. */}
             {/* KPI numbers are display-only — keep the cluster click-transparent
                 so markers underneath stay clickable; only the X re-enables. */}
-            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "flex-end", columnGap: 26, rowGap: 10, flex: "0 1 auto", minWidth: 0 }}>
+            {/* Sizes scale with viewport (clamp) so all four KPIs stay on one
+                row even at mobile widths instead of wrapping/jumbling. */}
+            <div style={{ display: "flex", flexWrap: "nowrap", alignItems: "flex-start", justifyContent: "flex-end", columnGap: "clamp(8px, 2.4vw, 26px)", rowGap: 10, flex: "0 1 auto", minWidth: 0 }}>
               {kpis.map(({ label, metric, Icon, value, exModColor: exColor }) => {
                 const isDash = value === "\u2014";
                 const numberStyle: CSSProperties = {
-                  fontSize: 26, fontWeight: 600, lineHeight: 1.15, marginTop: 3, fontVariantNumeric: "tabular-nums",
+                  fontSize: "clamp(14px, 3.2vw, 26px)", fontWeight: 600, lineHeight: 1.15, marginTop: 3, fontVariantNumeric: "tabular-nums",
                   ...(isDash || label === "EXMOD"
                     ? // EXMOD stays neutral like the other header text — health is
                       // conveyed by the status dot beside it, never by tinted numerals.
@@ -965,8 +972,8 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
                     onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setQuoteDetail(metric); setTab("quote"); } }}
                     style={{ textAlign: "right", pointerEvents: "auto", cursor: "pointer" }}
                   >
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 5, fontSize: 10, letterSpacing: "0.08em", fontWeight: 600, color: hdrSoftGrey, textTransform: "uppercase" }}>
-                      <Icon style={{ width: 13, height: 13, color: hdrSoftGrey }} />
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 5, fontSize: "clamp(8px, 1.3vw, 10px)", letterSpacing: "0.08em", fontWeight: 600, color: hdrSoftGrey, textTransform: "uppercase", whiteSpace: "nowrap" }}>
+                      <Icon style={{ width: "clamp(9px, 1.7vw, 13px)", height: "clamp(9px, 1.7vw, 13px)", color: hdrSoftGrey }} />
                       {label}
                     </div>
                     {showDot ? (
