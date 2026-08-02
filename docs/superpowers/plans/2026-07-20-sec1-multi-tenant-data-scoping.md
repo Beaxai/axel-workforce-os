@@ -6,6 +6,8 @@
 
 **Architecture:** Generalize the scoping pattern that already exists in `journeys.ts` (an `Actor` + a per-role visibility rule + a fail-closed default) into ONE shared helper, then apply it to every list endpoint. Scoping is **additive to** the existing `requireRoles(...)` gates — role gating says *who may call*, scoping says *which rows return*. Both are required.
 
+> **Do not couple SEC-1 to the "journeys" feature.** The journeys *view* (the visual workflow-template authoring UI) is temporary scaffolding and will be **removed** — workflow *definitions* move into code (as `wc-tracker.ts` already does with `WC_PHASE_KEYS`/`WC_TASK_KEYS`). What SEC-1 borrows from `journeys.ts` is only its **server-side authorization logic** (`Actor`, per-role visibility, fail-closed). Task 1 *extracts* that logic into a standalone `scope.ts`, which **decouples** scoping from journeys so the view's removal never affects it. The source of truth for "who can see a deal" is **deal ownership** (`org_id` + `producing_agent_id`) — never a journey template. Scope deals, contacts, quotes, policies, proposals, documents, and accounts by deal ownership; do **not** route any scoping decision through the journey engine.
+
 **Tech Stack:** TypeScript 5.9 · Drizzle ORM + Postgres · Express 5 · `zod/v4` (lib/db) · OpenAPI → Orval codegen · `tsx` scripts.
 
 ## Why this is security-critical (current state — verified 2026-07-20)
@@ -271,6 +273,22 @@ Test: create a deal as an agent → `producing_agent_id` = that agent; that agen
 - [ ] Commit `docs(sec1): multi-tenant isolation report` and push.
 
 **Then STOP — do not merge.**
+
+## Coverage amendment (2026-08-02 re-audit, post 87-commit merge `3a66a41`)
+
+The route surface grew after this plan's 2026-07-20 audit. Re-audited findings:
+
+- **`deal-card.ts` (and `quote-view.ts`, `journeys.ts`) treat AGENT as internal see-all** — each
+  defines `INTERNAL_ROLES = {ADMIN, CSA, AGENT, UNDERWRITER}` and short-circuits `canViewDeal` for
+  those roles. External roles (EMPLOYER/CARRIER/PEO) *are* ownership-checked, but any AGENT can read
+  any deal's card by id. **Add to Task 4 scope:** replace the AGENT branch in these per-deal access
+  checks with `scope.ts` logic (producing-agent / broker rules), keeping the EMPLOYER checks as-is.
+  Prefer 404 over the current 403 for out-of-scope ids where the change is non-breaking to the UI.
+- **`geo.ts`** (new) — Census geocoder proxy, no tenant data. No scoping needed. Audited, out of scope.
+- **`search.ts`** is INTERNAL_SALES-gated (includes AGENT) and spans deals/accounts — verify in
+  Task 7 that its results compose `visibleDealCondition`, or add it to Task 4's list.
+- New `quotes` columns (`approved_snapshot`, `params_pending_review`) are a client-visibility gate
+  *within* a deal — orthogonal to tenant scoping; no SEC-1 action.
 
 ## Self-review notes (author)
 
