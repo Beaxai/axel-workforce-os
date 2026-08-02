@@ -12,6 +12,7 @@
  */
 import {
   db,
+  contactsTable,
   dealsTable,
   accountsTable,
   organizationsTable,
@@ -19,7 +20,13 @@ import {
   usersTable,
 } from "@workspace/db";
 import { and, isNull } from "drizzle-orm";
-import { visibleDealCondition, visibleDealIds, type Actor, type Dbc } from "../lib/scope";
+import {
+  visibleContactCondition,
+  visibleDealCondition,
+  visibleDealIds,
+  type Actor,
+  type Dbc,
+} from "../lib/scope";
 
 type Result = { name: string; pass: boolean; detail?: string };
 const results: Result[] = [];
@@ -198,6 +205,45 @@ async function main() {
         same(foreignList, [dealForeign!.id]),
         `got ${foreignList.length} rows`,
       );
+
+      // ---- Task 3: contacts (org match OR parent-deal match) -----------------
+      const [contactClientOrg, contactOnDealA1, contactForeignDeal] = await tx
+        .insert(contactsTable)
+        .values([
+          { firstName: "Cora", lastName: "ClientOrg", orgId: clientOrg!.id },
+          { firstName: "Dana", lastName: "OnDealA1", dealId: dealA1!.id },
+          { firstName: "Fern", lastName: "ForeignDeal", dealId: dealForeign!.id },
+        ])
+        .returning({ id: contactsTable.id });
+
+      const contactsFor = async (actor: Actor) => {
+        const cond = await visibleContactCondition(actor, tx);
+        if (cond === null) return ["<ALL>"];
+        return (await tx.select({ id: contactsTable.id }).from(contactsTable).where(cond))
+          .map((r) => r.id)
+          .sort();
+      };
+
+      check("contacts: internal → see all", same(await contactsFor(admin), ["<ALL>"]));
+      const agentContacts = await contactsFor(actorAgentA);
+      check(
+        "contacts: agent sees contacts on their own deals only",
+        same(agentContacts, [contactOnDealA1!.id]),
+        `got ${agentContacts.length} rows`,
+      );
+      const employerContacts = await contactsFor(actorEmployer);
+      check(
+        "contacts: employer sees own-org contacts + contacts on their org's deals",
+        same(employerContacts, [contactClientOrg!.id, contactOnDealA1!.id]),
+        `got ${employerContacts.length} rows`,
+      );
+      const foreignContacts = await contactsFor(actorForeign);
+      check(
+        "contacts: foreign agent sees none of the other tenants' contacts",
+        same(foreignContacts, [contactForeignDeal!.id]),
+        `got ${foreignContacts.length} rows`,
+      );
+      check("contacts: carrier sees nothing (fail closed)", same(await contactsFor(actorCarrier), []));
 
       throw new Rollback();
     });

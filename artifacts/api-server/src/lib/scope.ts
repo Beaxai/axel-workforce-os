@@ -15,7 +15,7 @@
  * set) yields a condition that matches NOTHING — a scoping bug must under-show,
  * never over-show. `null` is returned ONLY for internal see-all actors.
  */
-import { db, dealsTable, orgMembersTable } from "@workspace/db";
+import { db, contactsTable, dealsTable, orgMembersTable } from "@workspace/db";
 import { and, eq, inArray, or, sql, type SQL } from "drizzle-orm";
 import type { Request } from "express";
 
@@ -101,4 +101,25 @@ export async function visibleDealIds(actor: Actor, dbc: Dbc = db): Promise<strin
   if (cond === null) return null;
   const rows = await dbc.select({ id: dealsTable.id }).from(dealsTable).where(cond);
   return rows.map((r) => r.id);
+}
+
+/**
+ * The WHERE fragment restricting `contacts` (SEC-1 Task 3): a contact is
+ * visible when its org is one of the actor's orgs, OR it hangs off a visible
+ * deal. `null` = internal see-all; no grounds → `sql\`false\``.
+ */
+export async function visibleContactCondition(actor: Actor, dbc: Dbc = db): Promise<SQL | null> {
+  if (isInternal(actor)) return null;
+
+  const clauses: SQL[] = [];
+  if (actor.orgIds.length > 0) {
+    clauses.push(inArray(contactsTable.orgId, actor.orgIds));
+  }
+  const dealIds = await visibleDealIds(actor, dbc);
+  if (dealIds && dealIds.length > 0) {
+    clauses.push(inArray(contactsTable.dealId, dealIds));
+  }
+
+  if (clauses.length === 0) return sql`false`;
+  return clauses.length === 1 ? clauses[0]! : or(...clauses)!;
 }
