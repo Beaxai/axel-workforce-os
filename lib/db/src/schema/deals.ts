@@ -55,6 +55,11 @@ export const dealsTable = pgTable("deals", {
   boundAt: timestamp("bound_at", { withTimezone: true }),
   signedDocumentsPath: text("signed_documents_path"),
   ratingStale: boolean("rating_stale").default(false),
+  // §6E deposit monitor (WC-3b) — parallel and NON-GATING: never blocks the
+  // Active Client conversion. Client pays the carrier directly; silence = paid.
+  depositStatus: text("deposit_status"), // null | MONITORING | CONFIRMED | AT_RISK
+  depositDueDate: date("deposit_due_date", { mode: "string" }), // bind date + 30 days
+  depositDay21TaskAt: timestamp("deposit_day21_task_at", { withTimezone: true }), // day-21 CSA task stamped once
 });
 
 export const insertDealSchema = createInsertSchema(dealsTable).omit({ id: true, createdAt: true });

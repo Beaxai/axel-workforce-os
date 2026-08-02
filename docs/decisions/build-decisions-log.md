@@ -11,6 +11,41 @@ extended when the work closes (what actually happened). Written by/with the
 
 ---
 
+## 2026-08-02 — WC-3b deposit monitor: plan + Task 1 (timer starts at bind)
+
+**What we're building:** the carrier-deposit monitor. When a deal reaches Bound, a
+30-day clock starts; at day 21 a CSA task asks the carrier to confirm; a
+cancel-for-nonpay notice marks the deal at-risk with an alert. It never blocks the
+client becoming an Active Client. Branch `p5-wc3b-deposit-monitor`.
+
+**Where it comes from:** State Doc §6E (STATE_DOCUMENT_v2.4.md:232–234): "Deposit
+monitor (parallel, NON-GATING)… 30-day timer from bind date; CSA task at day 21 to
+request carrier confirmation; a cancel-for-nonpay notice flags the deal at-risk with an
+alert." §6 preamble (line 170): "This spec drives the P5-WC build."
+
+**Why built this way:**
+- Three new columns on the deal (status / due date / day-21 stamp) instead of a new
+  table — one deposit per bound deal, and the doc describes deal-level state.
+- Timer anchors to a real `bound_at` timestamp. It existed but nothing set it on the
+  stage move, so entering Bound now stamps it once (engineer call under §9 line 319;
+  §6E says "from bind date", so the date must exist).
+- The monitor is started inside the same locked transaction as the Bound triggers, and
+  it is idempotent: re-entering Bound never resets a CONFIRMED or AT_RISK deposit.
+- UI decision (asked by Brendan up front): background-only where possible. The timer
+  and day-21 task are pure background; the day-21 task appears in the EXISTING task
+  drawer — no new UI. Only two things need a surface, and both are mandated: the
+  at-risk ALERT (the word "alert" in line 234) and the manual confirm/cancel-notice
+  actions — until listener email (WC-5) exists there is no other way for the status to
+  ever change. So the whole UI is one small deposit block on bound deals' cards
+  (status + two ADMIN/CSA buttons), coming in Task 3.
+
+**What we did NOT do and why:** no automatic ingestion of the carrier notice (that is
+WC-5 listener email scope, §6F line 236); no schema-push through drizzle yet — the
+known deals-table drift means the columns ship as reviewed SQL if push hangs (repo
+CLAUDE.md, Database section).
+
+**Questions raised:** none — §6E is unambiguous.
+
 ## 2026-08-02 — Choosing the next build items (WC-3b deposit monitor, WC-2 broker fee, D2 closure)
 
 **What we're building:** the next round of work while SEC-1 awaits review — the
