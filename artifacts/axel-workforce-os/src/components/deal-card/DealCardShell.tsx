@@ -35,6 +35,7 @@ import SectionEditorOverlay from "./SectionEditorOverlay";
 import { DocumentsTab, QuoteTab, PolicyTab } from "./SupportingTabs";
 import TaskDrawer from "./TaskDrawer";
 import ActionStrip from "./ActionStrip";
+import wcShieldIcon from "@assets/Shield-Icon_1780952893965.png";
 
 /** True when a WFS pricing value is present and positive. */
 function hasWfsValue(val: string | null): boolean {
@@ -66,6 +67,7 @@ const NAV: Array<{ key: TabKey; label: string; Icon: typeof LayoutDashboard }> =
 
 const INTERNAL = new Set(["ADMIN", "CSA", "AGENT", "UNDERWRITER"]);
 
+const BADGE_PINK = "#E91E8C";
 /** Raw workforce-profile JSON as stored on the quote (extra keys preserved). */
 interface WorkforceProfileClassCodeRaw {
   classCode?: string;
@@ -812,7 +814,7 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
     { label: "EXMOD", metric: "exmod" as IndicationMetric, Icon: Gauge, value: exModVal ?? "\u2014", exModColor: exModNum == null ? null : exModColor(exModNum) },
   ];
 
-  // Est. premium for the header bubble — deal-level column first, then the
+  // Est. premium for the header badge — deal-level column first, then the
   // quote-row premium (quote-flow deals never backfill deals.wcPremium).
   // Hidden entirely until the deal has a priced WC premium.
   const wcPremiumSrc = deal?.wcPremium != null && deal.wcPremium !== "" ? deal.wcPremium : quoteWcPremium;
@@ -820,6 +822,20 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
   const estPremiumFmt = !isNaN(wcPremiumNum) && wcPremiumNum > 0
     ? wcPremiumNum.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 })
     : null;
+
+  // PEO badge — shown when a PEO indication exists on the quote (pepm or
+  // monthlyWfsFee set and > 0). Headline is PEPM when available (the number
+  // brokers quote in conversation), falling back to the monthly fee.
+  const pepmNum = wfsPricing.pepm != null ? parseFloat(wfsPricing.pepm) : NaN;
+  const monthlyNum = wfsPricing.monthly != null ? parseFloat(wfsPricing.monthly) : NaN;
+  const hasPeoBadge = (!isNaN(pepmNum) && pepmNum > 0) || (!isNaN(monthlyNum) && monthlyNum > 0);
+  const peoBadgeValue = !isNaN(pepmNum) && pepmNum > 0
+    ? pepmNum.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 })
+    : !isNaN(monthlyNum) && monthlyNum > 0
+      ? monthlyNum.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 })
+      : null;
+  const peoBadgeSub = !isNaN(pepmNum) && pepmNum > 0 ? "/ee/mo" : "/mo";
+  const peoBadgeLabel = !isNaN(pepmNum) && pepmNum > 0 ? "peo per employee" : "peo monthly fee";
 
   // Header-over-map palette: glyphs sit on the map artwork, so these branch on
   // theme like the map itself (intentional artwork greys, not surface tokens).
@@ -975,29 +991,27 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
             </div>
           </div>
 
-          {/* Est. premium bubble — quiet pill under the KPI row ("Ghost Line"
-              graduation). Whisper-weight: no CTA look; clicking opens the
-              Quote tab where pricing actions now live. */}
-          {estPremiumFmt && (
-            <div style={{ position: "relative", zIndex: 1, display: "flex", justifyContent: "flex-end", padding: "10px 44px 0 18px", pointerEvents: "none" }}>
-              <div
-                role="button"
-                tabIndex={0}
-                data-testid="bubble-est-premium"
-                title="View quote details"
-                onClick={() => setTab("quote")}
-                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setTab("quote"); } }}
-                style={{
-                  pointerEvents: "auto", cursor: "pointer", display: "flex", alignItems: "center", gap: 8,
-                  padding: "6px 12px", borderRadius: 9999,
-                  background: c.isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)",
-                  border: `1px solid ${c.isDark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.10)"}`,
-                  boxShadow: "0 2px 10px rgba(0,0,0,0.25)",
-                }}
-              >
-                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "rgba(233,30,140,0.6)", flexShrink: 0 }} />
-                <span style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600, color: hdrSoftGrey }}>Est. Premium</span>
-                <span style={{ fontSize: 13, fontWeight: 600, color: hdrValue, fontVariantNumeric: "tabular-nums" }}>{estPremiumFmt}</span>
+          {/* Price badges — WC annual premium + PEO PEPM (when a PEO indication
+              exists). Mini glowing shield badges replace the old quiet
+              est-premium pill. Clicking either badge opens the Quote tab. */}
+          {(estPremiumFmt || hasPeoBadge) && (
+            <div style={{ position: "relative", zIndex: 1, display: "flex", justifyContent: "flex-end", padding: "8px 44px 0 18px", pointerEvents: "none" }}>
+              <div data-testid="header-price-badges" style={{ display: "flex", gap: 10, pointerEvents: "auto", alignItems: "flex-end" }}>
+                {estPremiumFmt && (
+                  <MiniBadge
+                    value={estPremiumFmt}
+                    label="wc annual premium"
+                    onClick={() => setTab("quote")}
+                  />
+                )}
+                {hasPeoBadge && peoBadgeValue && (
+                  <MiniBadge
+                    value={peoBadgeValue}
+                    sub={peoBadgeSub}
+                    label={peoBadgeLabel}
+                    onClick={() => setTab("quote")}
+                  />
+                )}
               </div>
             </div>
           )}
@@ -1299,5 +1313,79 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
       />
     </div>,
     document.body,
+  );
+}
+
+/**
+ * MiniBadge — scaled-down version of the indication screen's premium badge.
+ * Pink glowing 1.5px border, dark inner card, floating shield icon, white
+ * value + thin divider + small label. Theme-independent (always dark card so
+ * the badge reads as a premium element against the map header background).
+ */
+function MiniBadge({
+  value,
+  label,
+  sub,
+  width = 128,
+  onClick,
+}: {
+  value: string;
+  label: string;
+  sub?: string;
+  width?: number;
+  onClick?: () => void;
+}) {
+  return (
+    <div
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={onClick ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } } : undefined}
+      style={{ position: "relative", paddingTop: 15, width, flexShrink: 0, cursor: onClick ? "pointer" : "default" }}
+    >
+      <img
+        src={wcShieldIcon}
+        alt=""
+        style={{
+          position: "absolute",
+          top: 0,
+          left: "50%",
+          transform: "translateX(-50%)",
+          width: 28,
+          height: "auto",
+          zIndex: 2,
+          pointerEvents: "none",
+          filter: "drop-shadow(0 4px 10px rgba(233,30,140,0.55))",
+        }}
+      />
+      <div
+        style={{
+          borderRadius: 11,
+          padding: 1.5,
+          background: BADGE_PINK,
+          boxShadow: "0 0 16px rgba(233,30,140,0.40)",
+        }}
+      >
+        <div
+          style={{
+            borderRadius: 9.5,
+            background: "#0a0a12",
+            padding: "14px 8px 7px",
+            textAlign: "center",
+          }}
+        >
+          <div style={{ fontSize: 15, fontWeight: 800, color: "#fff", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
+            {value}
+            {sub && (
+              <span style={{ fontSize: 8.5, fontWeight: 600, color: "rgba(255,255,255,0.55)", marginLeft: 2 }}>{sub}</span>
+            )}
+          </div>
+          <div style={{ height: 1, background: "rgba(255,255,255,0.18)", margin: "6px auto", maxWidth: 80 }} />
+          <div style={{ fontSize: 8, color: "rgba(255,255,255,0.65)", letterSpacing: "0.05em", whiteSpace: "nowrap", textTransform: "uppercase" }}>
+            {label}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
