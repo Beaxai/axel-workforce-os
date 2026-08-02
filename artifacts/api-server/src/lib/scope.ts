@@ -15,7 +15,7 @@
  * set) yields a condition that matches NOTHING — a scoping bug must under-show,
  * never over-show. `null` is returned ONLY for internal see-all actors.
  */
-import { db, contactsTable, dealsTable, orgMembersTable } from "@workspace/db";
+import { accountsTable, db, contactsTable, dealsTable, orgMembersTable } from "@workspace/db";
 import { and, eq, inArray, or, sql, type SQL } from "drizzle-orm";
 import type { Request } from "express";
 
@@ -101,6 +101,35 @@ export async function visibleDealIds(actor: Actor, dbc: Dbc = db): Promise<strin
   if (cond === null) return null;
   const rows = await dbc.select({ id: dealsTable.id }).from(dealsTable).where(cond);
   return rows.map((r) => r.id);
+}
+
+/**
+ * The WHERE fragment restricting `accounts` (SEC-1 Task 5): an account is
+ * visible iff the actor can see at least one of its deals. `null` = internal
+ * see-all; no visible deals → `sql\`false\``.
+ */
+export async function visibleAccountCondition(actor: Actor, dbc: Dbc = db): Promise<SQL | null> {
+  const dealCond = await visibleDealCondition(actor, dbc);
+  if (dealCond === null) return null;
+  const rows = await dbc
+    .selectDistinct({ accountId: dealsTable.accountId })
+    .from(dealsTable)
+    .where(dealCond);
+  const ids = rows.map((r) => r.accountId).filter((x): x is string => !!x);
+  if (ids.length === 0) return sql`false`;
+  return inArray(accountsTable.id, ids);
+}
+
+/** True when the actor may see this one account (≥1 visible deal on it). */
+export async function canSeeAccount(actor: Actor, accountId: string, dbc: Dbc = db): Promise<boolean> {
+  const cond = await visibleAccountCondition(actor, dbc);
+  if (cond === null) return true;
+  const [row] = await dbc
+    .select({ id: accountsTable.id })
+    .from(accountsTable)
+    .where(and(eq(accountsTable.id, accountId), cond))
+    .limit(1);
+  return !!row;
 }
 
 /**

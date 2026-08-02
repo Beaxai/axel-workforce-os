@@ -1,17 +1,9 @@
 import { Router, type IRouter, type RequestHandler, type Request, type Response } from "express";
 import { db, accountsTable, insertAccountSchema, dealsTable, policiesTable, activityLogTable, insertActivityLogSchema, PROSPECT_STAGES, CLIENT_TAB_STAGES } from "@workspace/db";
-import { eq, desc, ilike, or, and, inArray, isNull } from "drizzle-orm";
+import { eq, desc, ilike, and, inArray, isNull } from "drizzle-orm";
+import { canSeeAccount, resolveActor, visibleAccountCondition, visibleDealCondition } from "../lib/scope";
 
 const router: IRouter = Router();
-
-/** Account ids an AGENT may see: those linked to a deal they own or produce. */
-async function agentAccountIds(userId: string): Promise<string[]> {
-  const rows = await db
-    .selectDistinct({ accountId: dealsTable.accountId })
-    .from(dealsTable)
-    .where(or(eq(dealsTable.ownerId, userId), eq(dealsTable.producingAgentId, userId)));
-  return rows.map((r) => r.accountId).filter((id): id is string => Boolean(id));
-}
 
 /** UNDERWRITER has read-only access to accounts; block all mutations. */
 const blockReadOnly: RequestHandler = (req, res, next) => {
@@ -30,11 +22,12 @@ const requireAccountManager: RequestHandler = (req, res, next) => {
   return next();
 };
 
-/** Restrict a deal query to the requesting AGENT's own/produced deals; ADMIN/CSA/UW see all. */
-function dealScopeForAccount(req: { user?: { id: string; role: string } }, accountId: string) {
+/** Restrict a deal query on an account to the actor's visible deals (SEC-1). */
+async function dealScopeForAccount(req: Request, accountId: string) {
   const base = and(eq(dealsTable.accountId, accountId), isNull(dealsTable.archivedAt));
-  if (req.user?.role !== "AGENT") return base;
-  return and(base, or(eq(dealsTable.ownerId, req.user.id), eq(dealsTable.producingAgentId, req.user.id)));
+  const actor = await resolveActor(req);
+  const scope = await visibleDealCondition(actor);
+  return scope ? and(base, scope) : base;
 }
 
 router.get("/", async (req, res) => {
@@ -52,11 +45,10 @@ router.get("/", async (req, res) => {
     conditions.push(inArray(accountsTable.clientStage, [...CLIENT_TAB_STAGES]));
   }
 
-  if (req.user?.role === "AGENT") {
-    const ids = await agentAccountIds(req.user.id);
-    if (ids.length === 0) return res.json([]);
-    conditions.push(inArray(accountsTable.id, ids));
-  }
+  // SEC-1: an account is visible iff the actor can see ≥1 of its deals.
+  const actor = await resolveActor(req);
+  const scope = await visibleAccountCondition(actor);
+  if (scope) conditions.push(scope);
 
   let query = db.select().from(accountsTable).orderBy(desc(accountsTable.createdAt)).$dynamic();
   if (conditions.length > 0) query = query.where(and(...conditions));
@@ -66,29 +58,27 @@ router.get("/", async (req, res) => {
 router.get("/:id", async (req, res) => {
   const [row] = await db.select().from(accountsTable).where(eq(accountsTable.id, req.params.id));
   if (!row) return res.status(404).json({ error: "Not found" });
-  if (req.user?.role === "AGENT") {
-    const ids = await agentAccountIds(req.user.id);
-    if (!ids.includes(row.id)) return res.status(403).json({ error: "Insufficient permissions" });
-  }
+  // SEC-1: out-of-scope accounts 404 like missing ones (no existence leak).
+  const actor = await resolveActor(req);
+  if (!(await canSeeAccount(actor, row.id))) return res.status(404).json({ error: "Not found" });
   return res.json(row);
 });
 
-/** An AGENT may only read an account's subresources when they own/produce a linked deal. */
-async function agentMayAccess(req: { user?: { id: string; role: string } }, accountId: string | string[]): Promise<boolean> {
-  if (req.user?.role !== "AGENT") return true;
-  const ids = await agentAccountIds(req.user.id);
-  return ids.includes(String(accountId));
+/** SEC-1: sub-resource gate — the actor must be able to see the account. */
+async function accountInScope(req: Request, accountId: string): Promise<boolean> {
+  const actor = await resolveActor(req);
+  return canSeeAccount(actor, accountId);
 }
 
 router.get("/:id/deals", async (req, res) => {
-  if (!(await agentMayAccess(req, req.params.id))) return res.status(403).json({ error: "Insufficient permissions" });
-  const rows = await db.select().from(dealsTable).where(dealScopeForAccount(req, req.params.id)).orderBy(desc(dealsTable.createdAt));
+  if (!(await accountInScope(req, req.params.id))) return res.status(404).json({ error: "Not found" });
+  const rows = await db.select().from(dealsTable).where(await dealScopeForAccount(req, req.params.id)).orderBy(desc(dealsTable.createdAt));
   return res.json(rows);
 });
 
 router.get("/:id/policies", async (req, res) => {
-  if (!(await agentMayAccess(req, req.params.id))) return res.status(403).json({ error: "Insufficient permissions" });
-  const dealRows = await db.select().from(dealsTable).where(dealScopeForAccount(req, req.params.id));
+  if (!(await accountInScope(req, req.params.id))) return res.status(404).json({ error: "Not found" });
+  const dealRows = await db.select().from(dealsTable).where(await dealScopeForAccount(req, req.params.id));
   if (dealRows.length === 0) return res.json([]);
   const dealIds = dealRows.map((d) => d.id);
   const allPolicies = await db.select().from(policiesTable).where(inArray(policiesTable.dealId, dealIds));
@@ -96,13 +86,13 @@ router.get("/:id/policies", async (req, res) => {
 });
 
 router.get("/:id/activity", async (req, res) => {
-  if (!(await agentMayAccess(req, req.params.id))) return res.status(403).json({ error: "Insufficient permissions" });
+  if (!(await accountInScope(req, req.params.id))) return res.status(404).json({ error: "Not found" });
   const rows = await db.select().from(activityLogTable).where(eq(activityLogTable.entityId, req.params.id)).orderBy(desc(activityLogTable.createdAt));
   return res.json(rows);
 });
 
 router.post("/:id/activity", blockReadOnly, async (req, res) => {
-  if (!(await agentMayAccess(req, req.params.id))) return res.status(403).json({ error: "Insufficient permissions" });
+  if (!(await accountInScope(req, String(req.params.id)))) return res.status(404).json({ error: "Not found" });
   const parsed = insertActivityLogSchema.safeParse({
     entityType: "account",
     entityId: req.params.id,
@@ -138,7 +128,7 @@ router.patch("/:id", blockReadOnly, async (req: Request<{ id: string }>, res: Re
   const parsed = insertAccountSchema.partial().safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues });
 
-  if (!(await agentMayAccess(req, req.params.id))) return res.status(403).json({ error: "Insufficient permissions" });
+  if (!(await accountInScope(req, req.params.id))) return res.status(404).json({ error: "Not found" });
 
   const [existing] = await db.select().from(accountsTable).where(eq(accountsTable.id, req.params.id));
   if (!existing) return res.status(404).json({ error: "Not found" });

@@ -22,7 +22,9 @@ import {
 } from "@workspace/db";
 import { and, inArray, isNull } from "drizzle-orm";
 import {
+  canSeeAccount,
   canSeeDeal,
+  visibleAccountCondition,
   visibleContactCondition,
   visibleDealCondition,
   visibleDealIds,
@@ -85,9 +87,9 @@ async function main() {
         { userId: employerUser!.id, orgId: clientOrg!.id, role: "EMPLOYER" },
       ]);
 
-      const [account] = await tx
+      const [account, accountForeign] = await tx
         .insert(accountsTable)
-        .values({ businessName: `SEC1 Account ${stamp}` })
+        .values([{ businessName: `SEC1 Account ${stamp}` }, { businessName: `SEC1 Foreign Account ${stamp}` }])
         .returning({ id: accountsTable.id });
 
       const [dealA1, dealA2, dealForeign] = await tx
@@ -109,7 +111,7 @@ async function main() {
           {
             referenceCode: `SEC1-F1-${stamp}`,
             businessName: "Foreign agency's deal",
-            accountId: account!.id,
+            accountId: accountForeign!.id,
             producingAgentId: foreignAgent!.id,
           },
         ])
@@ -287,6 +289,35 @@ async function main() {
         `got ${agentQuotes.length} rows`,
       );
       check("quotes list composition: carrier sees zero quotes (fail closed)", same(await quotesFor(actorCarrier), []));
+
+      // ---- Task 5: accounts (visible iff ≥1 visible deal) --------------------
+      const accountsFor = async (actor: Actor) => {
+        const cond = await visibleAccountCondition(actor, tx);
+        if (cond === null) return ["<ALL>"];
+        return (await tx.select({ id: accountsTable.id }).from(accountsTable).where(cond))
+          .map((r) => r.id)
+          .sort();
+      };
+
+      check("accounts: internal → see all", same(await accountsFor(admin), ["<ALL>"]));
+      const agentAccounts = await accountsFor(actorAgentA);
+      check(
+        "accounts: agent sees only accounts carrying their deals",
+        same(agentAccounts, [account!.id]) && !agentAccounts.includes(accountForeign!.id),
+        `got ${agentAccounts.length} rows`,
+      );
+      const foreignAccounts = await accountsFor(actorForeign);
+      check(
+        "accounts: foreign agent sees only their own account",
+        same(foreignAccounts, [accountForeign!.id]),
+        `got ${foreignAccounts.length} rows`,
+      );
+      check("accounts: carrier sees zero accounts (fail closed)", same(await accountsFor(actorCarrier), []));
+      check(
+        "canSeeAccount: agent → own yes, foreign no",
+        (await canSeeAccount(actorAgentA, account!.id, tx)) === true &&
+          (await canSeeAccount(actorAgentA, accountForeign!.id, tx)) === false,
+      );
 
       throw new Rollback();
     });
