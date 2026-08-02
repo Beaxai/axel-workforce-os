@@ -5,6 +5,8 @@ export interface TeamMember {
   id: string;
   name: string;
   avatarUrl: string;
+  /** Raw headshot URL when the user actually has one; null → render initials. */
+  photoUrl: string | null;
 }
 
 function displayName(u: UserSummary): string {
@@ -20,7 +22,7 @@ function avatarFor(u: UserSummary): string {
 }
 
 function toTeamMember(u: UserSummary): TeamMember {
-  return { id: u.id, name: displayName(u), avatarUrl: avatarFor(u) };
+  return { id: u.id, name: displayName(u), avatarUrl: avatarFor(u), photoUrl: u.avatarUrl ?? null };
 }
 
 /**

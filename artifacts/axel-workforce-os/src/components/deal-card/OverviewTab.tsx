@@ -1,19 +1,21 @@
 /**
  * Phase 4C / P6 — Overview = collaboration hub (Stitch layout, Axel tokens).
  *
- * A left timeline rail threads the day-grouped activity feed (real, from
- * activity_log) plus a sticky composer that persists a message. The RFI blocking
+ * A clean day-grouped activity feed (real, from activity_log) — avatar, name,
+ * timestamp, message bubble; no timeline rail — plus a sticky composer that
+ * persists a message. The RFI blocking
  * card is now LIVE (P6 iteration 1): real Request-For-Information items from
  * deal_rfis with a ticking countdown, internal create/resolve controls, and a
  * hard block on Approve enforced server-side. The AI quote-variation row remains
  * a STATIC placeholder deferred to P6 iteration 2.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Sparkles, AlertTriangle, Paperclip, Zap, Plus, Check, CircleSlash, X, ArrowRight, SlidersHorizontal } from "lucide-react";
-import type { ActivityRow, RfiRow, QuoteVariation, VariationLevers, PreviewVariationResponse } from "./types";
+import { Sparkles, AlertTriangle, ArrowUp, Plus, Check, CircleSlash, X, ArrowRight, SlidersHorizontal, FileUp, RefreshCw, Zap, Link2, FilePlus2 } from "lucide-react";
+import type { ActivityRow, RfiRow, QuoteVariation, VariationLevers, PreviewVariationResponse, DealDirectoryEntry } from "./types";
 import { STATUS_COLORS } from "./icons";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import UserMiniProfile from "@/components/user-profile/UserMiniProfile";
+import { useAuthStore } from "@/lib/auth-store";
 
 /**
  * Feature flag: AI Quote Variations row on the deal card Overview tab.
@@ -34,7 +36,9 @@ interface OverviewTabProps {
   activity: ActivityRow[];
   canPost: boolean;
   posting: boolean;
-  onSend: (message: string) => void;
+  onSend: (message: string, mentions?: string[]) => void;
+  /** Deal-scoped participant directory (mention candidates + avatar lookup). */
+  directory: DealDirectoryEntry[];
   rfis: RfiRow[];
   isInternal: boolean;
   rfiBusy: boolean;
@@ -117,6 +121,60 @@ function roleOf(row: ActivityRow): string | null {
 
 function initials(name: string): string {
   return name.split(" ").map((p) => p[0]).filter(Boolean).slice(0, 2).join("").toUpperCase() || "?";
+}
+
+/** Acronyms that stay all-caps when prettifying ALL_CAPS tokens. */
+const KEEP_CAPS = new Set(["WC", "PEO", "ASO", "RFI", "AI", "UW", "FEIN", "LLC", "ACORD", "CSA", "ID"]);
+/** Bare (no-underscore) stage/status words that should still be prettified. */
+const PRETTY_WORDS = new Set(["INDICATION", "BOUND", "CLIENT", "LOST", "QUALIFIED"]);
+
+function titleCaseToken(token: string): string {
+  return token
+    .split("_")
+    .map((w) => (KEEP_CAPS.has(w) ? w : w.charAt(0) + w.slice(1).toLowerCase()))
+    .join(" ");
+}
+
+/** "Stage changed from INDICATION to BIND_ORDER." → "Stage changed from Indication to Bind Order." */
+function prettifyTokens(text: string): string {
+  return text.replace(/\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\b|\b[A-Z]{3,}\b/g, (tok) => {
+    if (tok.includes("_")) return titleCaseToken(tok);
+    if (PRETTY_WORDS.has(tok)) return titleCaseToken(tok);
+    return tok; // bare acronyms (ACORD, FEIN, …) stay as-is
+  });
+}
+
+/** Human-readable actor label + icon for rows with no person attached. */
+function systemEventMeta(eventType: string | null | undefined): { label: string; Icon: typeof Zap } {
+  const t = (eventType ?? "").toLowerCase();
+  if (t.includes("upload")) return { label: "Document uploaded", Icon: FileUp };
+  if (t.includes("stage")) return { label: "Stage update", Icon: ArrowRight };
+  if (t.includes("sync") || t.includes("auto")) return { label: "Auto update", Icon: RefreshCw };
+  if (t.includes("link")) return { label: "Record linked", Icon: Link2 };
+  if (t.includes("created")) return { label: "Record created", Icon: FilePlus2 };
+  return { label: titleCaseToken((eventType ?? "UPDATE").toUpperCase()), Icon: Zap };
+}
+
+function mentionsOf(row: ActivityRow): string[] {
+  const m = (row.metadata as { mentions?: unknown } | null)?.mentions;
+  return Array.isArray(m) ? m.filter((x): x is string => typeof x === "string" && x.length > 0) : [];
+}
+
+/** Render a message description with @mentions highlighted in the accent color. */
+function renderWithMentions(text: string, mentions: string[]): React.ReactNode {
+  if (mentions.length === 0) return text;
+  // Longest names first so "@Sarah Chen-Lee" wins over "@Sarah Chen".
+  const sorted = [...mentions].sort((a, b) => b.length - a.length);
+  const escaped = sorted.map((m) => `@${m}`.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  const re = new RegExp(`(${escaped.join("|")})`, "g");
+  const parts = text.split(re);
+  return parts.map((part, i) =>
+    part.startsWith("@") && sorted.some((m) => `@${m}` === part) ? (
+      <span key={i} style={{ color: "var(--accent-primary)", fontWeight: 600 }}>{part}</span>
+    ) : (
+      part
+    ),
+  );
 }
 
 /**
@@ -279,12 +337,17 @@ function WhatIfPanel({
 }
 
 export default function OverviewTab({
-  activity, canPost, posting, onSend, rfis, isInternal, rfiBusy, onCreateRfi, onResolveRfi,
+  activity, canPost, posting, onSend, directory, rfis, isInternal, rfiBusy, onCreateRfi, onResolveRfi,
   variations, basePremium, baseLevers, varHasQuote, varUsedAi, varLoading, varApplying,
   onGenerateVariations, onApplyVariation, onPreviewLevers, onApplyLevers,
 }: OverviewTabProps) {
   const c = useThemeColors();
+  const authUser = useAuthStore((s) => s.user);
   const [text, setText] = useState("");
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const [mentionIndex, setMentionIndex] = useState(0);
+  const [pickedMentions, setPickedMentions] = useState<string[]>([]);
+  const inputRef = useRef<HTMLInputElement>(null);
   const [now, setNow] = useState(() => Date.now());
   const [compare, setCompare] = useState<QuoteVariation | null>(null);
   const [generated, setGenerated] = useState(false);
@@ -352,16 +415,48 @@ export default function OverviewTab({
     return Array.from(map.entries());
   }, [activity]);
 
+  // Directory keyed by id for feed avatar lookups.
+  const membersById = useMemo(() => {
+    const m = new Map<string, DealDirectoryEntry>();
+    for (const member of directory) m.set(member.id, member);
+    return m;
+  }, [directory]);
+
+  // @mention autocomplete — candidates matching the token after the trailing "@".
+  const mentionCandidates = useMemo(() => {
+    if (mentionQuery === null) return [];
+    const q = mentionQuery.toLowerCase();
+    return directory.filter((m) => m.name.toLowerCase().includes(q)).slice(0, 6);
+  }, [directory, mentionQuery]);
+
+  /** Track "@partialname" being typed at the end of the input. */
+  const handleTextChange = (value: string) => {
+    setText(value);
+    const match = /(?:^|\s)@([\w'.-]{0,40}(?: [\w'.-]{0,40})?)$/.exec(value);
+    if (match) {
+      setMentionQuery(match[1]);
+      setMentionIndex(0);
+    } else {
+      setMentionQuery(null);
+    }
+  };
+
+  const pickMention = (m: DealDirectoryEntry) => {
+    setText((prev) => prev.replace(/@([\w'.-]{0,40}(?: [\w'.-]{0,40})?)$/, `@${m.name} `));
+    setPickedMentions((prev) => (prev.includes(m.name) ? prev : [...prev, m.name]));
+    setMentionQuery(null);
+    inputRef.current?.focus();
+  };
+
   const submit = () => {
     const t = text.trim();
     if (!t || posting) return;
-    onSend(t);
+    // Only send mentions still present in the final text.
+    onSend(t, pickedMentions.filter((name) => t.includes(`@${name}`)));
     setText("");
+    setPickedMentions([]);
+    setMentionQuery(null);
   };
-
-  const node = (color: string) => (
-    <span style={{ position: "absolute", left: -25, top: 2, width: 12, height: 12, borderRadius: "50%", background: color, boxShadow: `0 0 0 3px ${c.bg}` }} />
-  );
 
   const card: React.CSSProperties = {
     background: c.cardBg, border: `1px solid ${c.borderColor}`, borderRadius: 10, padding: "10px 12px",
@@ -370,63 +465,105 @@ export default function OverviewTab({
     fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", color: c.textMuted,
     background: c.cardBg, borderRadius: 9999, padding: "3px 10px", display: "inline-block",
   };
+  /** E1 "Soft Bubbles" feed anatomy — comments vs. everything else. */
+  const AVATAR_W = 28;
+  const ROW_GAP = 10;
+  const dayHeader: React.CSSProperties = {
+    fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", fontWeight: 600,
+    color: c.textMuted, paddingLeft: AVATAR_W + ROW_GAP,
+  };
   const previewTag: React.CSSProperties = {
     fontSize: 9.5, color: c.textMuted, marginTop: 6, fontStyle: "italic",
   };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      <div style={{ position: "relative", marginLeft: 12, paddingLeft: 24, borderLeft: `2px solid ${c.borderColor}`, display: "flex", flexDirection: "column", gap: 14 }}>
-        {/* Today marker */}
-        <div style={{ position: "relative" }}>
-          {node(c.accentPrimary)}
-          <span style={dayPill}>Today</span>
-        </div>
-
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         {/* Real activity feed grouped by day */}
         {groups.length === 0 && (
-          <div style={{ position: "relative", fontSize: 12, color: c.textMuted }}>No activity yet.</div>
+          <div style={{ fontSize: 12, color: c.textMuted }}>No activity yet.</div>
         )}
         {groups.map(([day, rows]) => (
-          <div key={day} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            {day !== "Today" && (
-              <div style={{ position: "relative" }}>
-                {node(c.textMuted)}
-                <span style={dayPill}>{day}</span>
-              </div>
-            )}
+          <div key={day} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={dayHeader}>{day}</div>
             {rows.map((row) => {
-              const author = authorOf(row);
-              const role = roleOf(row);
-              return (
-                <div key={row.id} style={{ position: "relative" }}>
-                  {node(c.accentPrimary)}
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+              const rawAuthor = authorOf(row);
+              const isSystem = !row.createdBy && rawAuthor === "System";
+              const sys = isSystem ? systemEventMeta(row.eventType) : null;
+              const author = sys ? "System" : rawAuthor;
+              const role = isSystem ? null : roleOf(row);
+              const photo = row.createdBy ? (membersById.get(row.createdBy)?.avatarUrl ?? null) : null;
+              const isUserText = row.eventType === "message" || row.eventType === "NOTE";
+              const description = row.description ?? "";
+              const displayText = isUserText ? description : prettifyTokens(description);
+
+              if (isUserText) {
+                // Comment — avatar + soft bubble (E1 "Soft Bubbles").
+                const avatarCircle = (
+                  <div style={{ width: AVATAR_W, height: AVATAR_W, borderRadius: "50%", background: c.hoverBg, border: `1px solid ${c.borderColor}`, color: c.textSecondary, fontSize: 10, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0, marginTop: 2 }}>
+                    {photo ? (
+                      <img src={photo} alt={author} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                    ) : (
+                      initials(author)
+                    )}
+                  </div>
+                );
+                return (
+                  <div key={row.id} style={{ display: "flex", alignItems: "flex-start", gap: ROW_GAP }}>
                     {row.createdBy ? (
                       <UserMiniProfile userId={row.createdBy}>
-                        <button
-                          type="button"
-                          style={{ display: "flex", alignItems: "center", gap: 8, background: "none", border: "none", padding: 0, cursor: "pointer" }}
-                        >
-                          <div style={{ width: 22, height: 22, borderRadius: "50%", background: c.hoverBg, color: c.textSecondary, fontSize: 9, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                            {initials(author)}
-                          </div>
-                          <span style={{ fontSize: 12, fontWeight: 600, color: c.textPrimary }}>{author}</span>
+                        <button type="button" aria-label={`View profile of ${author}`} style={{ background: "none", border: "none", padding: 0, cursor: "pointer" }}>
+                          {avatarCircle}
                         </button>
                       </UserMiniProfile>
                     ) : (
-                      <>
-                        <div style={{ width: 22, height: 22, borderRadius: "50%", background: c.hoverBg, color: c.textSecondary, fontSize: 9, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                          {initials(author)}
-                        </div>
-                        <span style={{ fontSize: 12, fontWeight: 600, color: c.textPrimary }}>{author}</span>
-                      </>
+                      avatarCircle
                     )}
-                    {role && <span style={{ fontSize: 10.5, color: c.textMuted }}>{role}</span>}
-                    <span style={{ fontSize: 10, color: c.textMuted }}>{"\u00b7"} {timeLabel(row.createdAt)}</span>
+                    <div style={{ flex: 1, minWidth: 0, background: c.cardBg, borderRadius: 14, padding: "10px 13px" }}>
+                      <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 3 }}>
+                        {row.createdBy ? (
+                          <UserMiniProfile userId={row.createdBy}>
+                            <button type="button" style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, fontWeight: 600, color: c.textPrimary }}>
+                              {author}
+                            </button>
+                          </UserMiniProfile>
+                        ) : (
+                          <span style={{ fontSize: 12.5, fontWeight: 600, color: c.textPrimary }}>{author}</span>
+                        )}
+                        {role && <span style={{ fontSize: 10, color: c.textMuted, textTransform: "uppercase", letterSpacing: "0.05em" }}>{role}</span>}
+                        <span style={{ fontSize: 10.5, color: c.textMuted }}>{timeLabel(row.createdAt)}</span>
+                      </div>
+                      <div style={{ fontSize: 12.5, color: c.textSecondary, lineHeight: 1.6, overflowWrap: "anywhere" }}>
+                        {renderWithMentions(displayText, mentionsOf(row))}
+                      </div>
+                    </div>
                   </div>
-                  <div style={{ ...card, borderLeft: `2px solid var(--accent-primary)` }}>
-                    <div style={{ fontSize: 12, color: c.textSecondary, lineHeight: 1.55 }}>{row.description}</div>
+                );
+              }
+
+              // Everything else — quiet one-liner with a small dot marker.
+              const isApproval = /approv/i.test(row.eventType ?? "") || /approved/i.test(description);
+              return (
+                <div key={row.id} style={{ display: "flex", alignItems: "flex-start", gap: ROW_GAP }}>
+                  <div style={{ flexShrink: 0, width: AVATAR_W, height: 20, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <span style={{ width: 4, height: 4, borderRadius: "50%", background: isApproval ? "var(--accent-primary)" : c.textMuted, opacity: isApproval ? 1 : 0.6, display: "block" }} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0, fontSize: 12, color: c.textMuted, lineHeight: "20px", overflowWrap: "anywhere" }}>
+                    {sys ? (
+                      <span style={{ color: c.textSecondary, fontWeight: 500 }}>{sys.label}</span>
+                    ) : row.createdBy ? (
+                      <UserMiniProfile userId={row.createdBy}>
+                        <button type="button" aria-label={`View profile of ${author}`} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 12, color: c.textSecondary, fontWeight: 500 }}>
+                          {author}
+                        </button>
+                      </UserMiniProfile>
+                    ) : (
+                      <span style={{ color: c.textSecondary, fontWeight: 500 }}>{author}</span>
+                    )}
+                    <span style={{ margin: "0 6px", opacity: 0.5 }}>{"\u00b7"}</span>
+                    <span>{renderWithMentions(displayText, mentionsOf(row))}</span>
+                    <span style={{ margin: "0 6px", opacity: 0.5 }}>{"\u00b7"}</span>
+                    <span style={{ whiteSpace: "nowrap" }}>{timeLabel(row.createdAt)}</span>
                   </div>
                 </div>
               );
@@ -438,8 +575,7 @@ export default function OverviewTab({
             Temporarily hidden from deal cards (feature saved for later) — flip
             SHOW_AI_QUOTE_VARIATIONS to true to restore; all wiring stays intact. */}
         {SHOW_AI_QUOTE_VARIATIONS && isInternal && (
-          <div style={{ position: "relative" }}>
-            {node(c.accentSupport)}
+          <div>
             <div style={{ ...card, display: "flex", flexDirection: "column", gap: 10 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
@@ -545,8 +681,7 @@ export default function OverviewTab({
 
         {/* RFIs — live (P6 iteration 1) */}
         {(openRfis.length > 0 || closedRfis.length > 0 || isInternal) && (
-          <div style={{ position: "relative" }}>
-            {node(openRfis.length > 0 ? STATUS_COLORS.partial : c.textMuted)}
+          <div>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
               <span style={{ ...dayPill, color: openRfis.length > 0 ? STATUS_COLORS.partial : c.textMuted }}>
                 {openRfis.length > 0 ? `${openRfis.length} Open RFI${openRfis.length > 1 ? "s" : ""}` : "RFIs"}
@@ -691,37 +826,89 @@ export default function OverviewTab({
         )}
       </div>
 
-      {/* Sticky composer */}
+      {/* Sticky composer — sender avatar · "Type a message" · arrow send */}
       {canPost && (
-        <div
-          style={{
-            position: "sticky",
-            bottom: 0,
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            background: c.inputBg,
-            border: `1px solid ${c.borderColor}`,
-            borderRadius: 10,
-            padding: "6px 8px 6px 12px",
-            marginTop: 4,
-          }}
-        >
-          <Paperclip style={{ width: 15, height: 15, color: c.textMuted, flexShrink: 0 }} />
-          <input
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); } }}
-            placeholder="Type a message or request\u2026"
-            style={{ flex: 1, background: "transparent", border: "none", outline: "none", fontSize: 12, color: c.inputText, fontFamily: "inherit" }}
-          />
-          <button
-            onClick={submit}
-            disabled={posting || !text.trim()}
-            style={{ width: 30, height: 30, borderRadius: 8, background: "var(--gradient-cta)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", border: "none", cursor: text.trim() ? "pointer" : "not-allowed", opacity: text.trim() ? 1 : 0.5, flexShrink: 0 }}
+        <div style={{ position: "sticky", bottom: 0, marginTop: 4, background: c.bg, padding: "8px 0 2px", boxShadow: `0 -12px 12px -6px ${c.bg}` }}>
+          {/* @mention autocomplete dropdown */}
+          {mentionQuery !== null && mentionCandidates.length > 0 && (
+            <div
+              style={{
+                position: "absolute", bottom: "calc(100% + 6px)", left: 0, right: 0, zIndex: 30,
+                background: "rgba(18,18,24,0.82)", backdropFilter: "blur(40px)", WebkitBackdropFilter: "blur(40px)",
+                border: `1px solid ${c.borderColor}`, borderRadius: 10,
+                boxShadow: "0 24px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06)",
+                padding: 4, maxHeight: 220, overflowY: "auto",
+              }}
+            >
+              {mentionCandidates.map((m, i) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  onMouseDown={(e) => { e.preventDefault(); pickMention(m); }}
+                  onMouseEnter={() => setMentionIndex(i)}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 8, width: "100%", textAlign: "left",
+                    background: i === mentionIndex ? "var(--accent-primary-soft)" : "none",
+                    border: "none", borderRadius: 7, padding: "6px 8px", cursor: "pointer", fontFamily: "inherit",
+                  }}
+                >
+                  <div style={{ width: 22, height: 22, borderRadius: "50%", background: c.hoverBg, color: c.textSecondary, fontSize: 9, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
+                    {m.avatarUrl ? (
+                      <img src={m.avatarUrl} alt={m.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                    ) : (
+                      initials(m.name)
+                    )}
+                  </div>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: "#fff" }}>{m.name}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              background: c.inputBg,
+              border: `1px solid ${c.borderColor}`,
+              borderRadius: 10,
+              padding: "6px 8px 6px 8px",
+            }}
           >
-            <Zap style={{ width: 15, height: 15 }} />
-          </button>
+            {/* Sender avatar */}
+            <div style={{ width: 26, height: 26, borderRadius: "50%", background: c.hoverBg, color: c.textSecondary, fontSize: 10, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
+              {authUser?.avatarUrl ? (
+                <img src={authUser.avatarUrl} alt="You" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+              ) : (
+                initials(authUser ? `${authUser.firstName} ${authUser.lastName}`.trim() || authUser.email : "?")
+              )}
+            </div>
+            <input
+              ref={inputRef}
+              value={text}
+              onChange={(e) => handleTextChange(e.target.value)}
+              onKeyDown={(e) => {
+                if (mentionQuery !== null && mentionCandidates.length > 0) {
+                  if (e.key === "ArrowDown") { e.preventDefault(); setMentionIndex((i) => (i + 1) % mentionCandidates.length); return; }
+                  if (e.key === "ArrowUp") { e.preventDefault(); setMentionIndex((i) => (i - 1 + mentionCandidates.length) % mentionCandidates.length); return; }
+                  if (e.key === "Enter" || e.key === "Tab") { e.preventDefault(); pickMention(mentionCandidates[mentionIndex]); return; }
+                  if (e.key === "Escape") { e.preventDefault(); setMentionQuery(null); return; }
+                }
+                if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); }
+              }}
+              onBlur={() => setMentionQuery(null)}
+              placeholder="Type a message"
+              style={{ flex: 1, background: "transparent", border: "none", outline: "none", fontSize: 12, color: c.inputText, fontFamily: "inherit" }}
+            />
+            <button
+              onClick={submit}
+              disabled={posting || !text.trim()}
+              aria-label="Send message"
+              style={{ width: 30, height: 30, borderRadius: "50%", background: "var(--gradient-cta)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", border: "none", cursor: text.trim() ? "pointer" : "not-allowed", opacity: text.trim() ? 1 : 0.5, flexShrink: 0 }}
+            >
+              <ArrowUp style={{ width: 15, height: 15 }} />
+            </button>
+          </div>
         </div>
       )}
 

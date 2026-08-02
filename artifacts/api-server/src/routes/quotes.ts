@@ -1,24 +1,29 @@
 import { Router, type IRouter } from "express";
 import { db, quotesTable, insertQuoteSchema } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import { projectQuoteForActor } from "../lib/quote-view";
 
 const router: IRouter = Router();
 
-router.get("/", async (_req, res) => {
+// NOTE: every quote read goes through projectQuoteForActor — external/client
+// actors are served the approved snapshot while indication-parameter edits
+// are pending internal agreement.
+
+router.get("/", async (req, res) => {
   const rows = await db.select().from(quotesTable);
-  res.json(rows);
+  res.json(rows.map((r) => projectQuoteForActor(r, req.user?.role)));
 });
 
 router.get("/by-deal/:dealId", async (req, res) => {
   const [row] = await db.select().from(quotesTable).where(eq(quotesTable.dealId, req.params.dealId));
   if (!row) return res.status(404).json({ error: "Not found" });
-  return res.json(row);
+  return res.json(projectQuoteForActor(row, req.user?.role));
 });
 
 router.get("/:id", async (req, res) => {
   const [row] = await db.select().from(quotesTable).where(eq(quotesTable.id, req.params.id));
   if (!row) return res.status(404).json({ error: "Not found" });
-  return res.json(row);
+  return res.json(projectQuoteForActor(row, req.user?.role));
 });
 
 router.post("/", async (req, res) => {

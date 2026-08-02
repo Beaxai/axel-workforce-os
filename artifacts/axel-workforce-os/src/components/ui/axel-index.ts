@@ -7,6 +7,7 @@ export { default as SectionHeader } from "./SectionHeader";
 export { default as AxelBadge } from "./AxelBadge";
 export { default as Badge } from "./AxelBadge";
 export { default as AxelModal } from "./AxelModal";
+export { AxelDropdown } from "./AxelDropdown";
 export { default as Modal } from "./AxelModal";
 export { default as AxelTooltip } from "./AxelTooltip";
 export { default as Tooltip } from "./AxelTooltip";

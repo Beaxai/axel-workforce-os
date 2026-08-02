@@ -14,6 +14,7 @@ import {
 import { eq, and, desc, asc } from "drizzle-orm";
 import { cannabisApplicationAnswersSchema } from "@workspace/cannabis-application";
 import { fillAcord130, fillTreanSupp, fillAxelCannabisApplication } from "../services/applicationPdfService";
+import { buildIndicationSummaryPdf } from "../services/indicationPdfService";
 import { findOrCreateAccount } from "../lib/accounts";
 
 const router: IRouter = Router();
@@ -307,6 +308,7 @@ router.post("/submit-for-approval", async (req, res) => {
         premiumLow, premiumHigh, experienceMod,
         totalPayroll, totalEmployees,
         generatedBy: "system",
+        downloadPath: `/api/submission/applications/${deal.id}/indication-summary.pdf`,
       },
     },
     {
@@ -376,6 +378,10 @@ router.post("/submit-for-approval", async (req, res) => {
 
   await db.insert(dealDocumentsTable).values(docRecords);
 
+  const actorUser = req.user;
+  const actorName = actorUser
+    ? [actorUser.firstName, actorUser.lastName].filter(Boolean).join(" ") || actorUser.email
+    : null;
   await db.insert(activityLogTable).values({
     dealId: deal.id,
     entityType: "deal",
@@ -383,10 +389,20 @@ router.post("/submit-for-approval", async (req, res) => {
     eventType: "submission_submitted",
     description: `Application submitted for underwriting review. ${docRecords.length} documents generated.`,
     metadata: {
+      author: actorName ?? undefined,
+      role: actorUser?.role ?? undefined,
       document_count: docRecords.length,
       loss_history_included: lossHistoryCount > 0,
       cannabis_application_persisted: !!parsedCannabisAnswers,
+      summary: {
+        businessName: businessName || null,
+        vertical: vertical || null,
+        state: businessState || null,
+        employees: totalEmployees ?? null,
+        annualPayroll: totalPayroll ?? null,
+      },
     },
+    createdBy: actorUser?.id,
   });
 
   await db.insert(activityLogTable).values({
@@ -491,6 +507,68 @@ router.get("/applications/:dealId/trean-supp.pdf", async (req, res) => {
     req.log.error({ err, dealId }, "fillTreanSupp failed");
     return res.status(500).json({ error: "Failed to generate Trean Cannabis Supp PDF" });
   }
+});
+
+/**
+ * Indication Summary PDF — drawn on demand from the deal row + latest quote
+ * snapshot so it always reflects the current indication (including re-rates).
+ */
+router.get("/applications/:dealId/indication-summary.pdf", async (req, res) => {
+  const { dealId } = req.params;
+  const [deal] = await db.select().from(dealsTable).where(eq(dealsTable.id, dealId));
+  if (!deal) return res.status(404).json({ error: "Deal not found" });
+
+  const [quote] = await db
+    .select()
+    .from(quotesTable)
+    .where(eq(quotesTable.dealId, dealId))
+    .orderBy(desc(quotesTable.createdAt))
+    .limit(1);
+
+  if (!quote || (quote.wcIndicationMin == null && quote.wcIndicationMax == null)) {
+    return res.status(404).json({ error: "No rate indication exists for this deal yet." });
+  }
+
+  try {
+    const pdfBytes = await buildIndicationSummaryPdf({
+      businessName: deal.businessName ?? "Unnamed Business",
+      referenceCode: deal.referenceCode,
+      state: deal.state,
+      fein: deal.fein,
+      entityType: deal.entityType,
+      vertical: deal.vertical,
+      productType: deal.productType,
+      coverageEffectiveDate: deal.coverageEffectiveDate ? String(deal.coverageEffectiveDate) : null,
+      premiumLow: quote.wcIndicationMin != null ? Number(quote.wcIndicationMin) : null,
+      premiumHigh: quote.wcIndicationMax != null ? Number(quote.wcIndicationMax) : null,
+      eMod: quote.eMod != null ? Number(quote.eMod) : null,
+      scheduleRating: quote.scheduleRating != null ? Number(quote.scheduleRating) : null,
+      isPeo: !!quote.isPeo,
+      annualPayroll: quote.annualPayroll != null ? Number(quote.annualPayroll) : null,
+      headcount: quote.headcount ?? null,
+      ratedAt: quote.ratedAt ? String(quote.ratedAt) : null,
+      breakdown: (quote.wcRatingBreakdown as never) ?? null,
+    });
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `inline; filename="indication-summary-${dealId}.pdf"`);
+    return res.send(Buffer.from(pdfBytes));
+  } catch (err) {
+    req.log.error({ err, dealId }, "buildIndicationSummaryPdf failed");
+    return res.status(500).json({ error: "Failed to generate Indication Summary PDF" });
+  }
+});
+
+// Rename a generated deal document (Documents tab inline rename).
+router.patch("/deal-documents/doc/:docId", async (req, res) => {
+  const name = String(req.body?.name || "").trim().slice(0, 200);
+  if (!name) return res.status(400).json({ error: "A non-empty name is required." });
+  const [doc] = await db
+    .update(dealDocumentsTable)
+    .set({ name })
+    .where(eq(dealDocumentsTable.id, req.params.docId))
+    .returning();
+  if (!doc) return res.status(404).json({ error: "Document not found." });
+  return res.json({ success: true, document: doc });
 });
 
 router.get("/deal-documents/:dealId", async (req, res) => {

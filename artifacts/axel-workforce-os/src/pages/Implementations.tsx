@@ -22,7 +22,7 @@ import { Rocket, ArrowLeft } from "lucide-react";
 type TabKey = "WC" | "PEO" | "ASO";
 
 const TAB_LABELS: Record<TabKey, string> = {
-  WC: "WC Bind Journey",
+  WC: "WC Onboarding",
   PEO: "PEO Onboarding",
   ASO: "ASO Onboarding",
 };

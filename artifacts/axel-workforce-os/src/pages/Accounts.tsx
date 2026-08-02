@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   GlassCard,
   PinkButton,
@@ -7,12 +7,13 @@ import {
   Badge,
   SectionHeader,
   Modal,
+  AxelDropdown,
 } from "@/components/ui/axel-index";
 import { useThemeStore } from "@/lib/theme-store";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { useAuthStore } from "@/lib/auth-store";
 import { api } from "@/lib/api";
-import { Search, Plus, Users, Building2, MapPin, ArrowRight, Mail, Phone } from "lucide-react";
+import { Search, Plus, Users, Building2, MapPin, ArrowRight, Mail, Phone, ChevronRight, ArrowUpDown } from "lucide-react";
 
 type TabKey = "leads" | "prospects" | "clients";
 
@@ -56,6 +57,7 @@ interface Account {
   clientStage?: string;
   primaryContact?: string;
   assignedCsa?: string;
+  createdAt?: string;
 }
 
 interface Lead {
@@ -101,10 +103,22 @@ export default function Accounts() {
     { key: "clients", label: "Clients" },
   ];
 
-  const [activeTab, setActiveTab] = useState<TabKey>(canUseLeads ? "leads" : "prospects");
+  // Tab state is URL-synced two-way: ?tab= is the source of truth so deep links,
+  // back/forward, and share links all behave consistently.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const rawTab = searchParams.get("tab");
+  const activeTab: TabKey =
+    rawTab === "prospects" || rawTab === "clients" ? rawTab
+    : rawTab === "leads" && canUseLeads ? "leads"
+    : canUseLeads ? "leads" : "prospects";
+  const setActiveTab = (t: TabKey) => setSearchParams({ tab: t });
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [search, setSearch] = useState("");
+  const [filterVertical, setFilterVertical] = useState("All");
+  const [filterState, setFilterState] = useState("All");
+  const [filterStage, setFilterStage] = useState("All");
+  const [sortBy, setSortBy] = useState<"recent" | "alpha" | "oldest">("recent");
 
   const [showCreateAccount, setShowCreateAccount] = useState(false);
   const [showCreateLead, setShowCreateLead] = useState(false);
@@ -211,20 +225,41 @@ export default function Accounts() {
     }
   };
 
-  const count = activeTab === "leads" ? leads.length : accounts.length;
+  // Client-side filter + sort for the account table (prospects/clients tabs)
+  const stateOptions = Array.from(new Set(accounts.map((a) => a.state).filter(Boolean) as string[])).sort();
+  const visibleAccounts = accounts
+    .filter((a) => filterVertical === "All" || a.vertical === filterVertical)
+    .filter((a) => filterState === "All" || a.state === filterState)
+    .filter((a) => filterStage === "All" || (a.clientStage || "Prospect") === filterStage)
+    .sort((a, b) => {
+      if (sortBy === "alpha") return a.businessName.localeCompare(b.businessName);
+      const ta = a.createdAt ? Date.parse(a.createdAt) : 0;
+      const tb = b.createdAt ? Date.parse(b.createdAt) : 0;
+      return sortBy === "oldest" ? ta - tb : tb - ta;
+    });
+
+  const count = activeTab === "leads" ? leads.length : visibleAccounts.length;
 
   return (
     <div>
       <SectionHeader title="Accounts" subtitle={`${count} ${activeTab}`} />
 
       {/* Tabs */}
-      <div style={{ display: "flex", gap: "4px", borderBottom: `1px solid ${inputBorder}`, marginBottom: "20px" }}>
+      <div style={{ display: "flex", gap: "4px", alignItems: "center", borderBottom: `1px solid ${inputBorder}`, marginBottom: "20px" }}>
         {TABS.map((t) => {
           const active = activeTab === t.key;
           return (
             <button
               key={t.key}
-              onClick={() => { setActiveTab(t.key); setSearch(""); }}
+              onClick={() => {
+                setActiveTab(t.key);
+                setSearch("");
+                // Reset account filters so a stale filter from the other tab
+                // can't mask valid rows behind a false empty state.
+                setFilterVertical("All");
+                setFilterState("All");
+                setFilterStage("All");
+              }}
               style={{
                 padding: "10px 18px",
                 fontSize: "14px",
@@ -242,6 +277,18 @@ export default function Accounts() {
             </button>
           );
         })}
+        {canCreate && activeTab === "leads" && canUseLeads && (
+          <PinkButton onClick={() => setShowCreateLead(true)} style={{ display: "flex", alignItems: "center", gap: "6px", marginLeft: "auto", marginBottom: "8px" }}>
+            <Plus style={{ width: "16px", height: "16px" }} />
+            New Lead
+          </PinkButton>
+        )}
+        {canCreateAccount && activeTab !== "leads" && (
+          <PinkButton onClick={() => setShowCreateAccount(true)} style={{ display: "flex", alignItems: "center", gap: "6px", marginLeft: "auto", marginBottom: "8px" }}>
+            <Plus style={{ width: "16px", height: "16px" }} />
+            New Account
+          </PinkButton>
+        )}
       </div>
 
       {/* Toolbar */}
@@ -259,132 +306,186 @@ export default function Accounts() {
           />
         </div>
 
-        {canCreate && activeTab === "leads" && canUseLeads && (
-          <PinkButton onClick={() => setShowCreateLead(true)} style={{ display: "flex", alignItems: "center", gap: "6px", marginLeft: "auto" }}>
-            <Plus style={{ width: "16px", height: "16px" }} />
-            New Lead
-          </PinkButton>
+        {activeTab !== "leads" && (
+          <>
+            <AxelDropdown label="Vertical" value={filterVertical} onChange={setFilterVertical} options={["All", ...VERTICALS]} />
+            <AxelDropdown label="State" value={filterState} onChange={setFilterState} options={["All", ...stateOptions]} />
+            <AxelDropdown label="Stage" value={filterStage} onChange={setFilterStage} options={["All", ...CLIENT_STAGES]} />
+            <AxelDropdown
+              label="Sort"
+              alignRight
+              style={{ marginLeft: "auto" }}
+              icon={<ArrowUpDown style={{ width: "13px", height: "13px" }} />}
+              value={sortBy}
+              onChange={(v) => setSortBy(v as "recent" | "alpha" | "oldest")}
+              options={[
+                { value: "recent", label: "Most recent" },
+                { value: "alpha", label: "Alphabetical" },
+                { value: "oldest", label: "Oldest first" },
+              ]}
+            />
+          </>
         )}
-        {canCreateAccount && activeTab !== "leads" && (
-          <PinkButton onClick={() => setShowCreateAccount(true)} style={{ display: "flex", alignItems: "center", gap: "6px", marginLeft: "auto" }}>
-            <Plus style={{ width: "16px", height: "16px" }} />
-            New Account
-          </PinkButton>
-        )}
+
       </div>
 
       {/* Content */}
       {activeTab === "leads" ? (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(360px, 1fr))", gap: "16px" }}>
-          {leads.map((l) => {
+        <GlassCard padding="0" style={{ overflow: "visible" }}>
+          {/* Leads table header — mirrors the prospects/clients table */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "2fr 1.8fr 1fr 0.6fr 1.1fr 280px",
+              gap: "16px",
+              padding: "14px 24px",
+              borderBottom: `1px solid ${inputBorder}`,
+              fontSize: "11px",
+              fontWeight: 600,
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
+              color: textMuted,
+            }}
+          >
+            <div>Company</div>
+            <div>Contact</div>
+            <div>Vertical</div>
+            <div>State</div>
+            <div>Status</div>
+            <div />
+          </div>
+          {/* Leads table rows */}
+          {leads.map((l, i) => {
             const isConverted = l.status === "converted" || !!l.convertedAccountId;
             return (
-              <GlassCard key={l.id} padding="20px">
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "10px" }}>
-                  <div>
-                    <h3 style={{ fontSize: "16px", fontWeight: 600, color: textPrimary, margin: 0 }}>{l.companyName}</h3>
-                    <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "4px", flexWrap: "wrap" }}>
-                      {l.vertical && (
-                        <span style={{ fontSize: "12px", color: textMuted, display: "flex", alignItems: "center", gap: "4px" }}>
-                          <Building2 style={{ width: "12px", height: "12px" }} />{l.vertical}
-                        </span>
-                      )}
-                      {l.state && (
-                        <span style={{ fontSize: "12px", color: textMuted, display: "flex", alignItems: "center", gap: "4px" }}>
-                          <MapPin style={{ width: "12px", height: "12px" }} />{l.state}
-                        </span>
-                      )}
+              <div
+                key={l.id}
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "2fr 1.8fr 1fr 0.6fr 1.1fr 280px",
+                  gap: "16px",
+                  alignItems: "center",
+                  padding: "12px 24px",
+                  borderBottom: i === leads.length - 1 ? "none" : `1px solid ${inputBorder}`,
+                  transition: "background 0.15s",
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = isDark ? "rgba(236,72,153,0.05)" : "rgba(236,72,153,0.04)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+              >
+                <div style={{ fontSize: "14px", fontWeight: 600, color: textPrimary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.companyName}</div>
+                <div style={{ minWidth: 0 }}>
+                  {l.contactName && <div style={{ fontSize: "13px", color: textPrimary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.contactName}</div>}
+                  {l.email && (
+                    <div style={{ fontSize: "12px", color: textMuted, display: "flex", alignItems: "center", gap: "5px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <Mail style={{ width: "12px", height: "12px", flexShrink: 0 }} />{l.email}
                     </div>
-                  </div>
-                  <Badge label={isConverted ? "Converted" : (LEAD_STATUS_LABEL[l.status || "new"] || "New")} color={LEAD_STATUS_COLOR[l.status || "new"] || "gray"} />
+                  )}
+                  {!l.contactName && !l.email && <span style={{ fontSize: "13px", color: textMuted }}>—</span>}
                 </div>
-
-                {(l.contactName || l.email || l.phone) && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "4px", marginBottom: "12px" }}>
-                    {l.contactName && <span style={{ fontSize: "13px", color: textPrimary }}>{l.contactName}</span>}
-                    {l.email && <span style={{ fontSize: "12px", color: textMuted, display: "flex", alignItems: "center", gap: "5px" }}><Mail style={{ width: "12px", height: "12px" }} />{l.email}</span>}
-                    {l.phone && <span style={{ fontSize: "12px", color: textMuted, display: "flex", alignItems: "center", gap: "5px" }}><Phone style={{ width: "12px", height: "12px" }} />{l.phone}</span>}
-                  </div>
-                )}
-
-                {!isConverted ? (
-                  <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
-                    <select
+                <div style={{ fontSize: "13px", color: textMuted }}>{l.vertical || "—"}</div>
+                <div style={{ fontSize: "13px", color: textMuted }}>{l.state || "—"}</div>
+                <div>
+                  {isConverted ? (
+                    <Badge label="Converted" color="green" />
+                  ) : canCreate ? (
+                    <AxelDropdown
                       value={l.status || "new"}
-                      onChange={(e) => handleLeadStatus(l, e.target.value)}
-                      style={{ ...inputStyle, width: "auto", padding: "6px 10px", fontSize: "12px", cursor: "pointer", appearance: "auto" }}
-                    >
-                      {LEAD_STATUSES.map((s) => <option key={s} value={s}>{LEAD_STATUS_LABEL[s]}</option>)}
-                    </select>
-                    <div style={{ marginLeft: "auto", display: "flex", gap: "8px" }}>
+                      onChange={(v) => handleLeadStatus(l, v)}
+                      options={LEAD_STATUSES.map((s) => ({ value: s, label: LEAD_STATUS_LABEL[s] }))}
+                    />
+                  ) : (
+                    <Badge label={LEAD_STATUS_LABEL[l.status || "new"] || "New"} color={LEAD_STATUS_COLOR[l.status || "new"] || "gray"} />
+                  )}
+                </div>
+                <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+                  {!isConverted && canCreate ? (
+                    <>
                       <GhostButton onClick={() => handleConvert(l, false)} disabled={converting === l.id} style={{ padding: "6px 12px", fontSize: "12px" }}>
                         {converting === l.id ? "…" : "Convert"}
                       </GhostButton>
                       <PinkButton onClick={() => handleConvert(l, true)} disabled={converting === l.id} style={{ padding: "6px 12px", fontSize: "12px", display: "flex", alignItems: "center", gap: "4px" }}>
                         Convert &amp; Start <ArrowRight style={{ width: "12px", height: "12px" }} />
                       </PinkButton>
-                    </div>
-                  </div>
-                ) : (
-                  l.convertedAccountId && (
+                    </>
+                  ) : isConverted && l.convertedAccountId ? (
                     <GhostButton onClick={() => navigate(`/accounts/${l.convertedAccountId}`)} style={{ padding: "6px 12px", fontSize: "12px" }}>
                       View Account
                     </GhostButton>
-                  )
-                )}
-              </GlassCard>
+                  ) : null}
+                </div>
+              </div>
             );
           })}
           {leads.length === 0 && (
-            <GlassCard padding="40px" style={{ gridColumn: "1 / -1", textAlign: "center" }}>
-              <p style={{ color: textMuted, fontSize: "15px", margin: 0 }}>No leads yet.{canCreate ? " Add your first lead to get started." : ""}</p>
-            </GlassCard>
+            <p style={{ color: textMuted, fontSize: "15px", margin: 0, padding: "40px", textAlign: "center" }}>
+              No leads yet.{canCreate ? " Add your first lead to get started." : ""}
+            </p>
           )}
-        </div>
+        </GlassCard>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(400px, 1fr))", gap: "16px" }}>
-          {accounts.map((a) => (
-            <GlassCard
+        <GlassCard padding="0" style={{ overflow: "hidden" }}>
+          {/* Table header */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "2.5fr 1fr 0.7fr 1fr 0.8fr 1.3fr 24px",
+              gap: "16px",
+              padding: "14px 24px",
+              borderBottom: `1px solid ${inputBorder}`,
+              fontSize: "11px",
+              fontWeight: 600,
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
+              color: textMuted,
+            }}
+          >
+            <div>Company</div>
+            <div>Vertical</div>
+            <div>State</div>
+            <div style={{ textAlign: "right" }}>Annual Payroll</div>
+            <div style={{ textAlign: "right" }}>Employees</div>
+            <div style={{ paddingLeft: "16px" }}>Stage</div>
+            <div />
+          </div>
+          {/* Table rows */}
+          {visibleAccounts.map((a, i) => (
+            <div
               key={a.id}
-              padding="20px"
-              style={{ cursor: "pointer", transition: "border-color 0.15s" }}
               onClick={() => navigate(`/accounts/${a.id}`)}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "2.5fr 1fr 0.7fr 1fr 0.8fr 1.3fr 24px",
+                gap: "16px",
+                alignItems: "center",
+                padding: "14px 24px",
+                borderBottom: i === visibleAccounts.length - 1 ? "none" : `1px solid ${inputBorder}`,
+                cursor: "pointer",
+                transition: "background 0.15s",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = isDark ? "rgba(236,72,153,0.05)" : "rgba(236,72,153,0.04)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
             >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "12px" }}>
-                <div>
-                  <h3 style={{ fontSize: "16px", fontWeight: 600, color: textPrimary, margin: 0 }}>{a.businessName}</h3>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "4px" }}>
-                    {a.vertical && (
-                      <span style={{ fontSize: "13px", color: textMuted, display: "flex", alignItems: "center", gap: "4px" }}>
-                        <Building2 style={{ width: "12px", height: "12px" }} />
-                        {a.vertical}
-                      </span>
-                    )}
-                    {a.state && (
-                      <span style={{ fontSize: "13px", color: textMuted, display: "flex", alignItems: "center", gap: "4px" }}>
-                        <MapPin style={{ width: "12px", height: "12px" }} />
-                        {a.state}
-                      </span>
-                    )}
-                  </div>
-                </div>
+              <div style={{ fontSize: "14px", fontWeight: 600, color: textPrimary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.businessName}</div>
+              <div style={{ fontSize: "13px", color: textMuted }}>{a.vertical || "—"}</div>
+              <div style={{ fontSize: "13px", color: textMuted }}>{a.state || "—"}</div>
+              <div style={{ fontSize: "13px", color: textPrimary, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
+                {a.annualPayroll && parseFloat(a.annualPayroll) > 0
+                  ? parseFloat(a.annualPayroll).toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0 })
+                  : "—"}
+              </div>
+              <div style={{ fontSize: "13px", color: textPrimary, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{a.headcount ?? "—"}</div>
+              <div style={{ paddingLeft: "16px" }}>
                 <Badge label={a.clientStage || "Prospect"} color={STAGE_COLOR[a.clientStage || "Prospect"] || "gray"} />
               </div>
-
-              <div style={{ display: "flex", gap: "20px", fontSize: "13px", color: textMuted }}>
-                {a.annualPayroll && parseFloat(a.annualPayroll) > 0 && (
-                  <span>Payroll: {parseFloat(a.annualPayroll).toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0 })}</span>
-                )}
-                {a.headcount ? <span style={{ display: "flex", alignItems: "center", gap: "4px" }}><Users style={{ width: "12px", height: "12px" }} />{a.headcount} employees</span> : null}
-              </div>
-            </GlassCard>
+              <ChevronRight style={{ width: "16px", height: "16px", color: textMuted }} />
+            </div>
           ))}
-          {accounts.length === 0 && (
-            <GlassCard padding="40px" style={{ gridColumn: "1 / -1", textAlign: "center" }}>
-              <p style={{ color: textMuted, fontSize: "15px", margin: 0 }}>No {activeTab} found.</p>
-            </GlassCard>
+          {visibleAccounts.length === 0 && (
+            <p style={{ color: textMuted, fontSize: "15px", margin: 0, padding: "40px", textAlign: "center" }}>
+              No {activeTab} found{accounts.length > 0 ? " matching your filters" : ""}.
+            </p>
           )}
-        </div>
+        </GlassCard>
       )}
 
       {/* New Account modal */}

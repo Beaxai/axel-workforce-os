@@ -13,7 +13,7 @@ import { useThemeColors } from "@/lib/use-theme-colors";
 import { useAuthStore } from "@/lib/auth-store";
 import { api } from "@/lib/api";
 import { stageLabel, type PipelineStageKey } from "@workspace/pipeline";
-import { ArrowLeft, Clock, User } from "lucide-react";
+import { ChevronRight, Clock, User } from "lucide-react";
 
 const CLIENT_STAGES = ["Prospect", "Active Prospect", "New Client", "Active Client"] as const;
 
@@ -192,11 +192,38 @@ export default function AccountDetail() {
 
   return (
     <div>
+      {/* Breadcrumb navigation strip: Accounts › Prospects|Clients › current page.
+          The middle crumb reflects the account's stage grouping and deep-links
+          to the matching tab on the Accounts page. */}
+      {(() => {
+        const isClient = account.clientStage === "New Client" || account.clientStage === "Active Client";
+        const groupLabel = isClient ? "Clients" : "Prospects";
+        const groupTab = isClient ? "clients" : "prospects";
+        const crumbBtn: React.CSSProperties = { background: "none", border: "none", padding: 0, cursor: "pointer", color: textMuted, fontSize: "12px", fontFamily: "inherit" };
+        const hover = (on: boolean) => (e: React.MouseEvent<HTMLButtonElement>) => { e.currentTarget.style.color = on ? "var(--accent-primary)" : textMuted; };
+        return (
+          <nav aria-label="Breadcrumb" style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "12px", fontSize: "12px" }}>
+            <button type="button" onClick={() => navigate("/accounts")} style={crumbBtn} onMouseEnter={hover(true)} onMouseLeave={hover(false)}>
+              Accounts
+            </button>
+            <ChevronRight style={{ width: "13px", height: "13px", color: textMuted, flexShrink: 0 }} />
+            <button type="button" onClick={() => navigate(`/accounts?tab=${groupTab}`)} style={crumbBtn} onMouseEnter={hover(true)} onMouseLeave={hover(false)}>
+              {groupLabel}
+            </button>
+            <ChevronRight style={{ width: "13px", height: "13px", color: textMuted, flexShrink: 0 }} />
+            <span aria-current="page" style={{ color: textPrimary, fontWeight: 600 }}>{account.businessName}</span>
+            {!isReadOnly && (
+              <div style={{ marginLeft: "auto" }}>
+                <GhostButton onClick={() => { if (editMode) handleSave(); else setEditMode(true); }} style={{ padding: "4px 12px", fontSize: "12px" }}>
+                  {editMode ? "Save" : "Edit"}
+                </GhostButton>
+              </div>
+            )}
+          </nav>
+        );
+      })()}
+
       <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px" }}>
-        <GhostButton onClick={() => navigate("/accounts")} style={{ padding: "6px 12px", display: "flex", alignItems: "center", gap: "6px" }}>
-          <ArrowLeft style={{ width: "16px", height: "16px" }} />
-          Back
-        </GhostButton>
         <SectionHeader title={account.businessName} subtitle={`Account Detail`} />
         <div style={{ marginLeft: "auto" }}>
           <Badge label={account.clientStage || "Prospect"} color={STAGE_COLOR[account.clientStage || "Prospect"] || "gray"} />
@@ -209,11 +236,6 @@ export default function AccountDetail() {
           <GlassCard padding="20px">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
               <h3 style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, margin: 0 }}>Business Info</h3>
-              {!isReadOnly && (
-                <GhostButton onClick={() => { if (editMode) handleSave(); else setEditMode(true); }} style={{ padding: "4px 12px", fontSize: "12px" }}>
-                  {editMode ? "Save" : "Edit"}
-                </GhostButton>
-              )}
             </div>
             {editMode ? (
               <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>

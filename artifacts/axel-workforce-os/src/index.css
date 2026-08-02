@@ -146,6 +146,10 @@
   --overlay-bg: rgba(15,15,20,0.40);
   --overlay-blur: blur(12px);
 
+  /* Scrollbar tokens — LIGHT values. Thin, rounded, quiet. */
+  --scrollbar-thumb: rgba(15,15,20,0.22);
+  --scrollbar-thumb-hover: rgba(15,15,20,0.38);
+
   --app-font-sans: 'Inter', system-ui, sans-serif;
   --app-font-heading: 'Jost', 'Open Sans', system-ui, sans-serif;
   --app-font-serif: Georgia, serif;
@@ -253,6 +257,10 @@
   /* Modal overlay tokens — DARK values. Mirrored in lib/use-theme-colors.ts. */
   --overlay-bg: rgba(0,0,0,0.68);
 
+  /* Scrollbar tokens — DARK values. */
+  --scrollbar-thumb: rgba(255,255,255,0.16);
+  --scrollbar-thumb-hover: rgba(255,255,255,0.30);
+
   /* Real elevation scale derived from the heavy-glass modal shadow */
   --shadow-2xs: 0 1px 2px 0 rgba(0,0,0,0.30);
   --shadow-xs:  0 1px 3px 0 rgba(0,0,0,0.35);
@@ -279,6 +287,40 @@
   textarea::placeholder {
     color: var(--input-placeholder);
     opacity: 1;
+  }
+
+  /* =====================================================================
+     NATIVE SELECT / DROPDOWN THEMING
+     Native <select> popups are OS-rendered; color-scheme is the only way
+     to make the popup itself dark. Without it, dark mode shows a white
+     popup with unreadable light text. --select-option-bg must be a SOLID
+     color (glass transparency is not supported inside the popup).
+     ===================================================================== */
+  :root {
+    color-scheme: light;
+    --select-option-bg: #ffffff;
+    --select-option-text: #1a2333;
+  }
+  .dark {
+    color-scheme: dark;
+    --select-option-bg: #1e1533;
+    --select-option-text: #ffffff;
+  }
+
+  select {
+    background-color: var(--input-bg);
+    color: var(--input-text);
+    border-color: var(--input-border);
+    accent-color: var(--accent-primary);
+  }
+  select option,
+  select optgroup {
+    background-color: var(--select-option-bg);
+    color: var(--select-option-text);
+  }
+  select option:checked {
+    background-color: var(--accent-primary-soft);
+    color: var(--select-option-text);
   }
 }
 
@@ -425,6 +467,30 @@
 
 html {
   font-size: 15px;
+}
+
+/* Stylized scrollbars — thin, rounded, token-driven (light/dark aware). */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-track,
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+  background-clip: padding-box;
 }
 
 body {

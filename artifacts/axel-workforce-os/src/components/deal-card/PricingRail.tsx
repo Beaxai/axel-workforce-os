@@ -1,7 +1,8 @@
 /**
- * Phase 4C — right-rail pricing + decision block (Stitch layout, Axel tokens).
- * Three carded sections: Workers' Compensation Pricing, WFS Pricing, and
- * Submission Actions. Approve (gradient CTA — the single primary CTA per spec)
+ * Pricing + decision block — formerly the deal-card right rail, now rendered
+ * as a card row at the top of the Quote tab (header carries the quiet
+ * est-premium bubble). Three carded sections: Workers' Compensation Pricing,
+ * WFS Pricing, and Submission Actions. Approve (gradient CTA — the single primary CTA per spec)
  * and Decline render only when the server grants `canApprove`
  * (UNDERWRITER/ADMIN, §8). Tokens only; verified light + dark.
  */
@@ -12,6 +13,9 @@ interface PricingRailProps {
   wcPremium: string | null;
   wfsMonthly: string | null;
   wfsPepm: string | null;
+  wfsBusy?: boolean;
+  wfsError?: string | null;
+  onGetWfsQuote?: () => void;
   canApprove: boolean;
   busy: boolean;
   openBlocking?: number;
@@ -19,6 +23,12 @@ interface PricingRailProps {
   onApprove: () => void;
   onDecline: (reason: string) => void;
   onModify?: () => void;
+}
+
+function hasValue(val: string | null): boolean {
+  if (val == null || val === "") return false;
+  const n = parseFloat(val);
+  return !isNaN(n) && n > 0;
 }
 
 function fmtUsd(val: string | number | null): string {
@@ -32,6 +42,9 @@ export default function PricingRail({
   wcPremium,
   wfsMonthly,
   wfsPepm,
+  wfsBusy = false,
+  wfsError,
+  onGetWfsQuote,
   canApprove,
   busy,
   openBlocking = 0,
@@ -68,22 +81,47 @@ export default function PricingRail({
         <div style={card}>
           <div style={subLabel}>Total Est. Premium</div>
           <div style={{ fontSize: 22, fontWeight: 600, color: c.textPrimary, marginTop: 2 }}>{fmtUsd(wcPremium)}</div>
-          <button style={modifyBtn} onClick={onModify}>Modify</button>
+          {onModify && <button style={modifyBtn} onClick={onModify}>Modify</button>}
           <div style={{ fontSize: 10, color: c.textMuted, marginTop: 8, fontStyle: "italic" }}>
             Required documents missing for binding.
           </div>
         </div>
       </div>
 
-      {/* WFS pricing */}
+      {/* WFS pricing — breakdown when priced; one-click generator otherwise. */}
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         <span style={heading}>WFS Pricing</span>
         <div style={card}>
-          <div style={subLabel}>Workforce Solutions Pricing</div>
-          <div style={{ fontSize: 22, fontWeight: 600, color: c.textPrimary, marginTop: 2 }}>{fmtUsd(wfsMonthly)}</div>
-          <div style={{ ...subLabel, marginTop: 8 }}>Per Employee</div>
-          <div style={{ fontSize: 13, fontWeight: 500, color: c.textPrimary }}>{wfsPepm ? `$${wfsPepm}` : "\u2014"}</div>
-          <button style={modifyBtn} onClick={onModify}>Modify</button>
+          {hasValue(wfsMonthly) || hasValue(wfsPepm) ? (
+            <>
+              <div style={subLabel}>Workforce Solutions Pricing</div>
+              <div style={{ fontSize: 22, fontWeight: 600, color: c.textPrimary, marginTop: 2 }}>{fmtUsd(wfsMonthly)}</div>
+              <div style={{ ...subLabel, marginTop: 8 }}>Per Employee</div>
+              <div style={{ fontSize: 13, fontWeight: 500, color: c.textPrimary }}>{hasValue(wfsPepm) ? `$${wfsPepm}` : "\u2014"}</div>
+              {onModify && <button style={modifyBtn} onClick={onModify}>Modify</button>}
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: 11.5, color: c.textMuted, lineHeight: 1.5, marginBottom: 10 }}>
+                No WFS pricing yet for this deal.
+              </div>
+              <button
+                onClick={onGetWfsQuote}
+                disabled={wfsBusy || !onGetWfsQuote}
+                style={{
+                  width: "100%", textAlign: "center", fontSize: 12.5, borderRadius: 8, padding: "9px 8px",
+                  cursor: wfsBusy ? "wait" : "pointer", fontWeight: 600, color: "#fff",
+                  background: "var(--gradient-cta)", border: "none", fontFamily: "inherit",
+                  opacity: wfsBusy ? 0.7 : 1,
+                }}
+              >
+                {wfsBusy ? "Generating\u2026" : "Get Quote Now"}
+              </button>
+              {wfsError && (
+                <div style={{ fontSize: 10.5, color: "#ef4444", lineHeight: 1.45, marginTop: 8 }}>{wfsError}</div>
+              )}
+            </>
+          )}
         </div>
       </div>
 

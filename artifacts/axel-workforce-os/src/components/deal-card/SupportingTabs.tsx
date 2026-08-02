@@ -4,79 +4,556 @@
  * deal card's prior capabilities while the Overview + Submission tabs deliver
  * the new collaboration experience.
  */
-import { useCallback, useEffect, useState } from "react";
-import { FileText, Download, CheckSquare, Plus, Calculator, Shield } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  useListPolicyDocuments,
+  useDeletePolicyDocument,
+  getListPolicyDocumentsQueryKey,
+  getGetJourneysQueryKey,
+} from "@workspace/api-client-react";
+import { FileText, CheckSquare, Plus, Calculator, Shield, Upload, Pencil, Trash2, Loader2, Check, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { PinkButton, GhostButton } from "@/components/ui/axel-index";
-import MultiLocationRatingPanel from "@/components/MultiLocationRatingPanel";
+import IndicationBreakdownPanel from "@/components/IndicationBreakdownPanel";
+import IndicationDetailView, { type IndicationMetric, type WorkforceProfileShape } from "./IndicationDetailView";
 import ProposalPanel from "@/components/ProposalPanel";
 import BindStatusPanel from "@/components/submission/BindStatusPanel";
 import UserMiniProfile from "@/components/user-profile/UserMiniProfile";
-import PolicyDocumentsPanel from "./PolicyDocumentsPanel";
+import PdfPreviewModal from "./PdfPreviewModal";
+
+const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 /* ---------------------------------------------------------------- Documents */
-type DealDocument = { id: string; name: string; documentType: string; status: string; generatedAt?: string };
+type DealDocument = {
+  id: string;
+  name: string;
+  documentType: string;
+  status: string;
+  generatedAt?: string;
+  metadata?: { downloadPath?: string } | null;
+};
 type CannabisPdf = { documentType: string; label: string; path: string };
 
-export function DocumentsTab({ dealId }: { dealId: string }) {
+type PolicyDoc = {
+  id: string;
+  fileName?: string | null;
+  documentType?: string | null;
+  createdAt?: string | null;
+  uploadedByName?: string | null;
+};
+
+const fmtDate = (d?: string | null) =>
+  d
+    ? `${new Date(d).toLocaleDateString()} ${new Date(d).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`
+    : "—";
+
+/** Muted one-word kind labels — the only secondary text a row is allowed. */
+const DEAL_DOC_KIND: Record<string, string> = {
+  rate_indication: "Indication",
+  application_summary: "Summary",
+  coverage_verification: "Verification",
+  loss_history_bundle: "Loss History",
+};
+
+/** One quiet row: icon, name, muted kind word. Click anywhere to view. */
+function QuietRow({
+  name,
+  kind,
+  date,
+  by,
+  onOpen,
+  onRename,
+  onDelete,
+  renaming,
+  last,
+  testId,
+}: {
+  name: string;
+  kind: string;
+  date: string;
+  by: string;
+  onOpen?: () => void;
+  onRename?: (next: string) => Promise<void>;
+  onDelete?: () => void;
+  renaming?: boolean;
+  last?: boolean;
+  testId: string;
+}) {
   const c = useThemeColors();
+  const [hover, setHover] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(name);
+  const [saving, setSaving] = useState(false);
+
+  const commit = async () => {
+    const next = draft.trim();
+    if (!onRename || !next || next === name) { setEditing(false); setDraft(name); return; }
+    setSaving(true);
+    try { await onRename(next); setEditing(false); } finally { setSaving(false); }
+  };
+
+  const iconBtn: React.CSSProperties = {
+    display: "inline-flex", padding: 5, background: "transparent", border: "none",
+    color: c.textMuted, cursor: "pointer", borderRadius: 6,
+  };
+
+  return (
+    <div
+      data-testid={testId}
+      className="docs-ac-grid docs-ac-row"
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      onClick={editing || !onOpen ? undefined : onOpen}
+      role={onOpen && !editing ? "button" : undefined}
+      style={{
+        cursor: onOpen && !editing ? "pointer" : "default",
+        borderBottom: last ? "none" : `1px solid ${c.inputBorder}`,
+        background: hover && onOpen && !editing ? c.inputBg : "transparent",
+        transition: "background 120ms ease",
+      }}
+    >
+      <FileText style={{ width: 16, height: 16, color: c.textMuted, flexShrink: 0 }} />
+      {editing ? (
+        <span
+          style={{ display: "flex", alignItems: "center", gap: 6, gridColumn: "2 / -1", minWidth: 0 }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <input
+            autoFocus
+            value={draft}
+            data-testid={`${testId}-rename-input`}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") commit();
+              if (e.key === "Escape") { setEditing(false); setDraft(name); }
+            }}
+            style={{
+              flex: 1, background: c.inputBg, border: `1px solid var(--accent-primary)`,
+              borderRadius: 8, color: c.inputText, fontFamily: "inherit", fontSize: 13, padding: "6px 10px",
+            }}
+          />
+          <button type="button" onClick={commit} aria-label="Save name" data-testid={`${testId}-rename-save`} style={{ ...iconBtn, color: "var(--accent-primary)" }}>
+            {saving ? <Loader2 style={{ width: 14, height: 14 }} className="animate-spin" /> : <Check style={{ width: 15, height: 15 }} />}
+          </button>
+          <button type="button" onClick={() => { setEditing(false); setDraft(name); }} aria-label="Cancel rename" style={iconBtn}>
+            <X style={{ width: 15, height: 15 }} />
+          </button>
+        </span>
+      ) : (
+        <>
+          {/* Name cell: name + mobile meta subline + hover action overlay. */}
+          <span className="docs-ac-name-cell">
+            <span
+              title={name}
+              style={{ fontSize: 13.5, fontWeight: 500, color: c.textPrimary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}
+            >
+              {name}
+            </span>
+            <span className="docs-ac-sub" style={{ color: c.textMuted }}>
+              <span className="docs-ac-kind-inline">{kind} · </span>
+              {date} · {by}
+            </span>
+            {hover && (onRename || onDelete) && (
+              <span className="docs-ac-actions" onClick={(e) => e.stopPropagation()}>
+                {onRename && (
+                  <button
+                    type="button"
+                    aria-label={`Rename ${name}`}
+                    data-testid={`${testId}-rename`}
+                    onClick={() => { setDraft(name); setEditing(true); }}
+                    style={iconBtn}
+                  >
+                    <Pencil style={{ width: 14, height: 14 }} />
+                  </button>
+                )}
+                {onDelete && (
+                  <button
+                    type="button"
+                    aria-label={`Delete ${name}`}
+                    data-testid={`${testId}-delete`}
+                    onClick={onDelete}
+                    style={{ ...iconBtn, color: "#ef4444" }}
+                  >
+                    <Trash2 style={{ width: 14, height: 14 }} />
+                  </button>
+                )}
+              </span>
+            )}
+          </span>
+          <span className="docs-ac-meta docs-ac-col" style={{ color: c.textMuted }}>{kind}</span>
+        </>
+      )}
+      {renaming ? null : null}
+    </div>
+  );
+}
+
+/**
+ * Grid + container-query rules for the documents list ("Aligned Columns"
+ * layout). Columns stay perfectly aligned at any width; below 640px the
+ * meta columns collapse into a muted subline under the document name.
+ */
+function DocsListStyles({ hoverBg }: { hoverBg: string }) {
+  return (
+    <style>{`
+      .docs-ac-container { container-type: inline-size; }
+      .docs-ac-grid {
+        display: grid;
+        grid-template-columns: 16px minmax(0, 1fr) 92px;
+        gap: 12px;
+        align-items: center;
+      }
+      .docs-ac-header { padding: 12px 16px; }
+      .docs-ac-row { padding: 13px 16px; }
+      .docs-ac-meta {
+        font-size: 11.5px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .docs-ac-name-cell {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        min-width: 0;
+        padding-right: 4px;
+      }
+      .docs-ac-row:hover .docs-ac-name-cell { padding-right: 68px; }
+      .docs-ac-actions {
+        position: absolute;
+        right: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        display: flex;
+        gap: 4px;
+        background: ${hoverBg};
+        border-radius: 6px;
+      }
+      .docs-ac-sub {
+        display: block;
+        font-size: 11.5px;
+        margin-top: 3px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .docs-ac-kind-inline { display: none; }
+      @container (max-width: 640px) {
+        .docs-ac-grid { grid-template-columns: 16px minmax(0, 1fr); }
+        .docs-ac-col { display: none; }
+        .docs-ac-kind-inline { display: inline; }
+      }
+    `}</style>
+  );
+}
+
+// Global stage-span time filter from the deal-card header slide bar.
+// Undated rows (e.g. application PDFs, undated tasks) stay visible — only
+// dated rows outside the window are hidden.
+export type TimeWindow = { empty?: boolean; intervals: Array<{ from?: number; to?: number }> } | null;
+export const winHas = (win: TimeWindow, iso?: string | null): boolean => {
+  if (!win) return true;
+  if (!iso) return true;
+  const t = new Date(iso).getTime();
+  if (isNaN(t)) return true;
+  if (win.empty) return false;
+  return win.intervals.some((iv) => (iv.from == null || t >= iv.from) && (iv.to == null || t <= iv.to));
+};
+
+export function DocumentsTab({ dealId, timeWindow = null }: { dealId: string; timeWindow?: TimeWindow }) {
+  const c = useThemeColors();
+  const queryClient = useQueryClient();
+  const fileRef = useRef<HTMLInputElement>(null);
+
   const [docs, setDocs] = useState<DealDocument[]>([]);
   const [pdfs, setPdfs] = useState<CannabisPdf[]>([]);
+  const [preview, setPreview] = useState<{ url: string; title: string } | null>(null);
+
+  // Upload naming step: after picking a file, the user confirms a name + type.
+  const [pending, setPending] = useState<{ file: File; name: string; type: "binder" | "policy" } | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const dragDepth = useRef(0);
+
+  /** Shared entry point for dropped files — routes into the same naming step as click-to-upload. */
+  const handleDroppedFile = (file: File | undefined, type: "binder" | "policy") => {
+    setError(null);
+    if (!file) return;
+    if (file.type !== "application/pdf" && !/\.pdf$/i.test(file.name)) {
+      setError("Upload failed. PDF only, 25MB maximum.");
+      return;
+    }
+    setPending({ file, name: file.name.replace(/\.pdf$/i, ""), type });
+  };
+
+  const policyQuery = useListPolicyDocuments(dealId);
+  const policyDocs: PolicyDoc[] = policyQuery.data?.documents ?? [];
+  const removePolicy = useDeletePolicyDocument();
+
+  const loadDealDocs = useCallback(async () => {
+    try {
+      const res = await api.get<{ documents: DealDocument[] }>(`/submission/deal-documents/${dealId}`);
+      setDocs(res.documents || []);
+    } catch { setDocs([]); }
+  }, [dealId]);
 
   useEffect(() => {
     let active = true;
     (async () => {
-      try {
-        const res = await api.get<{ documents: DealDocument[] }>(`/submission/deal-documents/${dealId}`);
-        if (active) setDocs(res.documents || []);
-      } catch {
-        if (active) setDocs([]);
-      }
+      await loadDealDocs();
       try {
         const res = await api.get<{ pdfs: CannabisPdf[] }>(`/submission/applications/${dealId}`);
         if (active) setPdfs(res.pdfs || []);
-      } catch {
-        if (active) setPdfs([]);
-      }
+      } catch { if (active) setPdfs([]); }
     })();
     return () => { active = false; };
-  }, [dealId]);
+  }, [dealId, loadDealDocs]);
 
-  const row: React.CSSProperties = {
-    display: "flex", alignItems: "center", justifyContent: "space-between",
-    background: c.cardBg, border: `1px solid ${c.borderColor}`, borderRadius: 10, padding: "10px 12px",
+  const refreshPolicy = () => {
+    queryClient.invalidateQueries({ queryKey: getListPolicyDocumentsQueryKey(dealId) });
+    // Uploads may advance the WC tracker — refresh journeys too.
+    queryClient.invalidateQueries({ queryKey: getGetJourneysQueryKey() });
+  };
+
+  const pickFile = (presetType: "binder" | "policy") => {
+    setError(null);
+    fileRef.current?.setAttribute("data-doctype", presetType);
+    fileRef.current?.click();
+  };
+
+  const confirmUpload = async () => {
+    if (!pending || uploading) return;
+    setUploading(true);
+    setError(null);
+    try {
+      const form = new FormData();
+      form.append("file", pending.file);
+      form.append("documentType", pending.type);
+      form.append("displayName", pending.name.trim() || pending.file.name);
+      const res = await fetch(`${API_BASE}/api/policy-documents/${dealId}/upload`, {
+        method: "POST",
+        body: form,
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("upload failed");
+      setPending(null);
+      refreshPolicy();
+    } catch {
+      setError("Upload failed. PDF only, 25MB maximum.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const renameDealDoc = async (docId: string, name: string) => {
+    await api.patch(`/submission/deal-documents/doc/${docId}`, { name });
+    await loadDealDocs();
+  };
+  const renamePolicyDoc = async (docId: string, name: string) => {
+    await api.patch(`/policy-documents/${docId}`, { name });
+    refreshPolicy();
+  };
+
+  const input: React.CSSProperties = {
+    background: c.inputBg, border: `1px solid ${c.inputBorder}`, borderRadius: 8,
+    color: c.inputText, fontFamily: "inherit", fontSize: 13, padding: "8px 10px",
   };
 
   return (
-    <div>
-      {docs.length === 0 && pdfs.length === 0 ? (
-        <div style={{ padding: "24px 0", textAlign: "center", fontSize: 13, color: c.textMuted }}>
-          No submission documents on file.
-        </div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {pdfs.map((p) => (
-            <a key={p.path} href={p.path} target="_blank" rel="noreferrer" style={{ ...row, textDecoration: "none" }}>
-              <span style={{ display: "flex", alignItems: "center", gap: 9, fontSize: 13, color: c.textPrimary }}>
-                <FileText style={{ width: 16, height: 16, color: c.textMuted }} />{p.label}
-              </span>
-              <Download style={{ width: 15, height: 15, color: "var(--accent-primary)" }} />
-            </a>
-          ))}
-          {docs.map((d) => (
-            <div key={d.id} style={row}>
-              <span style={{ display: "flex", alignItems: "center", gap: 9, fontSize: 13, color: c.textPrimary }}>
-                <FileText style={{ width: 16, height: 16, color: c.textMuted }} />{d.name}
-              </span>
-              <span style={{ fontSize: 11, color: c.textMuted }}>{d.status}</span>
-            </div>
-          ))}
+    <div
+      style={{ display: "flex", flexDirection: "column", gap: 10 }}
+      onDragEnter={(e) => {
+        if (e.dataTransfer.types.includes("Files")) { dragDepth.current += 1; setDragOver(true); }
+      }}
+      onDragOver={(e) => { if (e.dataTransfer.types.includes("Files")) e.preventDefault(); }}
+      onDragLeave={() => {
+        dragDepth.current = Math.max(0, dragDepth.current - 1);
+        if (dragDepth.current === 0) setDragOver(false);
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        dragDepth.current = 0;
+        setDragOver(false);
+        handleDroppedFile(e.dataTransfer.files?.[0], "binder");
+      }}
+    >
+      {/* Header: quiet add affordance; the whole tab is also a drop target. */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
+        <GhostButton
+          onClick={() => pickFile("binder")}
+          data-testid="button-upload-document"
+          style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", fontSize: 12 }}
+        >
+          <Upload style={{ width: 13, height: 13 }} />Add Document
+        </GhostButton>
+      </div>
+
+      <input
+        ref={fileRef}
+        type="file"
+        accept="application/pdf"
+        data-testid="input-upload-document"
+        style={{ display: "none" }}
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          const preset = (fileRef.current?.getAttribute("data-doctype") as "binder" | "policy") || "binder";
+          if (f) setPending({ file: f, name: f.name.replace(/\.pdf$/i, ""), type: preset });
+          if (fileRef.current) fileRef.current.value = "";
+        }}
+      />
+
+      {/* Name-on-upload step. */}
+      {pending && (
+        <div
+          data-testid="panel-upload-naming"
+          style={{ display: "flex", flexDirection: "column", gap: 10, background: c.cardBg, border: `1px solid ${c.borderColor}`, borderRadius: 12, padding: 14 }}
+        >
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+            <input
+              autoFocus
+              value={pending.name}
+              data-testid="input-upload-name"
+              onChange={(e) => setPending((p) => (p ? { ...p, name: e.target.value } : p))}
+              onKeyDown={(e) => { if (e.key === "Enter") confirmUpload(); }}
+              placeholder="Document name"
+              style={{ ...input, flex: 1, minWidth: 220 }}
+            />
+            <select
+              value={pending.type}
+              data-testid="select-upload-type"
+              onChange={(e) => setPending((p) => (p ? { ...p, type: e.target.value as "binder" | "policy" } : p))}
+              style={{ ...input, cursor: "pointer" }}
+            >
+              <option value="binder">Binder</option>
+              <option value="policy">Policy</option>
+            </select>
+            <PinkButton onClick={confirmUpload} data-testid="button-confirm-upload" style={{ padding: "8px 16px", fontSize: 12 }}>
+              {uploading ? "Uploading…" : "Upload"}
+            </PinkButton>
+            <GhostButton onClick={() => setPending(null)} style={{ padding: "8px 12px", fontSize: 12 }}>Cancel</GhostButton>
+          </div>
+          <span style={{ fontSize: 11.5, color: c.textMuted }}>
+            Uploading a binder or policy marks the deal as carrier-bound.
+          </span>
         </div>
       )}
+      {error && (
+        <p data-testid="text-upload-error" style={{ fontSize: 12.5, color: "#ef4444", margin: 0 }}>{error}</p>
+      )}
 
-      {/* §6C carrier binder / policy — always available, even with no other docs. */}
-      <PolicyDocumentsPanel dealId={dealId} />
+      {/* One quiet list — no sections. Header + light dividers, like the accounts table. */}
+      {(() => {
+        // Hide only rows that mirror a generated application PDF; rows with a
+        // known generated kind (indication, summary, …) are never suppressed.
+        const visibleDocs = docs.filter(
+          (d) => (DEAL_DOC_KIND[d.documentType] || !pdfs.some((p) => p.documentType === d.documentType)) && winHas(timeWindow, d.generatedAt),
+        );
+        const shownPolicyDocs = policyDocs.filter((d) => winHas(timeWindow, d.createdAt));
+        const total = pdfs.length + visibleDocs.length + shownPolicyDocs.length;
+        let idx = 0;
+        const isLast = () => ++idx === total;
+        return (
+          <div className="docs-ac-container" style={{ ["--docs-muted" as string]: c.textMuted }}>
+            <DocsListStyles hoverBg={c.inputBg} />
+            <div
+              style={{
+                border: dragOver ? `1px dashed var(--accent-primary)` : `1px solid ${c.borderColor}`,
+                borderRadius: 12, overflow: "hidden", background: c.cardBg,
+                transition: "border-color 120ms ease",
+              }}
+            >
+            <div
+              data-testid="documents-list-header"
+              className="docs-ac-grid docs-ac-header"
+              style={{
+                borderBottom: `1px solid ${c.inputBorder}`,
+                fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: c.textMuted,
+              }}
+            >
+              <span />
+              <span>Document</span>
+              <span className="docs-ac-col">Type</span>
+            </div>
+            {pdfs.map((p) => (
+              <QuietRow
+                key={p.path}
+                name={p.label}
+                kind="Application"
+                date="—"
+                by="System"
+                onOpen={() => setPreview({ url: p.path, title: p.label })}
+                last={isLast()}
+                testId={`row-application-${p.documentType}`}
+              />
+            ))}
+            {visibleDocs.map((d) => {
+              const url =
+                d.metadata?.downloadPath ||
+                (d.documentType === "rate_indication"
+                  ? `/api/submission/applications/${dealId}/indication-summary.pdf`
+                  : undefined);
+              return (
+                <QuietRow
+                  key={d.id}
+                  name={d.name}
+                  kind={DEAL_DOC_KIND[d.documentType] || "Document"}
+                  date={fmtDate(d.generatedAt)}
+                  by="System"
+                  onOpen={url ? () => setPreview({ url, title: d.name }) : undefined}
+                  onRename={(next) => renameDealDoc(d.id, next)}
+                  last={isLast()}
+                  testId={`row-generated-${d.id}`}
+                />
+              );
+            })}
+            {shownPolicyDocs.map((d) => (
+              <QuietRow
+                key={d.id}
+                name={d.fileName || "Document"}
+                kind={d.documentType === "policy" ? "Policy" : "Binder"}
+                date={fmtDate(d.createdAt)}
+                by={d.uploadedByName || "—"}
+                onOpen={() => setPreview({ url: `${API_BASE}/api/policy-documents/${d.id}/file`, title: d.fileName || "Document" })}
+                onRename={(next) => renamePolicyDoc(d.id, next)}
+                onDelete={() =>
+                  removePolicy.mutate({ docId: d.id }, { onSuccess: refreshPolicy, onError: () => setError("Could not delete that document.") })
+                }
+                last={isLast()}
+                testId={`policy-document-${d.id}`}
+              />
+            ))}
+            {total === 0 && (
+              <div
+                data-testid="documents-dropzone"
+                onClick={() => pickFile("binder")}
+                role="button"
+                style={{
+                  display: "flex", flexDirection: "column", alignItems: "center", gap: 8,
+                  padding: "44px 16px", margin: 12, cursor: "pointer", borderRadius: 10,
+                  border: `1px dashed ${dragOver ? "var(--accent-primary)" : c.borderColor}`,
+                  background: dragOver ? c.inputBg : "transparent",
+                  transition: "border-color 120ms ease, background 120ms ease",
+                }}
+              >
+                <Upload style={{ width: 22, height: 22, color: dragOver ? "var(--accent-primary)" : c.textMuted }} />
+                <span style={{ fontSize: 13.5, fontWeight: 500, color: c.textPrimary }}>
+                  {dragOver ? "Drop your PDF here" : "Drag & drop a PDF here"}
+                </span>
+                <span style={{ fontSize: 12, color: c.textMuted }}>or click to browse — 25MB max</span>
+              </div>
+            )}
+            </div>
+          </div>
+        );
+      })()}
+
+      {preview && (
+        <PdfPreviewModal url={preview.url} title={preview.title} onClose={() => setPreview(null)} />
+      )}
     </div>
   );
 }
@@ -84,12 +561,27 @@ export function DocumentsTab({ dealId }: { dealId: string }) {
 /* -------------------------------------------------------------------- Tasks */
 type TaskEntry = { id: string; taskName: string; assignedTo?: string | null; assigneeName?: string | null; dueDate?: string; status?: string };
 
-export function TasksTab({ dealId }: { dealId: string }) {
+export function TasksTab({ dealId, timeWindow = null }: { dealId: string; timeWindow?: TimeWindow }) {
   const c = useThemeColors();
   const [tasks, setTasks] = useState<TaskEntry[]>([]);
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState({ taskName: "", assignedTo: "", dueDate: "" });
   const [saving, setSaving] = useState(false);
+  const [people, setPeople] = useState<{ id: string; name: string; role?: string | null }[]>([]);
+
+  // People attached to this deal (team + scoped directory) for the assignee dropdown.
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const res = await api.get<{ directory?: { id: string; name: string; role?: string | null }[] }>(
+          `/deal-card/${dealId}/submission`,
+        );
+        if (active) setPeople(res.directory ?? []);
+      } catch { if (active) setPeople([]); }
+    })();
+    return () => { active = false; };
+  }, [dealId]);
 
   const load = useCallback(async () => {
     try {
@@ -138,16 +630,30 @@ export function TasksTab({ dealId }: { dealId: string }) {
       {adding && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8, background: c.cardBg, border: `1px solid ${c.borderColor}`, borderRadius: 10, padding: 12 }}>
           <input style={input} placeholder="Task name" value={form.taskName} onChange={(e) => setForm((f) => ({ ...f, taskName: e.target.value }))} />
-          <input style={input} placeholder="Assigned to (optional)" value={form.assignedTo} onChange={(e) => setForm((f) => ({ ...f, assignedTo: e.target.value }))} />
+          <select
+            style={{ ...input, cursor: "pointer", color: form.assignedTo ? c.inputText : c.textMuted }}
+            data-testid="select-task-assignee"
+            value={form.assignedTo}
+            onChange={(e) => setForm((f) => ({ ...f, assignedTo: e.target.value }))}
+          >
+            <option value="">Unassigned</option>
+            {people.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}{p.role ? ` — ${p.role}` : ""}
+              </option>
+            ))}
+          </select>
           <input style={input} type="date" value={form.dueDate} onChange={(e) => setForm((f) => ({ ...f, dueDate: e.target.value }))} />
           <PinkButton onClick={create} style={{ padding: "8px 16px", fontSize: 12 }}>{saving ? "Saving\u2026" : "Create task"}</PinkButton>
         </div>
       )}
 
-      {tasks.length === 0 && !adding && (
-        <div style={{ padding: "32px 0", textAlign: "center", fontSize: 13, color: c.textMuted }}>No tasks yet.</div>
+      {tasks.filter((t) => winHas(timeWindow, t.dueDate)).length === 0 && !adding && (
+        <div style={{ padding: "32px 0", textAlign: "center", fontSize: 13, color: c.textMuted }}>
+          {tasks.length === 0 ? "No tasks yet." : "No tasks in the selected time frame."}
+        </div>
       )}
-      {tasks.map((t) => (
+      {tasks.filter((t) => winHas(timeWindow, t.dueDate)).map((t) => (
         <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 9, background: c.cardBg, border: `1px solid ${c.borderColor}`, borderRadius: 10, padding: "10px 12px" }}>
           <CheckSquare style={{ width: 16, height: 16, color: t.status === "completed" ? "#4caf50" : c.textMuted }} />
           <div style={{ flex: 1 }}>
@@ -186,12 +692,14 @@ type QuoteRecord = {
   wcIndicationMin?: string | null;
   wcIndicationMax?: string | null;
   wcFinalPremium?: string | null;
+  paramsPendingReview?: boolean | null;
 };
 
-export function QuoteTab({ dealId, businessName, productType, onClose }: { dealId: string; businessName: string; productType?: string; onClose: () => void }) {
+export function QuoteTab({ dealId, businessName, productType, vertical, coverageEffectiveDate, detailMetric, onCloseDetail, canEditParams, onQuoteUpdated, onClose }: { dealId: string; businessName: string; productType?: string; vertical?: string; coverageEffectiveDate?: string | null; detailMetric?: IndicationMetric | null; onCloseDetail?: () => void; canEditParams?: boolean; onQuoteUpdated?: () => void; onClose: () => void }) {
   const c = useThemeColors();
   const [quote, setQuote] = useState<QuoteRecord | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [version, setVersion] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -206,16 +714,35 @@ export function QuoteTab({ dealId, businessName, productType, onClose }: { dealI
       }
     })();
     return () => { active = false; };
-  }, [dealId]);
+  }, [dealId, version]);
 
   if (!loaded) return <div style={{ padding: "32px 0", textAlign: "center", fontSize: 13, color: c.textMuted }}>Loading quote\u2026</div>;
+
+  // A header KPI was clicked — show the editable detail view for that metric
+  // instead of the indication (works whenever the deal has a workforce profile).
+  if (detailMetric && quote?.workforceProfile) {
+    return (
+      <IndicationDetailView
+        dealId={dealId}
+        metric={detailMetric}
+        profile={quote.workforceProfile as WorkforceProfileShape}
+        pendingReview={!!quote.paramsPendingReview}
+        editable={!!canEditParams}
+        onBack={() => onCloseDetail?.()}
+        onSaved={() => {
+          setVersion((v) => v + 1); // refresh premium/table with re-rated numbers
+          onQuoteUpdated?.();
+        }}
+      />
+    );
+  }
 
   const wcBreakdown = quote?.wcRatingBreakdown?.data || quote?.wcRatingBreakdown;
   if (quote && wcBreakdown) {
     const isMulti = Array.isArray(wcBreakdown?.locations);
     if (isMulti) {
       return (
-        <MultiLocationRatingPanel
+        <IndicationBreakdownPanel
           businessName={businessName}
           wcBreakdown={wcBreakdown}
           workforceProfile={quote.workforceProfile || null}
@@ -223,6 +750,9 @@ export function QuoteTab({ dealId, businessName, productType, onClose }: { dealI
           indicationHigh={quote.wcIndicationMax != null ? Number(quote.wcIndicationMax) : null}
           finalPremiumFallback={quote.wcFinalPremium != null ? Number(quote.wcFinalPremium) : null}
           ratedAt={quote.ratedAt}
+          vertical={vertical}
+          productType={productType}
+          coverageEffectiveDate={coverageEffectiveDate}
         />
       );
     }

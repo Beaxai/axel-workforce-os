@@ -173,6 +173,12 @@ function generateRefCode(): string {
 export default function Pipeline() {
   const { theme } = useThemeStore();
   const { members } = useTeamMembers();
+  // Card-face avatar row: surface members with real headshots first so the
+  // pipeline cards show photos instead of a wall of initials circles.
+  const faceMembers = useMemo(
+    () => [...members].sort((a, b) => Number(!!b.photoUrl) - Number(!!a.photoUrl)),
+    [members],
+  );
   const isDark = theme === "dark";
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
@@ -206,6 +212,26 @@ export default function Pipeline() {
   /* ------------------------------------------------------------------ */
   const navigate = useNavigate();
   const [drafts, setDrafts] = useState<QuoteDraft[]>([]);
+  const [showDrafts, setShowDrafts] = useState(false);
+  const draftsMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showDrafts) return;
+    const onPointerDown = (e: MouseEvent) => {
+      if (draftsMenuRef.current && !draftsMenuRef.current.contains(e.target as Node)) {
+        setShowDrafts(false);
+      }
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setShowDrafts(false);
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [showDrafts]);
 
   const fetchDrafts = useCallback(async () => {
     try {
@@ -453,6 +479,128 @@ export default function Pipeline() {
           subtitle={`${totalDeals} deals · ${formatCurrency(totalWcPremium)} WC Premium`}
         />
         <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "4px" }}>
+          {drafts.length > 0 && (
+            <div ref={draftsMenuRef} style={{ position: "relative" }}>
+              <button
+                type="button"
+                onClick={() => setShowDrafts((v) => !v)}
+                aria-expanded={showDrafts}
+                aria-haspopup="true"
+                data-testid="button-drafts-menu"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  padding: "8px 14px",
+                  fontSize: "13px",
+                  fontWeight: 500,
+                  borderRadius: "8px",
+                  border: showDrafts ? "1px solid var(--accent-primary)" : `1px dashed var(--accent-primary-soft)`,
+                  cursor: "pointer",
+                  background: showDrafts ? "rgba(233,30,140,0.12)" : "transparent",
+                  color: showDrafts ? "var(--accent-primary)" : textMuted,
+                  transition: "border-color 0.15s, background 0.15s, color 0.15s",
+                }}
+              >
+                <FileEdit style={{ width: "14px", height: "14px" }} />
+                In Progress
+                <span
+                  style={{
+                    minWidth: "18px",
+                    height: "18px",
+                    borderRadius: "9px",
+                    background: "var(--accent-primary)",
+                    color: "#fff",
+                    fontSize: "11px",
+                    fontWeight: 700,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    padding: "0 5px",
+                  }}
+                >
+                  {drafts.length}
+                </span>
+              </button>
+
+              {showDrafts && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "calc(100% + 8px)",
+                    right: 0,
+                    zIndex: 60,
+                    width: "360px",
+                    maxHeight: "420px",
+                    overflowY: "auto",
+                    borderRadius: "14px",
+                    padding: "12px",
+                    background: isDark ? "rgba(18,18,24,0.82)" : "rgba(255,255,255,0.92)",
+                    backdropFilter: "blur(40px)",
+                    WebkitBackdropFilter: "blur(40px)",
+                    border: `1px solid ${borderSubtle}`,
+                    boxShadow: "0 24px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06)",
+                  }}
+                >
+                  <div style={{ fontSize: "11px", fontWeight: 700, color: textMuted, textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: "var(--app-font-heading)", marginBottom: "10px", padding: "0 2px" }}>
+                    In-Progress Submissions
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                    {drafts.map((draft) => {
+                      const totalSteps = draft.phase === 2 ? undefined : 5;
+                      return (
+                        <div
+                          key={draft.id}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => { setShowDrafts(false); resumeDraft(draft); }}
+                          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { setShowDrafts(false); resumeDraft(draft); } }}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "12px",
+                            padding: "10px 12px",
+                            borderRadius: "12px",
+                            cursor: "pointer",
+                            background: inputBg,
+                            border: "1px dashed var(--accent-primary-soft)",
+                            transition: "border-color 0.15s, background 0.15s",
+                          }}
+                          onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--accent-primary)"; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--accent-primary-soft)"; }}
+                        >
+                          <div style={{ width: 32, height: 32, borderRadius: 8, background: "var(--accent-primary-soft)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                            <FileEdit style={{ width: 15, height: 15, color: "var(--accent-primary)" }} />
+                          </div>
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <div style={{ fontSize: "13px", fontWeight: 600, color: textPrimary, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                              {draft.businessName || "Untitled submission"}
+                            </div>
+                            <div style={{ fontSize: "11px", color: textMuted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                              {[draft.vertical, draft.coverageType].filter(Boolean).join(" · ")}
+                              {" — "}
+                              Phase {draft.phase ?? 1} · Step {draft.currentStep ?? 1}{totalSteps ? ` of ${totalSteps}` : ""}
+                              {draft.updatedAt ? ` · ${relativeTime(draft.updatedAt)}` : ""}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            aria-label="Delete draft"
+                            onClick={(e) => { e.stopPropagation(); deleteDraft(draft.id); }}
+                            style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: textMuted, flexShrink: 0, display: "flex" }}
+                            onMouseEnter={(e) => { e.currentTarget.style.color = "#ef4444"; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.color = textMuted; }}
+                          >
+                            <Trash2 style={{ width: 14, height: 14 }} />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
           <div
             style={{
               display: "flex",
@@ -510,67 +658,6 @@ export default function Pipeline() {
           </PinkButton>
         </div>
       </div>
-
-      {drafts.length > 0 && (
-        <div style={{ marginBottom: "16px", flexShrink: 0 }}>
-          <div style={{ fontSize: "11px", fontWeight: 700, color: textMuted, textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: "var(--app-font-heading)", marginBottom: "8px" }}>
-            In-Progress Submissions
-          </div>
-          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-            {drafts.map((draft) => {
-              const totalSteps = draft.phase === 2 ? undefined : 5;
-              return (
-                <div
-                  key={draft.id}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => resumeDraft(draft)}
-                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") resumeDraft(draft); }}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "12px",
-                    padding: "10px 14px",
-                    borderRadius: "12px",
-                    cursor: "pointer",
-                    background: inputBg,
-                    border: "1px dashed var(--accent-primary-soft)",
-                    transition: "border-color 0.15s, background 0.15s",
-                    maxWidth: "340px",
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--accent-primary)"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--accent-primary-soft)"; }}
-                >
-                  <div style={{ width: 32, height: 32, borderRadius: 8, background: "var(--accent-primary-soft)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <FileEdit style={{ width: 15, height: 15, color: "var(--accent-primary)" }} />
-                  </div>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: "13px", fontWeight: 600, color: textPrimary, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {draft.businessName || "Untitled submission"}
-                    </div>
-                    <div style={{ fontSize: "11px", color: textMuted, whiteSpace: "nowrap" }}>
-                      {[draft.vertical, draft.coverageType].filter(Boolean).join(" · ")}
-                      {" — "}
-                      Phase {draft.phase ?? 1} · Step {draft.currentStep ?? 1}{totalSteps ? ` of ${totalSteps}` : ""}
-                      {draft.updatedAt ? ` · ${relativeTime(draft.updatedAt)}` : ""}
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    aria-label="Delete draft"
-                    onClick={(e) => { e.stopPropagation(); deleteDraft(draft.id); }}
-                    style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: textMuted, flexShrink: 0, display: "flex" }}
-                    onMouseEnter={(e) => { e.currentTarget.style.color = "#ef4444"; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.color = textMuted; }}
-                  >
-                    <Trash2 style={{ width: 14, height: 14 }} />
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
       <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", alignItems: "center", marginBottom: "12px", flexShrink: 0 }}>
         <span style={{ fontSize: "12px", color: textMuted, marginRight: "4px" }}>Appetite:</span>
@@ -820,10 +907,10 @@ export default function Pipeline() {
 
                           <div style={{ display: "flex", alignItems: "center" }}>
                             {[0, 1, 2].map((i) => {
-                              const member = members[i];
+                              const member = faceMembers[i];
                               if (!member) return null;
                               
-                              const photo = i % 2 === 0 ? `/images/avatars/team_headshot_${(i % 4) + 1}.jpg` : null;
+                              const photo = member.photoUrl;
                               const initials = member.name ? member.name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase() : "?";
                               
                               return (

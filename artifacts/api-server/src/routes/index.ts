@@ -33,6 +33,7 @@ import documentsRouter from "./documents";
 import appetiteRouter from "./appetite";
 import aiRouter from "./ai";
 import dealCardRouter from "./deal-card";
+import geoRouter from "./geo";
 import {
   journeyTemplatesRouter,
   journeyTemplatePhasesRouter,
@@ -97,6 +98,8 @@ router.use("/leads", requireRoles("ADMIN", "CSA", "AGENT"), leadsRouter);
 router.use("/partners", requireRoles("ADMIN", "CSA", "PEO"), partnersRouter);
 router.use("/resources", requireRoles(), resourcesRouter); // any authenticated user
 router.use("/search", requireRoles(...INTERNAL_SALES), searchRouter);
+// Address autocomplete for the Locations editor (Census geocoder proxy).
+router.use("/geo", requireRoles(...INTERNAL_SALES), geoRouter);
 router.use("/wc-rates", requireRoles(...INTERNAL_SALES), wcRatesRouter);
 router.use("/rate", requireRoles(...INTERNAL_SALES), rateRouter);
 router.use("/submission", requireRoles(...INTERNAL_SALES), submissionRouter);
