@@ -253,6 +253,23 @@ mirror) MUST stay in sync.
   theming/AA contrast, AxelBadge color prop, quote-flow wizard state) — useful context, still verify
   against code.
 
+## Scope tracing (required workflow)
+
+Every plan is checked against the two truth documents **before building and after
+closing**, using the `scope-auditor` agent (`.claude/agents/scope-auditor.md`). Three
+running docs record the results — all plain English, newest-first, append-only:
+
+- `docs/decisions/build-decisions-log.md` — WHY each thing was built the way it was,
+  citing the State Doc / Instructions **section and line** that mandated it, plus what
+  was deliberately not done.
+- `docs/questions-for-curtis/open-questions.md` — every open product decision, each
+  citing the document section it interprets (so Curtis knows what he's ruling on) with
+  a suggested answer. No bare questions.
+- `docs/COMPLETED.md` — what's done, per stage.
+
+Work that traces to no document line is either an engineer execution call (State Doc §9)
+or NEW SCOPE — new scope goes to Curtis before it lands, never silently.
+
 ## Execution model (Replit-native)
 
 This project deploys through Replit (`.replit`): `runButton = "Project"`, autoscale deployment,

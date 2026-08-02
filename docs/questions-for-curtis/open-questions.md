@@ -3,6 +3,10 @@
 One running list. Newest at the top. Each question has a suggested answer so you can
 just reply "1: agree, 2: agree, 3: no — do X instead."
 
+Every question names the document section it comes from (State Doc =
+`docs/STATE_DOCUMENT_v2.4.md`, with line numbers), so you can see exactly what you're
+ruling on. Questions with no document source say so — those are new-scope proposals.
+
 Context for all of it: **the app has no real users yet.** Nothing here is urgent or
 breaking — these are design decisions we want settled correctly before launch.
 
@@ -15,7 +19,16 @@ Agents see the deals they sold, a broker sees their whole agency's deals, a clie
 company sees its own deals, and Admin/CSA/Underwriter see everything. It's on a review
 branch, fully tested, not merged until you approve.
 
+*Overall source: State Doc §4, line 122 — "Server-enforced role access: ADMIN/CSA edit
+all; UNDERWRITER view-only; AGENT edit own deals; EMPLOYER edit business sections
+only… CARRIER/PEO view-only relevant sections." SEC-1 applies that rule to every list
+and read in the app, not just the deal card. Decision detail:
+`docs/decisions/build-decisions-log.md`.*
+
 ### 1. Old deals aren't tagged with who sold them
+
+*From: State Doc §4, line 122 ("AGENT edit own deals") — enforcing it means every deal
+must record which agent sold it.*
 
 The security rules work by tagging every deal with the agent who sold it. New deals get
 tagged automatically from now on. The deals already in the system (the demo data) were
@@ -28,6 +41,9 @@ agent so agent-view demos work?
 
 ### 2. What exactly is a "broker"?
 
+*From: State Doc §4, line 122 lists the roles — Broker is not one of them, but agencies
+with a principal who oversees their agents' deals exist in your operating process.*
+
 We modeled it as: an agency is a company in the system, its agents belong to it, and one
 or more members are marked "broker" — those members see every deal the agency sold. The
 alternative was making Broker a whole new user type next to the existing eight
@@ -37,6 +53,9 @@ alternative was making Broker a whole new user type next to the existing eight
 **Suggested answer:** Yes, keep as built — no ninth user type.
 
 ### 3. Selling a deal vs. being assigned to it
+
+*From: State Doc §4, line 122 says "AGENT edit own deals" — but "own" can mean sold-it
+or assigned-to-it, and the doc doesn't say which.*
 
 An agent can be *assigned* to a deal (as its internal owner) without being the one who
 *sold* it. Old code let assigned agents see those accounts. The new rule is stricter:
@@ -49,9 +68,10 @@ turns out to matter.
 
 ### 4. Carriers, PEO partners, and vendors see nothing right now
 
-Their access was never defined, so we locked them out of everything rather than guess.
-The PEO partner will need access when we build PEO onboarding (they update
-employee-onboarding progress per the State Doc).
+*From: State Doc §4, line 122 — "CARRIER/PEO view-only relevant sections." The doc
+defines their deal-card access but not which deals/lists they may see, so we locked
+lists to zero rather than guess. §6G (line 261) says the PEO partner will need access
+to update onboarding progress.*
 
 **Question:** OK to leave them at zero access until each one gets its own spec?
 **Suggested answer:** Yes — spec PEO partner access as part of the P5 PEO build.
@@ -62,43 +82,54 @@ employee-onboarding progress per the State Doc).
 
 ### 5. Deal listener email domain
 
-The State Doc says deal emails look like `[clientname][ID]@card.axelworkforce.com`, but
-the code currently uses `listener.axel.io`. We need the real domain before building
-email receiving (WC-5), because it affects DNS setup.
+*From: State Doc §8, line 293 — "[clientname][ID]@card.axelworkforce.com". The code
+currently uses `listener.axel.io` instead.*
 
-**Question:** Which domain should deal emails use?
+We need the real domain before building email receiving (WC-5), because it affects DNS
+setup.
+
+**Question:** Which domain should deal emails use — `card.axelworkforce.com` as the doc
+says, or something else?
 
 ### 6. HelloSign (Dropbox Sign) live API key
 
-E-signatures are stubbed. A real bind flow (signing the checklist documents) needs a
-live key. No rush until we're ready to test real signing.
+*From: State Doc §2, lines 62–63 ("HelloSign / Dropbox Sign — Stubbed (no API key)")
+and §6F, line 238 — "HelloSign LIVE API key required for P5 — the stub cannot run a
+real bind."*
 
-**Question:** Can you create/provide the HelloSign account + API key when P5 signing work starts?
+**Question:** Can you create/provide the HelloSign account + API key when P5 signing
+work starts?
 
 ### 7. File storage provider
 
-Uploaded files (binders, policies, loss runs) currently land on the app server's own
-disk, which gets wiped on redeploys — fine for demos, not for launch. The State Doc
-lists S3 or Cloudflare R2 as the future home.
+*From: State Doc §2, line 68 — "File storage (future): S3 or Cloudflare R2 — Not
+built." Uploads currently land on the app server's own disk, which gets wiped on
+redeploys — fine for demos, not for launch.*
 
-**Question:** S3 or Cloudflare R2? (Either is a small monthly cost; R2 is usually cheaper.)
+**Question:** S3 or Cloudflare R2? (Either is a small monthly cost; R2 is usually
+cheaper.)
 
 ### 8. How does a client get a login?
 
-We have no defined path for a client company getting platform access (a login linked to
-their company) after their deal binds — needed for "My Program" to be real.
+*From: State Doc §6B, line 208 — "Direct-submitted deal: client self-serves —
+checklist surfaces in My Program with per-item sign-now actions." That requires the
+client to HAVE a login linked to their company, and the doc doesn't define how they
+get one.*
 
-**Question:** When and how should clients get logins — invited by CSA at bind? Self-serve?
+**Question:** When and how should clients get logins — invited by CSA at bind?
+Self-serve?
 
 ### 9. Deal card right rail — the 4C ruling
 
-Still awaiting your call from the screenshots: adopt the tabbed layout as satisfying the
-4C requirements, merge (sections inside the tabs), or build the original six-section
-spec.
+*From: State Doc §4, lines 116–122 — 4C is "DIVERGED — UNDER CURTIS REVIEW: Curtis is
+reviewing screenshots before ruling: adopt-as-satisfying, merge (sections within tab
+structure), or implement spec."*
 
 **Question:** Which of the three?
 
 ### 10. New-deal stage placement looks backwards
+
+*No document source — this is an observed-behavior question from the build.*
 
 Today a *complete* marketplace submission lands in "Submission Review," while a quick
 partial save lands further along in "Indication." That seems inverted.
@@ -108,6 +139,8 @@ Review), or is the current behavior intentional?
 
 ### 11. Duplicate-deal warning
 
+*No document source — new-scope proposal from the build.*
+
 Nothing stops two deals being created for the same business today.
 
 **Question:** Want a warning when a new submission matches an existing account/FEIN?
@@ -115,8 +148,11 @@ Nothing stops two deals being created for the same business today.
 
 ### 12. Master State Doc still says the pipeline has 10 stages
 
-The build corrected the pipeline to 8 operational stages (Phase 4.1), and v2.4 §8 still
-lists 10. Just a doc fix so the master matches reality.
+*From: State Doc §8, line 291 — "10 stages, New Lead → Client" vs. the accepted Phase
+4.1 correction to 8 operational stages (recorded in the repo's CLAUDE.md and the Phase
+4.1 report).*
+
+Just a doc fix so the master matches reality.
 
 **Question:** Update the master doc's pipeline entry to the 8-stage list?
 **Suggested answer:** Yes.
