@@ -10,8 +10,8 @@
  * PARALLEL + NON-GATING is the invariant: nothing in this module may block or
  * be consulted by the Active Client conversion (journeys/recomputeProgress).
  */
-import { db, dealsTable, activityLogTable, type Deal } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { db, dealsTable, tasksTable, activityLogTable, type Deal } from "@workspace/db";
+import { and, eq, isNull, lte } from "drizzle-orm";
 
 type Dbc = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -55,4 +55,47 @@ export async function startDepositMonitor(
     metadata: { dueDate, windowDays: DEPOSIT_WINDOW_DAYS },
   });
   return { started: true, dueDate };
+}
+
+/**
+ * §6E: "CSA task at day 21 to request carrier confirmation." Hourly sweep —
+ * for every MONITORING deal past day 21 (due date ≤ today + 9) that hasn't had
+ * its task yet, create the CSA task once and stamp the deal. Idempotent by the
+ * deposit_day21_task_at stamp.
+ */
+export async function sweepDepositMonitors(dbc: Dbc = db): Promise<{ tasksCreated: number; dealIds: string[] }> {
+  const day21Cutoff = addDaysIso(new Date(), DEPOSIT_WINDOW_DAYS - DEPOSIT_CSA_TASK_DAY);
+  const due = await dbc
+    .select()
+    .from(dealsTable)
+    .where(
+      and(
+        eq(dealsTable.depositStatus, "MONITORING"),
+        isNull(dealsTable.depositDay21TaskAt),
+        lte(dealsTable.depositDueDate, day21Cutoff),
+      ),
+    );
+
+  const dealIds: string[] = [];
+  for (const deal of due) {
+    await dbc.insert(tasksTable).values({
+      dealId: deal.id,
+      taskName: `Request carrier deposit confirmation — ${deal.businessName ?? deal.referenceCode}`,
+      category: "DEPOSIT",
+      dueDate: deal.depositDueDate,
+      priority: "HIGH",
+      status: "OPEN",
+    });
+    await dbc.update(dealsTable).set({ depositDay21TaskAt: new Date() }).where(eq(dealsTable.id, deal.id));
+    await dbc.insert(activityLogTable).values({
+      dealId: deal.id,
+      entityType: "deal",
+      entityId: deal.id,
+      eventType: "DEPOSIT_MONITOR",
+      description: `Day 21 — CSA task created to request deposit confirmation from the carrier (deposit due ${deal.depositDueDate}).`,
+      metadata: { dueDate: deal.depositDueDate, taskDay: DEPOSIT_CSA_TASK_DAY },
+    });
+    dealIds.push(deal.id);
+  }
+  return { tasksCreated: dealIds.length, dealIds };
 }

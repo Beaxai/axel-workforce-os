@@ -7,9 +7,14 @@
  * Run:  pnpm --filter @workspace/api-server exec tsx src/scripts/verify-deposit.ts
  * Exit: 0 = all checks passed, 1 = at least one failed.
  */
-import { db, dealsTable, accountsTable, activityLogTable } from "@workspace/db";
+import { db, dealsTable, accountsTable, activityLogTable, tasksTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { addDaysIso, startDepositMonitor, DEPOSIT_WINDOW_DAYS } from "../lib/deposit-monitor";
+import {
+  addDaysIso,
+  startDepositMonitor,
+  sweepDepositMonitors,
+  DEPOSIT_WINDOW_DAYS,
+} from "../lib/deposit-monitor";
 
 type Result = { name: string; pass: boolean; detail?: string };
 const results: Result[] = [];
@@ -81,6 +86,64 @@ async function main() {
         "start: a CONFIRMED deposit is never reset to MONITORING",
         third.started === false && afterThird!.depositStatus === "CONFIRMED",
         `status=${afterThird!.depositStatus}`,
+      );
+
+      // ---- Task 2: day-21 CSA task sweep -------------------------------------
+      // Deal bound 22 days ago → past day 21 → the sweep must create its task.
+      const boundLongAgo = new Date();
+      boundLongAgo.setUTCDate(boundLongAgo.getUTCDate() - 22);
+      const [dealPastDay21] = await tx
+        .insert(dealsTable)
+        .values({
+          referenceCode: `WC3B-OLD-${stamp}`,
+          businessName: "Bound 22 days ago",
+          accountId: account!.id,
+          stage: "BOUND",
+          productType: "WC",
+          boundAt: boundLongAgo,
+        })
+        .returning();
+      await startDepositMonitor(dealPastDay21!, tx);
+
+      // Deal bound TODAY and monitoring → day 21 not reached → no task yet.
+      const [dealFresh] = await tx
+        .insert(dealsTable)
+        .values({
+          referenceCode: `WC3B-FRESH-${stamp}`,
+          businessName: "Bound today",
+          accountId: account!.id,
+          stage: "BOUND",
+          productType: "WC",
+          boundAt: new Date(),
+        })
+        .returning();
+      await startDepositMonitor(dealFresh!, tx);
+
+      const sweep1 = await sweepDepositMonitors(tx);
+      check(
+        "sweep: past-day-21 deal gets its CSA task; deal inside the window does not",
+        sweep1.dealIds.includes(dealPastDay21!.id) && !sweep1.dealIds.includes(dealFresh!.id),
+        `created for ${sweep1.tasksCreated} deal(s)`,
+      );
+
+      const [csaTask] = await tx.select().from(tasksTable).where(eq(tasksTable.dealId, dealPastDay21!.id));
+      check(
+        "sweep: task is the §6E confirmation request (HIGH, OPEN, due = deposit due date)",
+        !!csaTask &&
+          csaTask.taskName.startsWith("Request carrier deposit confirmation") &&
+          csaTask.priority === "HIGH" &&
+          csaTask.status === "OPEN" &&
+          csaTask.dueDate === addDaysIso(boundLongAgo, DEPOSIT_WINDOW_DAYS),
+        `task=${csaTask?.taskName} due=${csaTask?.dueDate}`,
+      );
+
+      const [stampedDeal] = await tx.select().from(dealsTable).where(eq(dealsTable.id, dealPastDay21!.id));
+      check("sweep: deal stamped so the task is created only once", stampedDeal!.depositDay21TaskAt !== null);
+
+      const sweep2 = await sweepDepositMonitors(tx);
+      check(
+        "sweep: second run creates nothing for the same deal (idempotent)",
+        !sweep2.dealIds.includes(dealPastDay21!.id),
       );
 
       throw new Rollback();
