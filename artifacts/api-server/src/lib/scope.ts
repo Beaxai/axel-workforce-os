@@ -104,6 +104,28 @@ export async function visibleDealIds(actor: Actor, dbc: Dbc = db): Promise<strin
 }
 
 /**
+ * True when the actor may see this one deal (SEC-1 Task 4 parent-deal guard).
+ * A null/undefined dealId is fail-closed for non-internal actors: a child row
+ * not tied to any deal has no ownership grounds, so externals never see it.
+ */
+export async function canSeeDeal(
+  actor: Actor,
+  dealId: string | null | undefined,
+  dbc: Dbc = db,
+): Promise<boolean> {
+  if (isInternal(actor)) return true;
+  if (!dealId) return false;
+  const cond = await visibleDealCondition(actor, dbc);
+  if (cond === null) return true;
+  const [row] = await dbc
+    .select({ id: dealsTable.id })
+    .from(dealsTable)
+    .where(and(eq(dealsTable.id, dealId), cond))
+    .limit(1);
+  return !!row;
+}
+
+/**
  * The WHERE fragment restricting `contacts` (SEC-1 Task 3): a contact is
  * visible when its org is one of the actor's orgs, OR it hangs off a visible
  * deal. `null` = internal see-all; no grounds → `sql\`false\``.

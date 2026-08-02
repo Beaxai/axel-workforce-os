@@ -11,8 +11,19 @@ import {
   dealDocumentsTable,
 } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
+import type { Request, Response } from "express";
+import { canSeeDeal, resolveActor } from "../lib/scope";
 
 const router: IRouter = Router();
+
+// SEC-1: every proposal route hangs off a deal — out-of-scope deals 404 like
+// missing ones. Sends the 404 itself; callers bail on false.
+async function dealInScope(req: Request, res: Response, dealId: string | null | undefined): Promise<boolean> {
+  const actor = await resolveActor(req);
+  if (await canSeeDeal(actor, dealId)) return true;
+  res.status(404).json({ error: "Not found" });
+  return false;
+}
 
 router.post("/", async (req, res) => {
   try {
@@ -26,6 +37,7 @@ router.post("/", async (req, res) => {
     if (!deal_id) {
       return res.status(400).json({ error: "deal_id is required" });
     }
+    if (!(await dealInScope(req, res, deal_id))) return;
 
     const [proposal] = await db.insert(proposalsTable).values({
       dealId: deal_id,
@@ -69,6 +81,7 @@ router.post("/", async (req, res) => {
 
 router.get("/:dealId", async (req, res) => {
   try {
+    if (!(await dealInScope(req, res, req.params.dealId))) return;
     const [proposal] = await db
       .select()
       .from(proposalsTable)
@@ -96,6 +109,7 @@ router.post("/:proposalId/request-approved-proposal", async (req, res) => {
     if (!proposal) {
       return res.status(404).json({ error: "Proposal not found." });
     }
+    if (!(await dealInScope(req, res, proposal.dealId))) return;
 
     if (proposal.status === "underwriting_notified" || proposal.status === "approved_proposal_requested") {
       return res.status(400).json({ error: "Underwriting submission has already been requested for this proposal." });
@@ -144,6 +158,13 @@ router.post("/:proposalId/request-approved-proposal", async (req, res) => {
 
 router.get("/:proposalId/uw-package-status", async (req, res) => {
   try {
+    const [owner] = await db
+      .select({ dealId: proposalsTable.dealId })
+      .from(proposalsTable)
+      .where(eq(proposalsTable.id, req.params.proposalId))
+      .limit(1);
+    if (!owner) return res.status(404).json({ error: "Not found" });
+    if (!(await dealInScope(req, res, owner.dealId))) return;
     const [pkg] = await db
       .select()
       .from(underwritingPackagesTable)
@@ -151,16 +172,17 @@ router.get("/:proposalId/uw-package-status", async (req, res) => {
       .orderBy(desc(underwritingPackagesTable.createdAt))
       .limit(1);
 
-    res.json({ package: pkg || null });
+    return res.json({ package: pkg || null });
   } catch (err: any) {
     console.error("Get UW package status error:", err);
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message });
   }
 });
 
 router.post("/:dealId/create-from-quote", async (req, res) => {
   try {
     const { dealId } = req.params;
+    if (!(await dealInScope(req, res, dealId))) return;
 
     const [deal] = await db
       .select()

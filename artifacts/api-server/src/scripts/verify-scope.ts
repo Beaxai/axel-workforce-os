@@ -17,10 +17,12 @@ import {
   accountsTable,
   organizationsTable,
   orgMembersTable,
+  quotesTable,
   usersTable,
 } from "@workspace/db";
-import { and, isNull } from "drizzle-orm";
+import { and, inArray, isNull } from "drizzle-orm";
 import {
+  canSeeDeal,
   visibleContactCondition,
   visibleDealCondition,
   visibleDealIds,
@@ -244,6 +246,47 @@ async function main() {
         `got ${foreignContacts.length} rows`,
       );
       check("contacts: carrier sees nothing (fail closed)", same(await contactsFor(actorCarrier), []));
+
+      // ---- Task 4: parent-deal guard + child-table list composition ----------
+      check(
+        "canSeeDeal: agent → own deal yes, foreign deal no",
+        (await canSeeDeal(actorAgentA, dealA1!.id, tx)) === true &&
+          (await canSeeDeal(actorAgentA, dealForeign!.id, tx)) === false,
+      );
+      check(
+        "canSeeDeal: employer → org's deal yes; carrier → no (fail closed)",
+        (await canSeeDeal(actorEmployer, dealA1!.id, tx)) === true &&
+          (await canSeeDeal(actorCarrier, dealA1!.id, tx)) === false,
+      );
+      check("canSeeDeal: internal → any deal", (await canSeeDeal(admin, dealForeign!.id, tx)) === true);
+      check(
+        "canSeeDeal: null dealId is fail-closed for externals, open for internal",
+        (await canSeeDeal(actorAgentA, null, tx)) === false && (await canSeeDeal(admin, null, tx)) === true,
+      );
+
+      const [quoteA1, quoteForeign] = await tx
+        .insert(quotesTable)
+        .values([{ dealId: dealA1!.id }, { dealId: dealForeign!.id }])
+        .returning({ id: quotesTable.id });
+
+      const quotesFor = async (actor: Actor) => {
+        const dealIds = await visibleDealIds(actor, tx);
+        if (dealIds === null) return ["<ALL>"];
+        if (dealIds.length === 0) return [];
+        return (
+          await tx.select({ id: quotesTable.id }).from(quotesTable).where(inArray(quotesTable.dealId, dealIds))
+        )
+          .map((r) => r.id)
+          .sort();
+      };
+
+      const agentQuotes = await quotesFor(actorAgentA);
+      check(
+        "quotes list composition: agent sees only quotes on their deals",
+        same(agentQuotes, [quoteA1!.id]) && !agentQuotes.includes(quoteForeign!.id),
+        `got ${agentQuotes.length} rows`,
+      );
+      check("quotes list composition: carrier sees zero quotes (fail closed)", same(await quotesFor(actorCarrier), []));
 
       throw new Rollback();
     });

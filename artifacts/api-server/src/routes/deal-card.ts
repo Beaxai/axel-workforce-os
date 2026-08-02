@@ -35,6 +35,7 @@ import {
 } from "../utils/ratingEngine";
 import { z } from "zod/v4";
 import { reRateQuoteAfterParamsUpdate } from "../lib/indication-rerate";
+import { canSeeDeal, resolveActor } from "../lib/scope";
 import {
   buildSections,
   canEditSection,
@@ -90,6 +91,21 @@ async function lossRunsUploaded(dealId: string): Promise<boolean> {
     .limit(1);
   return rows.length > 0;
 }
+
+/* SEC-1: AGENT actors are internal-sales but tenant-scoped — they may only
+ * reach deal cards inside their own book (producing agent / broker-org rules
+ * from lib/scope). One middleware covers every /:id route, before the
+ * role/section checks below; out-of-scope deals 404 so ids can't be probed.
+ * Other internal roles pass through; external roles keep canViewDeal's
+ * ownership checks unchanged. */
+router.use("/:id", async (req, res, next) => {
+  if (req.user!.role !== "AGENT") return next();
+  const scoped = await resolveActor(req);
+  if (!(await canSeeDeal(scoped, req.params.id))) {
+    return res.status(404).json({ error: "Deal not found" });
+  }
+  return next();
+});
 
 function canViewDeal(deal: Deal, actor: DealCardActor): boolean {
   if (INTERNAL_ROLES.has(actor.role)) return true;

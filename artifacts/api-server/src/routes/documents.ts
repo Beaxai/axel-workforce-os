@@ -5,6 +5,7 @@ import {
   uwFileViewsTable,
 } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
+import { canSeeDeal, resolveActor } from "../lib/scope";
 
 const router = Router();
 
@@ -34,6 +35,9 @@ router.post("/log-view", async (req: Request, res: Response) => {
 });
 
 router.get("/bind-package/:dealId", async (req: Request<{ dealId: string }>, res: Response) => {
+  // SEC-1: bind packages are deal-derived — out-of-scope deals 404.
+  const actor = await resolveActor(req);
+  if (!(await canSeeDeal(actor, req.params.dealId))) return res.status(404).json({ error: "Not found" });
   const [data] = await db
     .select()
     .from(bindDocumentPackagesTable)
@@ -41,7 +45,7 @@ router.get("/bind-package/:dealId", async (req: Request<{ dealId: string }>, res
     .orderBy(desc(bindDocumentPackagesTable.createdAt))
     .limit(1);
 
-  res.json({ bindPackage: data || null });
+  return res.json({ bindPackage: data || null });
 });
 
 export default router;
