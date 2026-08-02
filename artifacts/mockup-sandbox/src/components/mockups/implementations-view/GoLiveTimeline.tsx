@@ -20,7 +20,7 @@ interface Journey {
   specialist: string;
 }
 
-const mockData: Journey[] = [
+const journeys: Journey[] = [
   {
     id: "1",
     businessName: "GreenLeaf Dispensary",
@@ -99,7 +99,9 @@ const mockData: Journey[] = [
     openTasks: 2,
     specialist: "Jessica W."
   }
-].sort((a, b) => {
+];
+
+const mockData = journeys.sort((a, b) => {
   // Sort by target date proximity (closest first), then by status
   const aTarget = a.targetDays - a.daysElapsed;
   const bTarget = b.targetDays - b.daysElapsed;
