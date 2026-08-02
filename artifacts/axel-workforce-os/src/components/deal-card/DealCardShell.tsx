@@ -34,6 +34,14 @@ import ReRateBanner from "./ReRateBanner";
 import SectionEditorOverlay from "./SectionEditorOverlay";
 import { DocumentsTab, QuoteTab, PolicyTab } from "./SupportingTabs";
 import TaskDrawer from "./TaskDrawer";
+import ActionStrip from "./ActionStrip";
+
+/** True when a WFS pricing value is present and positive. */
+function hasWfsValue(val: string | null): boolean {
+  if (val == null || val === "") return false;
+  const n = parseFloat(val);
+  return !isNaN(n) && n > 0;
+}
 import type { IndicationMetric } from "./IndicationDetailView";
 
 interface DealCardShellProps {
@@ -271,6 +279,9 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
   // WFS pricing from the deal's quote (monthly fee + PEPM) and the state of
   // the one-click "Get Quote Now" generator on the right rail.
   const [wfsPricing, setWfsPricing] = useState<{ monthly: string | null; pepm: string | null }>({ monthly: null, pepm: null });
+  // False while the quote fetch is in flight so the ActionStrip never flashes
+  // "Get Quote Now" for a deal whose pricing simply hasn't hydrated yet.
+  const [wfsResolved, setWfsResolved] = useState(false);
   const [wfsBusy, setWfsBusy] = useState(false);
   const [wfsError, setWfsError] = useState<string | null>(null);
 
@@ -435,6 +446,7 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
       // Reset WFS rail state so a previously-opened deal's pricing/error never
       // bleeds into this deal while (or after) the quote hydrates.
       setWfsPricing({ monthly: null, pepm: null });
+      setWfsResolved(false);
       setWfsError(null);
       setWfsBusy(false);
       setQuoteWcPremium(null);
@@ -479,6 +491,7 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
         if (active) setWfsPricing({ monthly: null, pepm: null });
       }
       if (active) {
+        setWfsResolved(true);
         setQuoteStats(stats);
         setQuoteRef(qref);
       }
@@ -1171,8 +1184,22 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
             })}
           </div>
 
-          {/* Content */}
-          <div style={{ flex: 1, minWidth: 0, padding: 14, overflow: "auto" }}>
+          {/* Content — persistent action strip above the scrollable tab area */}
+          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+          {payload && (
+            <ActionStrip
+              canApprove={payload.canApprove}
+              busy={decisionBusy}
+              openBlocking={openBlocking}
+              approveError={approveError}
+              onApprove={handleApprove}
+              hasWfsPricing={hasWfsValue(wfsPricing.monthly) || hasWfsValue(wfsPricing.pepm ?? ((deal?.wfsPepmRate as string) || null))}
+              wfsResolved={wfsResolved}
+              wfsBusy={wfsBusy}
+              onGetWfsQuote={handleGetWfsQuote}
+            />
+          )}
+          <div style={{ flex: 1, minWidth: 0, minHeight: 0, padding: 14, overflow: "auto" }}>
             {!payload ? (
               loadError ? (
                 <div style={{ padding: "40px 0", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
@@ -1232,9 +1259,6 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
                       onGetWfsQuote={handleGetWfsQuote}
                       canApprove={payload.canApprove}
                       busy={decisionBusy}
-                      openBlocking={openBlocking}
-                      approveError={approveError}
-                      onApprove={handleApprove}
                       onDecline={handleDecline}
                     />
                   </div>
@@ -1256,6 +1280,7 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
                 {tab === "policy" && <PolicyTab dealId={dealId} bindStatus={deal?.bindStatus} />}
               </>
             )}
+          </div>
           </div>
 
           {/* Persistent, collapsible task drawer — replaces the old Tasks tab
