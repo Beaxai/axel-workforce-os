@@ -7,7 +7,7 @@
  * reads as part of the card, not a new surface.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CheckSquare, ChevronLeft, ChevronRight, Plus, Circle, CheckCircle2 } from "lucide-react";
+import { CheckSquare, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { api } from "@/lib/api";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { PinkButton, GhostButton } from "@/components/ui/axel-index";
@@ -23,10 +23,6 @@ const isDone = (t: TaskEntry) => {
 };
 
 const startOfToday = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime(); };
-
-/** "Jul 29" style short date; local-safe for date-only strings. */
-const fmtDue = (iso: string) =>
-  new Date(iso.length === 10 ? `${iso}T00:00:00` : iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
 const COLLAPSED_KEY = "dealTaskDrawerCollapsed";
 
@@ -105,9 +101,7 @@ export default function TaskDrawer({ dealId, timeWindow = null }: { dealId: stri
   const visible = tasks.filter((t) => winHas(timeWindow, t.dueDate));
   const done = visible.filter(isDone);
   const open = visible.filter((t) => !isDone(t));
-  const today = startOfToday();
-  const overdue = open.filter((t) => t.dueDate && new Date(t.dueDate.length === 10 ? `${t.dueDate}T00:00:00` : t.dueDate).getTime() < today);
-  const current = open.filter((t) => !overdue.includes(t));
+  const hasOverdue = open.some((t) => t.dueDate && new Date(t.dueDate.length === 10 ? `${t.dueDate}T00:00:00` : t.dueDate).getTime() < startOfToday());
 
   /* ------------------------------------------------------------ collapsed */
   if (collapsed) {
@@ -124,8 +118,8 @@ export default function TaskDrawer({ dealId, timeWindow = null }: { dealId: stri
         >
           <ChevronLeft style={{ width: 14, height: 14 }} />
           <span style={{ position: "relative" }}>
-            <CheckSquare style={{ width: 16, height: 16, color: overdue.length ? "#ef4444" : c.textMuted }} />
-            {overdue.length > 0 && (
+            <CheckSquare style={{ width: 16, height: 16, color: c.textMuted }} />
+            {hasOverdue && (
               <span style={{ position: "absolute", top: -3, right: -3, width: 7, height: 7, borderRadius: "50%", background: "#ef4444" }} />
             )}
           </span>
@@ -151,29 +145,26 @@ export default function TaskDrawer({ dealId, timeWindow = null }: { dealId: stri
     fontSize: 10, fontWeight: 600, letterSpacing: "0.07em", textTransform: "uppercase", color: c.textMuted,
   };
 
+  // Same look as the old Tasks tab: plain card row, CheckSquare icon (green when
+  // done), name + "assignee · date" meta. Clicking the icon toggles done.
   const row = (t: TaskEntry) => {
     const rowDone = isDone(t);
-    const isOverdue = !rowDone && overdue.includes(t);
     return (
-      <div key={t.id} data-testid={`row-task-${t.id}`} style={{ display: "flex", alignItems: "flex-start", gap: 9, background: c.cardBg, border: `1px solid ${isOverdue ? "rgba(239,68,68,0.45)" : c.borderColor}`, borderRadius: 10, padding: "10px 12px" }}>
+      <div key={t.id} data-testid={`row-task-${t.id}`} style={{ display: "flex", alignItems: "center", gap: 9, background: c.cardBg, border: `1px solid ${c.borderColor}`, borderRadius: 10, padding: "10px 12px" }}>
         <button
           type="button"
           data-testid={`button-toggle-task-${t.id}`}
           onClick={() => toggleDone(t)}
           disabled={busyId === t.id}
           title={rowDone ? "Reopen task" : "Mark complete"}
-          style={{ background: "transparent", border: "none", padding: 0, cursor: busyId === t.id ? "wait" : "pointer", marginTop: 1, flexShrink: 0 }}
+          style={{ background: "transparent", border: "none", padding: 0, cursor: busyId === t.id ? "wait" : "pointer", flexShrink: 0, display: "flex" }}
         >
-          {rowDone
-            ? <CheckCircle2 style={{ width: 16, height: 16, color: "#4caf50" }} />
-            : <Circle style={{ width: 16, height: 16, color: isOverdue ? "#ef4444" : c.textMuted }} />}
+          <CheckSquare style={{ width: 16, height: 16, color: rowDone ? "#4caf50" : c.textMuted }} />
         </button>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 13, color: rowDone ? c.textMuted : c.textPrimary, textDecoration: rowDone ? "line-through" : "none", overflowWrap: "break-word" }}>
-            {t.taskName}
-          </div>
+          <div style={{ fontSize: 13, color: c.textPrimary, overflowWrap: "break-word" }}>{t.taskName}</div>
           {(t.assigneeName || t.dueDate) && (
-            <div style={{ fontSize: 11, color: c.textMuted, display: "flex", alignItems: "center", flexWrap: "wrap", gap: 4, marginTop: 2 }}>
+            <div style={{ fontSize: 11, color: c.textMuted, display: "flex", alignItems: "center", flexWrap: "wrap", gap: 4 }}>
               {t.assignedTo && t.assigneeName ? (
                 <UserMiniProfile userId={t.assignedTo}>
                   <button type="button" style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: 11, color: "var(--accent-primary)", fontWeight: 600, fontFamily: "inherit" }}>
@@ -182,11 +173,7 @@ export default function TaskDrawer({ dealId, timeWindow = null }: { dealId: stri
                 </UserMiniProfile>
               ) : t.assigneeName ? <span>{t.assigneeName}</span> : null}
               {t.assigneeName && t.dueDate ? <span>{"\u00b7"}</span> : null}
-              {t.dueDate ? (
-                <span style={{ color: isOverdue ? "#ef4444" : c.textMuted, fontWeight: isOverdue ? 600 : 400 }}>
-                  {isOverdue ? `${fmtDue(t.dueDate)} \u2014 overdue` : fmtDue(t.dueDate)}
-                </span>
-              ) : null}
+              {t.dueDate ? <span>{new Date(t.dueDate.length === 10 ? `${t.dueDate}T00:00:00` : t.dueDate).toLocaleDateString()}</span> : null}
             </div>
           )}
         </div>
@@ -260,17 +247,9 @@ export default function TaskDrawer({ dealId, timeWindow = null }: { dealId: stri
           </div>
         )}
 
-        {overdue.length > 0 && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            <span style={{ ...groupLabel, color: "#ef4444" }}>Overdue ({overdue.length})</span>
-            {overdue.map(row)}
-          </div>
-        )}
-
-        {current.length > 0 && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {overdue.length > 0 && <span style={groupLabel}>Open</span>}
-            {current.map(row)}
+        {open.length > 0 && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {open.map(row)}
           </div>
         )}
 
