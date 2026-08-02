@@ -18,6 +18,7 @@ import {
   orgMembersTable,
   usersTable,
 } from "@workspace/db";
+import { and, isNull } from "drizzle-orm";
 import { visibleDealCondition, visibleDealIds, type Actor, type Dbc } from "../lib/scope";
 
 type Result = { name: string; pass: boolean; detail?: string };
@@ -165,6 +166,38 @@ async function main() {
         idsForAgent !== null && same(idsForAgent, [dealA1!.id]),
       );
       check("visibleDealIds → null for internal (no filtering)", (await visibleDealIds(admin, tx)) === null);
+
+      // ---- Task 2: the deals-list composition (archived filter AND scope) ----
+      // Seeded LAST so the raw-condition checks above keep their expected sets.
+      const [archivedDeal] = await tx
+        .insert(dealsTable)
+        .values({
+          referenceCode: `SEC1-A1X-${stamp}`,
+          businessName: "Agent A's ARCHIVED deal",
+          accountId: account!.id,
+          producingAgentId: agentA!.id,
+          archivedAt: new Date(),
+        })
+        .returning({ id: dealsTable.id });
+
+      const listFor = async (actor: Actor) => {
+        const cond = await visibleDealCondition(actor, tx);
+        const where = cond ? and(isNull(dealsTable.archivedAt), cond) : isNull(dealsTable.archivedAt);
+        return (await tx.select({ id: dealsTable.id }).from(dealsTable).where(where)).map((r) => r.id);
+      };
+
+      const agentList = await listFor(actorAgentA);
+      check(
+        "deals list composition: agent sees own non-archived deals only",
+        same(agentList, [dealA1!.id]) && !agentList.includes(archivedDeal!.id),
+        `got ${agentList.length} rows`,
+      );
+      const foreignList = await listFor(actorForeign);
+      check(
+        "deals list composition: foreign agent sees 0 of the other agency's book",
+        same(foreignList, [dealForeign!.id]),
+        `got ${foreignList.length} rows`,
+      );
 
       throw new Rollback();
     });

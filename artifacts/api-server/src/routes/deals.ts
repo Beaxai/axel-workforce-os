@@ -1,9 +1,10 @@
 import { Router, type IRouter } from "express";
 import { db, dealsTable, insertDealSchema, quotesTable, contactsTable, notesTable, tasksTable, activityLogTable, insertActivityLogSchema, dealEmailAddressesTable, usersTable, accountsTable, lossHistoryDocumentsTable, implementationTrackersTable, type Deal } from "@workspace/db";
-import { eq, desc, inArray, sql, isNull } from "drizzle-orm";
+import { and, eq, desc, inArray, sql, isNull } from "drizzle-orm";
 import { z } from "zod/v4";
 import { PIPELINE_STAGE_KEYS } from "@workspace/pipeline";
 import { buildSections } from "../lib/deal-sections";
+import { resolveActor, visibleDealCondition } from "../lib/scope";
 import { findOrCreateAccount } from "../lib/accounts";
 import { instantiateJourneysForDeal } from "../lib/journey-instantiate";
 import { generateSubjectivitiesForDeal } from "../lib/subjectivities";
@@ -123,13 +124,16 @@ interface WorkforceProfileLite {
   }[];
 }
 
-router.get("/", async (_req, res) => {
-  // Returns all NON-ARCHIVED deals — LOST is a stage (a board column), not a
-  // filtered outcome, but archived deals are hidden everywhere.
+router.get("/", async (req, res) => {
+  // Returns NON-ARCHIVED deals within the actor's visibility (SEC-1) — LOST is
+  // a stage (a board column), not a filtered outcome, but archived deals are
+  // hidden everywhere, and each actor sees only their own book.
+  const actor = await resolveActor(req);
+  const scope = await visibleDealCondition(actor);
   const rows = await db
     .select()
     .from(dealsTable)
-    .where(isNull(dealsTable.archivedAt))
+    .where(scope ? and(isNull(dealsTable.archivedAt), scope) : isNull(dealsTable.archivedAt))
     .orderBy(desc(dealsTable.createdAt));
 
   // Enrich each deal with card-face KPIs (locations / employees / payroll / exMod),
@@ -198,6 +202,17 @@ router.get("/", async (_req, res) => {
 router.get("/:id", async (req, res) => {
   const [row] = await db.select().from(dealsTable).where(eq(dealsTable.id, req.params.id));
   if (!row) return res.status(404).json({ error: "Not found" });
+  // SEC-1: out-of-scope rows return the same 404 as missing rows, so an id
+  // probe cannot confirm another tenant's deal exists.
+  const actor = await resolveActor(req);
+  const scope = await visibleDealCondition(actor);
+  if (scope) {
+    const [visible] = await db
+      .select({ id: dealsTable.id })
+      .from(dealsTable)
+      .where(and(eq(dealsTable.id, row.id), scope));
+    if (!visible) return res.status(404).json({ error: "Not found" });
+  }
   return res.json(row);
 });
 
