@@ -15,11 +15,13 @@ Read them before any technical work. **If it isn't in those documents, it didn't
 is not shared between accounts — these docs are the only durable shared memory. Both are **owner
 documents**; where anything conflicts with them, **they win.**
 
-> **Now in the repo** (as of 2026-06-22): [`docs/STATE_DOCUMENT_v2.1.md`](docs/STATE_DOCUMENT_v2.1.md)
-> (text extraction of Curtis's master .docx) and [`docs/PROJECT_INSTRUCTIONS.md`](docs/PROJECT_INSTRUCTIONS.md).
-> The State Document's **Sections 6–9 are the paste-ready phase work orders** (3.5 / 4A / 4C / 4B);
-> §10 rating rules, §11 decisions log. **Curtis's master copies remain canonical** — these are
-> checked-in snapshots for diffing; if they ever disagree with Curtis's current master, the master wins.
+> **Now in the repo**: [`docs/STATE_DOCUMENT_v2.4.md`](docs/STATE_DOCUMENT_v2.4.md) (current snapshot,
+> "Updated June 12, 2026", checked in 2026-08-02 — §6 WC/PEO binding & conversion spec, §7 rating
+> rules, §8 decisions log), superseding [`docs/STATE_DOCUMENT_v2.1.md`](docs/STATE_DOCUMENT_v2.1.md)
+> (kept for history; its §6–9 were the 3.5 / 4A / 4C / 4B work orders), plus
+> [`docs/PROJECT_INSTRUCTIONS.md`](docs/PROJECT_INSTRUCTIONS.md). **Curtis's master copies remain
+> canonical** — these are checked-in snapshots for diffing; if they ever disagree with Curtis's
+> current master, the master wins.
 
 > **Authority hierarchy (do not invert):** State Document + Curtis's instructions **govern** →
 > everything else in this repo is a *subordinate convenience snapshot* that exists only to help make
