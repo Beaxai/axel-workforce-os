@@ -254,7 +254,7 @@ function DocsListStyles({ hoverBg }: { hoverBg: string }) {
 // Undated rows (e.g. application PDFs, undated tasks) stay visible — only
 // dated rows outside the window are hidden.
 export type TimeWindow = { empty?: boolean; intervals: Array<{ from?: number; to?: number }> } | null;
-const winHas = (win: TimeWindow, iso?: string | null): boolean => {
+export const winHas = (win: TimeWindow, iso?: string | null): boolean => {
   if (!win) return true;
   if (!iso) return true;
   const t = new Date(iso).getTime();

@@ -13,7 +13,7 @@ import GhostButton from "@/components/ui/GhostButton";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import {
-  X, Star, LayoutDashboard, ClipboardList, Folder, CheckSquare, Calculator, Shield,
+  X, Star, LayoutDashboard, ClipboardList, Folder, Calculator, Shield,
   MapPin, Users, Banknote, Gauge, ShieldCheck,
 } from "lucide-react";
 import { api } from "@/lib/api";
@@ -32,7 +32,8 @@ import SubjectivitiesTab from "./SubjectivitiesTab";
 import PricingRail from "./PricingRail";
 import ReRateBanner from "./ReRateBanner";
 import SectionEditorOverlay from "./SectionEditorOverlay";
-import { DocumentsTab, TasksTab, QuoteTab, PolicyTab } from "./SupportingTabs";
+import { DocumentsTab, QuoteTab, PolicyTab } from "./SupportingTabs";
+import TaskDrawer from "./TaskDrawer";
 import type { IndicationMetric } from "./IndicationDetailView";
 
 interface DealCardShellProps {
@@ -42,7 +43,8 @@ interface DealCardShellProps {
   onDealUpdated?: () => void;
 }
 
-type TabKey = "overview" | "submission" | "subjectivities" | "documents" | "tasks" | "quote" | "policy";
+// Tasks left the tab rail — they live in the persistent right-side TaskDrawer.
+type TabKey = "overview" | "submission" | "subjectivities" | "documents" | "quote" | "policy";
 
 const NAV: Array<{ key: TabKey; label: string; Icon: typeof LayoutDashboard }> = [
   { key: "overview", label: "Overview", Icon: LayoutDashboard },
@@ -50,7 +52,6 @@ const NAV: Array<{ key: TabKey; label: string; Icon: typeof LayoutDashboard }> =
   // §6A bind subjectivities — generated when the deal reaches Bind Order.
   { key: "subjectivities", label: "Subjectivities", Icon: ShieldCheck },
   { key: "documents", label: "Documents", Icon: Folder },
-  { key: "tasks", label: "Tasks", Icon: CheckSquare },
   { key: "quote", label: "Quote", Icon: Calculator },
   { key: "policy", label: "Policy", Icon: Shield },
 ];
@@ -1217,7 +1218,6 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
                 {tab === "submission" && <SubmissionTab sections={sections} aggregateComplete={payload.aggregateComplete} total={payload.total} onOpenSection={setOpenSection} />}
                 {tab === "subjectivities" && <SubjectivitiesTab dealId={dealId} />}
                 {tab === "documents" && <DocumentsTab dealId={dealId} timeWindow={timeWindow} />}
-                {tab === "tasks" && <TasksTab dealId={dealId} timeWindow={timeWindow} />}
                 {/* Pricing & decisions — formerly the right rail; now a card row
                     at the top of the Quote tab (hidden while a KPI detail view
                     is open to keep that surface focused). */}
@@ -1258,8 +1258,9 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
             )}
           </div>
 
-          {/* Right rail removed — pricing & decisions moved into the Quote tab;
-              tabs get the full card width. */}
+          {/* Persistent, collapsible task drawer — replaces the old Tasks tab
+              so tasks stay in view on every tab. */}
+          <TaskDrawer dealId={dealId} timeWindow={timeWindow} />
         </div>
       </div>
 

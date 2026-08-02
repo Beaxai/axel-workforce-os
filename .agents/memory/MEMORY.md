@@ -6,4 +6,5 @@
 - [Bind transition atomicity](bind-transition-atomicity.md) — PATCH /deals BOUND path must stay in one tx with `.for("update")`; trackers have no DB unique index, so concurrent BOUND races duplicate them.
 - [Pipeline canonical stages](pipeline-canonical-stages.md) — 8 operational stages live once in @workspace/pipeline; use DEFAULT_STAGE fallback; LOST is a normal stage/column.
 - [Password-change policy](password-change-policy.md) — own-account password change ALWAYS verifies current pwd (even ADMIN-self); only admin changing ANOTHER user skips it.
+- [Deal task status casing](task-status-casing.md) — tasks.status is free text with mixed casing ("OPEN"/"completed"/"COMPLETE"); always compare case-insensitively.
 - [Deal-card phase time filter](phase-time-filter.md) — stage moves live under 3 event types (STAGE_CHANGE, deal_approved, deal_declined); keep multi-interval union; drag uses window pointermove hit-testing; dialog height must stay fixed (92vh).
