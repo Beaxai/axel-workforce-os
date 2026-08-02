@@ -24,6 +24,7 @@ import { and, inArray, isNull } from "drizzle-orm";
 import {
   canSeeAccount,
   canSeeDeal,
+  dealOwnershipForActor,
   visibleAccountCondition,
   visibleContactCondition,
   visibleDealCondition,
@@ -317,6 +318,37 @@ async function main() {
         "canSeeAccount: agent → own yes, foreign no",
         (await canSeeAccount(actorAgentA, account!.id, tx)) === true &&
           (await canSeeAccount(actorAgentA, accountForeign!.id, tx)) === false,
+      );
+
+      // ---- Task 6: ownership stamping at deal creation -----------------------
+      const stampAgent = dealOwnershipForActor(actorAgentA);
+      check(
+        "ownership stamp: agent → producing_agent_id = self, no org",
+        stampAgent.producingAgentId === agentA!.id && stampAgent.orgId === undefined,
+      );
+      const stampEmployer = dealOwnershipForActor(actorEmployer);
+      check(
+        "ownership stamp: employer → org_id = their org, no agent",
+        stampEmployer.orgId === clientOrg!.id && stampEmployer.producingAgentId === undefined,
+      );
+      check(
+        "ownership stamp: internal → nothing (ownership assigned explicitly)",
+        Object.keys(dealOwnershipForActor(admin)).length === 0,
+      );
+
+      const [stamped] = await tx
+        .insert(dealsTable)
+        .values({
+          referenceCode: `SEC1-NEW-${stamp}`,
+          businessName: "Freshly created by Agent A",
+          accountId: account!.id,
+          ...dealOwnershipForActor(actorAgentA),
+        })
+        .returning({ id: dealsTable.id });
+      check(
+        "created deal: immediately visible to its producing agent, invisible to a foreign agent",
+        (await canSeeDeal(actorAgentA, stamped!.id, tx)) === true &&
+          (await canSeeDeal(actorForeign, stamped!.id, tx)) === false,
       );
 
       throw new Rollback();

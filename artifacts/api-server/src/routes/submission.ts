@@ -16,6 +16,7 @@ import { cannabisApplicationAnswersSchema } from "@workspace/cannabis-applicatio
 import { fillAcord130, fillTreanSupp, fillAxelCannabisApplication } from "../services/applicationPdfService";
 import { buildIndicationSummaryPdf } from "../services/indicationPdfService";
 import { findOrCreateAccount } from "../lib/accounts";
+import { dealOwnershipForActor, resolveActor } from "../lib/scope";
 
 const router: IRouter = Router();
 
@@ -237,9 +238,20 @@ router.post("/submit-for-approval", async (req, res) => {
     contactPhone,
   });
 
+  // SEC-1 Task 6: stamp ownership from the submitting actor. When nothing is
+  // stamped (internal submitter), the deal stays unowned until assignment —
+  // logged so unowned deals are traceable. Account→org linkage does not exist
+  // in the schema yet, so org_id derivation from the account awaits the
+  // client-access design (flagged in the SEC-1 report).
+  const ownership = dealOwnershipForActor(await resolveActor(req));
+  if (!ownership.producingAgentId && !ownership.orgId) {
+    console.log(`[sec1] deal ${referenceCode}: no ownership stamped (creator role=${req.user?.role ?? "unknown"})`);
+  }
+
   const [deal] = await db
     .insert(dealsTable)
     .values({
+      ...ownership,
       referenceCode,
       accountId: account.id,
       businessName: businessName || "Unnamed Business",

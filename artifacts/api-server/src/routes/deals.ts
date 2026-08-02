@@ -4,7 +4,7 @@ import { and, eq, desc, inArray, sql, isNull } from "drizzle-orm";
 import { z } from "zod/v4";
 import { PIPELINE_STAGE_KEYS } from "@workspace/pipeline";
 import { buildSections } from "../lib/deal-sections";
-import { resolveActor, visibleDealCondition } from "../lib/scope";
+import { dealOwnershipForActor, resolveActor, visibleDealCondition } from "../lib/scope";
 import { findOrCreateAccount } from "../lib/accounts";
 import { instantiateJourneysForDeal } from "../lib/journey-instantiate";
 import { generateSubjectivitiesForDeal } from "../lib/subjectivities";
@@ -238,7 +238,11 @@ router.post("/", async (req, res) => {
     });
     accountId = account.id;
   }
-  const [row] = await db.insert(dealsTable).values({ ...parsed.data, accountId }).returning();
+  // SEC-1 Task 6: stamp ownership from the creating actor; explicit payload
+  // fields win (spread order), so ADMIN/CSA can still create on behalf of an
+  // agent by passing producingAgentId directly.
+  const ownership = dealOwnershipForActor(await resolveActor(req));
+  const [row] = await db.insert(dealsTable).values({ ...ownership, ...parsed.data, accountId }).returning();
   return res.status(201).json(row);
 });
 

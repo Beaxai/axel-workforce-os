@@ -104,6 +104,20 @@ export async function visibleDealIds(actor: Actor, dbc: Dbc = db): Promise<strin
 }
 
 /**
+ * Ownership stamped onto a NEW deal from the creating actor (SEC-1 Task 6).
+ * An AGENT stamps producing_agent_id; an EMPLOYER stamps org_id from their
+ * primary org (direct-submit path — dormant until client access ships).
+ * Internal actors stamp nothing: they create on others' behalf, so ownership
+ * arrives via explicit payload fields or later assignment. Explicit payload
+ * values always win over these defaults at the call sites.
+ */
+export function dealOwnershipForActor(actor: Actor): { producingAgentId?: string; orgId?: string } {
+  if (actor.role === "AGENT") return { producingAgentId: actor.id };
+  if (actor.role === "EMPLOYER" && actor.orgIds.length > 0) return { orgId: actor.orgIds[0]! };
+  return {};
+}
+
+/**
  * The WHERE fragment restricting `accounts` (SEC-1 Task 5): an account is
  * visible iff the actor can see at least one of its deals. `null` = internal
  * see-all; no visible deals → `sql\`false\``.
