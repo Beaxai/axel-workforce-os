@@ -6,6 +6,41 @@ finishes, a new dated section is added here (companion to
 
 ---
 
+## 2026-08-02 (later) — Deposit monitor: the clock and the reminder are live
+
+**What it is:** the carrier-deposit watcher from the binding process (State Doc §6E).
+When a deal is bound, a 30-day clock starts (the client owes the carrier its deposit,
+paid directly to the carrier — we just watch). At day 21, a task is automatically
+created for our CSA to ask the carrier whether the deposit arrived. None of this ever
+blocks a client's onboarding — that's the rule from the doc, and the tests prove it's
+respected.
+
+**Built so far (tasks 1–2 of 4):** the timer that starts at bind, and the automatic
+day-21 CSA task (it shows up in the existing task drawer — no new screens needed).
+Verified on the live environment: 9/9 deposit checks + the 46-check onboarding
+regression still green. **Still to come:** a small deposit status display on the deal
+card with two buttons (mark confirmed / record a cancellation notice) — the only piece
+that needs any UI — then the final proof-run and report. Branch
+`p5-wc3b-deposit-monitor`.
+
+## 2026-08-02 (later) — A working system that keeps the build honest
+
+Three connected additions, all in the repo so Curtis can read everything from GitHub:
+
+- **A scope auditor** — a review step that checks every plan against the State Document
+  and the engineering instructions before we build, and again when we finish. It caught
+  real things on day one (see the meeting audit below).
+- **A build-decisions log** (`docs/decisions/build-decisions-log.md`) — why each thing
+  was built the way it was, traced to the exact line of Curtis's documents that called
+  for it.
+- **A meeting log** (`docs/meetings/meeting-log.md`) — today's future-direction meeting
+  captured: the proposal-request workflow end to end, carrier email on the deal card,
+  standardizing carrier PDF proposals, SignWell + pay-to-bind ideas, quote-wizard
+  save-guard. Every item was then **audited against the documents**: most are in scope
+  or clean extensions; two need rulings (SignWell conflicts with the doc's HelloSign;
+  pay-to-bind depends on what's being paid). The questions file was also rewritten in
+  plain business language — now 17 decisions, each with a suggested one-word answer.
+
 ## 2026-08-02 — Security: each login sees only its own deals (SEC-1)
 
 **What it is:** Before this, any agent login could see every agency's deals, quotes,
