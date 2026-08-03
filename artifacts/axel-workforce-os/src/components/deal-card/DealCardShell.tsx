@@ -818,21 +818,11 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
       ...(locations.length > 0 ? { locations, locationCount: String(locations.length) } : {}),
       ...(!isNaN(eModNum) ? { hasExperienceMod: "Yes", experienceMod: String(eModNum) } : {}),
     };
-    // Land on the first phase-1 wizard step whose submission section is still
-    // incomplete; when everything is complete, go straight to the indication
-    // step (5) where the proposal is requested. If sections haven't hydrated
-    // yet, start at step 1 rather than assuming everything is complete.
-    const stepForSection: Record<string, number> = {
-      business: 1, locations: 2, workforce: 2, operations: 4, coverage: 4, loss: 4,
-    };
-    const sections = payload?.sections;
-    const firstIncomplete = sections?.find((s) => s.status !== "complete");
-    prefill.phase = 1;
-    prefill.currentStep = !sections?.length
-      ? 1
-      : firstIncomplete
-        ? (stepForSection[firstIncomplete.key] ?? 5)
-        : 5;
+    // Land on the phase-2 transition screen ("Great — let's build your full
+    // submission") so the broker steps through the remaining details needed
+    // before the proposal goes to underwriting.
+    prefill.phase = 2;
+    prefill.currentStep = 0;
     onClose();
     navigate("/marketplace/quote/wizard", {
       state: {
