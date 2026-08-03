@@ -12,6 +12,40 @@ breaking — these are design decisions we want settled correctly before launch.
 
 ---
 
+## Added 2026-08-02 — from the future-direction meeting (see docs/meetings/meeting-log.md)
+
+### 13. SignWell or HelloSign?
+
+*From: State Doc §2, lines 62–63 — the CONFIRMED TECH STACK (BINDING) table says
+"HelloSign / Dropbox Sign", and §6F line 238 says "HelloSign LIVE API key required for
+P5." Today's meeting notes name SignWell for the proposal signing package.*
+
+These point at different vendors, and e-signature is in the binding stack table — so a
+switch needs your explicit ruling (and a State Doc update). If SignWell it is, question
+6 changes from "provide a HelloSign key" to "provide a SignWell account/key," and the
+existing HelloSign stub code gets swapped when signing work starts.
+
+**Question:** SignWell or HelloSign?
+**Suggested answer:** Whichever you pick — one word settles it; nothing is built on
+either yet beyond a stub.
+
+### 14. Pay-to-bind: what exactly is the client paying?
+
+*From: the meeting's "prompted to pay to bind" idea vs State Doc §6A item 3 (line 184):
+the carrier deposit is "paid by client DIRECTLY to carrier," and §6E (line 233): the
+deposit "NEVER gates Active Client conversion." But §6A item 10 (line 205) says the
+ideal broker-fee flow is "sign-and-pay in one workflow when possible."*
+
+If pay-to-bind collects the **Axel broker fee**, it matches the doc's ideal exactly.
+If it collects the **carrier deposit or premium**, it contradicts the doc (client pays
+the carrier directly, and payment never gates). This also decides whether we need a
+payment processor (Stripe or similar) — nothing in the stack takes money today.
+
+**Question:** Is the pay-to-bind payment the Axel broker fee only?
+**Suggested answer:** Yes — broker fee only, carrier money keeps flowing direct to
+carrier per the doc. (If you want more collected at bind, the doc's deposit rules need
+rewriting first.)
+
 ## Added 2026-08-02 — from the security build (SEC-1)
 
 We finished the multi-tenant security work: each login now sees only its own deals.
@@ -91,7 +125,7 @@ setup.
 **Question:** Which domain should deal emails use — `card.axelworkforce.com` as the doc
 says, or something else?
 
-### 6. HelloSign (Dropbox Sign) live API key
+### 6. HelloSign (Dropbox Sign) live API key — *may be superseded by question 13 (SignWell)*
 
 *From: State Doc §2, lines 62–63 ("HelloSign / Dropbox Sign — Stubbed (no API key)")
 and §6F, line 238 — "HelloSign LIVE API key required for P5 — the stub cannot run a

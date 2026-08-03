@@ -88,6 +88,30 @@ Entry template:
   - PDF proposal extraction (OCR) is a new capability — feasibility/constraints answer
     owed to Curtis.
 
+**Alignment audit (scope-auditor, 2026-08-02)** — every meeting item checked against
+the State Doc (`docs/STATE_DOCUMENT_v2.4.md`) and Instructions
+(`docs/PROJECT_INSTRUCTIONS.md`):
+
+| Meeting item | Verdict | Source / basis |
+|---|---|---|
+| Per-employee figure on card | **IN SCOPE — it's a bug.** The display is explicitly mandated | State Doc §7 line 267: "per-employee display = monthly fee ÷ headcount" |
+| Request Proposal + Request to Bind buttons | **IN SCOPE** — UI affordances of the specced flow | §5 line 168: launch-ready = "quote → propose → bind → onboard → bill"; P4 line 157 "quote flow gap-closure" |
+| Gate proposal request on completed requirements | **IN SCOPE (engineer call on mechanism)** — which fields count is Curtis's to define | Instructions "How work flows" #2; same pattern as the existing bind gate |
+| WC + PEO price both on card | **IN SCOPE** — dual-product display of §7 formulas; layout via mockup review | §1 line 32 (dual path, four products); §7 lines 265–267 |
+| Wizard save-guard + resume-anywhere | **ALIGNED EXTENSION** of accepted off-plan work; needs a work order | §4 line 125 (draft persistence/autosave/resume accepted into the record) |
+| Carrier correspondence visible on card | **ALIGNED** with the listener-email principle; proposal-stage + reply-from-card is an **expansion** to spec | §6C lines 210–212 ("All carrier communication threads through the deal listener email"; inbound = P5 dependency); blocked on Q5 (domain) |
+| PDF proposal extraction / standardized output (OCR) | **NEW SCOPE** — no document line calls for it | none; needs a work order + State Doc entry |
+| SignWell for signatures | **CONFLICTS** with the binding stack | §2 lines 62–63 (CONFIRMED TECH STACK (BINDING): "HelloSign / Dropbox Sign"); §6F line 238 ("HelloSign LIVE API key required for P5") → **Q13** |
+| Pay-to-bind before client completes signing | **DEPENDS WHAT'S PAID** — broker fee: aligned; carrier deposit/premium: conflicts | Aligned: §6A item 10 line 205 ("Ideal flow is sign-and-pay in one workflow"). Conflicts: §6A item 3 line 184 ("deposit… paid by client DIRECTLY to carrier") + §6E line 233 (deposit never gates) → **Q14** |
+
+**Process finding (the audit's most important line):** Instructions "How work flows"
+step 5 — *"the doc is the only shared memory. If it's not in the doc, it didn't
+happen."* These meeting outcomes only become real when Curtis folds them into the next
+State Document version. Sections that need amending when he does: §2 (e-sign vendor row,
+if SignWell — Q13), §6C (proposal-stage + two-way correspondence), a new proposal-workflow
+section (Request Proposal flow, OCR standardization, pay-to-bind — Q14), §4 off-plan
+list (wizard save-guard extension).
+
 Going in, the open items on the table are Q1–Q12 in
 `docs/questions-for-curtis/open-questions.md`, and the build state is:
 SEC-1 security done awaiting review (Q1–Q4), WC-3b deposit monitor tasks 1–2 built,
