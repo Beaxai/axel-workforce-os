@@ -6,6 +6,51 @@ finishes, a new dated section is added here (companion to
 
 ---
 
+## NOT COMPLETED — what remains in this sprint, and what each item is waiting on
+
+*(Status as of 2026-08-02. "Q" numbers refer to the questions doc. Sources: the State
+Document's binding process spec (§6) and phase plan (§5), and the engineering
+instructions. This block gets updated as items finish and move into the log below.)*
+
+**Buildable now — no decision needed:**
+
+- **Deposit monitor, tasks 3–4 of 4** — the deposit status display + two buttons on
+  bound deals' cards (mark confirmed / record cancellation notice), then the final
+  proof-run and report. *(State Doc §6E.)*
+- **Broker fee (WC-2)** — the 7% editable fee field on deals, checklist tie-in, and
+  paid-status tracking. *(§6A item 10, §6F.)* The "email the client a payment link if
+  unpaid at bind" automation within it waits on email (Q15) and on what pay-to-bind
+  means (Q14).
+- **Light-mode closeout (D2)** — migrate the last four quote-flow screens onto the
+  design tokens and record the contrast checks in both modes. The doc's only ACTIVE
+  phase. *(§4.)*
+
+**Waiting on ONE decision each:**
+
+- **Turn on the security work (SEC-1)** — merge + tag the demo deals → waiting on
+  **Q1–Q4** (mostly Q1).
+- **Deal email receiving (WC-5)** — carrier replies landing on the deal card; Curtis's
+  critical path *(§6C, §6F)* → waiting on **Q5** (the email domain), with **Q15**
+  (sending service) as its pair.
+- **Real signatures** — a live signing flow for the bind checklist *(§6F)* → waiting
+  on **Q13** (SignWell vs HelloSign), then the account/key (Q6).
+- **Permanent file storage** — binders and policies somewhere durable *(§2)* → waiting
+  on **Q7** (Amazon vs Cloudflare). A real go-live blocker.
+- **Deal card right rail** — close the 4C divergence *(§4)* → waiting on **Q9**.
+
+**Next legs after this sprint (specced, not started):**
+
+- **PEO onboarding tracker** — the five-phase PEO version of what we built for WC
+  *(§6G)*; needs the PEO partner access definition (Q4) and eventually a Calendly
+  integration.
+- **Proposal-request workflow** (from the 2026-08-02 meeting) — Request Proposal
+  button, carrier email template, responses on the card, standardized proposals,
+  Request to Bind, pay-to-bind → waiting on **Q13–Q17** and the State Doc v2.5 update
+  (Q17) to become work orders.
+- **Client logins for "My Program"** *(§6B)* → waiting on **Q8**.
+
+---
+
 ## 2026-08-02 (later) — Deposit monitor: the clock and the reminder are live
 
 **What it is:** the carrier-deposit watcher from the binding process (State Doc §6E).
