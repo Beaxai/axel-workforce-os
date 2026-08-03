@@ -12,6 +12,67 @@ breaking — these are design decisions we want settled correctly before launch.
 
 ---
 
+## Added 2026-08-02 (later) — follow-ups needing your decision (from the meeting + audit)
+
+### 15. Which email service sends our outbound email — SendGrid or Resend?
+
+*From: State Doc §2, line 66 — Email is "Absent — not wired," and §5 line 163 puts
+"email sending" in P6. The meeting's proposal-request flow (template email to carriers)
+needs a real sending service, so this decision moves up.*
+
+The two candidates, in plain terms:
+
+- **SendGrid** (owned by Twilio) — the long-established, enterprise-grade choice.
+  Strong deliverability tooling (dedicated IPs, detailed analytics, bounce/spam
+  management). More setup friction: create an account, verify a sender domain, provide
+  an API key. Better fit if you already use it or expect high volume to many carriers.
+- **Resend** — modern and simpler, faster to integrate, available as a managed Replit
+  integration (credentials handled for us). A clean fit for transactional email like
+  "proposal request sent to carrier X." Less enterprise tooling, but plenty for this
+  use case.
+
+Either works for sending proposal requests; the practical difference is setup effort
+vs. mature deliverability controls. Note this pairs with question 5 (the listener
+email domain) — sender-domain verification will use whatever domain you pick there.
+
+**Question A:** SendGrid or Resend?
+**Suggested answer:** Resend, unless you already have a SendGrid account — quicker
+path, and we can switch later if volume demands it.
+
+**Question B:** Should the carrier email fire automatically when the agent clicks
+Request Proposal, or be a separate manual "send to carrier" action?
+**Suggested answer:** Fires on Request Proposal, but only after the requirements gate
+passes (per the meeting: the button only activates when everything needed is complete).
+
+### 16. What must be complete before "Request Proposal" activates?
+
+*From: the meeting — "only after the necessary requirements are completed." The system
+already measures submission completeness section by section (it's how the bind gate
+works); we need your list of which sections/fields are required at the proposal stage,
+which is earlier and lighter than binding.*
+
+**Question:** Which parts of the submission must be complete before an agent can
+request a proposal?
+**Suggested answer:** Business info, workforce/payroll, loss history, and a generated
+indication price — with the rest allowed to finish before bind. Correct this list as
+needed.
+
+### 17. Fold the meeting outcomes into the next State Document version
+
+*From: Instructions, "How work flows" step 5 — "the doc is the only shared memory. If
+it's not in the doc, it didn't happen."*
+
+Today's decisions and directions aren't real until the master doc carries them. The
+audit (meeting log, 2026-08-02) lists the sections to amend: §2 e-signature row (if
+SignWell — Q13), §6C correspondence scope (proposal-stage, two-way), a new
+proposal-workflow section (Request Proposal flow, OCR standardization, pay-to-bind —
+Q14), §4 off-plan list (wizard save-guard), plus the §8 pipeline count fix (Q12).
+
+**Question:** Will you issue a v2.5 State Document with these, so we can cut work
+orders against it?
+**Suggested answer:** Yes — we can draft the amended sections for your review to make
+it a 10-minute edit instead of a rewrite.
+
 ## Added 2026-08-02 — from the future-direction meeting (see docs/meetings/meeting-log.md)
 
 ### 13. SignWell or HelloSign?
