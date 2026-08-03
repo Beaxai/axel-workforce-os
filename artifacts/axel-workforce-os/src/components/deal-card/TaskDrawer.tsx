@@ -7,7 +7,7 @@
  * reads as part of the card, not a new surface.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CheckSquare, ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { CheckSquare, ChevronLeft, ChevronRight, Plus, Send } from "lucide-react";
 import { api } from "@/lib/api";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { PinkButton, GhostButton } from "@/components/ui/axel-index";
@@ -26,7 +26,14 @@ const startOfToday = () => { const d = new Date(); d.setHours(0, 0, 0, 0); retur
 
 const COLLAPSED_KEY = "dealTaskDrawerCollapsed";
 
-export default function TaskDrawer({ dealId, timeWindow = null }: { dealId: string; timeWindow?: TimeWindow }) {
+export interface NextAction {
+  label: string;
+  /** Small muted line under the button, e.g. "1 section to complete". */
+  hint?: string | null;
+  onClick: () => void;
+}
+
+export default function TaskDrawer({ dealId, timeWindow = null, nextAction }: { dealId: string; timeWindow?: TimeWindow; nextAction?: NextAction }) {
   const c = useThemeColors();
   const [collapsed, setCollapsed] = useState<boolean>(() => {
     try { return localStorage.getItem(COLLAPSED_KEY) === "1"; } catch { return false; }
@@ -109,6 +116,17 @@ export default function TaskDrawer({ dealId, timeWindow = null }: { dealId: stri
       <div
         style={{ width: 40, flexShrink: 0, borderLeft: `1px solid ${c.borderColor}`, display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 10, gap: 10 }}
       >
+        {nextAction && (
+          <button
+            type="button"
+            data-testid="button-next-action-collapsed"
+            onClick={nextAction.onClick}
+            title={nextAction.label}
+            style={{ width: 26, height: 26, borderRadius: 8, border: "none", cursor: "pointer", background: "var(--gradient-cta)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+          >
+            <Send style={{ width: 13, height: 13 }} />
+          </button>
+        )}
         <button
           type="button"
           data-testid="button-expand-task-drawer"
@@ -219,6 +237,21 @@ export default function TaskDrawer({ dealId, timeWindow = null }: { dealId: stri
 
       {/* Body */}
       <div style={{ flex: 1, overflow: "auto", padding: 10, display: "flex", flexDirection: "column", gap: 10 }}>
+        {nextAction && (
+          <div data-testid="card-next-action" style={{ background: c.cardBg, border: `1px solid ${c.borderColor}`, borderRadius: 12, padding: 12 }}>
+            <div style={{ ...groupLabel, marginBottom: 9 }}>Next Action</div>
+            <PinkButton
+              onClick={nextAction.onClick}
+              data-testid="button-next-action"
+              style={{ width: "100%", padding: "8px 10px", fontSize: 12.5, textAlign: "center" }}
+            >
+              {nextAction.label}
+            </PinkButton>
+            {nextAction.hint && (
+              <div style={{ fontSize: 10.5, color: c.textMuted, textAlign: "center", marginTop: 7 }}>{nextAction.hint}</div>
+            )}
+          </div>
+        )}
         {adding && (
           <div style={{ display: "flex", flexDirection: "column", gap: 8, background: c.cardBg, border: `1px solid ${c.borderColor}`, borderRadius: 10, padding: 10 }}>
             <input style={input} placeholder="Task name" value={form.taskName} autoFocus onChange={(e) => setForm((f) => ({ ...f, taskName: e.target.value }))} onKeyDown={(e) => { if (e.key === "Enter") create(); }} />

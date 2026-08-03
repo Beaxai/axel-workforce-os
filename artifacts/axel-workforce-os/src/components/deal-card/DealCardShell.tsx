@@ -34,7 +34,6 @@ import ReRateBanner from "./ReRateBanner";
 import SectionEditorOverlay from "./SectionEditorOverlay";
 import { DocumentsTab, QuoteTab, PolicyTab } from "./SupportingTabs";
 import TaskDrawer from "./TaskDrawer";
-import ActionStrip from "./ActionStrip";
 import wcShieldIcon from "@assets/Shield-Icon_1780952893965.png";
 
 import type { IndicationMetric } from "./IndicationDetailView";
@@ -1266,14 +1265,9 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
             })}
           </div>
 
-          {/* Content — persistent action strip above the scrollable tab area */}
+          {/* Content — the primary Request Proposal action lives in the
+              TaskDrawer's "Next Action" card, not above the tab content. */}
           <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
-          {payload && (
-            <ActionStrip
-              incompleteSections={(payload.sections ?? []).filter((s) => s.status !== "complete").length}
-              onRequestProposal={openIndicationForm}
-            />
-          )}
           <div style={{ flex: 1, minWidth: 0, minHeight: 0, padding: 14, overflow: "auto" }}>
             {!payload ? (
               loadError ? (
@@ -1363,7 +1357,18 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
 
           {/* Persistent, collapsible task drawer — replaces the old Tasks tab
               so tasks stay in view on every tab. */}
-          <TaskDrawer dealId={dealId} timeWindow={timeWindow} />
+          <TaskDrawer
+            dealId={dealId}
+            timeWindow={timeWindow}
+            nextAction={payload ? {
+              label: "Request Proposal",
+              hint: (() => {
+                const n = (payload.sections ?? []).filter((s) => s.status !== "complete").length;
+                return n > 0 ? `${n} section${n > 1 ? "s" : ""} to complete` : null;
+              })(),
+              onClick: openIndicationForm,
+            } : undefined}
+          />
         </div>
       </div>
 
