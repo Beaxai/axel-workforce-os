@@ -870,10 +870,27 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
   // PEO badge — shown when a PEO indication exists on the quote (pepm or
   // monthlyWfsFee set and > 0). Headline is PEPM when available (the number
   // brokers quote in conversation), falling back to the monthly fee.
-  const pepmNum = wfsPricing.pepm != null ? parseFloat(wfsPricing.pepm) : NaN;
+  // Fall back to the deal-level PEPM rate when the quote record lacks one
+  // (older deals only persisted wfsPepmRate on the deal row). When neither is
+  // stored, derive it: monthly fee ÷ total headcount (that's what PEPM means).
+  const pepmRaw = wfsPricing.pepm ?? ((deal?.wfsPepmRate as string) || null);
+  const storedPepm = pepmRaw != null ? parseFloat(pepmRaw) : NaN;
   const monthlyNum = wfsPricing.monthly != null ? parseFloat(wfsPricing.monthly) : NaN;
-  const hasPepm = !isNaN(pepmNum) && pepmNum > 0;
   const hasMonthly = !isNaN(monthlyNum) && monthlyNum > 0;
+  const totalEmployees = (() => {
+    const fromProfile = (quoteRef?.profile?.locations ?? []).reduce(
+      (s, l) => s + (l.classCodes ?? []).reduce(
+        (t, cc) => t + (Number(cc.fullTimeEmployees) || 0) + (Number(cc.partTimeEmployees) || 0), 0),
+      0,
+    );
+    return fromProfile > 0 ? fromProfile : Number(deal?.employeeCountFt) || 0;
+  })();
+  const pepmNum = !isNaN(storedPepm) && storedPepm > 0
+    ? storedPepm
+    : hasMonthly && totalEmployees > 0
+      ? monthlyNum / totalEmployees
+      : NaN;
+  const hasPepm = !isNaN(pepmNum) && pepmNum > 0;
   const hasPeoBadge = hasPepm || hasMonthly;
   const fmtUsd0 = (n: number) => n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
   // Headline is the monthly fee; the per-employee rate rides in the label row
