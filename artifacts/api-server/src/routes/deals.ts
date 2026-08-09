@@ -8,6 +8,7 @@ import { findOrCreateAccount } from "../lib/accounts";
 import { instantiateJourneysForDeal } from "../lib/journey-instantiate";
 import { generateSubjectivitiesForDeal } from "../lib/subjectivities";
 import { startDepositMonitor, resolveDeposit } from "../lib/deposit-monitor";
+import { setBrokerFeePercent, setBrokerFeeStatus, sendBrokerFeeDunning, computeBrokerFee } from "../lib/broker-fee";
 
 const router: IRouter = Router();
 
@@ -224,7 +225,7 @@ router.post("/", async (req, res) => {
     });
     accountId = account.id;
   }
-  const [row] = await db.insert(dealsTable).values({ ...stripDepositFields(parsed.data), accountId }).returning();
+  const [row] = await db.insert(dealsTable).values({ ...stripBrokerFeeFields(stripDepositFields(parsed.data)), accountId }).returning();
   return res.status(201).json(row);
 });
 
@@ -239,11 +240,24 @@ function stripDepositFields<T extends Record<string, unknown>>(data: T): Omit<T,
   return safe;
 }
 
+/**
+ * WC-2 broker-fee columns are likewise managed only through the dedicated
+ * ADMIN/CSA broker-fee routes and the bind-time dunning stamp — never via
+ * generic create/patch payloads.
+ */
+function stripBrokerFeeFields<T extends Record<string, unknown>>(
+  data: T,
+): Omit<T, "brokerFeePercent" | "brokerFeeStatus" | "brokerFeePaidAt" | "brokerFeeDunningAt"> {
+  const { brokerFeePercent: _p, brokerFeeStatus: _s, brokerFeePaidAt: _pa, brokerFeeDunningAt: _da, ...safe } = data;
+  return safe;
+}
+
 router.patch("/:id", async (req, res) => {
   const parsedRaw = insertDealSchema.partial().safeParse(req.body);
   if (!parsedRaw.success) return res.status(400).json({ error: parsedRaw.error.issues });
-  // Deposit lifecycle fields are never client-writable here (see stripDepositFields).
-  const parsed = { data: stripDepositFields(parsedRaw.data) };
+  // Deposit + broker-fee lifecycle fields are never client-writable here
+  // (see stripDepositFields / stripBrokerFeeFields).
+  const parsed = { data: stripBrokerFeeFields(stripDepositFields(parsedRaw.data)) };
   if (Object.keys(parsed.data).length === 0) {
     // Nothing writable left (e.g. only system-managed deposit fields were sent)
     // — treat as a no-op rather than letting drizzle throw "No values to set".
@@ -335,6 +349,13 @@ router.patch("/:id", async (req, res) => {
       await startDepositMonitor(result.body as Deal);
     } catch (err) {
       console.error("deposit monitor start failed (non-gating; will not block the bind)", err);
+    }
+    // WC-2: unpaid-at-bind broker-fee dunning (client + agent, payment link).
+    // Parallel and NON-GATING — same best-effort contract as the deposit monitor.
+    try {
+      await sendBrokerFeeDunning(result.body as Deal);
+    } catch (err) {
+      console.error("broker-fee dunning failed (non-gating; will not block the bind)", err);
     }
   }
 
@@ -439,6 +460,57 @@ router.post("/:id/email", async (req, res) => {
     fileId,
   }).returning();
   return res.status(201).json(row);
+});
+
+// WC-2 Axel broker fee — deal-level, ADMIN/CSA only. Percent edits and paid
+// tracking go through here exclusively (generic routes strip these columns).
+// Non-blocking: nothing here touches stage or bind readiness.
+router.get("/:id/broker-fee", async (req, res) => {
+  const [deal] = await db.select().from(dealsTable).where(eq(dealsTable.id, req.params.id));
+  if (!deal) return res.status(404).json({ error: "Not found" });
+  const fee = await computeBrokerFee(deal);
+  return res.json({
+    percent: fee.percent,
+    status: deal.brokerFeeStatus ?? "UNPAID",
+    paidAt: deal.brokerFeePaidAt,
+    dunningAt: deal.brokerFeeDunningAt,
+    amount: fee.amount,
+  });
+});
+
+router.patch("/:id/broker-fee", async (req, res) => {
+  const u = req.user;
+  if (!u || !["ADMIN", "CSA"].includes(u.role ?? "")) {
+    return res.status(403).json({ error: "Only ADMIN or CSA can edit the broker fee." });
+  }
+  const actorName = [u.firstName, u.lastName].filter(Boolean).join(" ") || u.email;
+
+  const { percent, status } = req.body ?? {};
+  if (percent === undefined && status === undefined) {
+    return res.status(400).json({ error: "Provide percent and/or status." });
+  }
+
+  if (percent !== undefined) {
+    const result = await setBrokerFeePercent(req.params.id, Number(percent), actorName);
+    if (!result.ok) return res.status(result.error === "Deal not found" ? 404 : 400).json({ error: result.error });
+  }
+  if (status !== undefined) {
+    if (!["PAID", "UNPAID", "WAIVED"].includes(status)) {
+      return res.status(400).json({ error: "status must be PAID, UNPAID, or WAIVED" });
+    }
+    const result = await setBrokerFeeStatus(req.params.id, status, actorName);
+    if (!result.ok) return res.status(404).json({ error: result.error });
+  }
+
+  const [deal] = await db.select().from(dealsTable).where(eq(dealsTable.id, req.params.id));
+  const fee = await computeBrokerFee(deal!);
+  return res.json({
+    percent: fee.percent,
+    status: deal!.brokerFeeStatus ?? "UNPAID",
+    paidAt: deal!.brokerFeePaidAt,
+    dunningAt: deal!.brokerFeeDunningAt,
+    amount: fee.amount,
+  });
 });
 
 // Send an email on behalf of a deal (carrier/UW correspondence). Reply-To is

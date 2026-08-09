@@ -31,6 +31,7 @@ import SubmissionTab from "./SubmissionTab";
 import SubjectivitiesTab from "./SubjectivitiesTab";
 import PricingRail from "./PricingRail";
 import DepositCard from "./DepositCard";
+import BrokerFeeCard from "./BrokerFeeCard";
 import ReRateBanner from "./ReRateBanner";
 import { DocumentsTab, QuoteTab, PolicyTab, TasksTab } from "./SupportingTabs";
 
@@ -1385,6 +1386,16 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
                 wfsDefaults={deriveWfsInputs()}
                 onRequoteWfs={isInternal ? (annualPayroll, headcount) => handleGetWfsQuote({ annualPayroll, headcount }) : undefined}
               />
+              {/* WC-2 Axel broker fee — internal staff only; never gates binding.
+                  Amount comes from the server (GET /broker-fee is the single
+                  source of truth) — the client never recalculates the fee. */}
+              {isInternal && (
+                <BrokerFeeCard
+                  dealId={dealId}
+                  canAct={!!user && (user.role === "ADMIN" || user.role === "CSA")}
+                  onChanged={() => { void fetchSubmission(); fetchActivity(); }}
+                />
+              )}
               {/* §6E deposit monitor — only present once a deal is bound. */}
               {!!(deal as { depositStatus?: string | null } | undefined)?.depositStatus && (
                 <DepositCard

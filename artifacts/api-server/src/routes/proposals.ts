@@ -294,6 +294,12 @@ router.post("/:dealId/create-from-quote", async (req, res) => {
     const totalMonthly = wcMonthlyPremium + wfsMonthlyFee;
     const totalAnnual = wcPremium + wfsAnnualTotal;
 
+    // WC-2: broker fee appears on the proposal — percent from the deal
+    // (default 7), amount = percent of the WC annual premium. Invoiced by
+    // Axel separately from carrier premium.
+    const brokerFeePct = Number(deal.brokerFeePercent ?? 7);
+    const brokerFeeAmt = Math.round(brokerFeePct * wcPremium) / 100;
+
     const effectiveDate =
       deal.coverageEffectiveDate && /^\d{4}-\d{2}-\d{2}$/.test(deal.coverageEffectiveDate)
         ? new Date(`${deal.coverageEffectiveDate}T00:00:00Z`)
@@ -313,6 +319,8 @@ router.post("/:dealId/create-from-quote", async (req, res) => {
       totalAnnual: totalAnnual.toFixed(2),
       emod: (Number(quote.eMod) || 1).toFixed(3),
       scheduleRating: (Number(quote.scheduleRating) || 1).toFixed(2),
+      brokerFeePercent: brokerFeePct.toFixed(2),
+      brokerFeeAmount: brokerFeeAmt.toFixed(2),
       ratingBreakdown: { wc: wcBreakdown, wfs: wfsBreakdown },
       effectiveDate: effectiveDate.toISOString().split("T")[0],
       expirationDate: expirationDate.toISOString().split("T")[0],

@@ -64,6 +64,8 @@ interface IndicationBreakdownPanelProps {
   vertical?: string;
   productType?: string;
   coverageEffectiveDate?: string | null;
+  /** WC-2: Axel broker fee shown on the proposal/indication (percent of WC premium). */
+  brokerFee?: { percent: number; amount: number | null } | null;
 }
 
 export default function IndicationBreakdownPanel({
@@ -77,6 +79,7 @@ export default function IndicationBreakdownPanel({
   vertical,
   productType,
   coverageEffectiveDate,
+  brokerFee,
 }: IndicationBreakdownPanelProps) {
   const { isDark, textPrimary, textSecondary, textMuted, borderColor } = useThemeColors();
 
@@ -432,6 +435,23 @@ export default function IndicationBreakdownPanel({
               PEO discount applied: -${num(wcBreakdown.peoDiscountAmount).toLocaleString()}
             </p>
           )}
+        </div>
+      )}
+
+      {/* WC-2: broker fee appears on the proposal */}
+      {brokerFee && (
+        <div style={{ borderTop: `1px solid ${borderColor}`, paddingTop: 14 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: textPrimary }}>
+              Axel Broker Fee ({brokerFee.percent}% of premium)
+            </span>
+            <span style={{ fontSize: 15, fontWeight: 700, color: textPrimary }}>
+              {brokerFee.amount != null ? `$${brokerFee.amount.toLocaleString()}` : "—"}
+            </span>
+          </div>
+          <p style={{ fontSize: 12, color: textMuted, margin: "4px 0 0" }}>
+            Invoiced separately from carrier premium.
+          </p>
         </div>
       )}
 

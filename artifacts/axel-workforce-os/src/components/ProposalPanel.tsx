@@ -53,6 +53,8 @@ interface ProposalPanelProps {
   ratedAt?: string;
   onSaveDeal?: () => void;
   onRecalculate?: () => void;
+  /** WC-2: Axel broker fee shown on the proposal (percent of WC premium). */
+  brokerFee?: { percent: number; amount: number | null } | null;
 }
 
 function fmt(n: number | undefined | null): string {
@@ -74,6 +76,7 @@ export default function ProposalPanel({
   ratedAt,
   onSaveDeal,
   onRecalculate,
+  brokerFee,
 }: ProposalPanelProps) {
   const { theme } = useThemeStore();
   const isDark = theme === "dark";
@@ -126,6 +129,22 @@ export default function ProposalPanel({
           <span style={{ fontSize: "12px", color: textMuted }}>Final WC Premium</span>
           <p style={{ fontSize: "28px", fontWeight: 700, color: "var(--accent-primary)", margin: "4px 0 0" }}>
             {fmt(wcPremium)}
+          </p>
+        </div>
+      )}
+
+      {brokerFee && (
+        <div style={{ borderTop: `1px solid ${dividerColor}`, marginTop: "20px", paddingTop: "16px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+            <span style={{ fontSize: "13px", fontWeight: 600, color: textPrimary }}>
+              Axel Broker Fee ({brokerFee.percent}% of premium)
+            </span>
+            <span style={{ fontSize: "15px", fontWeight: 700, color: textPrimary }}>
+              {brokerFee.amount != null ? fmt(brokerFee.amount) : "—"}
+            </span>
+          </div>
+          <p style={{ fontSize: "12px", color: textMuted, margin: "4px 0 0" }}>
+            Invoiced separately from carrier premium.
           </p>
         </div>
       )}

@@ -700,6 +700,16 @@ export function QuoteTab({ dealId, businessName, productType, vertical, coverage
   const [quote, setQuote] = useState<QuoteRecord | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [version, setVersion] = useState(0);
+  // WC-2: broker fee appears on the proposal view.
+  const [brokerFee, setBrokerFee] = useState<{ percent: number; amount: number | null } | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    api.get<{ percent: number; amount: number | null }>(`/deals/${dealId}/broker-fee`)
+      .then((r) => { if (active) setBrokerFee({ percent: r.percent, amount: r.amount }); })
+      .catch(() => { if (active) setBrokerFee(null); });
+    return () => { active = false; };
+  }, [dealId, version]);
 
   useEffect(() => {
     let active = true;
@@ -753,6 +763,7 @@ export function QuoteTab({ dealId, businessName, productType, vertical, coverage
           vertical={vertical}
           productType={productType}
           coverageEffectiveDate={coverageEffectiveDate}
+          brokerFee={brokerFee}
         />
       );
     }
@@ -764,6 +775,7 @@ export function QuoteTab({ dealId, businessName, productType, vertical, coverage
         wfsBreakdown={quote.wfsRatingBreakdown?.data || quote.wfsRatingBreakdown}
         readOnly
         ratedAt={quote.ratedAt}
+        brokerFee={brokerFee}
       />
     );
   }

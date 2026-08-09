@@ -21,6 +21,12 @@ export const proposalsTable = pgTable("proposals", {
   emod: numeric("emod", { precision: 4, scale: 3 }),
   scheduleRating: numeric("schedule_rating", { precision: 4, scale: 2 }),
 
+  // WC-2: Axel broker fee snapshot at proposal generation ("broker fee DOES
+  // appear on the proposal"). Percent copied from the deal; amount = percent
+  // of the WC annual premium. Invoiced by Axel separately from carrier premium.
+  brokerFeePercent: numeric("broker_fee_percent", { precision: 5, scale: 2 }),
+  brokerFeeAmount: numeric("broker_fee_amount", { precision: 18, scale: 2 }),
+
   ratingBreakdown: jsonb("rating_breakdown"),
 
   effectiveDate: date("effective_date"),

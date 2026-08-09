@@ -60,6 +60,13 @@ export const dealsTable = pgTable("deals", {
   depositStatus: text("deposit_status"), // null | MONITORING | CONFIRMED | AT_RISK
   depositDueDate: date("deposit_due_date", { mode: "string" }), // bind date + 30 days
   depositDay21TaskAt: timestamp("deposit_day21_task_at", { withTimezone: true }), // day-21 CSA task stamped once
+  // WC-2 Axel broker fee — deal-level, default 7% of premium, ADMIN/CSA-editable
+  // via the dedicated broker-fee route only (stripped from generic writes).
+  // TRACKED NON-BLOCKING: never gates submission or binding.
+  brokerFeePercent: numeric("broker_fee_percent", { precision: 5, scale: 2 }).default("7"),
+  brokerFeeStatus: text("broker_fee_status").default("UNPAID"), // UNPAID | PAID | WAIVED
+  brokerFeePaidAt: timestamp("broker_fee_paid_at", { withTimezone: true }),
+  brokerFeeDunningAt: timestamp("broker_fee_dunning_at", { withTimezone: true }), // unpaid-at-bind dunning stamped once
 });
 
 export const insertDealSchema = createInsertSchema(dealsTable).omit({ id: true, createdAt: true });
