@@ -1014,7 +1014,7 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
         style={{
           // Fixed height (not maxHeight) so the dialog never resizes/jumps as
           // tab or filtered content changes; body panes scroll internally.
-          width: "100%", maxWidth: 1040, height: "92vh", display: "flex", flexDirection: "column",
+          width: "100%", maxWidth: "min(94vw, 1440px)", height: "96vh", display: "flex", flexDirection: "column",
           background: c.bg, color: c.textPrimary, border: `1px solid ${c.borderColor}`, borderRadius: 16, overflow: "hidden",
           fontFamily: "var(--app-font-sans)",
         }}
