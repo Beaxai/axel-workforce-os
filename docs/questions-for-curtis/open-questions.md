@@ -13,6 +13,30 @@ settled correctly before launch. Newest at the top.
 
 ---
 
+## Updated 2026-08-09 (evening) — keys & domain unblocked 🔓
+
+Movement on three of the still-waiting items, from today's exchange:
+
+- **Question 5 (deal email domain): resolved in practice.** The domain is already
+  owned, and Curtis handed over the credentials — Brendan is doing the setup this
+  evening. Config plan: verify the domain in Resend, add MX records for the listener
+  subdomain, then set `LISTENER_EMAIL_DOMAIN`, `OUTBOUND_EMAIL_FROM`, and
+  `RESEND_WEBHOOK_SECRET` (webhook → `/api/webhooks/resend-inbound`). The routing
+  code is already built and live-tested — this is DNS + keys only, no code changes.
+- **Question 6 (SignWell key): unblocking tonight.** Same credentials handoff —
+  `SIGNWELL_API_KEY` goes in this evening and the existing signing service picks it
+  up automatically.
+- **Question 14 residual (payment processor for the broker-fee link): ✅ Stripe.**
+  Already chosen — no longer an open pick. Broker-fee dunning ships today with a
+  stubbed payment link; wiring the real Stripe link is the one remaining code change
+  once the Stripe keys are added (they ride along with tonight's setup).
+
+Still genuinely waiting on Curtis after tonight: 1–3 (security switch-on),
+7 (file storage: S3 vs R2), 9 (deal card right rail), 15B (auto-send vs. button),
+and the residual field-list trim on 16.
+
+---
+
 ## Updated 2026-08-09 — State Document v2.7 received ✅
 
 Your v2.7 arrived and is checked into the repo (`docs/STATE_DOCUMENT_v2.7.md`). It
