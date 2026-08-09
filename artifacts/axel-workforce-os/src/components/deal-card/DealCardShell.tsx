@@ -30,6 +30,7 @@ import OverviewTab from "./OverviewTab";
 import SubmissionTab from "./SubmissionTab";
 import SubjectivitiesTab from "./SubjectivitiesTab";
 import PricingRail from "./PricingRail";
+import DepositCard from "./DepositCard";
 import ReRateBanner from "./ReRateBanner";
 import { DocumentsTab, QuoteTab, PolicyTab, TasksTab } from "./SupportingTabs";
 
@@ -1384,6 +1385,16 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
                 wfsDefaults={deriveWfsInputs()}
                 onRequoteWfs={isInternal ? (annualPayroll, headcount) => handleGetWfsQuote({ annualPayroll, headcount }) : undefined}
               />
+              {/* §6E deposit monitor — only present once a deal is bound. */}
+              {!!(deal as { depositStatus?: string | null } | undefined)?.depositStatus && (
+                <DepositCard
+                  dealId={dealId}
+                  depositStatus={(deal as { depositStatus?: string }).depositStatus!}
+                  depositDueDate={((deal as { depositDueDate?: string | null }).depositDueDate ?? null)}
+                  canAct={!!user && (user.role === "ADMIN" || user.role === "CSA")}
+                  onChanged={() => { void fetchSubmission(); fetchActivity(); }}
+                />
+              )}
             </div>
           )}
         </div>

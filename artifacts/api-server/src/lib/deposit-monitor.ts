@@ -10,8 +10,8 @@
  * PARALLEL + NON-GATING is the invariant: nothing in this module may block or
  * be consulted by the Active Client conversion (journeys/recomputeProgress).
  */
-import { db, dealsTable, activityLogTable, type Deal } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { db, dealsTable, activityLogTable, tasksTable, type Deal } from "@workspace/db";
+import { and, eq, isNull, lte } from "drizzle-orm";
 
 type Dbc = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -55,4 +55,115 @@ export async function startDepositMonitor(
     metadata: { dueDate, windowDays: DEPOSIT_WINDOW_DAYS },
   });
   return { started: true, dueDate };
+}
+
+/**
+ * Task 2 — §6E day-21 CSA task sweep. For every deal still MONITORING whose
+ * bind date is ≥ 21 days ago and which has not yet had its day-21 task
+ * stamped, create a CSA task ("request carrier confirmation") in the existing
+ * tasks table (it appears in the deal's task drawer — no new screens) and
+ * stamp `depositDay21TaskAt` so the task fires exactly once per deal.
+ * Runs from a background sweeper; also safe to call manually.
+ */
+export async function sweepDepositDay21Tasks(
+  now: Date = new Date(),
+  dbc: Dbc = db,
+): Promise<{ created: string[] }> {
+  const threshold = new Date(now);
+  threshold.setUTCDate(threshold.getUTCDate() - DEPOSIT_CSA_TASK_DAY);
+
+  const due = await dbc
+    .select()
+    .from(dealsTable)
+    .where(
+      and(
+        eq(dealsTable.depositStatus, "MONITORING"),
+        isNull(dealsTable.depositDay21TaskAt),
+        lte(dealsTable.boundAt, threshold),
+      ),
+    );
+
+  const created: string[] = [];
+  for (const deal of due) {
+    // Stamp first with a guarded update — if a concurrent sweep already
+    // stamped it, the update matches 0 rows and we skip task creation.
+    const stamped = await dbc
+      .update(dealsTable)
+      .set({ depositDay21TaskAt: now })
+      .where(and(eq(dealsTable.id, deal.id), isNull(dealsTable.depositDay21TaskAt)))
+      .returning({ id: dealsTable.id });
+    if (stamped.length === 0) continue;
+
+    await dbc.insert(tasksTable).values({
+      dealId: deal.id,
+      taskName: `Confirm carrier deposit received — ${deal.businessName} (due ${deal.depositDueDate ?? "in 9 days"})`,
+      category: "DEPOSIT",
+      priority: "HIGH",
+      dueDate: deal.depositDueDate ?? null,
+      status: "OPEN",
+    });
+    await dbc.insert(activityLogTable).values({
+      dealId: deal.id,
+      entityType: "deal",
+      entityId: deal.id,
+      eventType: "DEPOSIT_MONITOR",
+      description: `Day-21 CSA task created — request deposit confirmation from the carrier (§6E).`,
+      metadata: { day: DEPOSIT_CSA_TASK_DAY, dueDate: deal.depositDueDate },
+    });
+    created.push(deal.id);
+  }
+  return { created };
+}
+
+/**
+ * Task 3 — resolve the monitor from the deal card.
+ * `confirm`: CSA marks the deposit confirmed (allowed from MONITORING or
+ * AT_RISK — a late payment can clear an at-risk flag).
+ * `cancel_notice`: CSA records a carrier cancel-for-nonpay notice → AT_RISK.
+ * NON-GATING invariant: neither transition touches stage, trackers, or the
+ * Active Client conversion.
+ */
+export async function resolveDeposit(
+  dealId: string,
+  action: "confirm" | "cancel_notice",
+  actorName: string,
+  dbc: Dbc = db,
+): Promise<{ ok: true; status: DepositStatus } | { ok: false; error: string }> {
+  const [deal] = await dbc
+    .select()
+    .from(dealsTable)
+    .where(eq(dealsTable.id, dealId))
+    .limit(1);
+  if (!deal) return { ok: false, error: "Deal not found." };
+  if (!deal.depositStatus) return { ok: false, error: "No deposit monitor is active on this deal." };
+
+  if (action === "confirm") {
+    if (deal.depositStatus === "CONFIRMED") return { ok: true, status: "CONFIRMED" };
+    await dbc.update(dealsTable).set({ depositStatus: "CONFIRMED" }).where(eq(dealsTable.id, dealId));
+    await dbc.insert(activityLogTable).values({
+      dealId,
+      entityType: "deal",
+      entityId: dealId,
+      eventType: "DEPOSIT_MONITOR",
+      description: `Carrier deposit confirmed by ${actorName}.`,
+      metadata: { from: deal.depositStatus, to: "CONFIRMED" },
+    });
+    return { ok: true, status: "CONFIRMED" };
+  }
+
+  // cancel_notice
+  if (deal.depositStatus === "CONFIRMED") {
+    return { ok: false, error: "Deposit is already confirmed — a cancellation notice cannot be recorded." };
+  }
+  if (deal.depositStatus === "AT_RISK") return { ok: true, status: "AT_RISK" };
+  await dbc.update(dealsTable).set({ depositStatus: "AT_RISK" }).where(eq(dealsTable.id, dealId));
+  await dbc.insert(activityLogTable).values({
+    dealId,
+    entityType: "deal",
+    entityId: dealId,
+    eventType: "DEPOSIT_MONITOR",
+    description: `Cancel-for-nonpay notice recorded by ${actorName} — deal flagged AT RISK (§6E; never gates onboarding).`,
+    metadata: { from: deal.depositStatus, to: "AT_RISK" },
+  });
+  return { ok: true, status: "AT_RISK" };
 }

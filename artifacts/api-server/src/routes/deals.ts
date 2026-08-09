@@ -7,7 +7,7 @@ import { buildSections } from "../lib/deal-sections";
 import { findOrCreateAccount } from "../lib/accounts";
 import { instantiateJourneysForDeal } from "../lib/journey-instantiate";
 import { generateSubjectivitiesForDeal } from "../lib/subjectivities";
-import { startDepositMonitor } from "../lib/deposit-monitor";
+import { startDepositMonitor, resolveDeposit } from "../lib/deposit-monitor";
 
 const router: IRouter = Router();
 
@@ -357,6 +357,25 @@ router.get("/:id/tasks", async (req, res) => {
 router.get("/:id/activity", async (req, res) => {
   const rows = await db.select().from(activityLogTable).where(eq(activityLogTable.dealId, req.params.id)).orderBy(desc(activityLogTable.createdAt));
   res.json(rows);
+});
+
+// §6E deposit monitor actions (WC-3b Task 3) — internal staff only (ADMIN/CSA).
+// Both are parallel and NON-GATING: they never touch stage, trackers, or the
+// Active Client conversion.
+router.post("/:id/deposit/:action", async (req, res) => {
+  const { action: rawAction } = req.params;
+  if (rawAction !== "confirm" && rawAction !== "cancel-notice") {
+    return res.status(404).json({ error: "Unknown deposit action." });
+  }
+  const u = req.user;
+  if (!u || !["ADMIN", "CSA"].includes(u.role ?? "")) {
+    return res.status(403).json({ error: "Only ADMIN or CSA can update the deposit monitor." });
+  }
+  const actorName = [u.firstName, u.lastName].filter(Boolean).join(" ") || u.email;
+  const action = rawAction === "confirm" ? ("confirm" as const) : ("cancel_notice" as const);
+  const result = await resolveDeposit(req.params.id, action, actorName);
+  if (!result.ok) return res.status(409).json({ error: result.error });
+  return res.json({ success: true, depositStatus: result.status });
 });
 
 router.post("/:id/activity", async (req, res) => {
