@@ -11,6 +11,27 @@ I want iterative development.
 Ask before making major changes.
 When I ask for a report, give it to me directly in chat inside a single copy-friendly Markdown code block (do not build in-app report pages).
 
+## Git Workflow (MANDATORY — prevents repo forks)
+
+This repo is worked on from two places (this Replit and Brendan's desktop). Local
+commits that never reach GitHub have twice caused the histories to fork (87 commits
+in July 2026, 21 in August 2026), each costing a manual reconciliation. Rules:
+
+1. **At the START of every work session:** run `git pull --ff-only origin p5b-journey-engine`
+   before touching anything. If it refuses (non-fast-forward), STOP and report to
+   Brendan — do not rebase, do not merge, do not force anything.
+2. **At the END of every work session:** push your commits
+   (`git push origin p5b-journey-engine`). If the push is rejected, run the pull from
+   rule 1 and follow it — if that fails, STOP and report. Never leave finished work
+   sitting unpushed across sessions.
+3. **`artifacts/mockup-sandbox` is permanently retired** (removed 2026-08-09, Brendan's
+   decision). Do NOT recreate it or any other mockup/playground package. UI concepts
+   are proposed as screenshots + a short written description in chat BEFORE any
+   implementation — per the working agreement, new UI concepts need Curtis's approval
+   before they land in product code.
+4. Never edit `pnpm-workspace.yaml` config keys (e.g. `allowBuilds`) — build
+   infrastructure changes go through Brendan.
+
 ## System Architecture
 
 The project is structured as a pnpm workspace monorepo, utilizing TypeScript.
