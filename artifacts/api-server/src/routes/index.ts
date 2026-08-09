@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import healthRouter from "./health";
+import webhooksRouter from "./webhooks";
 import authRouter from "./auth";
 import organizationsRouter from "./organizations";
 import usersRouter from "./users";
@@ -48,6 +49,9 @@ const router: IRouter = Router();
  * ------------------------------------------------------------------------- */
 router.use(healthRouter); // GET /healthz
 router.use("/auth", authRouter); // login/logout/forgot/reset public; /me + /register guard internally
+// Webhooks are called by external providers (SignWell, Resend) — no session.
+// Each route does its own signature verification.
+router.use("/webhooks", webhooksRouter);
 
 // Public agent self-registration: only POST /api/agent-registrations is open.
 // GET/PATCH fall through to the role-gated mount below.

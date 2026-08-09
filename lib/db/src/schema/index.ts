@@ -18,6 +18,7 @@ export * from "./tasks";
 export * from "./task-library";
 export * from "./activity-log";
 export * from "./deal-emails";
+export * from "./deal-outbound-emails";
 export * from "./task-send-log";
 export * from "./implementation";
 export * from "./agent-registrations";

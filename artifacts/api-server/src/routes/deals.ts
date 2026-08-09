@@ -14,7 +14,7 @@ const router: IRouter = Router();
 // Listener email domain. NOTE: Curtis's State Doc §8 specifies
 // [clientname][ID]@card.axelworkforce.com — the domain is pending his ruling, so it lives
 // here as one constant rather than being duplicated across the frontend.
-const LISTENER_EMAIL_DOMAIN = "listener.axel.io";
+import { LISTENER_EMAIL_DOMAIN, sendDealEmail, ensureDealEmailAddress } from "../services/emailService";
 
 /** A drizzle db handle or an in-flight transaction — helpers accept either so
  *  their reads/writes can participate in the caller's transaction. */
@@ -439,6 +439,32 @@ router.post("/:id/email", async (req, res) => {
     fileId,
   }).returning();
   return res.status(201).json(row);
+});
+
+// Send an email on behalf of a deal (carrier/UW correspondence). Reply-To is
+// the deal's unique listener address; subject gets an [AXL-xxxx] token; the
+// Message-ID is stored so replies route back to this deal card.
+router.post("/:id/send-email", async (req, res) => {
+  const { to, cc, subject, html, text } = req.body ?? {};
+  const toList = Array.isArray(to) ? to.filter((t: any) => typeof t === "string" && t.includes("@")) : [];
+  if (toList.length === 0) return res.status(400).json({ error: "to must be a non-empty array of email addresses" });
+  if (!subject || typeof subject !== "string") return res.status(400).json({ error: "subject required" });
+  if (!html && !text) return res.status(400).json({ error: "html or text body required" });
+
+  const [deal] = await db.select({ id: dealsTable.id }).from(dealsTable).where(eq(dealsTable.id, req.params.id));
+  if (!deal) return res.status(404).json({ error: "Deal not found" });
+
+  const actorName = (req as any).user?.name ?? null;
+  const result = await sendDealEmail({
+    dealId: req.params.id,
+    to: toList,
+    cc: Array.isArray(cc) ? cc : undefined,
+    subject,
+    html,
+    text,
+    sentBy: actorName,
+  });
+  return res.status(result.ok ? 200 : 502).json(result);
 });
 
 export default router;

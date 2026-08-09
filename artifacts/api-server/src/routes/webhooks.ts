@@ -1,4 +1,5 @@
 import { Router, type Request, type Response } from "express";
+import express from "express";
 import crypto from "crypto";
 import {
   db,
@@ -11,8 +12,110 @@ import {
 } from "@workspace/db";
 import { and, eq, inArray } from "drizzle-orm";
 import { retrieveAndStoreSignedDocuments } from "../services/helloSignService";
+import { processInboundEmail, type InboundEmail } from "../lib/inbound-email";
 
 const router = Router();
+
+// ---------------------------------------------------------------------------
+// Resend inbound email webhook (`email.received`).
+// Resend signs webhooks Svix-style: HMAC-SHA256 of `${id}.${timestamp}.${body}`
+// keyed with the base64 secret after the `whsec_` prefix. Verification is
+// enforced when RESEND_WEBHOOK_SECRET is set (skipped in dev so simulated
+// payloads can be tested before the domain/webhook exists).
+// ---------------------------------------------------------------------------
+function verifySvixSignature(req: Request, rawBody: string): boolean {
+  const secret = process.env.RESEND_WEBHOOK_SECRET;
+  if (!secret) return true; // dev mode — no secret configured yet
+
+  const id = req.header("svix-id");
+  const timestamp = req.header("svix-timestamp");
+  const sigHeader = req.header("svix-signature");
+  if (!id || !timestamp || !sigHeader) return false;
+
+  // Reject stale timestamps (5 min tolerance) to limit replay.
+  const ts = Number(timestamp);
+  if (!Number.isFinite(ts) || Math.abs(Date.now() / 1000 - ts) > 300) return false;
+
+  const key = Buffer.from(secret.replace(/^whsec_/, ""), "base64");
+  const expected = crypto
+    .createHmac("sha256", key)
+    .update(`${id}.${timestamp}.${rawBody}`)
+    .digest("base64");
+
+  // Header may contain multiple space-separated `v1,<sig>` entries.
+  return sigHeader.split(" ").some((part) => {
+    const sig = part.split(",")[1];
+    if (!sig) return false;
+    const a = Buffer.from(sig);
+    const b = Buffer.from(expected);
+    return a.length === b.length && crypto.timingSafeEqual(a, b);
+  });
+}
+
+function parseAddressList(value: unknown): string[] {
+  if (Array.isArray(value)) return value.map(String);
+  if (typeof value === "string") return value.split(",").map((s) => s.trim()).filter(Boolean);
+  return [];
+}
+
+// Raw body handling: on the root `/webhooks` mount this router runs before
+// express.json, so express.text captures the raw string. On the `/api/webhooks`
+// mount the body is already parsed — there app.ts's json verify hook has stashed
+// the exact signed bytes on req.rawBody. Signature is always computed over the
+// original bytes, never a re-serialization.
+router.post("/resend-inbound", express.text({ type: "*/*", limit: "10mb" }), async (req: Request, res: Response) => {
+  try {
+    const rawBody: string =
+      (req as any).rawBody ??
+      (typeof req.body === "string" ? req.body : JSON.stringify(req.body ?? {}));
+
+    if (!verifySvixSignature(req, rawBody)) {
+      return res.status(401).json({ error: "invalid signature" });
+    }
+
+    const payload = JSON.parse(rawBody);
+    if (payload?.type !== "email.received") {
+      return res.status(200).json({ ignored: true, type: payload?.type ?? null });
+    }
+
+    const d = payload.data ?? {};
+    // Headers may arrive as an array of {name,value} or as a plain object.
+    const headers: Record<string, string> = {};
+    if (Array.isArray(d.headers)) {
+      for (const h of d.headers) {
+        if (h?.name) headers[String(h.name).toLowerCase()] = String(h.value ?? "");
+      }
+    } else if (d.headers && typeof d.headers === "object") {
+      for (const [k, v] of Object.entries(d.headers)) {
+        headers[k.toLowerCase()] = String(v ?? "");
+      }
+    }
+
+    const email: InboundEmail = {
+      messageId: String(d.email_id ?? headers["message-id"] ?? crypto.randomUUID()),
+      to: [...parseAddressList(d.to), ...parseAddressList(d.cc)],
+      from: String(d.from ?? "unknown"),
+      fromName: null,
+      subject: d.subject ?? null,
+      bodyHtml: d.html ?? null,
+      bodyText: d.text ?? null,
+      inReplyTo: headers["in-reply-to"] || null,
+      references: (headers["references"] || "").match(/<[^>]+>/g) ?? [],
+      receivedAt: d.created_at ? new Date(d.created_at) : new Date(),
+    };
+
+    const result = await processInboundEmail(email);
+    return res.status(200).json({
+      ok: true,
+      duplicate: result.duplicate,
+      routed: Boolean(result.dealId),
+      method: result.method,
+    });
+  } catch (err) {
+    console.error("Resend inbound webhook error:", err);
+    return res.status(500).json({ error: "processing failed" });
+  }
+});
 
 router.post("/hellosign", async (req: Request, res: Response) => {
   res.status(200).send("Hello API Event Received");

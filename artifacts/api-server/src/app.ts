@@ -56,7 +56,15 @@ app.use(
 import webhooksRouter from "./routes/webhooks";
 app.use("/webhooks", webhooksRouter);
 
-app.use(express.json());
+// Preserve the exact raw bytes for webhook signature verification (Svix HMAC
+// must be computed over the bytes as sent, not a re-serialization).
+app.use(
+  express.json({
+    verify: (req, _res, buf) => {
+      (req as any).rawBody = buf.toString("utf8");
+    },
+  }),
+);
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 

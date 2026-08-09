@@ -14,7 +14,8 @@ export const dealEmailAddressesTable = pgTable("deal_email_addresses", {
 export const dealInboundEmailsTable = pgTable("deal_inbound_emails", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   dealId: uuid("deal_id").references(() => dealsTable.id),
-  messageId: text("message_id").notNull(),
+  // Unique: provider message id — DB-enforced idempotency for webhook retries.
+  messageId: text("message_id").notNull().unique(),
   fromEmail: text("from_email").notNull(),
   fromName: text("from_name"),
   subject: text("subject"),
