@@ -66,3 +66,17 @@ uri = "file://docs/MASTER_FLOW_v2.7.svg"
 type = "image"
 title = "Master Flow v2.7 — P5-WC annotated"
 description = "Pink dashed rings mark every node in scope for the P5-WC active build. Five deliverables labelled: listener inbound, subjectivities engine, SignWell flows, WC tracker, dunning + deposit."
+
+[[outputs]]
+id = "5Bxqx8TZ9soO1McMfi2M4"
+uri = "file://screenshots/deal-card-mockup-a.jpg"
+type = "image"
+title = "Mockup A — Classic pricing cards in right rail"
+description = "Tasks return to the left sub-nav as a tab; the existing PricingRail cards (WC premium, WFS pricing, Approve/Decline) move back into the 264px right rail."
+
+[[outputs]]
+id = "2595C4jm41_4wdBiUQSnP"
+uri = "file://screenshots/deal-card-mockup-b.jpg"
+type = "image"
+title = "Mockup B — Premium badge rail"
+description = "Same layout, but the rail uses the approved pink-glow premium badge treatment: WC Annual Premium + PEO Admin Fee cards with a single Modify Pricing gradient CTA."

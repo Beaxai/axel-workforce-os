@@ -58,6 +58,7 @@ import AdminUsers from "@/pages/AdminUsers";
 import JourneyTemplates from "@/pages/admin/JourneyTemplates";
 import JourneyTemplateDetail from "@/pages/admin/JourneyTemplateDetail";
 import Welcome from "@/pages/Welcome";
+import DealCardLayoutMockup from "@/pages/dev/DealCardLayoutMockup";
 import NotFound from "@/pages/not-found";
 import { useAuthStore } from "@/lib/auth-store";
 import { GlobalDealCardHost } from "@/components/DealCardModal";
@@ -114,6 +115,9 @@ function App() {
             <Route path="/register/agent" element={<AgentRegister />} />
             <Route path="/register/agent/agreement/:id" element={<AgentAgreement />} />
             <Route path="/register/agent/onboarding/:id" element={<AgentOnboarding />} />
+            {import.meta.env.DEV && (
+              <Route path="/dev/deal-card-mockup" element={<DealCardLayoutMockup />} />
+            )}
 
             <Route
               element={
