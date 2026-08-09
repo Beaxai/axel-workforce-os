@@ -6,7 +6,7 @@
  */
 import { Star, X, MapPin, Users, Wallet, RefreshCcw, LayoutGrid, FileText, ShieldCheck, Folder, Quote, FileCheck, CheckSquare, Plus, ChevronRight, ArrowUp, Shield } from "lucide-react";
 
-export type CtaPlacement = "strip" | "header" | "journey" | "footer" | "rail";
+export type CtaPlacement = "strip" | "header" | "journey" | "footer" | "rail" | "pricingRail";
 
 const PINK = "#E91E8C";
 const GRAD = "linear-gradient(90deg, #E91E8C, #A855F7)";
@@ -87,10 +87,12 @@ export function DealCardFrame({ placement }: { placement: CtaPlacement }) {
             <X size={16} className="text-zinc-500 mt-1" />
           </div>
         </div>
-        <div className="flex justify-end gap-3 mt-2">
-          <Badge value="$67,294" label="WC ANNUAL PREMIUM" />
-          <Badge value="$2,040" sub="/mo" label="PEO · $136/EMPLOYEE" />
-        </div>
+        {placement !== "pricingRail" && (
+          <div className="flex justify-end gap-3 mt-2">
+            <Badge value="$67,294" label="WC ANNUAL PREMIUM" />
+            <Badge value="$2,040" sub="/mo" label="PEO · $136/EMPLOYEE" />
+          </div>
+        )}
         {/* ---------- Journey timeline ---------- */}
         <div className="mt-4">
           <div className="relative flex items-center justify-between px-8">
@@ -127,7 +129,8 @@ export function DealCardFrame({ placement }: { placement: CtaPlacement }) {
             { icon: Folder, label: "Documents" },
             { icon: Quote, label: "Quote" },
             { icon: FileCheck, label: "Policy" },
-          ].map(({ icon: Icon, label, active }) => (
+            ...(placement === "pricingRail" ? [{ icon: CheckSquare, label: "Tasks" }] : []),
+          ].map(({ icon: Icon, label, active }: { icon: React.ElementType; label: string; active?: boolean }) => (
             <div key={label} className={`flex items-center gap-2 px-4 py-2 text-[11.5px] ${active ? "text-white border-l-2" : "text-zinc-400"}`} style={active ? { borderColor: PINK, background: "#E91E8C1a" } : {}}>
               <Icon size={13} style={active ? { color: PINK } : {}} />
               {label}
@@ -167,22 +170,60 @@ export function DealCardFrame({ placement }: { placement: CtaPlacement }) {
           )}
         </div>
 
-        {/* Tasks rail */}
-        <div className="w-[240px] shrink-0 flex flex-col">
-          <div className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800">
-            <CheckSquare size={13} style={{ color: PINK }} />
-            <span className="text-[10.5px] tracking-widest font-semibold">TASKS</span>
-            <span className="ml-auto flex items-center gap-2 text-zinc-500"><Plus size={13} /><ChevronRight size={13} /></span>
-          </div>
-          {placement === "rail" && (
-            <div className="mx-3 mt-3 rounded-xl border border-zinc-800 bg-zinc-950 p-3">
-              <div className="text-[10px] tracking-widest text-zinc-500 font-semibold mb-2">NEXT ACTION</div>
-              <button className="w-full text-white font-semibold rounded-lg text-[12px] py-2" style={{ background: GRAD }}>Request Proposal</button>
-              <div className="text-[10px] text-zinc-500 mt-1.5 text-center">1 section to complete</div>
+        {/* Right rail — tasks by default, pricing in the pricingRail variant */}
+        {placement === "pricingRail" ? (
+          <div className="w-[240px] shrink-0 flex flex-col">
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800">
+              <Wallet size={13} style={{ color: PINK }} />
+              <span className="text-[10.5px] tracking-widest font-semibold">PRICING</span>
+              <span className="ml-auto flex items-center gap-2 text-zinc-500"><ChevronRight size={13} /></span>
             </div>
-          )}
-          <div className="flex-1 flex items-center justify-center text-[12px] text-zinc-500">No tasks yet.</div>
-        </div>
+            <div className="px-3 pt-3 flex flex-col gap-3">
+              {/* Next action stays at the top of the rail */}
+              <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-3">
+                <div className="text-[10px] tracking-widest text-zinc-500 font-semibold mb-2">NEXT ACTION</div>
+                <button className="w-full text-white font-semibold rounded-lg text-[12px] py-2" style={{ background: GRAD }}>Request Proposal</button>
+                <div className="text-[10px] text-zinc-500 mt-1.5 text-center">1 section to complete</div>
+              </div>
+              {/* WC premium card */}
+              <div className="rounded-xl border p-3" style={{ borderColor: PINK, boxShadow: `0 0 12px ${PINK}44`, background: "#0d0d11" }}>
+                <div className="flex items-center gap-1.5 text-[9px] tracking-widest font-semibold" style={{ color: PINK }}>
+                  <Shield size={11} className="text-purple-400" /> WC ANNUAL PREMIUM
+                </div>
+                <div className="text-white font-bold text-[22px] mt-1.5">$67,294</div>
+                <div className="text-[10px] text-zinc-500 mt-0.5">$5,608/mo · effective 9/1/2026</div>
+              </div>
+              {/* PEO premium card */}
+              <div className="rounded-xl border p-3" style={{ borderColor: PINK, boxShadow: `0 0 12px ${PINK}44`, background: "#0d0d11" }}>
+                <div className="flex items-center gap-1.5 text-[9px] tracking-widest font-semibold" style={{ color: PINK }}>
+                  <Shield size={11} className="text-purple-400" /> PEO ADMIN FEE
+                </div>
+                <div className="text-white font-bold text-[22px] mt-1.5">$2,040<span className="text-[11px] font-medium text-zinc-400">/mo</span></div>
+                <div className="text-[10px] text-zinc-500 mt-0.5">$136/employee · 15 employees</div>
+              </div>
+              <button className="w-full rounded-lg text-[12px] font-semibold py-2 border text-zinc-200 hover:bg-zinc-900" style={{ borderColor: "#3f3f46", background: "transparent" }}>
+                Modify Pricing
+              </button>
+            </div>
+            <div className="flex-1" />
+          </div>
+        ) : (
+          <div className="w-[240px] shrink-0 flex flex-col">
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800">
+              <CheckSquare size={13} style={{ color: PINK }} />
+              <span className="text-[10.5px] tracking-widest font-semibold">TASKS</span>
+              <span className="ml-auto flex items-center gap-2 text-zinc-500"><Plus size={13} /><ChevronRight size={13} /></span>
+            </div>
+            {placement === "rail" && (
+              <div className="mx-3 mt-3 rounded-xl border border-zinc-800 bg-zinc-950 p-3">
+                <div className="text-[10px] tracking-widest text-zinc-500 font-semibold mb-2">NEXT ACTION</div>
+                <button className="w-full text-white font-semibold rounded-lg text-[12px] py-2" style={{ background: GRAD }}>Request Proposal</button>
+                <div className="text-[10px] text-zinc-500 mt-1.5 text-center">1 section to complete</div>
+              </div>
+            )}
+            <div className="flex-1 flex items-center justify-center text-[12px] text-zinc-500">No tasks yet.</div>
+          </div>
+        )}
       </div>
     </div>
   );
