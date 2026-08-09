@@ -98,22 +98,53 @@ function PremiumBadgeCard({ value, label, sub }: { value: string; label: string;
   );
 }
 
+function PricingCard({ value, sub, label, detail }: { value: string; sub: string; label: string; detail?: string }) {
+  const c = useThemeColors();
+  return (
+    <div style={{ background: c.cardBg, border: `1px solid ${c.borderColor}`, borderRadius: 12, padding: "14px 14px 12px" }}>
+      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase", color: c.textMuted, marginBottom: 8 }}>
+        {label}
+      </div>
+      <div style={{ fontSize: 26, fontWeight: 800, color: c.textPrimary, letterSpacing: "-0.02em", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
+        {value}
+        <span style={{ fontSize: 12, fontWeight: 500, color: c.textMuted, marginLeft: 3 }}>{sub}</span>
+      </div>
+      {detail && (
+        <div style={{ fontSize: 11, color: c.textMuted, marginTop: 5 }}>{detail}</div>
+      )}
+    </div>
+  );
+}
+
 function RailVariantB() {
   const c = useThemeColors();
-  const heading: React.CSSProperties = { fontSize: 11, letterSpacing: "0.07em", textTransform: "uppercase", color: c.textMuted, fontWeight: 600 };
+  const sectionLabel: React.CSSProperties = {
+    fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: c.textMuted,
+  };
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <span style={heading}>Pricing</span>
-      <PremiumBadgeCard value="$48,200" label="WC Annual Premium" sub="/yr" />
-      <PremiumBadgeCard value="$2,350" label="PEO Admin Fee" sub="/mo" />
-      <button style={{ width: "100%", textAlign: "center", fontSize: 12.5, borderRadius: 8, padding: "9px 8px", cursor: "pointer", fontWeight: 600, color: "#fff", background: "var(--gradient-cta)", border: "none", fontFamily: "inherit" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <PricingCard value="$48,200" sub="/yr" label="WC Annual Premium" />
+      <PricingCard value="$2,350" sub="/mo" label="WFS Monthly Fee" detail="$68.40 per employee" />
+      <button style={{
+        width: "100%", fontSize: 12, borderRadius: 8, padding: "8px 8px", cursor: "pointer",
+        fontWeight: 600, color: c.textSecondary, border: `1px solid ${c.borderColor}`,
+        background: "transparent", fontFamily: "inherit",
+      }}>
         Modify Pricing
       </button>
-      <span style={{ ...heading, marginTop: 4 }}>Submission Actions</span>
-      <button style={{ width: "100%", textAlign: "center", fontSize: 13, borderRadius: 8, padding: 10, cursor: "pointer", fontWeight: 600, color: c.textSecondary, border: `1px solid ${c.borderColor}`, background: "none", fontFamily: "inherit" }}>
+      <div style={{ height: 1, background: c.borderColor, margin: "4px 0" }} />
+      <span style={sectionLabel}>Submission</span>
+      <button style={{
+        width: "100%", fontSize: 13.5, borderRadius: 9, padding: "11px 8px", cursor: "pointer",
+        fontWeight: 700, color: "#fff", background: "var(--gradient-cta)", border: "none", fontFamily: "inherit",
+      }}>
         Approve
       </button>
-      <button style={{ width: "100%", textAlign: "center", fontSize: 13, borderRadius: 8, padding: 10, cursor: "pointer", color: c.textSecondary, border: `1px solid ${c.borderColor}`, background: "none", fontFamily: "inherit", marginTop: -8 }}>
+      <button style={{
+        width: "100%", fontSize: 12.5, borderRadius: 9, padding: "9px 8px", cursor: "pointer",
+        fontWeight: 500, color: c.textMuted, background: "transparent",
+        border: `1px solid ${c.borderColor}`, fontFamily: "inherit",
+      }}>
         Decline
       </button>
     </div>
