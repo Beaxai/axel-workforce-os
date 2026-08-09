@@ -430,16 +430,23 @@ export default function SubmissionTab({
                         : { padding: 2, margin: -2, borderRadius: 10, transition: "box-shadow 0.6s" }
                     }
                   >
-                    <FieldLabel label={f.ratingRelevant ? `${f.label} · rating` : f.label} required={f.required}>
-                      {isEditing ? (
-                        fieldInput(s.key, f, inputsDisabled)
-                      ) : (
-                        // Static snapshot — read-only until the pencil unlocks the section.
-                        <div style={{ padding: "12px 14px", borderRadius: 10, border: `1px solid ${c.borderColor}`, fontSize: 14, color: f.value == null || f.value === "" ? c.textMuted : c.textPrimary, minHeight: 45 }}>
+                    {isEditing ? (
+                      <FieldLabel label={f.ratingRelevant ? `${f.label} · rating` : f.label} required={f.required}>
+                        {fieldInput(s.key, f, inputsDisabled)}
+                      </FieldLabel>
+                    ) : (
+                      // Static snapshot — plain label/value text, no input chrome,
+                      // until the pencil unlocks the section for editing.
+                      <div style={{ display: "flex", flexDirection: "column", gap: 3, padding: "2px 0 6px" }}>
+                        <span style={{ fontSize: 10.5, letterSpacing: "0.06em", textTransform: "uppercase", fontWeight: 600, color: c.textMuted }}>
+                          {f.label}
+                          {f.required && <span style={{ color: "var(--accent-primary)", marginLeft: 3 }}>*</span>}
+                        </span>
+                        <span style={{ fontSize: 14, lineHeight: 1.45, color: f.value == null || f.value === "" ? c.textMuted : c.textPrimary, fontWeight: 500, overflowWrap: "anywhere" }}>
                           {displayValue(f)}
-                        </div>
-                      )}
-                    </FieldLabel>
+                        </span>
+                      </div>
+                    )}
                   </div>
                 ))}
               </FieldGrid>
