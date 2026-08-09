@@ -739,7 +739,7 @@ router.patch("/:id/submission/:section", async (req, res) => {
     entityType: "submission",
     entityId: deal.id,
     eventType: "section_edited",
-    description: `${author} updated ${def.label} (${diffs.length} field${diffs.length > 1 ? "s" : ""}).`,
+    description: `${author} updated ${def.label}: ${diffs.map((d) => d.label).join(", ")}.`,
     metadata: { section, diffs, rating_stale: ratingChanged, author, role: actor.role },
     createdBy: actor.id,
   });

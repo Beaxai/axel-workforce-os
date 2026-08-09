@@ -494,7 +494,16 @@ export default function OverviewTab({
               const role = isSystem ? null : roleOf(row);
               const photo = row.createdBy ? (membersById.get(row.createdBy)?.avatarUrl ?? null) : null;
               const isUserText = row.eventType === "message" || row.eventType === "NOTE";
-              const description = row.description ?? "";
+              let description = row.description ?? "";
+              // Older section-edit entries say "(N fields)" — rewrite them to
+              // name the specific fields using the diffs saved in metadata.
+              if (row.eventType === "section_edited") {
+                const diffs = (row.metadata as { diffs?: { label?: string }[] } | null)?.diffs;
+                const labels = (diffs ?? []).map((d) => d.label).filter(Boolean);
+                if (labels.length > 0) {
+                  description = description.replace(/\(\d+ fields?\)/, `: ${labels.join(", ")}`).replace(/ :/, ":");
+                }
+              }
               const displayText = isUserText ? description : prettifyTokens(description);
 
               if (isUserText) {
