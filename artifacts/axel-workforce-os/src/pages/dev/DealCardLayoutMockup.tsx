@@ -312,7 +312,6 @@ export default function DealCardLayoutMockup() {
                 busy={false}
                 onApprove={() => {}}
                 onDecline={() => {}}
-                onModify={() => {}}
               />
             ) : variant === "b" ? (
               <RailVariantB />

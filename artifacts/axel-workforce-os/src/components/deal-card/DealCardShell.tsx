@@ -273,6 +273,9 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
   const [wfsPricing, setWfsPricing] = useState<{ monthly: string | null; pepm: string | null }>({ monthly: null, pepm: null });
   const [wfsBusy, setWfsBusy] = useState(false);
   const [wfsError, setWfsError] = useState<string | null>(null);
+  // Current rating levers on the quote (initial values for the rail's inline
+  // WC "Modify" editor). Hydrated from GET /quotes/by-deal.
+  const [quoteLevers, setQuoteLevers] = useState<VariationLevers | null>(null);
 
   const isInternal = !!user && INTERNAL.has(user.role);
   const canPost = !!user && (isInternal || user.role === "EMPLOYER");
@@ -374,47 +377,92 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
   // One-click WFS quote: derive payroll + headcount from data already on the
   // deal (quote workforce profile first, deal-level columns as fallback) and
   // run the WFS rating engine, persisting the result onto the deal's quote.
-  const handleGetWfsQuote = useCallback(async () => {
-    if (wfsBusy) return;
+  const deriveWfsInputs = useCallback((): { annualPayroll: number; headcount: number } => {
+    let annualPayroll = 0;
+    let headcount = 0;
+    const wpl = quoteRef?.profile?.locations;
+    if (Array.isArray(wpl) && wpl.length > 0) {
+      for (const l of wpl) {
+        for (const cc of l.classCodes ?? []) {
+          annualPayroll += Number(cc.annualPayroll) || 0;
+          headcount += (Number(cc.fullTimeEmployees) || 0) + (Number(cc.partTimeEmployees) || 0);
+        }
+      }
+    }
+    if (annualPayroll <= 0) annualPayroll = Number(deal?.annualPayroll) || 0;
+    if (headcount <= 0) headcount = Number(deal?.employeeCountFt) || 0;
+    return { annualPayroll, headcount };
+  }, [quoteRef, deal]);
+
+  const handleGetWfsQuote = useCallback(async (overrides?: { annualPayroll: number; headcount: number }): Promise<boolean> => {
+    if (wfsBusy) return false;
+    const seq = loadSeqRef.current; // discard the response if the deal changes mid-flight
     setWfsBusy(true);
     setWfsError(null);
     try {
-      let annualPayroll = 0;
-      let headcount = 0;
-      const wpl = quoteRef?.profile?.locations;
-      if (Array.isArray(wpl) && wpl.length > 0) {
-        for (const l of wpl) {
-          for (const cc of l.classCodes ?? []) {
-            annualPayroll += Number(cc.annualPayroll) || 0;
-            headcount += (Number(cc.fullTimeEmployees) || 0) + (Number(cc.partTimeEmployees) || 0);
-          }
-        }
-      }
-      if (annualPayroll <= 0) annualPayroll = Number(deal?.annualPayroll) || 0;
-      if (headcount <= 0) headcount = Number(deal?.employeeCountFt) || 0;
+      let { annualPayroll, headcount } = overrides ?? deriveWfsInputs();
       if (annualPayroll <= 0 || headcount <= 0) {
         setWfsError("Missing payroll or headcount on this deal — complete the workforce profile first.");
-        return;
+        return false;
       }
       const res = await api.post<{ success: boolean; data?: { result?: { monthlyWFSFee?: number; pepm?: number } }; error?: string }>(
         "/rate/wfs",
         { annualPayroll, headcount, dealId },
       );
+      if (seq !== loadSeqRef.current) return false; // deal changed — drop stale result
       const r = res?.data?.result;
       if (!res?.success || !r) {
         setWfsError(res?.error || "Rating failed. Try again.");
-        return;
+        return false;
       }
       setWfsPricing({
         monthly: r.monthlyWFSFee != null ? String(r.monthlyWFSFee) : null,
         pepm: r.pepm != null ? String(r.pepm) : null,
       });
+      return true;
     } catch (e) {
-      setWfsError(e instanceof Error ? e.message : "Rating failed. Try again.");
+      if (seq === loadSeqRef.current) setWfsError(e instanceof Error ? e.message : "Rating failed. Try again.");
+      return false;
     } finally {
-      setWfsBusy(false);
+      if (seq === loadSeqRef.current) setWfsBusy(false);
     }
-  }, [wfsBusy, quoteRef, deal, dealId]);
+  }, [wfsBusy, deriveWfsInputs, dealId]);
+
+  // Inline WC "Modify" editor on the rail — preview re-rates without
+  // persisting; apply promotes the levers onto the quote (both internal-staff
+  // only, enforced server-side).
+  const handlePreviewWc = useCallback(
+    async (levers: VariationLevers): Promise<{ premium: number; delta: number; deltaPct: number } | null> => {
+      try {
+        const res = await api.post<PreviewVariationResponse>(`/deal-card/${dealId}/quote-variations/preview`, levers);
+        return { premium: res.premium, delta: res.delta, deltaPct: res.deltaPct };
+      } catch {
+        return null;
+      }
+    },
+    [dealId],
+  );
+
+  const handleApplyWc = useCallback(
+    async (levers: VariationLevers): Promise<boolean> => {
+      const seq = loadSeqRef.current;
+      try {
+        const res = await api.post<ApplyVariationResponse>(`/deal-card/${dealId}/quote-variations/apply`, { ...levers, label: "Rail adjustment" });
+        if (!res.success) return false;
+        if (seq !== loadSeqRef.current) return false; // deal changed mid-flight
+        setQuoteWcPremium(String(res.premium));
+        setQuoteLevers(res.levers);
+        // deals.wcPremium (when set) takes display precedence — keep it in sync.
+        setPayload((p) => (p && p.deal.wcPremium ? { ...p, deal: { ...p.deal, wcPremium: String(res.premium) } } : p));
+        await fetchActivity();
+        onDealUpdated?.();
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    [dealId, fetchActivity, onDealUpdated],
+  );
 
   // Resolve header-map markers: prefer the quote's workforce profile (per-location
   // state/zip + class-code headcounts); fall back to the deal-level state, dividing
@@ -438,9 +486,24 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
       setWfsError(null);
       setWfsBusy(false);
       setQuoteWcPremium(null);
+      setQuoteLevers(null);
       try {
-        const q = await api.get<{ id: string; workforceProfile?: WorkforceProfileRaw; monthlyWfsFee?: string | null; pepm?: string | null; wcPremium?: string | null }>(`/quotes/by-deal/${dealId}`);
+        const q = await api.get<{ id: string; workforceProfile?: WorkforceProfileRaw; monthlyWfsFee?: string | null; pepm?: string | null; wcPremium?: string | null; eMod?: string | null; scheduleRating?: string | null; isPeo?: boolean | null }>(`/quotes/by-deal/${dealId}`);
         if (active) {
+          // Multi-location quotes store levers inside workforceProfile, not the
+          // top-level columns — prefer the profile values when present.
+          const wpLevers = q?.workforceProfile as { eMod?: number; scheduleRating?: number; isPEO?: boolean } | undefined;
+          const em = typeof wpLevers?.eMod === "number" && wpLevers.eMod > 0
+            ? wpLevers.eMod
+            : q?.eMod != null ? parseFloat(String(q.eMod)) : NaN;
+          const sr = typeof wpLevers?.scheduleRating === "number" && wpLevers.scheduleRating > 0
+            ? wpLevers.scheduleRating
+            : q?.scheduleRating != null ? parseFloat(String(q.scheduleRating)) : NaN;
+          setQuoteLevers({
+            eMod: !isNaN(em) && em > 0 ? em : 1.0,
+            scheduleRating: !isNaN(sr) && sr > 0 ? sr : 1.0,
+            isPEO: typeof wpLevers?.isPEO === "boolean" ? wpLevers.isPEO : !!q?.isPeo,
+          });
           setWfsPricing({
             monthly: q?.monthlyWfsFee && parseFloat(q.monthlyWfsFee) > 0 ? q.monthlyWfsFee : null,
             pepm: q?.pepm && parseFloat(q.pepm) > 0 ? q.pepm : null,
@@ -1332,18 +1395,25 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
           {payload && (
             <div style={{ width: 264, flexShrink: 0, borderLeft: `1px solid ${c.borderColor}`, padding: 12, overflow: "auto", display: "flex", flexDirection: "column", gap: 14 }}>
               <PricingRail
+                key={dealId} /* reset inline editor state when the deal changes */
                 wcPremium={((deal?.wcPremium as string) || quoteWcPremium) ?? null}
                 wfsMonthly={wfsPricing.monthly}
                 wfsPepm={wfsPricing.pepm ?? ((deal?.wfsPepmRate as string) || null)}
                 wfsBusy={wfsBusy}
                 wfsError={wfsError}
-                onGetWfsQuote={handleGetWfsQuote}
+                onGetWfsQuote={isInternal ? () => void handleGetWfsQuote() : undefined}
                 canApprove={payload.canApprove}
                 busy={decisionBusy}
                 openBlocking={openBlocking}
                 approveError={approveError}
                 onApprove={handleApprove}
                 onDecline={handleDecline}
+                canModifyWc={isInternal && !!(((deal?.wcPremium as string) || quoteWcPremium))}
+                wcBaseLevers={quoteLevers}
+                onPreviewWc={handlePreviewWc}
+                onApplyWc={handleApplyWc}
+                wfsDefaults={deriveWfsInputs()}
+                onRequoteWfs={isInternal ? (annualPayroll, headcount) => handleGetWfsQuote({ annualPayroll, headcount }) : undefined}
               />
             </div>
           )}

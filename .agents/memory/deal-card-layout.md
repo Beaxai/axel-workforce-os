@@ -28,3 +28,8 @@ description: Documents the layout evolution of DealCardShell — specifically wh
 - Keep `PricingRail` in the right rail; do not move it back to the Quote tab card row.
 - `TaskDrawer.tsx` can be deleted once confirmed no other import references it.
 - If "Request Proposal" needs re-surfacing, the pattern is a pinned card at the top of the Tasks tab content (before `TasksTab`), using `openIndicationForm` and the `payload.sections` incomplete count hint.
+
+## Pricing rail inline Modify (Aug 2026)
+- Both rail cards have inline "Modify" editors: WC uses quote-variations preview/apply (Apply gated on a fresh preview; any lever edit invalidates it); WFS re-quotes via /rate/wfs with payroll/headcount overrides.
+- PricingRail is keyed by dealId so editor state resets on deal switch; WFS + apply handlers are loadSeq-guarded.
+- Levers hydrate from GET /quotes/by-deal, preferring workforceProfile values (multi-location quotes store levers there, not top-level columns — server variation base still reads columns; see task about wrong multi-location starting values).
