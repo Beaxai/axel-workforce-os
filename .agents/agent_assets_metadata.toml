@@ -59,3 +59,10 @@ id = "2w3TLKSE4BFFfZa2FMTL1"
 uri = "file://attached_assets/stock_images/team_headshot_4.jpg"
 type = "image"
 title = "professional business person headshot portrait corporate"
+
+[[outputs]]
+id = "9bMAxYqkj_pFMgwbdwssi"
+uri = "file://docs/MASTER_FLOW_v2.7.svg"
+type = "image"
+title = "Master Flow v2.7 — P5-WC annotated"
+description = "Pink dashed rings mark every node in scope for the P5-WC active build. Five deliverables labelled: listener inbound, subjectivities engine, SignWell flows, WC tracker, dunning + deposit."
