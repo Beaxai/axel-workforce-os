@@ -21,7 +21,11 @@ documents**; where anything conflicts with them, **they win.**
 > decisions log; SignWell replaces HelloSign, Resend named for email), superseding
 > [`docs/STATE_DOCUMENT_v2.4.md`](docs/STATE_DOCUMENT_v2.4.md) and
 > [`docs/STATE_DOCUMENT_v2.1.md`](docs/STATE_DOCUMENT_v2.1.md) (both kept for history), plus
-> [`docs/PROJECT_INSTRUCTIONS.md`](docs/PROJECT_INSTRUCTIONS.md). **Curtis's master copies remain
+> [`docs/PROJECT_INSTRUCTIONS.md`](docs/PROJECT_INSTRUCTIONS.md). The master flowchart that
+> accompanies the State Document (per its §6) is [`docs/MASTER_FLOW_v2.7.svg`](docs/MASTER_FLOW_v2.7.svg)
+> with an agent-readable transcription at [`docs/MASTER_FLOW_v2.7.md`](docs/MASTER_FLOW_v2.7.md)
+> (delivered labeled v2.5; relabeled v2.7 on Brendan's instruction — deviation logged in the
+> transcription header). **Curtis's master copies remain
 > canonical** — these are checked-in snapshots for diffing; if they ever disagree with Curtis's
 > current master, the master wins.
 
