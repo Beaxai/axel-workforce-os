@@ -9,6 +9,7 @@
  * Completeness still comes straight from the server payload.
  */
 import { useState } from "react";
+import { ChevronDown } from "lucide-react";
 import type { SectionFieldView, SectionView } from "./types";
 import { sectionIcon, STATUS_COLORS } from "./icons";
 import { useThemeColors } from "@/lib/use-theme-colors";
@@ -83,6 +84,19 @@ export default function SubmissionTab({
   // for untouched fields always come from the server payload, so a successful
   // save (which refreshes `sections`) just needs the section's drafts cleared.
   const [drafts, setDrafts] = useState<Record<string, string>>({});
+
+  // Collapsed section keys. All sections start expanded; a section with
+  // unsaved edits cannot be collapsed (so dirty state is never hidden).
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const toggleCollapsed = (sKey: string, dirty: boolean) => {
+    if (dirty) return;
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(sKey)) next.delete(sKey);
+      else next.add(sKey);
+      return next;
+    });
+  };
 
   const draftKey = (s: string, f: string) => `${s}.${f}`;
   const valueFor = (sKey: string, f: SectionFieldView) =>
@@ -217,10 +231,25 @@ export default function SubmissionTab({
         // anywhere while any save is in flight (single savingSection slot).
         const inputsDisabled = !canEdit || saving;
         const saveBlocked = savingSection !== null;
+        const isCollapsed = collapsed.has(s.key) && !dirty; // dirty sections stay open
         return (
-          <div key={s.key} style={{ paddingBottom: 24, marginBottom: 8, borderBottom: `1px solid ${c.borderColor}` }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+          <div key={s.key} style={{ paddingBottom: isCollapsed ? 14 : 24, marginBottom: 8, borderBottom: `1px solid ${c.borderColor}` }}>
+            <div
+              onClick={() => toggleCollapsed(s.key, dirty)}
+              role="button"
+              aria-expanded={!isCollapsed}
+              style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: isCollapsed ? 0 : 14, cursor: dirty ? "default" : "pointer", userSelect: "none" }}
+            >
               <span style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 16, fontWeight: 700, color: "var(--section-heading)" }}>
+                <ChevronDown
+                  style={{
+                    width: 16,
+                    height: 16,
+                    color: c.textMuted,
+                    transform: isCollapsed ? "rotate(-90deg)" : "none",
+                    transition: "transform 0.15s",
+                  }}
+                />
                 <Icon style={{ width: 17, height: 17, color: c.textMuted }} />
                 {s.label}
               </span>
@@ -230,15 +259,17 @@ export default function SubmissionTab({
               </span>
             </div>
 
-            <FieldGrid columns={2}>
-              {s.fields.map((f) => (
-                <FieldLabel key={f.key} label={f.ratingRelevant ? `${f.label} · rating` : f.label} required={f.required}>
-                  {fieldInput(s.key, f, inputsDisabled)}
-                </FieldLabel>
-              ))}
-            </FieldGrid>
+            {!isCollapsed && (
+              <FieldGrid columns={2}>
+                {s.fields.map((f) => (
+                  <FieldLabel key={f.key} label={f.ratingRelevant ? `${f.label} · rating` : f.label} required={f.required}>
+                    {fieldInput(s.key, f, inputsDisabled)}
+                  </FieldLabel>
+                ))}
+              </FieldGrid>
+            )}
 
-            {dirty && canEdit && (
+            {!isCollapsed && dirty && canEdit && (
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 14 }}>
                 <button
                   onClick={() => discardSection(s.key)}
