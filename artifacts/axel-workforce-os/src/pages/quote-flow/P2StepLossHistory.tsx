@@ -72,7 +72,7 @@ export default function P2StepLossHistory() {
     padding: "10px 14px",
     borderRadius: 8,
     border: `1px solid ${borderColor}`,
-    background: "#1a1a26",
+    background: isDark ? "#1a1a26" : "#fff",
     color: textPrimary,
     fontSize: 13,
     outline: "none",
@@ -83,7 +83,7 @@ export default function P2StepLossHistory() {
       <h2 style={{ fontSize: 24, fontWeight: 700, color: textPrimary, margin: "0 0 6px" }}>
         Loss History
       </h2>
-      <p style={{ fontSize: 14, color: "#888", margin: "0 0 28px" }}>
+      <p style={{ fontSize: 14, color: textMuted, margin: "0 0 28px" }}>
         Upload your loss run documents (PDF). These are required before submission for underwriting review.
       </p>
 
@@ -93,21 +93,21 @@ export default function P2StepLossHistory() {
         onDrop={handleDrop}
         onClick={() => fileInputRef.current?.click()}
         style={{
-          border: `2px dashed ${dragOver ? "var(--accent-primary)" : "rgba(255,255,255,0.1)"}`,
+          border: `2px dashed ${dragOver ? "var(--accent-primary)" : (isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.15)")}`,
           borderRadius: 12,
           padding: "40px 24px",
           textAlign: "center",
           cursor: "pointer",
-          background: dragOver ? "rgba(233,30,140,0.04)" : "rgba(255,255,255,0.02)",
+          background: dragOver ? "rgba(233,30,140,0.04)" : (isDark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)"),
           transition: "all 0.2s",
           marginBottom: 24,
         }}
       >
-        <Upload style={{ width: 36, height: 36, color: dragOver ? "var(--accent-primary)" : "#666", margin: "0 auto 12px" }} />
+        <Upload style={{ width: 36, height: 36, color: dragOver ? "var(--accent-primary)" : textMuted, margin: "0 auto 12px" }} />
         <p style={{ fontSize: 15, fontWeight: 600, color: textPrimary, margin: "0 0 4px" }}>
           {dragOver ? "Drop files here" : "Drag & drop loss run PDFs"}
         </p>
-        <p style={{ fontSize: 13, color: "#666", margin: 0 }}>
+        <p style={{ fontSize: 13, color: textMuted, margin: 0 }}>
           or click to browse — PDF only, max 25MB
         </p>
         <input
@@ -133,10 +133,10 @@ export default function P2StepLossHistory() {
             <div
               key={file.id}
               style={{
-                background: "#13131f",
+                background: cardBg,
                 borderRadius: 10,
                 padding: 16,
-                border: "1px solid rgba(255,255,255,0.06)",
+                border: `1px solid ${borderColor}`,
               }}
             >
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
@@ -144,7 +144,7 @@ export default function P2StepLossHistory() {
                   <FileText style={{ width: 20, height: 20, color: "var(--accent-primary)" }} />
                   <div>
                     <p style={{ fontSize: 14, fontWeight: 600, color: textPrimary, margin: 0 }}>{file.name}</p>
-                    <p style={{ fontSize: 12, color: "#666", margin: 0 }}>{formatSize(file.size)}</p>
+                    <p style={{ fontSize: 12, color: textMuted, margin: 0 }}>{formatSize(file.size)}</p>
                   </div>
                 </div>
                 <button
@@ -156,18 +156,18 @@ export default function P2StepLossHistory() {
                     cursor: "pointer",
                     padding: 6,
                     borderRadius: 6,
-                    color: "#666",
+                    color: textMuted,
                     display: "flex",
                   }}
                   onMouseEnter={(e) => (e.currentTarget.style.color = "#ef4444")}
-                  onMouseLeave={(e) => (e.currentTarget.style.color = "#666")}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = textMuted)}
                 >
                   <Trash2 style={{ width: 16, height: 16 }} />
                 </button>
               </div>
               <div style={{ display: "flex", gap: 12 }}>
                 <div style={{ flex: 1 }}>
-                  <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#888", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.03em" }}>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: textMuted, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.03em" }}>
                     Years Covered
                   </label>
                   <input
@@ -180,7 +180,7 @@ export default function P2StepLossHistory() {
                   />
                 </div>
                 <div style={{ flex: 2 }}>
-                  <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#888", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.03em" }}>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: textMuted, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.03em" }}>
                     Notes
                   </label>
                   <input
@@ -200,7 +200,7 @@ export default function P2StepLossHistory() {
 
       {s.lossHistoryFiles.length === 0 && (
         <div style={{ textAlign: "center", padding: "20px 0" }}>
-          <p style={{ fontSize: 13, color: "#555" }}>
+          <p style={{ fontSize: 13, color: textMuted }}>
             No loss history documents uploaded yet. You can continue without them, but they may be required during underwriting review.
           </p>
         </div>

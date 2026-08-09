@@ -5,21 +5,22 @@ import {
   YesNoToggle,
 } from "@/components/quote-flow/FormFields";
 
-function Checkbox({ checked, onChange, label, color }: { checked: boolean; onChange: () => void; label: string; color: string }) {
+function Checkbox({ checked, onChange, label }: { checked: boolean; onChange: () => void; label: string }) {
+  const { isDark, textSecondary } = useThemeColors();
   return (
     <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
       <div
         onClick={onChange}
         style={{
           width: 18, height: 18, borderRadius: 4,
-          border: checked ? "none" : "2px solid rgba(255,255,255,0.2)",
+          border: checked ? "none" : `2px solid ${isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.25)"}`,
           background: checked ? "var(--accent-primary)" : "transparent",
           display: "flex", alignItems: "center", justifyContent: "center",
         }}
       >
-        {checked && <span style={{ color, fontSize: 12, fontWeight: 700 }}>✓</span>}
+        {checked && <span style={{ color: "#fff", fontSize: 12, fontWeight: 700 }}>✓</span>}
       </div>
-      <span style={{ fontSize: 13, color: "#ccc" }}>{label}</span>
+      <span style={{ fontSize: 13, color: textSecondary }}>{label}</span>
     </label>
   );
 }
@@ -66,7 +67,6 @@ export default function P2Step7AutoExposure() {
                   checked={s.drivingMileageNa}
                   onChange={() => s.update({ drivingMileageNa: !s.drivingMileageNa })}
                   label="N/A"
-                  color={textPrimary}
                 />
               </div>
             </div>
@@ -175,7 +175,6 @@ export default function P2Step7AutoExposure() {
                 checked={s.avgDistanceNa}
                 onChange={() => s.update({ avgDistanceNa: !s.avgDistanceNa })}
                 label="N/A"
-                color={textPrimary}
               />
             </div>
           </div>
@@ -207,7 +206,6 @@ export default function P2Step7AutoExposure() {
                 checked={s.avgDeliveriesNa}
                 onChange={() => s.update({ avgDeliveriesNa: !s.avgDeliveriesNa })}
                 label="N/A"
-                color={textPrimary}
               />
             </div>
           </div>
@@ -251,14 +249,14 @@ export default function P2Step7AutoExposure() {
                 onClick={() => s.update({ vehiclesUnmarked: !s.vehiclesUnmarked })}
                 style={{
                   width: 18, height: 18, borderRadius: 4,
-                  border: s.vehiclesUnmarked ? "none" : "2px solid rgba(255,255,255,0.2)",
+                  border: s.vehiclesUnmarked ? "none" : `2px solid ${isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.25)"}`,
                   background: s.vehiclesUnmarked ? "var(--accent-primary)" : "transparent",
                   display: "flex", alignItems: "center", justifyContent: "center",
                 }}
               >
-                {s.vehiclesUnmarked && <span style={{ color: textPrimary, fontSize: 12, fontWeight: 700 }}>✓</span>}
+                {s.vehiclesUnmarked && <span style={{ color: "#fff", fontSize: 12, fontWeight: 700 }}>✓</span>}
               </div>
-              <span style={{ fontSize: 13, color: "#ccc" }}>Unmarked</span>
+              <span style={{ fontSize: 13, color: textSecondary }}>Unmarked</span>
             </label>
           )}
         </div>

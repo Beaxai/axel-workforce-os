@@ -1,3 +1,4 @@
+import { useThemeColors } from "@/lib/use-theme-colors";
 import { useQuoteFlowStore } from "@/lib/quote-flow-store";
 import {
   FormSection, FieldGrid, FieldLabel, TextInput, TextArea,
@@ -15,6 +16,7 @@ const EXTRACTION_METHODS = [
 
 export default function P2Step6Extraction() {
   const s = useQuoteFlowStore();
+  const { isDark, textSecondary, textMuted, cardBg } = useThemeColors();
 
   return (
     <div style={{ maxWidth: 1080, margin: "0 auto" }}>
@@ -85,19 +87,19 @@ export default function P2Step6Extraction() {
       </FormSection>
 
       <FormSection title="Historical Premiums">
-        <div style={{ borderRadius: 12, background: "#13131f", overflow: "hidden" }}>
+        <div style={{ borderRadius: 12, background: cardBg, overflow: "hidden" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead>
-              <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+              <tr style={{ borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.08)"}` }}>
                 {["Period", "Year", "Payroll ($)", "Premium ($)", "Sub. Costs ($)"].map((h) => (
-                  <th key={h} style={{ padding: "12px 14px", textAlign: "left", color: "#888", fontWeight: 500, fontSize: 12 }}>{h}</th>
+                  <th key={h} style={{ padding: "12px 14px", textAlign: "left", color: textMuted, fontWeight: 500, fontSize: 12 }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {s.historicalPremiums.map((row, i) => (
-                <tr key={i} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-                  <td style={{ padding: "8px 14px", color: "#ccc" }}>{row.label}</td>
+                <tr key={i} style={{ borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.05)"}` }}>
+                  <td style={{ padding: "8px 14px", color: textSecondary }}>{row.label}</td>
                   <td style={{ padding: "8px 14px" }}>
                     <TextInput
                       value={row.year}

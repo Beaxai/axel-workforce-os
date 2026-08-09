@@ -28,7 +28,7 @@ const LOCATION_COUNT_OPTIONS = Array.from({ length: 20 }, (_, i) => ({
 
 export default function Step1BusinessDetails() {
   const s = useQuoteFlowStore();
-  const { textPrimary } = useThemeColors();
+  const { isDark, textPrimary, textSecondary, textMuted, borderColor } = useThemeColors();
 
   return (
     <div style={{ maxWidth: 1080, margin: "0 auto" }}>
@@ -100,23 +100,23 @@ export default function Step1BusinessDetails() {
           </FieldLabel>
         </div>
 
-        <div style={{ marginTop: 28, paddingTop: 20, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-          <h4 style={{ fontSize: 14, fontWeight: 700, color: "#ccc", margin: 0, marginBottom: 12, fontFamily: "var(--app-font-heading)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+        <div style={{ marginTop: 28, paddingTop: 20, borderTop: `1px solid ${borderColor}` }}>
+          <h4 style={{ fontSize: 14, fontWeight: 700, color: textSecondary, margin: 0, marginBottom: 12, fontFamily: "var(--app-font-heading)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
             Mailing Address
           </h4>
           <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", marginBottom: 16 }}>
             <div
               style={{
                 width: 20, height: 20, borderRadius: 4,
-                border: s.mailingAddressSame ? "none" : "2px solid rgba(255,255,255,0.2)",
+                border: s.mailingAddressSame ? "none" : `2px solid ${isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.25)"}`,
                 background: s.mailingAddressSame ? "var(--accent-primary)" : "transparent",
                 display: "flex", alignItems: "center", justifyContent: "center",
               }}
               onClick={() => s.update({ mailingAddressSame: !s.mailingAddressSame })}
             >
-              {s.mailingAddressSame && <span style={{ color: textPrimary, fontSize: 14, fontWeight: 700 }}>✓</span>}
+              {s.mailingAddressSame && <span style={{ color: "#fff", fontSize: 14, fontWeight: 700 }}>✓</span>}
             </div>
-            <span style={{ fontSize: 14, color: "#ccc" }}>Same as business address</span>
+            <span style={{ fontSize: 14, color: textSecondary }}>Same as business address</span>
           </label>
           {!s.mailingAddressSame && (
             <FieldGrid columns={2}>
@@ -184,9 +184,9 @@ export default function Step1BusinessDetails() {
                 type="button"
                 onClick={() => s.updateOwner(i, { included: !owner.included })}
                 style={{
-                  padding: "8px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.1)",
+                  padding: "8px 12px", borderRadius: 8, border: `1px solid ${borderColor}`,
                   background: owner.included ? "rgba(233,30,140,0.15)" : "transparent",
-                  color: owner.included ? "var(--accent-primary)" : "#888", fontSize: 13, cursor: "pointer", width: "100%",
+                  color: owner.included ? "var(--accent-primary)" : textMuted, fontSize: 13, cursor: "pointer", width: "100%",
                 }}
               >
                 {owner.included ? "Inc" : "Exc"}
