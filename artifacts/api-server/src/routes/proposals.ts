@@ -10,7 +10,8 @@ import {
   lossHistoryDocumentsTable,
   dealDocumentsTable,
 } from "@workspace/db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and, inArray } from "drizzle-orm";
+import { PIPELINE_STAGES } from "@workspace/pipeline";
 import { buildSections } from "../lib/deal-sections";
 import { accountsTable } from "@workspace/db";
 
@@ -185,6 +186,28 @@ router.post("/:proposalId/request-approved-proposal", async (req, res) => {
       await tx.update(dealsTable)
         .set({ proposalStatus: "approved_proposal_requested" })
         .where(eq(dealsTable.id, locked.dealId!));
+
+      // v2.7 §6 Segment 2: full journey complete (proposal requested on a
+      // complete submission) → deal advances to U/W Review. Atomic conditional
+      // update: only fires when the deal is still in an earlier stage, so a
+      // concurrent transition can never be regressed and LOST is never touched.
+      const earlierStages = PIPELINE_STAGES
+        .filter((s) => s.order < PIPELINE_STAGES.find((p) => p.key === "UW_REVIEW")!.order)
+        .map((s) => s.key);
+      const advanced = await tx.update(dealsTable)
+        .set({ stage: "UW_REVIEW" })
+        .where(and(eq(dealsTable.id, locked.dealId!), inArray(dealsTable.stage, earlierStages)))
+        .returning({ id: dealsTable.id });
+      if (advanced.length > 0) {
+        await tx.insert(activityLogTable).values({
+          dealId: locked.dealId!,
+          entityType: "deal",
+          entityId: locked.dealId!,
+          eventType: "STAGE_CHANGE",
+          description: `Stage advanced to U/W Review — full submission complete and proposal requested.`,
+          metadata: { to_stage: "UW_REVIEW", trigger: "approved_proposal_requested" },
+        });
+      }
 
       await tx.insert(activityLogTable).values({
         dealId: locked.dealId!,
