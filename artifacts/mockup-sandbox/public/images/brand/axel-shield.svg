@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="axelShieldFill" x1="32" y1="4" x2="32" y2="60" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1A1A24"/>
+      <stop offset="1" stop-color="#0E0E14"/>
+    </linearGradient>
+    <linearGradient id="axelShieldEdge" x1="32" y1="4" x2="32" y2="60" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#E91E8C"/>
+      <stop offset="1" stop-color="#7C3AED"/>
+    </linearGradient>
+  </defs>
+  <path
+    d="M32 4 L56 12 L56 32 C56 46 46 55 32 60 C18 55 8 46 8 32 L8 12 Z"
+    fill="url(#axelShieldFill)"
+    stroke="url(#axelShieldEdge)"
+    stroke-width="2.5"
+    stroke-linejoin="round"
+  />
+  <path
+    d="M32 10 L51 16 L51 32 C51 43 43 51 32 55 C21 51 13 43 13 32 L13 16 Z"
+    fill="none"
+    stroke="#E91E8C"
+    stroke-width="0.7"
+    stroke-opacity="0.35"
+    stroke-linejoin="round"
+  />
+</svg>

@@ -47,7 +47,9 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      "@": path.resolve(import.meta.dirname, "src"),
+      "@": path.resolve(import.meta.dirname, "../../artifacts/axel-workforce-os/src"),
+      "@workspace/api-client-react": path.resolve(import.meta.dirname, "../../lib/api-client-react/src/index.ts"),
+      "@assets": path.resolve(import.meta.dirname, "../../attached_assets"),
     },
   },
   root: path.resolve(import.meta.dirname),
@@ -60,8 +62,11 @@ export default defineConfig({
     host: "0.0.0.0",
     allowedHosts: true,
     fs: {
-      strict: true,
+      strict: false,
       deny: ["**/.*"],
+      allow: [
+        path.resolve(import.meta.dirname, "../.."),
+      ],
     },
   },
   preview: {

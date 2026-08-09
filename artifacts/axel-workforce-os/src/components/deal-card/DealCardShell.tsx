@@ -34,6 +34,8 @@ import ReRateBanner from "./ReRateBanner";
 import SectionEditorOverlay from "./SectionEditorOverlay";
 import { DocumentsTab, QuoteTab, PolicyTab } from "./SupportingTabs";
 import TaskDrawer from "./TaskDrawer";
+import wcShieldIcon from "@assets/Shield-Icon_1780952893965.png";
+
 import type { IndicationMetric } from "./IndicationDetailView";
 
 interface DealCardShellProps {
@@ -58,6 +60,7 @@ const NAV: Array<{ key: TabKey; label: string; Icon: typeof LayoutDashboard }> =
 
 const INTERNAL = new Set(["ADMIN", "CSA", "AGENT", "UNDERWRITER"]);
 
+const BADGE_PINK = "#E91E8C";
 /** Raw workforce-profile JSON as stored on the quote (extra keys preserved). */
 interface WorkforceProfileClassCodeRaw {
   classCode?: string;
@@ -774,6 +777,61 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
     navigate("/marketplace");
   };
 
+  // Reopens the indication form (quote wizard) prefilled from the deal + its
+  // saved workforce profile so the broker can edit, update, and complete it.
+  // Lands on the first wizard step whose submission section is incomplete
+  // (the spots required before requesting a proposal). Closes the dialog.
+  // NOTE: must stay above the `if (!isOpen)` early return — it's a hook.
+  const openIndicationForm = useCallback(() => {
+    if (!deal) return;
+    const wp = quoteRef?.profile;
+    const locations = Array.isArray(wp?.locations)
+      ? wp.locations.map((l, i) => ({
+          id: `deal-loc-${i}`,
+          streetAddress: "",
+          city: "",
+          state: l.state ?? "",
+          zip: l.zip ?? "",
+          classCodes: (l.classCodes ?? []).map((cc) => ({
+            classCode: String(cc.classCode ?? ""),
+            description: cc.description ?? "",
+            fullTimeEmployees: Number(cc.fullTimeEmployees) || 0,
+            partTimeEmployees: Number(cc.partTimeEmployees) || 0,
+            annualPayroll: Number(cc.annualPayroll) || 0,
+          })),
+        }))
+      : [];
+    const eModNum = typeof wp?.eMod === "number" && wp.eMod > 0
+      ? wp.eMod
+      : deal.emod != null && parseFloat(String(deal.emod)) > 0
+        ? parseFloat(String(deal.emod))
+        : NaN;
+    const prefill: Record<string, unknown> = {
+      businessName: deal.businessName || "",
+      businessState: deal.state || "",
+      fein: typeof deal.fein === "string" ? deal.fein : "",
+      entityType: typeof deal.entityType === "string" ? deal.entityType : "",
+      yearsInBusiness: deal.yearsInBusiness != null ? String(deal.yearsInBusiness) : "",
+      statesOfOperation: Array.isArray(deal.statesOfOperation) ? deal.statesOfOperation : [],
+      coverageEffectiveDate: deal.coverageEffectiveDate || "",
+      ...(locations.length > 0 ? { locations, locationCount: String(locations.length) } : {}),
+      ...(!isNaN(eModNum) ? { hasExperienceMod: "Yes", experienceMod: String(eModNum) } : {}),
+    };
+    // Land on the phase-2 transition screen ("Great — let's build your full
+    // submission") so the broker steps through the remaining details needed
+    // before the proposal goes to underwriting.
+    prefill.phase = 2;
+    prefill.currentStep = 0;
+    onClose();
+    navigate("/marketplace/quote/wizard", {
+      state: {
+        vertical: deal.vertical || "Cannabis",
+        coverageType: deal.productType || "WC",
+        prefill,
+      },
+    });
+  }, [deal, quoteRef, payload, onClose, navigate]);
+
   if (!isOpen) return null;
 
   const stage = deal?.stage;
@@ -799,7 +857,7 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
     { label: "EXMOD", metric: "exmod" as IndicationMetric, Icon: Gauge, value: exModVal ?? "\u2014", exModColor: exModNum == null ? null : exModColor(exModNum) },
   ];
 
-  // Est. premium for the header bubble — deal-level column first, then the
+  // Est. premium for the header badge — deal-level column first, then the
   // quote-row premium (quote-flow deals never backfill deals.wcPremium).
   // Hidden entirely until the deal has a priced WC premium.
   const wcPremiumSrc = deal?.wcPremium != null && deal.wcPremium !== "" ? deal.wcPremium : quoteWcPremium;
@@ -807,6 +865,42 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
   const estPremiumFmt = !isNaN(wcPremiumNum) && wcPremiumNum > 0
     ? wcPremiumNum.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 })
     : null;
+
+  // PEO badge — shown when a PEO indication exists on the quote (pepm or
+  // monthlyWfsFee set and > 0). Headline is PEPM when available (the number
+  // brokers quote in conversation), falling back to the monthly fee.
+  // Fall back to the deal-level PEPM rate when the quote record lacks one
+  // (older deals only persisted wfsPepmRate on the deal row). When neither is
+  // stored, derive it: monthly fee ÷ total headcount (that's what PEPM means).
+  const pepmRaw = wfsPricing.pepm ?? ((deal?.wfsPepmRate as string) || null);
+  const storedPepm = pepmRaw != null ? parseFloat(pepmRaw) : NaN;
+  const monthlyNum = wfsPricing.monthly != null ? parseFloat(wfsPricing.monthly) : NaN;
+  const hasMonthly = !isNaN(monthlyNum) && monthlyNum > 0;
+  const totalEmployees = (() => {
+    const fromProfile = (quoteRef?.profile?.locations ?? []).reduce(
+      (s, l) => s + (l.classCodes ?? []).reduce(
+        (t, cc) => t + (Number(cc.fullTimeEmployees) || 0) + (Number(cc.partTimeEmployees) || 0), 0),
+      0,
+    );
+    return fromProfile > 0 ? fromProfile : Number(deal?.employeeCountFt) || 0;
+  })();
+  const pepmNum = !isNaN(storedPepm) && storedPepm > 0
+    ? storedPepm
+    : hasMonthly && totalEmployees > 0
+      ? monthlyNum / totalEmployees
+      : NaN;
+  const hasPepm = !isNaN(pepmNum) && pepmNum > 0;
+  const hasPeoBadge = hasPepm || hasMonthly;
+  const fmtUsd0 = (n: number) => n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+  // Headline is the monthly fee; the per-employee rate rides in the label row
+  // so both prices fit without growing the badge (same 3 rows, same width).
+  const peoBadgeValue = hasMonthly ? fmtUsd0(monthlyNum) : hasPepm ? fmtUsd0(pepmNum) : null;
+  const peoBadgeSub = hasMonthly ? "/mo" : "/ee/mo";
+  const peoBadgeLabel = hasMonthly && hasPepm
+    ? `peo · ${fmtUsd0(pepmNum)}/employee`
+    : hasPepm
+      ? "peo per employee"
+      : "peo monthly fee";
 
   // Header-over-map palette: glyphs sit on the map artwork, so these branch on
   // theme like the map itself (intentional artwork greys, not surface tokens).
@@ -908,11 +1002,13 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
                 Wraps under the identity block on narrow widths instead of colliding. */}
             {/* KPI numbers are display-only — keep the cluster click-transparent
                 so markers underneath stay clickable; only the X re-enables. */}
-            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "flex-end", columnGap: 26, rowGap: 10, flex: "0 1 auto", minWidth: 0 }}>
+            {/* Sizes scale with viewport (clamp) so all four KPIs stay on one
+                row even at mobile widths instead of wrapping/jumbling. */}
+            <div style={{ display: "flex", flexWrap: "nowrap", alignItems: "flex-start", justifyContent: "flex-end", columnGap: "clamp(8px, 2.4vw, 26px)", rowGap: 10, flex: "0 1 auto", minWidth: 0 }}>
               {kpis.map(({ label, metric, Icon, value, exModColor: exColor }) => {
                 const isDash = value === "\u2014";
                 const numberStyle: CSSProperties = {
-                  fontSize: 26, fontWeight: 600, lineHeight: 1.15, marginTop: 3, fontVariantNumeric: "tabular-nums",
+                  fontSize: "clamp(14px, 3.2vw, 26px)", fontWeight: 600, lineHeight: 1.15, marginTop: 3, fontVariantNumeric: "tabular-nums",
                   ...(isDash || label === "EXMOD"
                     ? // EXMOD stays neutral like the other header text — health is
                       // conveyed by the status dot beside it, never by tinted numerals.
@@ -936,8 +1032,8 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
                     onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setQuoteDetail(metric); setTab("quote"); } }}
                     style={{ textAlign: "right", pointerEvents: "auto", cursor: "pointer" }}
                   >
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 5, fontSize: 10, letterSpacing: "0.08em", fontWeight: 600, color: hdrSoftGrey, textTransform: "uppercase" }}>
-                      <Icon style={{ width: 13, height: 13, color: hdrSoftGrey }} />
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 5, fontSize: "clamp(8px, 1.3vw, 10px)", letterSpacing: "0.08em", fontWeight: 600, color: hdrSoftGrey, textTransform: "uppercase", whiteSpace: "nowrap" }}>
+                      <Icon style={{ width: "clamp(9px, 1.7vw, 13px)", height: "clamp(9px, 1.7vw, 13px)", color: hdrSoftGrey }} />
                       {label}
                     </div>
                     {showDot ? (
@@ -962,29 +1058,27 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
             </div>
           </div>
 
-          {/* Est. premium bubble — quiet pill under the KPI row ("Ghost Line"
-              graduation). Whisper-weight: no CTA look; clicking opens the
-              Quote tab where pricing actions now live. */}
-          {estPremiumFmt && (
-            <div style={{ position: "relative", zIndex: 1, display: "flex", justifyContent: "flex-end", padding: "10px 44px 0 18px", pointerEvents: "none" }}>
-              <div
-                role="button"
-                tabIndex={0}
-                data-testid="bubble-est-premium"
-                title="View quote details"
-                onClick={() => setTab("quote")}
-                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setTab("quote"); } }}
-                style={{
-                  pointerEvents: "auto", cursor: "pointer", display: "flex", alignItems: "center", gap: 8,
-                  padding: "6px 12px", borderRadius: 9999,
-                  background: c.isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)",
-                  border: `1px solid ${c.isDark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.10)"}`,
-                  boxShadow: "0 2px 10px rgba(0,0,0,0.25)",
-                }}
-              >
-                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "rgba(233,30,140,0.6)", flexShrink: 0 }} />
-                <span style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600, color: hdrSoftGrey }}>Est. Premium</span>
-                <span style={{ fontSize: 13, fontWeight: 600, color: hdrValue, fontVariantNumeric: "tabular-nums" }}>{estPremiumFmt}</span>
+          {/* Price badges — WC annual premium + PEO PEPM (when a PEO indication
+              exists). Mini glowing shield badges replace the old quiet
+              est-premium pill. Clicking either badge opens the Quote tab. */}
+          {(estPremiumFmt || hasPeoBadge) && (
+            <div style={{ position: "relative", zIndex: 1, display: "flex", justifyContent: "flex-end", padding: "8px 44px 0 18px", pointerEvents: "none" }}>
+              <div data-testid="header-price-badges" style={{ display: "flex", gap: 10, pointerEvents: "auto", alignItems: "flex-end" }}>
+                {estPremiumFmt && (
+                  <MiniBadge
+                    value={estPremiumFmt}
+                    label="wc annual premium"
+                    onClick={openIndicationForm}
+                  />
+                )}
+                {hasPeoBadge && peoBadgeValue && (
+                  <MiniBadge
+                    value={peoBadgeValue}
+                    sub={peoBadgeSub}
+                    label={peoBadgeLabel}
+                    onClick={openIndicationForm}
+                  />
+                )}
               </div>
             </div>
           )}
@@ -1171,8 +1265,10 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
             })}
           </div>
 
-          {/* Content */}
-          <div style={{ flex: 1, minWidth: 0, padding: 14, overflow: "auto" }}>
+          {/* Content — the primary Request Proposal action lives in the
+              TaskDrawer's "Next Action" card, not above the tab content. */}
+          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+          <div style={{ flex: 1, minWidth: 0, minHeight: 0, padding: 14, overflow: "auto" }}>
             {!payload ? (
               loadError ? (
                 <div style={{ padding: "40px 0", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
@@ -1257,10 +1353,22 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
               </>
             )}
           </div>
+          </div>
 
           {/* Persistent, collapsible task drawer — replaces the old Tasks tab
               so tasks stay in view on every tab. */}
-          <TaskDrawer dealId={dealId} timeWindow={timeWindow} />
+          <TaskDrawer
+            dealId={dealId}
+            timeWindow={timeWindow}
+            nextAction={payload ? {
+              label: "Request Proposal",
+              hint: (() => {
+                const n = (payload.sections ?? []).filter((s) => s.status !== "complete").length;
+                return n > 0 ? `${n} section${n > 1 ? "s" : ""} to complete` : null;
+              })(),
+              onClick: openIndicationForm,
+            } : undefined}
+          />
         </div>
       </div>
 
@@ -1274,5 +1382,79 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
       />
     </div>,
     document.body,
+  );
+}
+
+/**
+ * MiniBadge — scaled-down version of the indication screen's premium badge.
+ * Pink glowing 1.5px border, dark inner card, floating shield icon, white
+ * value + thin divider + small label. Theme-independent (always dark card so
+ * the badge reads as a premium element against the map header background).
+ */
+function MiniBadge({
+  value,
+  label,
+  sub,
+  width = 128,
+  onClick,
+}: {
+  value: string;
+  label: string;
+  sub?: string;
+  width?: number;
+  onClick?: () => void;
+}) {
+  return (
+    <div
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={onClick ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } } : undefined}
+      style={{ position: "relative", paddingTop: 15, width, flexShrink: 0, cursor: onClick ? "pointer" : "default" }}
+    >
+      <img
+        src={wcShieldIcon}
+        alt=""
+        style={{
+          position: "absolute",
+          top: 0,
+          left: "50%",
+          transform: "translateX(-50%)",
+          width: 28,
+          height: "auto",
+          zIndex: 2,
+          pointerEvents: "none",
+          filter: "drop-shadow(0 4px 10px rgba(233,30,140,0.55))",
+        }}
+      />
+      <div
+        style={{
+          borderRadius: 11,
+          padding: 1.5,
+          background: BADGE_PINK,
+          boxShadow: "0 0 16px rgba(233,30,140,0.40)",
+        }}
+      >
+        <div
+          style={{
+            borderRadius: 9.5,
+            background: "#0a0a12",
+            padding: "14px 8px 7px",
+            textAlign: "center",
+          }}
+        >
+          <div style={{ fontSize: 15, fontWeight: 800, color: "#fff", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
+            {value}
+            {sub && (
+              <span style={{ fontSize: 8.5, fontWeight: 600, color: "rgba(255,255,255,0.55)", marginLeft: 2 }}>{sub}</span>
+            )}
+          </div>
+          <div style={{ height: 1, background: "rgba(255,255,255,0.18)", margin: "6px auto", maxWidth: 80 }} />
+          <div style={{ fontSize: 8, color: "rgba(255,255,255,0.65)", letterSpacing: "0.05em", whiteSpace: "nowrap", textTransform: "uppercase" }}>
+            {label}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

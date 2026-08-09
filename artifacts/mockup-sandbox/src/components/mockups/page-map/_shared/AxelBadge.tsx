@@ -1,0 +1,24 @@
+const COLOR_MAP: Record<string, string> = {
+  pink: '#E91E8C', purple: '#7C3AED', green: '#22c55e',
+  red: '#ef4444', yellow: '#eab308', blue: '#3b82f6', gray: '#6b7280',
+};
+
+interface AxelBadgeProps {
+  label: string;
+  color?: string;
+  bgOpacity?: number;
+}
+
+export function AxelBadge({ label, color = 'gray', bgOpacity = 0.15 }: AxelBadgeProps) {
+  const resolved = COLOR_MAP[color] || color;
+  const alpha = Math.round(bgOpacity * 255).toString(16).padStart(2, '0');
+  return (
+    <span style={{
+      display: 'inline-block', fontSize: '12px', fontWeight: 500,
+      padding: '3px 10px', borderRadius: '9999px',
+      background: `${resolved}${alpha}`, color: resolved, whiteSpace: 'nowrap',
+    }}>
+      {label}
+    </span>
+  );
+}
