@@ -47,6 +47,18 @@ function hasValue(val: string | null): boolean {
   return !isNaN(n) && n > 0;
 }
 
+/** Format a raw digit string with thousands separators for display ("1250000" → "1,250,000"). */
+function fmtCurrencyInput(raw: string): string {
+  const digits = raw.replace(/[^\d]/g, "");
+  if (!digits) return "";
+  return Number(digits).toLocaleString("en-US");
+}
+
+/** Strip formatting back to a plain digit string ("1,250,000" → "1250000"). */
+function parseCurrencyInput(display: string): string {
+  return display.replace(/[^\d]/g, "");
+}
+
 function fmtUsd(val: string | number | null): string {
   if (val == null || val === "") return "\u2014";
   const n = typeof val === "string" ? parseFloat(val) : val;
@@ -146,7 +158,7 @@ export default function PricingRail({
   const [wfsEditErr, setWfsEditErr] = useState<string | null>(null);
 
   const openWfsEditor = () => {
-    setWfsPayroll(wfsDefaults?.annualPayroll ? String(wfsDefaults.annualPayroll) : "");
+    setWfsPayroll(wfsDefaults?.annualPayroll ? String(Math.round(wfsDefaults.annualPayroll)) : "");
     setWfsHeadcount(wfsDefaults?.headcount ? String(wfsDefaults.headcount) : "");
     setWfsEditErr(null);
     setWfsEditing(true);
@@ -309,7 +321,15 @@ export default function PricingRail({
             <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
               <div>
                 <label style={miniLabel}>Annual Payroll ($)</label>
-                <input type="number" min="1" value={wfsPayroll} onChange={(e) => setWfsPayroll(e.target.value)} style={miniInput} disabled={wfsBusy} />
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="e.g. 1,250,000"
+                  value={fmtCurrencyInput(wfsPayroll)}
+                  onChange={(e) => setWfsPayroll(parseCurrencyInput(e.target.value))}
+                  style={miniInput}
+                  disabled={wfsBusy}
+                />
               </div>
               <div>
                 <label style={miniLabel}>Headcount</label>
