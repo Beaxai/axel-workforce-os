@@ -18,6 +18,7 @@ import {
   FieldLabel,
   TextInput,
   NumberInput,
+  CurrencyInput,
   SelectInput,
   MultiSelect,
   YesNoToggle,
@@ -67,6 +68,8 @@ function StatusChip({ section }: { section: SectionView }) {
 
 /** Field keys rendered with the wizard's state multi-select. */
 const STATE_ARRAY_KEYS = new Set(["statesOfOperation"]);
+/** Number fields that are dollar amounts — rendered with a $ prefix + thousands separators. */
+const CURRENCY_KEYS = new Set(["annualPayroll", "annualRevenue"]);
 const STATE_SELECT_KEYS = new Set(["state"]);
 
 export default function SubmissionTab({
@@ -192,6 +195,17 @@ export default function SubmissionTab({
       );
     }
     if (f.type === "number") {
+      // Dollar-amount fields get thousands-separator formatting while typing;
+      // the draft keeps raw digits so the save payload stays numeric.
+      if (CURRENCY_KEYS.has(f.key)) {
+        return (
+          <CurrencyInput
+            value={v ? Number(String(v).replace(/[^\d]/g, "")).toLocaleString("en-US") : ""}
+            onChange={(val) => setValue(sKey, f.key, val.replace(/[^\d]/g, ""))}
+            disabled={disabled}
+          />
+        );
+      }
       return (
         <NumberInput value={v} onChange={(val) => setValue(sKey, f.key, val)} disabled={disabled} />
       );

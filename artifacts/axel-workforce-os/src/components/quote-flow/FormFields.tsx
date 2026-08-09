@@ -86,11 +86,12 @@ export function TextInput({ value, onChange, placeholder, type = "text", error, 
   );
 }
 
-export function CurrencyInput({ value, onChange, placeholder, error }: {
+export function CurrencyInput({ value, onChange, placeholder, error, disabled }: {
   value: string;
   onChange: (val: string) => void;
   placeholder?: string;
   error?: string;
+  disabled?: boolean;
 }) {
   return (
     <div style={{ position: "relative" }}>
@@ -103,8 +104,16 @@ export function CurrencyInput({ value, onChange, placeholder, error }: {
           onChange(raw ? Number(raw).toLocaleString() : "");
         }}
         placeholder={placeholder}
-        style={{ ...inputBase, paddingLeft: 28, borderColor: error ? "#ef4444" : "var(--input-border)" }}
-        onFocus={(e) => (e.currentTarget.style.borderColor = "var(--input-border-focus)")}
+        inputMode="numeric"
+        disabled={disabled}
+        style={{
+          ...inputBase,
+          paddingLeft: 28,
+          borderColor: error ? "#ef4444" : "var(--input-border)",
+          opacity: disabled ? 0.5 : 1,
+          cursor: disabled ? "not-allowed" : "text",
+        }}
+        onFocus={(e) => { if (!disabled) e.currentTarget.style.borderColor = "var(--input-border-focus)"; }}
         onBlur={(e) => (e.currentTarget.style.borderColor = error ? "#ef4444" : "var(--input-border)")}
       />
       {error && <p style={{ fontSize: 12, color: "#ef4444", margin: "4px 0 0" }}>{error}</p>}
