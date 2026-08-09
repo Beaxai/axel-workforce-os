@@ -51,6 +51,33 @@ instructions. This block gets updated as items finish and move into the log belo
 
 ---
 
+## 2026-08-09 — State Doc v2.7 in, Replit resynced, mockup sandbox retired
+
+**Truth docs:** Curtis's State Document v2.7 and the master process flowchart are now
+in the repo (`docs/STATE_DOCUMENT_v2.7.md`, `docs/MASTER_FLOW_v2.7.svg` + a text
+transcription agents can read). The open-questions doc was reconciled against v2.7 —
+seven questions answered (SignWell, Resend, client self-registration, stage placement,
+duplicate blocking, 8 stages, doc update), and two answers became build items: complete
+submissions must land in U/W Review (code currently does the opposite), and duplicate
+submissions get a hard block, not a warning. One logged deviation: the flowchart
+arrived labeled v2.5; relabeled v2.7 on Brendan's instruction (only that one line
+changed — verified by diff).
+
+**Replit resync:** Replit had 21 local commits that never reached GitHub (the fork
+pattern again). Recovered via a temp branch and merged: the deal-card work (PricingRail,
+WC+PEO price badges — unreviewed UI concepts, Curtis heads-up pending) and a schema
+guard that stops Replit's silent `db push` aborts. Rejected from the merge: the
+deletion of `allowBuilds` from pnpm-workspace.yaml (would risk breaking esbuild).
+
+**Mockup sandbox removed** (Brendan's decision): `artifacts/mockup-sandbox` deleted
+from the repo — it was a throwaway UI playground, never part of the product, and the
+Replit agent kept parking unreviewed UI experiments there. UI concepts now need a
+different route to Curtis (screenshots or a branch). References cleaned: `.replit`,
+CLAUDE.md, lockfile. Typecheck green across libs, frontend, api-server after both
+the merge and the removal.
+
+---
+
 ## 2026-08-02 (later) — Deposit monitor: the clock and the reminder are live
 
 **What it is:** the carrier-deposit watcher from the binding process (State Doc §6E).

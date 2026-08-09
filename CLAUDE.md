@@ -93,7 +93,6 @@ Secrets live in Replit's env — a missing `.env` is normal, not a red flag.
 ### Workspace layout
 - `artifacts/api-server` (`@workspace/api-server`) — Express 5 backend
 - `artifacts/axel-workforce-os` (`@workspace/axel-workforce-os`) — React 19 + Vite frontend
-- `artifacts/mockup-sandbox` — throwaway UI mockup playground; not part of the product
 - `lib/api-spec` (`@workspace/api-spec`) — OpenAPI spec + Orval codegen config (source of truth)
 - `lib/api-zod` (`@workspace/api-zod`) — **generated** Zod schemas
 - `lib/api-client-react` (`@workspace/api-client-react`) — **generated** React Query hooks + fetch client
