@@ -11,8 +11,31 @@ import {
   dealDocumentsTable,
 } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
+import { buildSections } from "../lib/deal-sections";
+import { accountsTable } from "@workspace/db";
 
 const router: IRouter = Router();
+
+/**
+ * A proposal may only be sent to underwriting once the deal's submission is
+ * complete — every required field across all six sections. Returns null when
+ * complete, otherwise the list of incomplete section labels.
+ */
+async function incompleteSubmissionSections(dealId: string): Promise<string[] | null> {
+  const [deal] = await db.select().from(dealsTable).where(eq(dealsTable.id, dealId)).limit(1);
+  if (!deal) return ["Deal not found"];
+  const [account] = deal.accountId
+    ? await db.select().from(accountsTable).where(eq(accountsTable.id, deal.accountId)).limit(1)
+    : [null];
+  const [lossDoc] = await db
+    .select({ id: lossHistoryDocumentsTable.id })
+    .from(lossHistoryDocumentsTable)
+    .where(eq(lossHistoryDocumentsTable.dealId, dealId))
+    .limit(1);
+  const { sections, aggregateComplete, total } = buildSections(deal, account ?? null, !!lossDoc);
+  if (aggregateComplete >= total) return null;
+  return sections.filter((s) => s.status !== "complete").map((s) => s.label);
+}
 
 router.post("/", async (req, res) => {
   try {
@@ -97,43 +120,101 @@ router.post("/:proposalId/request-approved-proposal", async (req, res) => {
       return res.status(404).json({ error: "Proposal not found." });
     }
 
+    // Idempotent replay: if underwriting was already requested (e.g. a retry
+    // after a lost response), report success with the existing package rather
+    // than erroring or double-submitting.
     if (proposal.status === "underwriting_notified" || proposal.status === "approved_proposal_requested") {
-      return res.status(400).json({ error: "Underwriting submission has already been requested for this proposal." });
+      const [existingPkg] = await db
+        .select()
+        .from(underwritingPackagesTable)
+        .where(eq(underwritingPackagesTable.proposalId, proposalId))
+        .orderBy(desc(underwritingPackagesTable.createdAt))
+        .limit(1);
+      return res.json({
+        success: true,
+        alreadyRequested: true,
+        uwPackageId: existingPkg?.id ?? null,
+        message: "Underwriting submission was already requested for this proposal.",
+      });
+    }
+
+    // Gate on submission completeness — every required field must be filled
+    // before the deal can go to underwriting.
+    if (proposal.dealId) {
+      const incomplete = await incompleteSubmissionSections(proposal.dealId);
+      if (incomplete) {
+        return res.status(400).json({
+          error: `Submission incomplete — finish these sections first: ${incomplete.join(", ")}.`,
+          incompleteSections: incomplete,
+        });
+      }
     }
 
     const triggerType = "staff_manual";
 
-    const [uwPackage] = await db.insert(underwritingPackagesTable).values({
-      dealId: proposal.dealId!,
-      proposalId: proposalId,
-      triggerType,
-      status: "pending",
-    }).returning();
+    // Single transaction with a row lock so concurrent requests cannot both
+    // observe a pre-request status and create duplicate UW packages.
+    const outcome = await db.transaction(async (tx) => {
+      const [locked] = await tx
+        .select()
+        .from(proposalsTable)
+        .where(eq(proposalsTable.id, proposalId))
+        .for("update");
+      if (!locked) return { kind: "missing" as const };
+      if (locked.status === "underwriting_notified" || locked.status === "approved_proposal_requested") {
+        const [existingPkg] = await tx
+          .select()
+          .from(underwritingPackagesTable)
+          .where(eq(underwritingPackagesTable.proposalId, proposalId))
+          .orderBy(desc(underwritingPackagesTable.createdAt))
+          .limit(1);
+        return { kind: "already" as const, uwPackageId: existingPkg?.id ?? null };
+      }
 
-    await db.update(proposalsTable)
-      .set({ status: "approved_proposal_requested", updatedAt: new Date() })
-      .where(eq(proposalsTable.id, proposalId));
+      const [uwPackage] = await tx.insert(underwritingPackagesTable).values({
+        dealId: locked.dealId!,
+        proposalId: proposalId,
+        triggerType,
+        status: "pending",
+      }).returning();
 
-    await db.update(dealsTable)
-      .set({ proposalStatus: "approved_proposal_requested" })
-      .where(eq(dealsTable.id, proposal.dealId!));
+      await tx.update(proposalsTable)
+        .set({ status: "approved_proposal_requested", updatedAt: new Date() })
+        .where(eq(proposalsTable.id, proposalId));
 
-    await db.insert(activityLogTable).values({
-      dealId: proposal.dealId!,
-      entityType: "proposal",
-      entityId: proposalId,
-      eventType: "approved_proposal_requested",
-      description: `Approved proposal requested. Underwriting package assembly initiated.`,
-      metadata: { proposal_id: proposalId, trigger_type: triggerType, uw_package_id: uwPackage.id },
+      await tx.update(dealsTable)
+        .set({ proposalStatus: "approved_proposal_requested" })
+        .where(eq(dealsTable.id, locked.dealId!));
+
+      await tx.insert(activityLogTable).values({
+        dealId: locked.dealId!,
+        entityType: "proposal",
+        entityId: proposalId,
+        eventType: "approved_proposal_requested",
+        description: `Approved proposal requested. Underwriting package assembly initiated.`,
+        metadata: { proposal_id: proposalId, trigger_type: triggerType, uw_package_id: uwPackage.id },
+      });
+
+      return { kind: "created" as const, uwPackageId: uwPackage.id, dealId: locked.dealId! };
     });
 
-    assembleAndSendUwPackage(uwPackage.id, proposal.dealId!, proposalId).catch(err =>
+    if (outcome.kind === "missing") return res.status(404).json({ error: "Proposal not found." });
+    if (outcome.kind === "already") {
+      return res.json({
+        success: true,
+        alreadyRequested: true,
+        uwPackageId: outcome.uwPackageId,
+        message: "Underwriting submission was already requested for this proposal.",
+      });
+    }
+
+    assembleAndSendUwPackage(outcome.uwPackageId, outcome.dealId, proposalId).catch(err =>
       console.error("UW package assembly failed:", err)
     );
 
     return res.json({
       success: true,
-      uwPackageId: uwPackage.id,
+      uwPackageId: outcome.uwPackageId,
       message: "Request received. Underwriting team will be notified shortly.",
     });
   } catch (err: any) {

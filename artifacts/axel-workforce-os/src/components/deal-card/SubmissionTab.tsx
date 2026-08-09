@@ -35,6 +35,12 @@ interface SubmissionTabProps {
   savingSection: string | null;
   /** Persist changed fields for one section; resolves true on success. */
   onSaveSection: (sectionKey: string, fields: Record<string, unknown>) => Promise<boolean>;
+  /** Whether the actor may submit this deal for proposal (internal sales roles). */
+  canRequestProposal?: boolean;
+  /** Deal's current proposalStatus (null when no proposal exists yet). */
+  proposalStatus?: string | null;
+  /** Submit the completed submission for proposal; resolves true on success. */
+  onRequestProposal?: () => Promise<boolean>;
 }
 
 /** Canonical string form of a field value for draft comparison/editing. */
@@ -79,9 +85,34 @@ export default function SubmissionTab({
   access,
   savingSection,
   onSaveSection,
+  canRequestProposal = false,
+  proposalStatus,
+  onRequestProposal,
 }: SubmissionTabProps) {
   const c = useThemeColors();
   const pct = total > 0 ? Math.round((aggregateComplete / total) * 100) : 0;
+
+  // "Submit for Proposal" CTA state. The button unlocks only when every
+  // section's required fields are complete; the server enforces the same gate.
+  const allComplete = total > 0 && aggregateComplete >= total;
+  const alreadyRequested = proposalStatus === "approved_proposal_requested" || proposalStatus === "underwriting_notified";
+  const [proposalBusy, setProposalBusy] = useState(false);
+  const [proposalError, setProposalError] = useState<string | null>(null);
+  const handleRequestProposal = async () => {
+    if (!onRequestProposal || proposalBusy) return;
+    setProposalBusy(true);
+    setProposalError(null);
+    try {
+      const ok = await onRequestProposal();
+      if (!ok) setProposalError("Could not submit for proposal. Try again.");
+    } catch (e) {
+      // api.ts JSON-stringifies server error bodies — strip the quotes for display.
+      const raw = e instanceof Error ? e.message : "";
+      setProposalError(raw ? raw.replace(/^"|"$/g, "") : "Could not submit for proposal. Try again.");
+    } finally {
+      setProposalBusy(false);
+    }
+  };
 
   // Drafts hold ONLY touched fields, keyed "<sectionKey>.<fieldKey>". Values
   // for untouched fields always come from the server payload, so a successful
@@ -234,6 +265,48 @@ export default function SubmissionTab({
         <div style={{ height: 6, borderRadius: 9999, background: c.cardBg, overflow: "hidden" }}>
           <div style={{ width: `${pct}%`, height: "100%", background: "var(--accent-primary)", transition: "width 0.3s" }} />
         </div>
+
+        {canRequestProposal && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 4 }}>
+            {alreadyRequested ? (
+              <div
+                style={{
+                  display: "flex", alignItems: "center", gap: 8, padding: "9px 12px", borderRadius: 8,
+                  border: `1px solid ${c.borderColor}`, background: c.cardBg, fontSize: 12.5, color: c.textSecondary,
+                }}
+              >
+                <span style={{ width: 7, height: 7, borderRadius: "50%", background: STATUS_COLORS.complete, display: "inline-block" }} />
+                {proposalStatus === "underwriting_notified"
+                  ? "Submitted for proposal — underwriting has been notified."
+                  : "Submitted for proposal — underwriting package is being prepared."}
+              </div>
+            ) : (
+              <>
+                <button
+                  onClick={() => void handleRequestProposal()}
+                  disabled={!allComplete || proposalBusy}
+                  title={allComplete ? undefined : `Complete all ${total} sections to submit for proposal`}
+                  style={{
+                    width: "100%", textAlign: "center", fontSize: 13, borderRadius: 8, padding: "10px 12px",
+                    fontWeight: 600, color: "#fff", background: "var(--gradient-cta)", border: "none",
+                    fontFamily: "inherit", opacity: allComplete && !proposalBusy ? 1 : 0.5,
+                    cursor: allComplete && !proposalBusy ? "pointer" : "not-allowed",
+                  }}
+                >
+                  {proposalBusy ? "Submitting\u2026" : "Submit for Proposal"}
+                </button>
+                {!allComplete && (
+                  <div style={{ fontSize: 11, color: c.textMuted }}>
+                    Complete the remaining {total - aggregateComplete} section{total - aggregateComplete === 1 ? "" : "s"} below to submit for proposal.
+                  </div>
+                )}
+                {proposalError && (
+                  <div style={{ fontSize: 11, color: "#ef4444", lineHeight: 1.45 }}>{proposalError}</div>
+                )}
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {sections.map((s) => {

@@ -428,6 +428,44 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
     }
   }, [wfsBusy, deriveWfsInputs, dealId]);
 
+  // "Submit for Proposal" from the Submission tab: find (or create) the
+  // deal's proposal, then request the approved proposal — the server rejects
+  // the request unless every submission section is complete.
+  const handleRequestProposal = useCallback(async (): Promise<boolean> => {
+    const seq = loadSeqRef.current;
+    const markRequested = async (status: string) => {
+      if (seq !== loadSeqRef.current) return; // deal changed — skip state writes
+      setPayload((p) => (p ? { ...p, deal: { ...p.deal, proposalStatus: status } } : p));
+      await fetchActivity();
+      onDealUpdated?.();
+    };
+    // Existing proposal for the deal, if any. If underwriting was already
+    // requested (e.g. an earlier attempt whose response was lost), just
+    // reconcile local state instead of re-posting.
+    const existing = await api.get<{ proposal: { id: string; status: string } | null }>(`/proposals/${dealId}`);
+    if (existing?.proposal && (existing.proposal.status === "approved_proposal_requested" || existing.proposal.status === "underwriting_notified")) {
+      await markRequested(existing.proposal.status);
+      return true;
+    }
+    let proposalId = existing?.proposal?.id ?? null;
+    if (!proposalId) {
+      // Prefer creating from the deal's quote (carries pricing); fall back to
+      // a bare draft ONLY when the deal genuinely has no quote yet.
+      try {
+        const created = await api.post<{ success: boolean; proposal?: { id: string } }>(`/proposals/${dealId}/create-from-quote`, {});
+        proposalId = created?.proposal?.id ?? null;
+      } catch (e) {
+        if (!(e instanceof Error && /no quote/i.test(e.message))) throw e;
+        const created = await api.post<{ success: boolean; proposal?: { id: string } }>(`/proposals`, { deal_id: dealId });
+        proposalId = created?.proposal?.id ?? null;
+      }
+    }
+    if (!proposalId) return false;
+    await api.post<{ success: boolean }>(`/proposals/${proposalId}/request-approved-proposal`, {});
+    await markRequested("approved_proposal_requested");
+    return true;
+  }, [dealId, fetchActivity, onDealUpdated]);
+
   // Inline WC "Modify" editor on the rail — preview re-rates without
   // persisting; apply promotes the levers onto the quote (both internal-staff
   // only, enforced server-side).
@@ -1364,7 +1402,7 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
                     onApplyLevers={handleApplyLevers}
                   />
                 )}
-                {tab === "submission" && <SubmissionTab key={dealId} sections={sections} aggregateComplete={payload.aggregateComplete} total={payload.total} access={payload.access} savingSection={savingSection} onSaveSection={handleSaveSection} />}
+                {tab === "submission" && <SubmissionTab key={dealId} sections={sections} aggregateComplete={payload.aggregateComplete} total={payload.total} access={payload.access} savingSection={savingSection} onSaveSection={handleSaveSection} canRequestProposal={isInternal} proposalStatus={(deal?.proposalStatus as string | null) ?? null} onRequestProposal={handleRequestProposal} />}
                 {tab === "subjectivities" && <SubjectivitiesTab dealId={dealId} />}
                 {tab === "documents" && <DocumentsTab dealId={dealId} timeWindow={timeWindow} />}
                 {tab === "tasks" && (
