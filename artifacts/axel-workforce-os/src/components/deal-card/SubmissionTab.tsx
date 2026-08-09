@@ -1,12 +1,15 @@
 /**
- * Phase 4C — Submission tab, inline wizard-style form.
- * Replaces the previous section-card + overlay-editor pattern: every section
- * renders its fields directly on the tab as editable form inputs (quote-wizard
- * styling via the shared FormFields components), split into the same sections
- * as before. Edits are tracked per section; a Save/Discard row appears once a
- * section has changes. Edit access stays server-gated (spec §8) — fields in
- * sections the viewer can't edit (and readOnly/computed fields) are disabled.
- * Completeness still comes straight from the server payload.
+ * Submission tab — accordion card design.
+ * Visual: a single rounded outer card containing all sections as accordion rows.
+ * Each row: [Icon] Section name · · · [dot] [status] [pencil] [chevron]
+ * Expanded: 3-column read-only label/value grid; pencil switches to edit mode
+ * with the existing wizard-form inputs.
+ *
+ * All behaviour preserved from the prior version:
+ *   - Per-section pencil edit mode, Save / Discard
+ *   - Dirty sections stay open and skip the collapse toggle
+ *   - focusRequest deep-link from header KPI tiles (scroll + highlight)
+ *   - canRequestProposal / Submit for Proposal CTA
  */
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, Pencil } from "lucide-react";
@@ -42,13 +45,13 @@ interface SubmissionTabProps {
   /** Submit the completed submission for proposal; resolves true on success. */
   onRequestProposal?: () => Promise<boolean>;
   /**
-   * Scroll-to-section request (e.g. from a header KPI click). `token` changes
-   * on every request so repeat clicks on the same KPI still retrigger.
+   * Scroll-to-section request from a header KPI click. `token` changes on
+   * every call so repeat clicks on the same KPI retrigger the scroll.
    */
   focusRequest?: { section: string; field?: string; token: number } | null;
 }
 
-/** Canonical string form of a field value for draft comparison/editing. */
+/** Canonical string form of a field value for draft comparison / editing. */
 function inputValue(f: SectionFieldView): string {
   if (f.value == null) return "";
   if (f.type === "array") return Array.isArray(f.value) ? f.value.join(",") : String(f.value);
@@ -63,24 +66,9 @@ function displayValue(f: SectionFieldView): string {
   return String(f.value);
 }
 
-function StatusChip({ section }: { section: SectionView }) {
-  const c = useThemeColors();
-  const dot = (bg: string) => (
-    <span style={{ width: 7, height: 7, borderRadius: "50%", background: bg, display: "inline-block" }} />
-  );
-  return (
-    <span style={{ fontSize: 11, color: c.textMuted, display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}>
-      {section.status === "complete" && <>{dot(STATUS_COLORS.complete)}Complete</>}
-      {section.status === "partial" && <>{dot(STATUS_COLORS.partial)}{section.missing} missing</>}
-      {section.status === "not_started" && <>{dot(STATUS_COLORS.not_started)}Not started</>}
-    </span>
-  );
-}
-
-/** Field keys rendered with the wizard's state multi-select. */
-const STATE_ARRAY_KEYS = new Set(["statesOfOperation"]);
-/** Number fields that are dollar amounts — rendered with a $ prefix + thousands separators. */
+/** Number fields that are dollar amounts. */
 const CURRENCY_KEYS = new Set(["annualPayroll", "annualRevenue"]);
+const STATE_ARRAY_KEYS = new Set(["statesOfOperation"]);
 const STATE_SELECT_KEYS = new Set(["state"]);
 
 export default function SubmissionTab({
@@ -98,12 +86,13 @@ export default function SubmissionTab({
   const c = useThemeColors();
   const pct = total > 0 ? Math.round((aggregateComplete / total) * 100) : 0;
 
-  // "Submit for Proposal" CTA state. The button unlocks only when every
-  // section's required fields are complete; the server enforces the same gate.
   const allComplete = total > 0 && aggregateComplete >= total;
-  const alreadyRequested = proposalStatus === "approved_proposal_requested" || proposalStatus === "underwriting_notified";
+  const alreadyRequested =
+    proposalStatus === "approved_proposal_requested" ||
+    proposalStatus === "underwriting_notified";
   const [proposalBusy, setProposalBusy] = useState(false);
   const [proposalError, setProposalError] = useState<string | null>(null);
+
   const handleRequestProposal = async () => {
     if (!onRequestProposal || proposalBusy) return;
     setProposalBusy(true);
@@ -112,7 +101,6 @@ export default function SubmissionTab({
       const ok = await onRequestProposal();
       if (!ok) setProposalError("Could not submit for proposal. Try again.");
     } catch (e) {
-      // api.ts JSON-stringifies server error bodies — strip the quotes for display.
       const raw = e instanceof Error ? e.message : "";
       setProposalError(raw ? raw.replace(/^"|"$/g, "") : "Could not submit for proposal. Try again.");
     } finally {
@@ -120,38 +108,31 @@ export default function SubmissionTab({
     }
   };
 
-  // Drafts hold ONLY touched fields, keyed "<sectionKey>.<fieldKey>". Values
-  // for untouched fields always come from the server payload, so a successful
-  // save (which refreshes `sections`) just needs the section's drafts cleared.
+  // Drafts hold only touched fields, keyed "<sectionKey>.<fieldKey>".
   const [drafts, setDrafts] = useState<Record<string, string>>({});
 
-  // Collapsed section keys. All sections start expanded; a section with
-  // unsaved edits cannot be collapsed (so dirty state is never hidden).
+  // Collapsed section keys — all start expanded.
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
-  // Sections are read-only by default — a static snapshot of the client's
-  // details. The pencil per section switches it into edit mode (reduces
-  // accidental edits); saving or discarding drops back to read-only.
+  // Per-section read-only → edit-mode toggle.
   const [editing, setEditing] = useState<Set<string>>(new Set());
   const setEditingFor = (sKey: string, on: boolean) =>
     setEditing((prev) => {
       const next = new Set(prev);
-      if (on) next.add(sKey);
-      else next.delete(sKey);
+      if (on) next.add(sKey); else next.delete(sKey);
       return next;
     });
+
   const toggleCollapsed = (sKey: string, dirty: boolean) => {
     if (dirty) return;
     setCollapsed((prev) => {
       const next = new Set(prev);
-      if (next.has(sKey)) next.delete(sKey);
-      else next.add(sKey);
+      if (next.has(sKey)) next.delete(sKey); else next.add(sKey);
       return next;
     });
   };
 
-  // Header-KPI deep link: expand the target section, scroll it into view, and
-  // briefly highlight the specific field so the eye lands on the right spot.
+  // Header KPI deep-link: expand target, scroll to it, briefly highlight the field.
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [highlightField, setHighlightField] = useState<string | null>(null);
   useEffect(() => {
@@ -162,7 +143,6 @@ export default function SubmissionTab({
       next.delete(focusRequest.section);
       return next;
     });
-    // Scroll after the section has expanded/rendered.
     const t = setTimeout(() => {
       sectionRefs.current[focusRequest.section]?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 50);
@@ -198,43 +178,29 @@ export default function SubmissionTab({
 
   const discardSection = (sKey: string) => {
     setDrafts((d) => Object.fromEntries(Object.entries(d).filter(([k]) => !k.startsWith(`${sKey}.`))));
-    setEditingFor(sKey, false); // back to the static snapshot
+    setEditingFor(sKey, false);
   };
 
   const handleSave = async (section: SectionView) => {
     const fields = changedFields(section);
-    if (Object.keys(fields).length === 0) {
-      discardSection(section.key);
-      return;
-    }
-    // Snapshot the submitted draft entries; on success clear only those whose
-    // draft value is unchanged since submission (inputs are locked during the
-    // save, so this is belt-and-braces against races).
+    if (Object.keys(fields).length === 0) { discardSection(section.key); return; }
     const submitted: Record<string, string> = {};
-    for (const fKey of Object.keys(fields)) submitted[draftKey(section.key, fKey)] = drafts[draftKey(section.key, fKey)];
+    for (const fKey of Object.keys(fields))
+      submitted[draftKey(section.key, fKey)] = drafts[draftKey(section.key, fKey)];
     const ok = await onSaveSection(section.key, fields);
     if (ok) {
       setDrafts((d) =>
         Object.fromEntries(Object.entries(d).filter(([k, v]) => !(k in submitted && submitted[k] === v))),
       );
-      setEditingFor(section.key, false); // saved — back to the static snapshot
+      setEditingFor(section.key, false);
     }
   };
 
   const fieldInput = (sKey: string, f: SectionFieldView, disabled: boolean) => {
     const v = valueFor(sKey, f);
     if (f.readOnly) {
-      // Derived/managed elsewhere — shown, never editable (matches prior overlay).
       return (
-        <div
-          style={{
-            padding: "12px 14px",
-            borderRadius: 10,
-            border: `1px dashed ${c.borderColor}`,
-            fontSize: 14,
-            color: c.textMuted,
-          }}
-        >
+        <div style={{ padding: "12px 14px", borderRadius: 10, border: `1px dashed ${c.borderColor}`, fontSize: 14, color: c.textMuted }}>
           {displayValue(f)}
         </div>
       );
@@ -271,8 +237,6 @@ export default function SubmissionTab({
       );
     }
     if (f.type === "number") {
-      // Dollar-amount fields get thousands-separator formatting while typing;
-      // the draft keeps raw digits so the save payload stays numeric.
       if (CURRENCY_KEYS.has(f.key)) {
         return (
           <CurrencyInput
@@ -282,9 +246,7 @@ export default function SubmissionTab({
           />
         );
       }
-      return (
-        <NumberInput value={v} onChange={(val) => setValue(sKey, f.key, val)} disabled={disabled} />
-      );
+      return <NumberInput value={v} onChange={(val) => setValue(sKey, f.key, val)} disabled={disabled} />;
     }
     return (
       <TextInput
@@ -298,14 +260,17 @@ export default function SubmissionTab({
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      {/* Aggregate completeness (relocated from the rail per §8 Stitch update) */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 7, marginBottom: 8 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+
+      {/* ── Completeness + Submit CTA ───────────────────────────────────── */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <span className="font-heading" style={{ fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", color: c.sectionHeading }}>
             Submission Completeness
           </span>
-          <span style={{ fontSize: 11, color: c.textMuted, fontWeight: 500 }}>{aggregateComplete} / {total} complete</span>
+          <span style={{ fontSize: 11, color: c.textMuted, fontWeight: 500 }}>
+            {aggregateComplete} / {total} complete
+          </span>
         </div>
         <div style={{ height: 6, borderRadius: 9999, background: c.cardBg, overflow: "hidden" }}>
           <div style={{ width: `${pct}%`, height: "100%", background: "var(--accent-primary)", transition: "width 0.3s" }} />
@@ -314,12 +279,7 @@ export default function SubmissionTab({
         {canRequestProposal && (
           <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 4 }}>
             {alreadyRequested ? (
-              <div
-                style={{
-                  display: "flex", alignItems: "center", gap: 8, padding: "9px 12px", borderRadius: 8,
-                  border: `1px solid ${c.borderColor}`, background: c.cardBg, fontSize: 12.5, color: c.textSecondary,
-                }}
-              >
+              <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 12px", borderRadius: 8, border: `1px solid ${c.borderColor}`, background: c.cardBg, fontSize: 12.5, color: c.textSecondary }}>
                 <span style={{ width: 7, height: 7, borderRadius: "50%", background: STATUS_COLORS.complete, display: "inline-block" }} />
                 {proposalStatus === "underwriting_notified"
                   ? "Submitted for proposal — underwriting has been notified."
@@ -331,12 +291,7 @@ export default function SubmissionTab({
                   onClick={() => void handleRequestProposal()}
                   disabled={!allComplete || proposalBusy}
                   title={allComplete ? undefined : `Complete all ${total} sections to submit for proposal`}
-                  style={{
-                    width: "100%", textAlign: "center", fontSize: 13, borderRadius: 8, padding: "10px 12px",
-                    fontWeight: 600, color: "#fff", background: "var(--gradient-cta)", border: "none",
-                    fontFamily: "inherit", opacity: allComplete && !proposalBusy ? 1 : 0.5,
-                    cursor: allComplete && !proposalBusy ? "pointer" : "not-allowed",
-                  }}
+                  style={{ width: "100%", textAlign: "center", fontSize: 13, borderRadius: 8, padding: "10px 12px", fontWeight: 600, color: "#fff", background: "var(--gradient-cta)", border: "none", fontFamily: "inherit", opacity: allComplete && !proposalBusy ? 1 : 0.5, cursor: allComplete && !proposalBusy ? "pointer" : "not-allowed" }}
                 >
                   {proposalBusy ? "Submitting\u2026" : "Submit for Proposal"}
                 </button>
@@ -345,53 +300,80 @@ export default function SubmissionTab({
                     Complete the remaining {total - aggregateComplete} section{total - aggregateComplete === 1 ? "" : "s"} below to submit for proposal.
                   </div>
                 )}
-                {proposalError && (
-                  <div style={{ fontSize: 11, color: "#ef4444", lineHeight: 1.45 }}>{proposalError}</div>
-                )}
+                {proposalError && <div style={{ fontSize: 11, color: "#ef4444", lineHeight: 1.45 }}>{proposalError}</div>}
               </>
             )}
           </div>
         )}
       </div>
 
-      {sections.map((s) => {
-        const Icon = sectionIcon(s.icon);
-        const canEdit = !!access[s.key];
-        const dirty = Object.keys(changedFields(s)).length > 0;
-        const saving = savingSection === s.key;
-        // Lock inputs while this section saves; block starting a second save
-        // anywhere while any save is in flight (single savingSection slot).
-        const inputsDisabled = !canEdit || saving;
-        const saveBlocked = savingSection !== null;
-        const isEditing = editing.has(s.key) || dirty; // dirty sections stay editable
-        const isCollapsed = collapsed.has(s.key) && !dirty; // dirty sections stay open
-        return (
-          <div
-            key={s.key}
-            ref={(el) => { sectionRefs.current[s.key] = el; }}
-            style={{ paddingBottom: isCollapsed ? 14 : 24, marginBottom: 8, borderBottom: `1px solid ${c.borderColor}`, scrollMarginTop: 12 }}
-          >
+      {/* ── Accordion card ─────────────────────────────────────────────── */}
+      <div style={{ borderRadius: 14, border: `1px solid ${c.borderColor}`, overflow: "hidden", background: c.cardBg }}>
+        {sections.map((s, i) => {
+          const Icon = sectionIcon(s.icon);
+          const canEdit = !!access[s.key];
+          const dirty = Object.keys(changedFields(s)).length > 0;
+          const saving = savingSection === s.key;
+          const inputsDisabled = !canEdit || saving;
+          const saveBlocked = savingSection !== null;
+          const isEditing = editing.has(s.key) || dirty;
+          const isCollapsed = collapsed.has(s.key) && !dirty;
+
+          // Status dot colour
+          const dotColor =
+            s.status === "complete" ? STATUS_COLORS.complete
+            : s.status === "partial" ? STATUS_COLORS.partial
+            : STATUS_COLORS.not_started;
+
+          const statusText =
+            s.status === "complete" ? "Complete"
+            : s.status === "partial" ? `${s.missing} missing`
+            : "Not started";
+
+          return (
             <div
-              onClick={() => toggleCollapsed(s.key, dirty)}
-              role="button"
-              aria-expanded={!isCollapsed}
-              style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: isCollapsed ? 0 : 14, cursor: dirty ? "default" : "pointer", userSelect: "none" }}
+              key={s.key}
+              ref={(el) => { sectionRefs.current[s.key] = el; }}
+              style={{ borderTop: i === 0 ? "none" : `1px solid ${c.borderColor}`, scrollMarginTop: 12 }}
             >
-              <span style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 16, fontWeight: 700, color: "var(--section-heading)" }}>
-                <ChevronDown
-                  style={{
-                    width: 16,
-                    height: 16,
-                    color: c.textMuted,
-                    transform: isCollapsed ? "rotate(-90deg)" : "none",
-                    transition: "transform 0.15s",
-                  }}
-                />
-                <Icon style={{ width: 17, height: 17, color: c.textMuted }} />
-                {s.label}
-              </span>
-              <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                {!canEdit && <span style={{ fontSize: 10, color: c.textMuted, border: `1px solid ${c.borderColor}`, borderRadius: 6, padding: "2px 7px" }}>View only</span>}
+              {/* Row header */}
+              <div
+                onClick={() => toggleCollapsed(s.key, dirty)}
+                role="button"
+                aria-expanded={!isCollapsed}
+                style={{
+                  display: "flex", alignItems: "center", gap: 12,
+                  padding: "15px 20px",
+                  cursor: dirty ? "default" : "pointer",
+                  userSelect: "none",
+                  background: !isCollapsed ? "rgba(255,255,255,0.02)" : "transparent",
+                  transition: "background 120ms ease",
+                }}
+              >
+                {/* Section icon — accent when open, muted when collapsed */}
+                <Icon style={{ width: 16, height: 16, flexShrink: 0, color: !isCollapsed ? "var(--accent-primary)" : c.textMuted }} />
+
+                {/* Section name */}
+                <span style={{ fontSize: 14.5, fontWeight: 700, color: c.textPrimary, flex: 1 }}>
+                  {s.label}
+                </span>
+
+                {/* View-only badge */}
+                {!canEdit && (
+                  <span style={{ fontSize: 10, color: c.textMuted, border: `1px solid ${c.borderColor}`, borderRadius: 6, padding: "2px 7px", flexShrink: 0 }}>
+                    View only
+                  </span>
+                )}
+
+                {/* Status dot */}
+                <span style={{ width: 7, height: 7, borderRadius: "50%", background: dotColor, boxShadow: `0 0 8px ${dotColor}66`, flexShrink: 0 }} />
+
+                {/* Status text */}
+                <span style={{ fontSize: 11, color: c.textMuted, width: 78, flexShrink: 0 }}>
+                  {statusText}
+                </span>
+
+                {/* Pencil — only when can edit and section is open */}
                 {canEdit && !isCollapsed && (
                   <button
                     type="button"
@@ -399,80 +381,97 @@ export default function SubmissionTab({
                     title={isEditing ? "Done editing" : `Edit ${s.label}`}
                     aria-label={isEditing ? "Done editing" : `Edit ${s.label}`}
                     onClick={(e) => {
-                      e.stopPropagation(); // don't toggle collapse
-                      if (isEditing) {
-                        if (!dirty) setEditingFor(s.key, false); // dirty sections exit via Save/Discard
-                      } else {
-                        setEditingFor(s.key, true);
-                      }
+                      e.stopPropagation();
+                      if (isEditing) { if (!dirty) setEditingFor(s.key, false); }
+                      else setEditingFor(s.key, true);
                     }}
                     style={{
                       background: isEditing ? "var(--accent-primary)" : "none",
                       border: `1px solid ${isEditing ? "var(--accent-primary)" : c.borderColor}`,
-                      borderRadius: 7, padding: 5, cursor: "pointer", display: "flex", alignItems: "center",
+                      borderRadius: 7, padding: 5, cursor: "pointer",
+                      display: "flex", alignItems: "center", flexShrink: 0,
                     }}
                   >
                     <Pencil style={{ width: 12, height: 12, color: isEditing ? "#fff" : c.textMuted }} />
                   </button>
                 )}
-                <StatusChip section={s} />
-              </span>
-            </div>
 
-            {!isCollapsed && (
-              <FieldGrid columns={2}>
-                {s.fields.map((f) => (
-                  <div
-                    key={f.key}
-                    style={
-                      highlightField === `${s.key}.${f.key}`
-                        ? { borderRadius: 10, boxShadow: "0 0 0 2px var(--accent-primary)", transition: "box-shadow 0.3s", padding: 2, margin: -2 }
-                        : { padding: 2, margin: -2, borderRadius: 10, transition: "box-shadow 0.6s" }
-                    }
-                  >
-                    {isEditing ? (
-                      <FieldLabel label={f.ratingRelevant ? `${f.label} · rating` : f.label} required={f.required}>
-                        {fieldInput(s.key, f, inputsDisabled)}
-                      </FieldLabel>
-                    ) : (
-                      // Static snapshot — plain label/value text, no input chrome,
-                      // until the pencil unlocks the section for editing.
-                      <div style={{ display: "flex", flexDirection: "column", gap: 3, padding: "2px 0 6px" }}>
-                        <span style={{ fontSize: 10.5, letterSpacing: "0.06em", textTransform: "uppercase", fontWeight: 600, color: c.textMuted }}>
-                          {f.label}
-                          {f.required && <span style={{ color: "var(--accent-primary)", marginLeft: 3 }}>*</span>}
-                        </span>
-                        <span style={{ fontSize: 14, lineHeight: 1.45, color: f.value == null || f.value === "" ? c.textMuted : c.textPrimary, fontWeight: 500, overflowWrap: "anywhere" }}>
-                          {displayValue(f)}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </FieldGrid>
-            )}
-
-            {!isCollapsed && dirty && canEdit && (
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 14 }}>
-                <button
-                  onClick={() => discardSection(s.key)}
-                  disabled={saveBlocked}
-                  style={{ fontFamily: "inherit", fontSize: 12, borderRadius: 8, padding: "7px 14px", cursor: "pointer", color: c.textSecondary, background: "none", border: `1px solid ${c.borderColor}` }}
-                >
-                  Discard
-                </button>
-                <button
-                  onClick={() => void handleSave(s)}
-                  disabled={saveBlocked}
-                  style={{ fontFamily: "inherit", fontSize: 12, borderRadius: 8, padding: "7px 14px", cursor: saving ? "wait" : "pointer", opacity: saveBlocked && !saving ? 0.5 : 1, color: "#fff", background: "var(--gradient-cta)", fontWeight: 500, border: "none" }}
-                >
-                  {saving ? "Saving\u2026" : "Save changes"}
-                </button>
+                {/* Chevron */}
+                <ChevronDown style={{ width: 16, height: 16, color: c.textMuted, flexShrink: 0, transform: isCollapsed ? "rotate(-90deg)" : "none", transition: "transform 0.15s" }} />
               </div>
-            )}
-          </div>
-        );
-      })}
+
+              {/* Expanded content */}
+              {!isCollapsed && (
+                <div style={{ padding: "2px 20px 20px 48px" }}>
+                  {isEditing ? (
+                    /* Edit mode — wizard form inputs, 2-column */
+                    <FieldGrid columns={2}>
+                      {s.fields.map((f) => (
+                        <div
+                          key={f.key}
+                          style={
+                            highlightField === `${s.key}.${f.key}`
+                              ? { borderRadius: 10, boxShadow: "0 0 0 2px var(--accent-primary)", transition: "box-shadow 0.3s", padding: 2, margin: -2 }
+                              : { padding: 2, margin: -2, borderRadius: 10, transition: "box-shadow 0.6s" }
+                          }
+                        >
+                          <FieldLabel label={f.ratingRelevant ? `${f.label} · rating` : f.label} required={f.required}>
+                            {fieldInput(s.key, f, inputsDisabled)}
+                          </FieldLabel>
+                        </div>
+                      ))}
+                    </FieldGrid>
+                  ) : (
+                    /* Read-only mode — 3-column label/value grid */
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "14px 24px" }}>
+                      {s.fields.map((f) => (
+                        <div
+                          key={f.key}
+                          style={
+                            highlightField === `${s.key}.${f.key}`
+                              ? { borderRadius: 10, boxShadow: "0 0 0 2px var(--accent-primary)", transition: "box-shadow 0.3s", padding: "4px 6px", margin: "-4px -6px" }
+                              : { padding: "4px 6px", margin: "-4px -6px", borderRadius: 10, transition: "box-shadow 0.6s" }
+                          }
+                        >
+                          <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                            <span style={{ fontSize: 10, letterSpacing: "0.06em", textTransform: "uppercase", fontWeight: 600, color: c.textMuted }}>
+                              {f.label}
+                              {f.required && <span style={{ color: "var(--accent-primary)", marginLeft: 3 }}>*</span>}
+                            </span>
+                            <span style={{ fontSize: 14, lineHeight: 1.45, fontWeight: 500, overflowWrap: "anywhere", color: f.value == null || f.value === "" ? c.textMuted : c.textPrimary }}>
+                              {displayValue(f)}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Save / Discard — only shown when section has unsaved edits */}
+                  {dirty && canEdit && (
+                    <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 14 }}>
+                      <button
+                        onClick={() => discardSection(s.key)}
+                        disabled={saveBlocked}
+                        style={{ fontFamily: "inherit", fontSize: 12, borderRadius: 8, padding: "7px 14px", cursor: "pointer", color: c.textSecondary, background: "none", border: `1px solid ${c.borderColor}` }}
+                      >
+                        Discard
+                      </button>
+                      <button
+                        onClick={() => void handleSave(s)}
+                        disabled={saveBlocked}
+                        style={{ fontFamily: "inherit", fontSize: 12, borderRadius: 8, padding: "7px 14px", cursor: saving ? "wait" : "pointer", opacity: saveBlocked && !saving ? 0.5 : 1, color: "#fff", background: "var(--gradient-cta)", fontWeight: 500, border: "none" }}
+                      >
+                        {saving ? "Saving\u2026" : "Save changes"}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
