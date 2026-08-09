@@ -55,12 +55,11 @@ export const dealsTable = pgTable("deals", {
   boundAt: timestamp("bound_at", { withTimezone: true }),
   signedDocumentsPath: text("signed_documents_path"),
   ratingStale: boolean("rating_stale").default(false),
-  // Deposit-monitor columns (from the in-flight p5-wc3b-deposit-monitor
-  // branch): declared here so `db push` doesn't prompt to drop live dev data —
-  // that prompt aborts on closed stdin and silently blocks every post-merge push.
-  depositStatus: text("deposit_status"),
-  depositDueDate: date("deposit_due_date"),
-  depositDay21TaskAt: timestamp("deposit_day21_task_at", { withTimezone: true }),
+  // §6E deposit monitor (WC-3b) — parallel and NON-GATING: never blocks the
+  // Active Client conversion. Client pays the carrier directly; silence = paid.
+  depositStatus: text("deposit_status"), // null | MONITORING | CONFIRMED | AT_RISK
+  depositDueDate: date("deposit_due_date", { mode: "string" }), // bind date + 30 days
+  depositDay21TaskAt: timestamp("deposit_day21_task_at", { withTimezone: true }), // day-21 CSA task stamped once
 });
 
 export const insertDealSchema = createInsertSchema(dealsTable).omit({ id: true, createdAt: true });

@@ -7,6 +7,7 @@ import { buildSections } from "../lib/deal-sections";
 import { findOrCreateAccount } from "../lib/accounts";
 import { instantiateJourneysForDeal } from "../lib/journey-instantiate";
 import { generateSubjectivitiesForDeal } from "../lib/subjectivities";
+import { startDepositMonitor } from "../lib/deposit-monitor";
 
 const router: IRouter = Router();
 
@@ -262,7 +263,13 @@ router.patch("/:id", async (req, res) => {
       }
     }
 
-    const [row] = await tx.update(dealsTable).set(parsed.data).where(eq(dealsTable.id, req.params.id)).returning();
+    // Entering BOUND stamps the bind date (once) — §6E's deposit timer and the
+    // §6D tracker timers both anchor to it.
+    const updates =
+      stageChanging && nextStage === "BOUND" && !existing.boundAt
+        ? { ...parsed.data, boundAt: new Date() }
+        : parsed.data;
+    const [row] = await tx.update(dealsTable).set(updates).where(eq(dealsTable.id, req.params.id)).returning();
 
     if (stageChanging) {
       // from_stage/to_stage logged on every stage move.
@@ -278,6 +285,8 @@ router.patch("/:id", async (req, res) => {
       // Relocated Bound trigger fires on entry to stage 9.
       if (nextStage === "BOUND") {
         await fireImplementationTrigger(row, author, u?.id, tx);
+        // §6E: start the parallel, non-gating deposit monitor (idempotent).
+        await startDepositMonitor(row, tx);
       }
       // §6A: entering Bind Order stamps the subjectivities checklist onto the deal.
       if (nextStage === "BIND_ORDER") {
