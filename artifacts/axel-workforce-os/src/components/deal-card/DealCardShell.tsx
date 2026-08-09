@@ -203,6 +203,8 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
   // Which indication detail view (if any) the Quote tab shows — set by
   // clicking a header KPI; cleared by the detail view's back action.
   const [quoteDetail, setQuoteDetail] = useState<IndicationMetric | null>(null);
+  // Header-KPI → Submission tab deep link (section + field to highlight).
+  const [submissionFocus, setSubmissionFocus] = useState<{ section: string; field?: string; token: number } | null>(null);
   // Bumped after indication-parameter edits so quote-derived header state
   // (KPI fallbacks, map markers) refetches.
   const [quoteVersion, setQuoteVersion] = useState(0);
@@ -365,6 +367,7 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
     setQuoteStats({ locations: null, eMod: null });
     setQuoteWcPremium(null); // primary reset — never show prior deal's premium bubble while loading
     setQuoteDetail(null); // don't reopen a prior deal's KPI detail view (would hide the pricing row)
+    setSubmissionFocus(null); // don't replay a prior deal's KPI jump on the new deal's Submission tab
     setMarkerPopup(null);
     fetchSubmission();
     fetchActivity();
@@ -943,10 +946,10 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
   // EXMOD takes the Hazometer rating color; the other three take the accent gradient.
   const exModNum = exModVal == null ? null : Number(exModVal);
   const kpis = [
-    { label: "LOCATIONS", metric: "locations" as IndicationMetric, Icon: MapPin, value: fmtNum(locationsVal), exModColor: null as string | null },
-    { label: "EMPLOYEES", metric: "employees" as IndicationMetric, Icon: Users, value: fmtNum(fieldValue(sections, "workforce", "employeeCountFt")), exModColor: null as string | null },
-    { label: "PAYROLL", metric: "payroll" as IndicationMetric, Icon: Banknote, value: fmtMoneyShort(fieldValue(sections, "workforce", "annualPayroll")), exModColor: null as string | null },
-    { label: "EXMOD", metric: "exmod" as IndicationMetric, Icon: Gauge, value: exModVal ?? "\u2014", exModColor: exModNum == null ? null : exModColor(exModNum) },
+    { label: "LOCATIONS", metric: "locations" as IndicationMetric, Icon: MapPin, value: fmtNum(locationsVal), exModColor: null as string | null, section: "locations", field: "numberOfLocations" },
+    { label: "EMPLOYEES", metric: "employees" as IndicationMetric, Icon: Users, value: fmtNum(fieldValue(sections, "workforce", "employeeCountFt")), exModColor: null as string | null, section: "workforce", field: "employeeCountFt" },
+    { label: "PAYROLL", metric: "payroll" as IndicationMetric, Icon: Banknote, value: fmtMoneyShort(fieldValue(sections, "workforce", "annualPayroll")), exModColor: null as string | null, section: "workforce", field: "annualPayroll" },
+    { label: "EXMOD", metric: "exmod" as IndicationMetric, Icon: Gauge, value: exModVal ?? "\u2014", exModColor: exModNum == null ? null : exModColor(exModNum), section: "workforce", field: "emod" },
   ];
 
   // Est. premium for the header badge — deal-level column first, then the
@@ -1097,7 +1100,7 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
             {/* Sizes scale with viewport (clamp) so all four KPIs stay on one
                 row even at mobile widths instead of wrapping/jumbling. */}
             <div style={{ display: "flex", flexWrap: "nowrap", alignItems: "flex-start", justifyContent: "flex-end", columnGap: "clamp(8px, 2.4vw, 26px)", rowGap: 10, flex: "0 1 auto", minWidth: 0 }}>
-              {kpis.map(({ label, metric, Icon, value, exModColor: exColor }) => {
+              {kpis.map(({ label, Icon, value, exModColor: exColor, section: kpiSection, field: kpiField }) => {
                 const isDash = value === "\u2014";
                 const numberStyle: CSSProperties = {
                   fontSize: "clamp(14px, 3.2vw, 26px)", fontWeight: 600, lineHeight: 1.15, marginTop: 3, fontVariantNumeric: "tabular-nums",
@@ -1112,16 +1115,16 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
                 };
                 const showDot = label === "EXMOD" && !isDash && exColor;
                 return (
-                  // KPI opens the Quote tab's editable detail view for this
-                  // metric (from any tab) — re-enables pointer events on the
+                  // KPI jumps to the matching field on the Submission tab
+                  // (from any tab) — re-enables pointer events on the
                   // otherwise click-transparent cluster.
                   <div
                     key={label}
                     role="button"
                     tabIndex={0}
                     title={`Review & edit ${label.toLowerCase()}`}
-                    onClick={() => { setQuoteDetail(metric); setTab("quote"); }}
-                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setQuoteDetail(metric); setTab("quote"); } }}
+                    onClick={() => { setSubmissionFocus({ section: kpiSection, field: kpiField, token: Date.now() }); setTab("submission"); }}
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSubmissionFocus({ section: kpiSection, field: kpiField, token: Date.now() }); setTab("submission"); } }}
                     style={{ textAlign: "right", pointerEvents: "auto", cursor: "pointer" }}
                   >
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 5, fontSize: "clamp(8px, 1.3vw, 10px)", letterSpacing: "0.08em", fontWeight: 600, color: hdrSoftGrey, textTransform: "uppercase", whiteSpace: "nowrap" }}>
@@ -1377,7 +1380,7 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
                     onApplyLevers={handleApplyLevers}
                   />
                 )}
-                {tab === "submission" && <SubmissionTab key={dealId} sections={sections} aggregateComplete={payload.aggregateComplete} total={payload.total} access={payload.access} savingSection={savingSection} onSaveSection={handleSaveSection} canRequestProposal={isInternal} proposalStatus={(deal?.proposalStatus as string | null) ?? null} onRequestProposal={handleRequestProposal} />}
+                {tab === "submission" && <SubmissionTab key={dealId} sections={sections} aggregateComplete={payload.aggregateComplete} total={payload.total} access={payload.access} savingSection={savingSection} onSaveSection={handleSaveSection} canRequestProposal={isInternal} proposalStatus={(deal?.proposalStatus as string | null) ?? null} onRequestProposal={handleRequestProposal} focusRequest={submissionFocus} />}
                 {tab === "subjectivities" && <SubjectivitiesTab dealId={dealId} />}
                 {tab === "documents" && <DocumentsTab dealId={dealId} timeWindow={timeWindow} />}
                 {tab === "tasks" && (

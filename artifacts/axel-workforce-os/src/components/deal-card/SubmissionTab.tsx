@@ -8,7 +8,7 @@
  * sections the viewer can't edit (and readOnly/computed fields) are disabled.
  * Completeness still comes straight from the server payload.
  */
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import type { SectionFieldView, SectionView } from "./types";
 import { sectionIcon, STATUS_COLORS } from "./icons";
@@ -41,6 +41,11 @@ interface SubmissionTabProps {
   proposalStatus?: string | null;
   /** Submit the completed submission for proposal; resolves true on success. */
   onRequestProposal?: () => Promise<boolean>;
+  /**
+   * Scroll-to-section request (e.g. from a header KPI click). `token` changes
+   * on every request so repeat clicks on the same KPI still retrigger.
+   */
+  focusRequest?: { section: string; field?: string; token: number } | null;
 }
 
 /** Canonical string form of a field value for draft comparison/editing. */
@@ -88,6 +93,7 @@ export default function SubmissionTab({
   canRequestProposal = false,
   proposalStatus,
   onRequestProposal,
+  focusRequest,
 }: SubmissionTabProps) {
   const c = useThemeColors();
   const pct = total > 0 ? Math.round((aggregateComplete / total) * 100) : 0;
@@ -131,6 +137,30 @@ export default function SubmissionTab({
       return next;
     });
   };
+
+  // Header-KPI deep link: expand the target section, scroll it into view, and
+  // briefly highlight the specific field so the eye lands on the right spot.
+  const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const [highlightField, setHighlightField] = useState<string | null>(null);
+  useEffect(() => {
+    if (!focusRequest) return;
+    setCollapsed((prev) => {
+      if (!prev.has(focusRequest.section)) return prev;
+      const next = new Set(prev);
+      next.delete(focusRequest.section);
+      return next;
+    });
+    // Scroll after the section has expanded/rendered.
+    const t = setTimeout(() => {
+      sectionRefs.current[focusRequest.section]?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 50);
+    let clear: ReturnType<typeof setTimeout> | undefined;
+    if (focusRequest.field) {
+      setHighlightField(`${focusRequest.section}.${focusRequest.field}`);
+      clear = setTimeout(() => setHighlightField(null), 2200);
+    }
+    return () => { clearTimeout(t); if (clear) clearTimeout(clear); };
+  }, [focusRequest]);
 
   const draftKey = (s: string, f: string) => `${s}.${f}`;
   const valueFor = (sKey: string, f: SectionFieldView) =>
@@ -320,7 +350,11 @@ export default function SubmissionTab({
         const saveBlocked = savingSection !== null;
         const isCollapsed = collapsed.has(s.key) && !dirty; // dirty sections stay open
         return (
-          <div key={s.key} style={{ paddingBottom: isCollapsed ? 14 : 24, marginBottom: 8, borderBottom: `1px solid ${c.borderColor}` }}>
+          <div
+            key={s.key}
+            ref={(el) => { sectionRefs.current[s.key] = el; }}
+            style={{ paddingBottom: isCollapsed ? 14 : 24, marginBottom: 8, borderBottom: `1px solid ${c.borderColor}`, scrollMarginTop: 12 }}
+          >
             <div
               onClick={() => toggleCollapsed(s.key, dirty)}
               role="button"
@@ -349,9 +383,18 @@ export default function SubmissionTab({
             {!isCollapsed && (
               <FieldGrid columns={2}>
                 {s.fields.map((f) => (
-                  <FieldLabel key={f.key} label={f.ratingRelevant ? `${f.label} · rating` : f.label} required={f.required}>
-                    {fieldInput(s.key, f, inputsDisabled)}
-                  </FieldLabel>
+                  <div
+                    key={f.key}
+                    style={
+                      highlightField === `${s.key}.${f.key}`
+                        ? { borderRadius: 10, boxShadow: "0 0 0 2px var(--accent-primary)", transition: "box-shadow 0.3s", padding: 2, margin: -2 }
+                        : { padding: 2, margin: -2, borderRadius: 10, transition: "box-shadow 0.6s" }
+                    }
+                  >
+                    <FieldLabel label={f.ratingRelevant ? `${f.label} · rating` : f.label} required={f.required}>
+                      {fieldInput(s.key, f, inputsDisabled)}
+                    </FieldLabel>
+                  </div>
                 ))}
               </FieldGrid>
             )}
