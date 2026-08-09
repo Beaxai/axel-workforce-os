@@ -9,4 +9,4 @@ The Axel broker fee (default 7%) is TRACKED NON-BLOCKING: nothing about it may e
 
 **Status transitions:** UNPAID → PAID or WAIVED; PAID/WAIVED exit only via "reinstate as unpaid" — no direct paid↔waived shortcut, so a waiver can't silently become a payment. Status changes mirror to checklist item SUBJ_BROKER_FEE (PAID→SATISFIED, WAIVED→WAIVED, UNPAID→reopen). Fee columns are system-managed and stripped from generic deal POST/PATCH.
 
-**Dunning:** fires once after the bind tx commits (claim-once stamp under row lock), best-effort, dev_logged until RESEND_API_KEY exists; payment link is a stub pending open Q14 (no payment provider).
+**Dunning:** fires once after the bind tx commits (claim-once stamp under row lock), best-effort, dev_logged until RESEND_API_KEY exists; payment link is a stub — Stripe is the chosen provider (Q14 resolved 2026-08-09); wiring waits on Stripe keys from Curtis (Brendan lacks secrets access).
