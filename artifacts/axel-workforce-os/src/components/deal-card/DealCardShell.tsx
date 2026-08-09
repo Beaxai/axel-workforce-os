@@ -1150,31 +1150,6 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
             </div>
           </div>
 
-          {/* Price badges — WC annual premium + PEO PEPM (when a PEO indication
-              exists). Mini glowing shield badges replace the old quiet
-              est-premium pill. Clicking either badge opens the Quote tab. */}
-          {(estPremiumFmt || hasPeoBadge) && (
-            <div style={{ position: "relative", zIndex: 1, display: "flex", justifyContent: "flex-end", padding: "8px 44px 0 18px", pointerEvents: "none" }}>
-              <div data-testid="header-price-badges" style={{ display: "flex", gap: 10, pointerEvents: "auto", alignItems: "flex-end" }}>
-                {estPremiumFmt && (
-                  <MiniBadge
-                    value={estPremiumFmt}
-                    label="wc annual premium"
-                    onClick={openIndicationForm}
-                  />
-                )}
-                {hasPeoBadge && peoBadgeValue && (
-                  <MiniBadge
-                    value={peoBadgeValue}
-                    sub={peoBadgeSub}
-                    label={peoBadgeLabel}
-                    onClick={openIndicationForm}
-                  />
-                )}
-              </div>
-            </div>
-          )}
-
           {/* 6-phase macro tracker — map continues behind it. Also a slide bar:
               1st click selects a stage, 2nd click on another node draws the
               span between them, 3rd click reverts to the full timeline. The
