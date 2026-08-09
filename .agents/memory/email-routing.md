@@ -12,3 +12,5 @@ Three routing layers, in order: (1) recipient = deal listener address, (2) `[AXL
 - drizzle push prompts interactively for new unique constraints on non-empty tables and aborts silently on piped stdin — apply `ALTER TABLE ... ADD CONSTRAINT` via a db.execute script instead.
 
 **How to apply:** any new outbound email path must go through `sendDealEmail` (Reply-To + subject token + Message-ID recording) or replies won't route.
+
+Status 2026-08-09: domain is owned and Curtis gave Brendan credentials — go-live is config-only (RESEND_API_KEY, LISTENER_EMAIL_DOMAIN, OUTBOUND_EMAIL_FROM, RESEND_WEBHOOK_SECRET, MX on listener subdomain, webhook → /api/webhooks/resend-inbound). Only remaining code change: real Stripe payment link in broker-fee dunning once Stripe keys land.
