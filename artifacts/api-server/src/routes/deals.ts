@@ -244,6 +244,13 @@ router.patch("/:id", async (req, res) => {
   if (!parsedRaw.success) return res.status(400).json({ error: parsedRaw.error.issues });
   // Deposit lifecycle fields are never client-writable here (see stripDepositFields).
   const parsed = { data: stripDepositFields(parsedRaw.data) };
+  if (Object.keys(parsed.data).length === 0) {
+    // Nothing writable left (e.g. only system-managed deposit fields were sent)
+    // — treat as a no-op rather than letting drizzle throw "No values to set".
+    const [row] = await db.select().from(dealsTable).where(eq(dealsTable.id, req.params.id)).limit(1);
+    if (!row) return res.status(404).json({ error: "Not found" });
+    return res.json(row);
+  }
   const invalid = validateStage(parsed.data.stage);
   if (invalid) return res.status(400).json({ error: invalid });
   const invalidProduct = validateProductType(parsed.data.productType);
