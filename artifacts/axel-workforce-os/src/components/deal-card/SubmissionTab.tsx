@@ -9,7 +9,7 @@
  * Completeness still comes straight from the server payload.
  */
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Pencil } from "lucide-react";
 import type { SectionFieldView, SectionView } from "./types";
 import { sectionIcon, STATUS_COLORS } from "./icons";
 import { useThemeColors } from "@/lib/use-theme-colors";
@@ -128,6 +128,18 @@ export default function SubmissionTab({
   // Collapsed section keys. All sections start expanded; a section with
   // unsaved edits cannot be collapsed (so dirty state is never hidden).
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+
+  // Sections are read-only by default — a static snapshot of the client's
+  // details. The pencil per section switches it into edit mode (reduces
+  // accidental edits); saving or discarding drops back to read-only.
+  const [editing, setEditing] = useState<Set<string>>(new Set());
+  const setEditingFor = (sKey: string, on: boolean) =>
+    setEditing((prev) => {
+      const next = new Set(prev);
+      if (on) next.add(sKey);
+      else next.delete(sKey);
+      return next;
+    });
   const toggleCollapsed = (sKey: string, dirty: boolean) => {
     if (dirty) return;
     setCollapsed((prev) => {
@@ -184,8 +196,10 @@ export default function SubmissionTab({
     return changed;
   };
 
-  const discardSection = (sKey: string) =>
+  const discardSection = (sKey: string) => {
     setDrafts((d) => Object.fromEntries(Object.entries(d).filter(([k]) => !k.startsWith(`${sKey}.`))));
+    setEditingFor(sKey, false); // back to the static snapshot
+  };
 
   const handleSave = async (section: SectionView) => {
     const fields = changedFields(section);
@@ -203,6 +217,7 @@ export default function SubmissionTab({
       setDrafts((d) =>
         Object.fromEntries(Object.entries(d).filter(([k, v]) => !(k in submitted && submitted[k] === v))),
       );
+      setEditingFor(section.key, false); // saved — back to the static snapshot
     }
   };
 
@@ -348,6 +363,7 @@ export default function SubmissionTab({
         // anywhere while any save is in flight (single savingSection slot).
         const inputsDisabled = !canEdit || saving;
         const saveBlocked = savingSection !== null;
+        const isEditing = editing.has(s.key) || dirty; // dirty sections stay editable
         const isCollapsed = collapsed.has(s.key) && !dirty; // dirty sections stay open
         return (
           <div
@@ -376,6 +392,29 @@ export default function SubmissionTab({
               </span>
               <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 {!canEdit && <span style={{ fontSize: 10, color: c.textMuted, border: `1px solid ${c.borderColor}`, borderRadius: 6, padding: "2px 7px" }}>View only</span>}
+                {canEdit && !isCollapsed && (
+                  <button
+                    type="button"
+                    data-testid={`button-edit-${s.key}`}
+                    title={isEditing ? "Done editing" : `Edit ${s.label}`}
+                    aria-label={isEditing ? "Done editing" : `Edit ${s.label}`}
+                    onClick={(e) => {
+                      e.stopPropagation(); // don't toggle collapse
+                      if (isEditing) {
+                        if (!dirty) setEditingFor(s.key, false); // dirty sections exit via Save/Discard
+                      } else {
+                        setEditingFor(s.key, true);
+                      }
+                    }}
+                    style={{
+                      background: isEditing ? "var(--accent-primary)" : "none",
+                      border: `1px solid ${isEditing ? "var(--accent-primary)" : c.borderColor}`,
+                      borderRadius: 7, padding: 5, cursor: "pointer", display: "flex", alignItems: "center",
+                    }}
+                  >
+                    <Pencil style={{ width: 12, height: 12, color: isEditing ? "#fff" : c.textMuted }} />
+                  </button>
+                )}
                 <StatusChip section={s} />
               </span>
             </div>
@@ -392,7 +431,14 @@ export default function SubmissionTab({
                     }
                   >
                     <FieldLabel label={f.ratingRelevant ? `${f.label} · rating` : f.label} required={f.required}>
-                      {fieldInput(s.key, f, inputsDisabled)}
+                      {isEditing ? (
+                        fieldInput(s.key, f, inputsDisabled)
+                      ) : (
+                        // Static snapshot — read-only until the pencil unlocks the section.
+                        <div style={{ padding: "12px 14px", borderRadius: 10, border: `1px solid ${c.borderColor}`, fontSize: 14, color: f.value == null || f.value === "" ? c.textMuted : c.textPrimary, minHeight: 45 }}>
+                          {displayValue(f)}
+                        </div>
+                      )}
                     </FieldLabel>
                   </div>
                 ))}
