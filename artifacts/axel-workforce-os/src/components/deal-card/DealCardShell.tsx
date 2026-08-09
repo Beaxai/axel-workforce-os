@@ -32,7 +32,6 @@ import SubjectivitiesTab from "./SubjectivitiesTab";
 import PricingRail from "./PricingRail";
 import ReRateBanner from "./ReRateBanner";
 import { DocumentsTab, QuoteTab, PolicyTab, TasksTab } from "./SupportingTabs";
-import wcShieldIcon from "@assets/Shield-Icon_1780952893965.png";
 
 import type { IndicationMetric } from "./IndicationDetailView";
 
@@ -58,7 +57,6 @@ const NAV: Array<{ key: TabKey; label: string; Icon: typeof LayoutDashboard }> =
 
 const INTERNAL = new Set(["ADMIN", "CSA", "AGENT", "UNDERWRITER"]);
 
-const BADGE_PINK = "#E91E8C";
 /** Raw workforce-profile JSON as stored on the quote (extra keys preserved). */
 interface WorkforceProfileClassCodeRaw {
   classCode?: string;
@@ -952,51 +950,6 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
     { label: "EXMOD", metric: "exmod" as IndicationMetric, Icon: Gauge, value: exModVal ?? "\u2014", exModColor: exModNum == null ? null : exModColor(exModNum), section: "workforce", field: "emod" },
   ];
 
-  // Est. premium for the header badge — deal-level column first, then the
-  // quote-row premium (quote-flow deals never backfill deals.wcPremium).
-  // Hidden entirely until the deal has a priced WC premium.
-  const wcPremiumSrc = deal?.wcPremium != null && deal.wcPremium !== "" ? deal.wcPremium : quoteWcPremium;
-  const wcPremiumNum = wcPremiumSrc == null || wcPremiumSrc === "" ? NaN : parseFloat(String(wcPremiumSrc));
-  const estPremiumFmt = !isNaN(wcPremiumNum) && wcPremiumNum > 0
-    ? wcPremiumNum.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 })
-    : null;
-
-  // PEO badge — shown when a PEO indication exists on the quote (pepm or
-  // monthlyWfsFee set and > 0). Headline is PEPM when available (the number
-  // brokers quote in conversation), falling back to the monthly fee.
-  // Fall back to the deal-level PEPM rate when the quote record lacks one
-  // (older deals only persisted wfsPepmRate on the deal row). When neither is
-  // stored, derive it: monthly fee ÷ total headcount (that's what PEPM means).
-  const pepmRaw = wfsPricing.pepm ?? ((deal?.wfsPepmRate as string) || null);
-  const storedPepm = pepmRaw != null ? parseFloat(pepmRaw) : NaN;
-  const monthlyNum = wfsPricing.monthly != null ? parseFloat(wfsPricing.monthly) : NaN;
-  const hasMonthly = !isNaN(monthlyNum) && monthlyNum > 0;
-  const totalEmployees = (() => {
-    const fromProfile = (quoteRef?.profile?.locations ?? []).reduce(
-      (s, l) => s + (l.classCodes ?? []).reduce(
-        (t, cc) => t + (Number(cc.fullTimeEmployees) || 0) + (Number(cc.partTimeEmployees) || 0), 0),
-      0,
-    );
-    return fromProfile > 0 ? fromProfile : Number(deal?.employeeCountFt) || 0;
-  })();
-  const pepmNum = !isNaN(storedPepm) && storedPepm > 0
-    ? storedPepm
-    : hasMonthly && totalEmployees > 0
-      ? monthlyNum / totalEmployees
-      : NaN;
-  const hasPepm = !isNaN(pepmNum) && pepmNum > 0;
-  const hasPeoBadge = hasPepm || hasMonthly;
-  const fmtUsd0 = (n: number) => n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
-  // Headline is the monthly fee; the per-employee rate rides in the label row
-  // so both prices fit without growing the badge (same 3 rows, same width).
-  const peoBadgeValue = hasMonthly ? fmtUsd0(monthlyNum) : hasPepm ? fmtUsd0(pepmNum) : null;
-  const peoBadgeSub = hasMonthly ? "/mo" : "/ee/mo";
-  const peoBadgeLabel = hasMonthly && hasPepm
-    ? `peo · ${fmtUsd0(pepmNum)}/employee`
-    : hasPepm
-      ? "peo per employee"
-      : "peo monthly fee";
-
   // Header-over-map palette: glyphs sit on the map artwork, so these branch on
   // theme like the map itself (intentional artwork greys, not surface tokens).
   const hdrValue = c.isDark ? "#ffffff" : "#17171d";
@@ -1441,76 +1394,3 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
   );
 }
 
-/**
- * MiniBadge — scaled-down version of the indication screen's premium badge.
- * Pink glowing 1.5px border, dark inner card, floating shield icon, white
- * value + thin divider + small label. Theme-independent (always dark card so
- * the badge reads as a premium element against the map header background).
- */
-function MiniBadge({
-  value,
-  label,
-  sub,
-  width = 128,
-  onClick,
-}: {
-  value: string;
-  label: string;
-  sub?: string;
-  width?: number;
-  onClick?: () => void;
-}) {
-  return (
-    <div
-      role={onClick ? "button" : undefined}
-      tabIndex={onClick ? 0 : undefined}
-      onClick={onClick}
-      onKeyDown={onClick ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } } : undefined}
-      style={{ position: "relative", paddingTop: 15, width, flexShrink: 0, cursor: onClick ? "pointer" : "default" }}
-    >
-      <img
-        src={wcShieldIcon}
-        alt=""
-        style={{
-          position: "absolute",
-          top: 0,
-          left: "50%",
-          transform: "translateX(-50%)",
-          width: 28,
-          height: "auto",
-          zIndex: 2,
-          pointerEvents: "none",
-          filter: "drop-shadow(0 4px 10px rgba(233,30,140,0.55))",
-        }}
-      />
-      <div
-        style={{
-          borderRadius: 11,
-          padding: 1.5,
-          background: BADGE_PINK,
-          boxShadow: "0 0 16px rgba(233,30,140,0.40)",
-        }}
-      >
-        <div
-          style={{
-            borderRadius: 9.5,
-            background: "#0a0a12",
-            padding: "14px 8px 7px",
-            textAlign: "center",
-          }}
-        >
-          <div style={{ fontSize: 15, fontWeight: 800, color: "#fff", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
-            {value}
-            {sub && (
-              <span style={{ fontSize: 8.5, fontWeight: 600, color: "rgba(255,255,255,0.55)", marginLeft: 2 }}>{sub}</span>
-            )}
-          </div>
-          <div style={{ height: 1, background: "rgba(255,255,255,0.18)", margin: "6px auto", maxWidth: 80 }} />
-          <div style={{ fontSize: 8, color: "rgba(255,255,255,0.65)", letterSpacing: "0.05em", whiteSpace: "nowrap", textTransform: "uppercase" }}>
-            {label}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}

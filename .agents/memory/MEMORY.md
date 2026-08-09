@@ -9,4 +9,5 @@
 - [Password-change policy](password-change-policy.md) — own-account password change ALWAYS verifies current pwd (even ADMIN-self); only admin changing ANOTHER user skips it.
 - [Deal task status casing](task-status-casing.md) — tasks.status is free text with mixed casing ("OPEN"/"completed"/"COMPLETE"); always compare case-insensitively.
 - [Dev DB schema drift](dev-db-schema-drift.md) — drizzle push data-loss prompt aborts silently (exit 0) on closed stdin; declare drifted columns in schema instead of dropping unmerged-branch data.
+- [Mockup sandbox setup](mockup-sandbox-setup.md) — sandbox wasn't pre-installed; /__mockup 404s meant no scaffold — createArtifact type "mockup-sandbox" into an empty dir fixes it.
 - [Deal-card phase time filter](phase-time-filter.md) — stage moves live under 3 event types (STAGE_CHANGE, deal_approved, deal_declined); keep multi-interval union; drag uses window pointermove hit-testing; dialog height must stay fixed (92vh).
