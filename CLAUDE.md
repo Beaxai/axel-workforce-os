@@ -15,10 +15,12 @@ Read them before any technical work. **If it isn't in those documents, it didn't
 is not shared between accounts — these docs are the only durable shared memory. Both are **owner
 documents**; where anything conflicts with them, **they win.**
 
-> **Now in the repo**: [`docs/STATE_DOCUMENT_v2.4.md`](docs/STATE_DOCUMENT_v2.4.md) (current snapshot,
-> "Updated June 12, 2026", checked in 2026-08-02 — §6 WC/PEO binding & conversion spec, §7 rating
-> rules, §8 decisions log), superseding [`docs/STATE_DOCUMENT_v2.1.md`](docs/STATE_DOCUMENT_v2.1.md)
-> (kept for history; its §6–9 were the 3.5 / 4A / 4C / 4B work orders), plus
+> **Now in the repo**: [`docs/STATE_DOCUMENT_v2.7.md`](docs/STATE_DOCUMENT_v2.7.md) (current snapshot,
+> "Updated June 2026", checked in 2026-08-09 — §5 8-stage pipeline, §6 end-to-end process segments
+> 1–6 locked, §6B PC-series client-facing roadmap, §7 WC/PEO binding spec, §8 rating rules, §9
+> decisions log; SignWell replaces HelloSign, Resend named for email), superseding
+> [`docs/STATE_DOCUMENT_v2.4.md`](docs/STATE_DOCUMENT_v2.4.md) and
+> [`docs/STATE_DOCUMENT_v2.1.md`](docs/STATE_DOCUMENT_v2.1.md) (both kept for history), plus
 > [`docs/PROJECT_INSTRUCTIONS.md`](docs/PROJECT_INSTRUCTIONS.md). **Curtis's master copies remain
 > canonical** — these are checked-in snapshots for diffing; if they ever disagree with Curtis's
 > current master, the master wins.
