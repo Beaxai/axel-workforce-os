@@ -85,32 +85,43 @@ export async function sweepDepositDay21Tasks(
 
   const created: string[] = [];
   for (const deal of due) {
-    // Stamp first with a guarded update — if a concurrent sweep already
-    // stamped it, the update matches 0 rows and we skip task creation.
-    const stamped = await dbc
-      .update(dealsTable)
-      .set({ depositDay21TaskAt: now })
-      .where(and(eq(dealsTable.id, deal.id), isNull(dealsTable.depositDay21TaskAt)))
-      .returning({ id: dealsTable.id });
-    if (stamped.length === 0) continue;
+    // Per-deal atomic unit: stamp + task + audit log commit (or fail) together,
+    // so a task-insert failure can't permanently suppress the reminder. Uses a
+    // nested transaction (savepoint) when called inside an outer tx.
+    await dbc.transaction(async (unit) => {
+      // Guarded stamp — requires the deal to STILL be MONITORING and unstamped,
+      // so a concurrent sweep or a just-confirmed deposit skips task creation.
+      const stamped = await unit
+        .update(dealsTable)
+        .set({ depositDay21TaskAt: now })
+        .where(
+          and(
+            eq(dealsTable.id, deal.id),
+            isNull(dealsTable.depositDay21TaskAt),
+            eq(dealsTable.depositStatus, "MONITORING"),
+          ),
+        )
+        .returning({ id: dealsTable.id });
+      if (stamped.length === 0) return;
 
-    await dbc.insert(tasksTable).values({
-      dealId: deal.id,
-      taskName: `Confirm carrier deposit received — ${deal.businessName} (due ${deal.depositDueDate ?? "in 9 days"})`,
-      category: "DEPOSIT",
-      priority: "HIGH",
-      dueDate: deal.depositDueDate ?? null,
-      status: "OPEN",
+      await unit.insert(tasksTable).values({
+        dealId: deal.id,
+        taskName: `Confirm carrier deposit received — ${deal.businessName} (due ${deal.depositDueDate ?? "in 9 days"})`,
+        category: "DEPOSIT",
+        priority: "HIGH",
+        dueDate: deal.depositDueDate ?? null,
+        status: "OPEN",
+      });
+      await unit.insert(activityLogTable).values({
+        dealId: deal.id,
+        entityType: "deal",
+        entityId: deal.id,
+        eventType: "DEPOSIT_MONITOR",
+        description: `Day-21 CSA task created — request deposit confirmation from the carrier (§6E).`,
+        metadata: { day: DEPOSIT_CSA_TASK_DAY, dueDate: deal.depositDueDate },
+      });
+      created.push(deal.id);
     });
-    await dbc.insert(activityLogTable).values({
-      dealId: deal.id,
-      entityType: "deal",
-      entityId: deal.id,
-      eventType: "DEPOSIT_MONITOR",
-      description: `Day-21 CSA task created — request deposit confirmation from the carrier (§6E).`,
-      metadata: { day: DEPOSIT_CSA_TASK_DAY, dueDate: deal.depositDueDate },
-    });
-    created.push(deal.id);
   }
   return { created };
 }
@@ -129,41 +140,47 @@ export async function resolveDeposit(
   actorName: string,
   dbc: Dbc = db,
 ): Promise<{ ok: true; status: DepositStatus } | { ok: false; error: string }> {
-  const [deal] = await dbc
-    .select()
-    .from(dealsTable)
-    .where(eq(dealsTable.id, dealId))
-    .limit(1);
-  if (!deal) return { ok: false, error: "Deal not found." };
-  if (!deal.depositStatus) return { ok: false, error: "No deposit monitor is active on this deal." };
+  // Row lock (nested tx / savepoint safe) serializes concurrent resolves, so
+  // the status transition + audit log commit atomically and last-write races
+  // can't produce contradictory success responses.
+  return dbc.transaction(async (unit) => {
+    const [deal] = await unit
+      .select()
+      .from(dealsTable)
+      .where(eq(dealsTable.id, dealId))
+      .for("update")
+      .limit(1);
+    if (!deal) return { ok: false as const, error: "Deal not found." };
+    if (!deal.depositStatus) return { ok: false as const, error: "No deposit monitor is active on this deal." };
 
-  if (action === "confirm") {
-    if (deal.depositStatus === "CONFIRMED") return { ok: true, status: "CONFIRMED" };
-    await dbc.update(dealsTable).set({ depositStatus: "CONFIRMED" }).where(eq(dealsTable.id, dealId));
-    await dbc.insert(activityLogTable).values({
+    if (action === "confirm") {
+      if (deal.depositStatus === "CONFIRMED") return { ok: true as const, status: "CONFIRMED" as const };
+      await unit.update(dealsTable).set({ depositStatus: "CONFIRMED" }).where(eq(dealsTable.id, dealId));
+      await unit.insert(activityLogTable).values({
+        dealId,
+        entityType: "deal",
+        entityId: dealId,
+        eventType: "DEPOSIT_MONITOR",
+        description: `Carrier deposit confirmed by ${actorName}.`,
+        metadata: { from: deal.depositStatus, to: "CONFIRMED" },
+      });
+      return { ok: true as const, status: "CONFIRMED" as const };
+    }
+
+    // cancel_notice
+    if (deal.depositStatus === "CONFIRMED") {
+      return { ok: false as const, error: "Deposit is already confirmed — a cancellation notice cannot be recorded." };
+    }
+    if (deal.depositStatus === "AT_RISK") return { ok: true as const, status: "AT_RISK" as const };
+    await unit.update(dealsTable).set({ depositStatus: "AT_RISK" }).where(eq(dealsTable.id, dealId));
+    await unit.insert(activityLogTable).values({
       dealId,
       entityType: "deal",
       entityId: dealId,
       eventType: "DEPOSIT_MONITOR",
-      description: `Carrier deposit confirmed by ${actorName}.`,
-      metadata: { from: deal.depositStatus, to: "CONFIRMED" },
+      description: `Cancel-for-nonpay notice recorded by ${actorName} — deal flagged AT RISK (§6E; never gates onboarding).`,
+      metadata: { from: deal.depositStatus, to: "AT_RISK" },
     });
-    return { ok: true, status: "CONFIRMED" };
-  }
-
-  // cancel_notice
-  if (deal.depositStatus === "CONFIRMED") {
-    return { ok: false, error: "Deposit is already confirmed — a cancellation notice cannot be recorded." };
-  }
-  if (deal.depositStatus === "AT_RISK") return { ok: true, status: "AT_RISK" };
-  await dbc.update(dealsTable).set({ depositStatus: "AT_RISK" }).where(eq(dealsTable.id, dealId));
-  await dbc.insert(activityLogTable).values({
-    dealId,
-    entityType: "deal",
-    entityId: dealId,
-    eventType: "DEPOSIT_MONITOR",
-    description: `Cancel-for-nonpay notice recorded by ${actorName} — deal flagged AT RISK (§6E; never gates onboarding).`,
-    metadata: { from: deal.depositStatus, to: "AT_RISK" },
+    return { ok: true as const, status: "AT_RISK" as const };
   });
-  return { ok: true, status: "AT_RISK" };
 }

@@ -224,13 +224,26 @@ router.post("/", async (req, res) => {
     });
     accountId = account.id;
   }
-  const [row] = await db.insert(dealsTable).values({ ...parsed.data, accountId }).returning();
+  const [row] = await db.insert(dealsTable).values({ ...stripDepositFields(parsed.data), accountId }).returning();
   return res.status(201).json(row);
 });
 
+/**
+ * §6E deposit-monitor columns are system-managed: they may only change through
+ * the bind trigger, the day-21 sweeper, and the ADMIN/CSA deposit action route.
+ * Strip them from any client-supplied create/patch payload so no generic route
+ * can forge deposit state.
+ */
+function stripDepositFields<T extends Record<string, unknown>>(data: T): Omit<T, "depositStatus" | "depositDueDate" | "depositDay21TaskAt"> {
+  const { depositStatus: _ds, depositDueDate: _dd, depositDay21TaskAt: _dt, ...safe } = data;
+  return safe;
+}
+
 router.patch("/:id", async (req, res) => {
-  const parsed = insertDealSchema.partial().safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues });
+  const parsedRaw = insertDealSchema.partial().safeParse(req.body);
+  if (!parsedRaw.success) return res.status(400).json({ error: parsedRaw.error.issues });
+  // Deposit lifecycle fields are never client-writable here (see stripDepositFields).
+  const parsed = { data: stripDepositFields(parsedRaw.data) };
   const invalid = validateStage(parsed.data.stage);
   if (invalid) return res.status(400).json({ error: invalid });
   const invalidProduct = validateProductType(parsed.data.productType);
@@ -285,8 +298,6 @@ router.patch("/:id", async (req, res) => {
       // Relocated Bound trigger fires on entry to stage 9.
       if (nextStage === "BOUND") {
         await fireImplementationTrigger(row, author, u?.id, tx);
-        // §6E: start the parallel, non-gating deposit monitor (idempotent).
-        await startDepositMonitor(row, tx);
       }
       // §6A: entering Bind Order stamps the subjectivities checklist onto the deal.
       if (nextStage === "BIND_ORDER") {
@@ -305,8 +316,20 @@ router.patch("/:id", async (req, res) => {
       }
     }
 
-    return { status: 200, body: row };
+    return { status: 200, body: row, becameBound: stageChanging && nextStage === "BOUND" };
   });
+
+  // §6E: start the parallel, NON-GATING deposit monitor AFTER the Bound
+  // transaction commits — a deposit-side failure must never roll back the
+  // stage move or tracker work. Idempotent + best-effort; the hourly sweeper
+  // and startup sweep give it another chance if this attempt fails.
+  if (result.status === 200 && "becameBound" in result && result.becameBound) {
+    try {
+      await startDepositMonitor(result.body as Deal);
+    } catch (err) {
+      console.error("deposit monitor start failed (non-gating; will not block the bind)", err);
+    }
+  }
 
   return res.status(result.status).json(result.body);
 });
