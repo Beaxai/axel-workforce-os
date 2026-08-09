@@ -14,9 +14,6 @@ instructions. This block gets updated as items finish and move into the log belo
 
 **Buildable now — no decision needed:**
 
-- **Deposit monitor, tasks 3–4 of 4** — the deposit status display + two buttons on
-  bound deals' cards (mark confirmed / record cancellation notice), then the final
-  proof-run and report. *(State Doc §6E.)*
 - **Broker fee (WC-2)** — the 7% editable fee field on deals, checklist tie-in, and
   paid-status tracking. *(§6A item 10, §6F.)* The "email the client a payment link if
   unpaid at bind" automation within it waits on email (Q15) and on what pay-to-bind
@@ -75,6 +72,30 @@ Replit agent kept parking unreviewed UI experiments there. UI concepts now need 
 different route to Curtis (screenshots or a branch). References cleaned: `.replit`,
 CLAUDE.md, lockfile. Typecheck green across libs, frontend, api-server after both
 the merge and the removal.
+
+---
+
+## 2026-08-09 — Deposit monitor finished (WC-3b complete)
+
+**What it is:** the last two pieces of the §6E carrier-deposit watcher. Bound deals
+now show a "Carrier Deposit" card in the deal card's right rail with the current
+status (Monitoring / Confirmed / At risk) and, for ADMIN/CSA, two actions: **mark
+the deposit confirmed**, or **record a carrier cancel-for-nonpay notice**, which
+flags the deal At Risk. The day-21 CSA reminder now actually fires: an hourly
+background sweep creates the "confirm carrier deposit" task in the existing task
+drawer exactly once per deal, 21 days after bind. As specified, none of this ever
+blocks a client from being onboarded — silence means paid.
+
+**Rules encoded:** a confirmed deposit can never be flipped back by a cancellation
+notice (409); a late payment *can* clear an At-Risk flag to Confirmed; every change
+lands in the deal's activity feed; only ADMIN/CSA may act (others get 403).
+
+**Proof:** 14/14 checks in the deposit verification harness (`verify-deposit.ts`,
+transaction-rollback — no permanent rows), 46/46 onboarding regression still green,
+live API smoke (confirm / cancel-notice / role block / bad action), and a full
+browser walkthrough of the card on a bound deal in **both light and dark mode**.
+The `p5-wc3b-deposit-monitor` branch is merged; existing bound demo deals were
+backfilled to Monitoring.
 
 ---
 
