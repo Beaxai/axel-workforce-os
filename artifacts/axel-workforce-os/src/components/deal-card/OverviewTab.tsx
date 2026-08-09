@@ -155,6 +155,23 @@ function systemEventMeta(eventType: string | null | undefined): { label: string;
   return { label: titleCaseToken((eventType ?? "UPDATE").toUpperCase()), Icon: Zap };
 }
 
+/**
+ * Feed filter buckets. "Communication" = human or automated messages sent to
+ * people (comments, notes, RFIs, packages/signature requests going out).
+ * Everything else — stage moves, field edits, re-rates, uploads — is "History".
+ */
+function isCommEvent(eventType: string | null | undefined): boolean {
+  const t = (eventType ?? "").toLowerCase();
+  return (
+    t === "message" ||
+    t === "note" ||
+    t.startsWith("rfi") ||
+    t.includes("sent") ||
+    t.includes("notified") ||
+    t.includes("reminder")
+  );
+}
+
 function mentionsOf(row: ActivityRow): string[] {
   const m = (row.metadata as { mentions?: unknown } | null)?.mentions;
   return Array.isArray(m) ? m.filter((x): x is string => typeof x === "string" && x.length > 0) : [];
@@ -349,6 +366,7 @@ export default function OverviewTab({
   const [pickedMentions, setPickedMentions] = useState<string[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const [now, setNow] = useState(() => Date.now());
+  const [feedFilter, setFeedFilter] = useState<"all" | "comm" | "history">("all");
   const [compare, setCompare] = useState<QuoteVariation | null>(null);
   const [generated, setGenerated] = useState(false);
 
@@ -405,15 +423,20 @@ export default function OverviewTab({
     setShowRfiForm(false);
   };
 
+  const filteredActivity = useMemo(() => {
+    if (feedFilter === "all") return activity;
+    return activity.filter((row) => (isCommEvent(row.eventType) ? feedFilter === "comm" : feedFilter === "history"));
+  }, [activity, feedFilter]);
+
   const groups = useMemo(() => {
     const map = new Map<string, ActivityRow[]>();
-    for (const row of activity) {
+    for (const row of filteredActivity) {
       const key = dayLabel(row.createdAt);
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(row);
     }
     return Array.from(map.entries());
-  }, [activity]);
+  }, [filteredActivity]);
 
   // Directory keyed by id for feed avatar lookups.
   const membersById = useMemo(() => {
@@ -479,9 +502,31 @@ export default function OverviewTab({
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        {/* Feed filter — small, subtle text tabs. */}
+        <div style={{ display: "flex", gap: 14, paddingLeft: AVATAR_W + ROW_GAP }}>
+          {([["all", "All"], ["comm", "Communication"], ["history", "History"]] as const).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              data-testid={`tab-feed-${key}`}
+              onClick={() => setFeedFilter(key)}
+              style={{
+                background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit",
+                fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 600,
+                color: feedFilter === key ? "var(--accent-primary)" : c.textMuted,
+                borderBottom: feedFilter === key ? "1px solid var(--accent-primary)" : "1px solid transparent",
+                paddingBottom: 1,
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
         {/* Real activity feed grouped by day */}
         {groups.length === 0 && (
-          <div style={{ fontSize: 12, color: c.textMuted }}>No activity yet.</div>
+          <div style={{ fontSize: 12, color: c.textMuted }}>
+            {feedFilter === "all" ? "No activity yet." : feedFilter === "comm" ? "No communications yet." : "No history yet."}
+          </div>
         )}
         {groups.map(([day, rows]) => (
           <div key={day} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
