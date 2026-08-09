@@ -148,24 +148,28 @@ export function NumberInput({ value, onChange, placeholder, error, min, max, sty
   );
 }
 
-export function SelectInput({ value, onChange, options, placeholder, error }: {
+export function SelectInput({ value, onChange, options, placeholder, error, disabled }: {
   value: string;
   onChange: (val: string) => void;
   options: { value: string; label: string }[];
   placeholder?: string;
   error?: string;
+  disabled?: boolean;
 }) {
   return (
     <div style={{ position: "relative" }}>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        disabled={disabled}
         style={{
           ...inputBase,
           appearance: "none",
           paddingRight: 36,
           color: value ? "var(--input-text)" : "var(--input-placeholder)",
           borderColor: error ? "#ef4444" : "var(--input-border)",
+          opacity: disabled ? 0.5 : 1,
+          cursor: disabled ? "not-allowed" : "pointer",
         }}
         onFocus={(e) => (e.currentTarget.style.borderColor = "var(--input-border-focus)")}
         onBlur={(e) => (e.currentTarget.style.borderColor = error ? "#ef4444" : "var(--input-border)")}
@@ -181,11 +185,12 @@ export function SelectInput({ value, onChange, options, placeholder, error }: {
   );
 }
 
-export function MultiSelect({ values, onChange, options, placeholder }: {
+export function MultiSelect({ values, onChange, options, placeholder, disabled }: {
   values: string[];
   onChange: (vals: string[]) => void;
   options: { value: string; label: string }[];
   placeholder?: string;
+  disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -205,6 +210,7 @@ export function MultiSelect({ values, onChange, options, placeholder }: {
   }, [open]);
 
   const toggle = (val: string) => {
+    if (disabled) return;
     onChange(values.includes(val) ? values.filter((v) => v !== val) : [...values, val]);
   };
 
@@ -347,19 +353,21 @@ export function MultiSelect({ values, onChange, options, placeholder }: {
   );
 }
 
-export function YesNoToggle({ value, onChange, options }: {
+export function YesNoToggle({ value, onChange, options, disabled }: {
   value: string;
   onChange: (val: string) => void;
   options?: string[];
+  disabled?: boolean;
 }) {
   const opts = options || ["Yes", "No"];
   return (
-    <div style={{ display: "flex", gap: 8 }}>
+    <div style={{ display: "flex", gap: 8, opacity: disabled ? 0.5 : 1 }}>
       {opts.map((opt) => (
         <button
           key={opt}
           type="button"
-          onClick={() => onChange(opt)}
+          disabled={disabled}
+          onClick={() => { if (!disabled) onChange(opt); }}
           style={{
             padding: "8px 20px",
             borderRadius: 8,

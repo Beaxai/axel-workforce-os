@@ -5,6 +5,11 @@ description: Documents the layout evolution of DealCardShell — specifically wh
 
 # Deal Card Layout — Settled State (2026-08-09)
 
+## Submission tab (2026-08-09 update)
+- Inline wizard-style form: six sections rendered as directly-editable fields (shared `FormFields` components), per-section Save/Discard row, drafts keyed per touched field.
+- `SectionEditorOverlay.tsx` was DELETED; the card+overlay pattern is gone. Edit gating still comes from server `payload.access`; readOnly fields render as dashed non-editable values.
+- Scope decision: keeps the existing deal/account-backed fields only — NOT a full wizard mirror (cannabis application answers in `submission_answers` are not editable from the card). Brendan chose "quick win, no backend changes."
+
 ## Current layout (graduated from Variant A mockup)
 - **Right rail (264px, persistent):** `PricingRail` — WC Annual Premium card, WFS pricing card, Approve/Decline. Visible on every tab.
 - **Left sub-nav (132px):** 7 tabs — Overview, Submission, Subjectivities, Documents, Quote, Policy, **Tasks** (restored).

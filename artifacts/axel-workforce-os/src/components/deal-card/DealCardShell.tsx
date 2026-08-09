@@ -31,7 +31,6 @@ import SubmissionTab from "./SubmissionTab";
 import SubjectivitiesTab from "./SubjectivitiesTab";
 import PricingRail from "./PricingRail";
 import ReRateBanner from "./ReRateBanner";
-import SectionEditorOverlay from "./SectionEditorOverlay";
 import { DocumentsTab, QuoteTab, PolicyTab, TasksTab } from "./SupportingTabs";
 import wcShieldIcon from "@assets/Shield-Icon_1780952893965.png";
 
@@ -207,8 +206,7 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
   // Bumped after indication-parameter edits so quote-derived header state
   // (KPI fallbacks, map markers) refetches.
   const [quoteVersion, setQuoteVersion] = useState(0);
-  const [openSection, setOpenSection] = useState<string | null>(null);
-  const [savingSection, setSavingSection] = useState(false);
+  const [savingSection, setSavingSection] = useState<string | null>(null);
   const [posting, setPosting] = useState(false);
   const [decisionBusy, setDecisionBusy] = useState(false);
   const [approveError, setApproveError] = useState<string | null>(null);
@@ -357,7 +355,7 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
     setVarHasQuote(true);
     setVarUsedAi(false);
     setTab("overview");
-    setOpenSection(null);
+    setSavingSection(null);
     phaseLastClickRef.current = null;
     setPhaseSel(null);
     setMapMarkers([]);
@@ -556,11 +554,6 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
     [quoteRef],
   );
 
-  const editorSection = useMemo(
-    () => (openSection ? sections.find((s) => s.key === openSection) ?? null : null),
-    [openSection, sections],
-  );
-
   // Global time window derived from the selected phase span. Reconstructs the
   // deal's phase timeline from stage-move activity events — STAGE_CHANGE plus
   // deal_approved / deal_declined, which also carry from_stage/to_stage — and
@@ -626,15 +619,13 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
   const filteredActivity = useMemo(() => (timeWindow ? activity.filter((a) => inWindow(a.createdAt)) : activity), [timeWindow, activity, inWindow]);
   const filteredRfis = useMemo(() => (timeWindow ? rfis.filter((r) => inWindow(r.createdAt)) : rfis), [timeWindow, rfis, inWindow]);
 
-  const handleSaveSection = async (fields: Record<string, unknown>) => {
-    if (!openSection) return;
-    if (Object.keys(fields).length === 0) {
-      setOpenSection(null);
-      return;
-    }
-    setSavingSection(true);
+  const handleSaveSection = async (sectionKey: string, fields: Record<string, unknown>): Promise<boolean> => {
+    if (Object.keys(fields).length === 0) return true;
+    const seq = loadSeqRef.current; // ignore this save's response if the deal changes mid-flight
+    setSavingSection(sectionKey);
     try {
-      const res = await api.patch<SectionPatchResponse>(`/deal-card/${dealId}/submission/${openSection}`, { fields });
+      const res = await api.patch<SectionPatchResponse>(`/deal-card/${dealId}/submission/${sectionKey}`, { fields });
+      if (seq !== loadSeqRef.current) return false;
       if (res.sections) {
         setPayload((p) => (p ? { ...p, sections: res.sections!, aggregateComplete: res.aggregateComplete ?? p.aggregateComplete, total: res.total ?? p.total, deal: res.deal ?? p.deal } : p));
       } else {
@@ -642,11 +633,12 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
       }
       await fetchActivity();
       onDealUpdated?.();
-      setOpenSection(null);
+      return true;
     } catch {
-      /* validation errors surface as a no-op; keep the editor open */
+      /* validation errors surface as a no-op; keep the drafts so the user can retry */
+      return false;
     } finally {
-      setSavingSection(false);
+      setSavingSection((cur) => (cur === sectionKey ? null : cur));
     }
   };
 
@@ -1309,7 +1301,7 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
                     onApplyLevers={handleApplyLevers}
                   />
                 )}
-                {tab === "submission" && <SubmissionTab sections={sections} aggregateComplete={payload.aggregateComplete} total={payload.total} onOpenSection={setOpenSection} />}
+                {tab === "submission" && <SubmissionTab key={dealId} sections={sections} aggregateComplete={payload.aggregateComplete} total={payload.total} access={payload.access} savingSection={savingSection} onSaveSection={handleSaveSection} />}
                 {tab === "subjectivities" && <SubjectivitiesTab dealId={dealId} />}
                 {tab === "documents" && <DocumentsTab dealId={dealId} timeWindow={timeWindow} />}
                 {tab === "tasks" && (
@@ -1358,14 +1350,6 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
         </div>
       </div>
 
-      {/* Section editor overlay */}
-      <SectionEditorOverlay
-        section={editorSection}
-        canEdit={!!editorSection && !!payload?.access[editorSection.key]}
-        saving={savingSection}
-        onClose={() => setOpenSection(null)}
-        onSave={handleSaveSection}
-      />
     </div>,
     document.body,
   );
