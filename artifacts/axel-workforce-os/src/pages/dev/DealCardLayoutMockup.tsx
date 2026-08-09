@@ -120,10 +120,113 @@ function RailVariantB() {
   );
 }
 
+/** Refined badge card — accepts accentColor so WC and WFS are visually distinct. */
+function RefinedBadgeCard({ value, sub, label, accentColor, glowColor, icon }: {
+  value: string; sub: string; label: string; accentColor: string; glowColor: string; icon: string;
+}) {
+  return (
+    <div style={{ position: "relative", paddingTop: 18 }}>
+      <img
+        src={icon}
+        alt=""
+        style={{
+          position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)",
+          width: 34, height: "auto", zIndex: 2, pointerEvents: "none",
+          filter: `drop-shadow(0 3px 10px ${glowColor})`,
+        }}
+      />
+      <div style={{
+        borderRadius: 12, padding: 1.5,
+        background: accentColor,
+        boxShadow: `0 0 20px ${glowColor}`,
+      }}>
+        <div style={{ borderRadius: 10.5, background: "#0a0a12", padding: "20px 12px 12px", textAlign: "center" }}>
+          <div style={{ fontSize: 24, fontWeight: 800, color: "#fff", lineHeight: 1, fontVariantNumeric: "tabular-nums", letterSpacing: "-0.02em" }}>
+            {value}
+            <span style={{ fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.45)", marginLeft: 2 }}>{sub}</span>
+          </div>
+          <div style={{ height: 1, background: `linear-gradient(90deg, transparent, ${accentColor}55, transparent)`, margin: "9px auto 8px" }} />
+          <div style={{ fontSize: 9.5, color: "rgba(255,255,255,0.5)", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+            {label}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RailVariantBRefined() {
+  const c = useThemeColors();
+  const sectionLabel: React.CSSProperties = {
+    fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase",
+    color: c.textMuted, fontWeight: 700,
+  };
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {/* WC pricing — pink/magenta badge */}
+      <RefinedBadgeCard
+        value="$48,200" sub="/yr"
+        label="WC Annual Premium"
+        accentColor="#E91E8C"
+        glowColor="rgba(233,30,140,0.55)"
+        icon={wcShieldIcon}
+      />
+      {/* WFS pricing — indigo badge for visual differentiation */}
+      <RefinedBadgeCard
+        value="$2,350" sub="/mo"
+        label="WFS Monthly Fee · $68.40 PEPM"
+        accentColor="#5b21b6"
+        glowColor="rgba(91,33,182,0.55)"
+        icon={wcShieldIcon}
+      />
+
+      {/* Ghost secondary CTA — pricing edit is not the primary action */}
+      <button style={{
+        width: "100%", fontSize: 12, borderRadius: 8, padding: "8px 8px",
+        cursor: "pointer", fontWeight: 600, color: c.textSecondary,
+        border: `1px solid ${c.borderColor}`, background: "transparent",
+        fontFamily: "inherit", letterSpacing: "0.01em",
+      }}>
+        Modify Pricing
+      </button>
+
+      {/* Divider */}
+      <div style={{ height: 1, background: c.borderColor, margin: "2px 0" }} />
+
+      <span style={sectionLabel}>Submission</span>
+
+      {/* Approve — gradient CTA, it IS the primary action */}
+      <button style={{
+        width: "100%", fontSize: 13.5, borderRadius: 9, padding: "11px 8px",
+        cursor: "pointer", fontWeight: 700, color: "#fff",
+        background: "var(--gradient-cta)", border: "none",
+        fontFamily: "inherit", letterSpacing: "0.01em",
+      }}>
+        Approve
+      </button>
+
+      {/* Decline — muted, clearly secondary */}
+      <button style={{
+        width: "100%", fontSize: 12.5, borderRadius: 9, padding: "9px 8px",
+        cursor: "pointer", fontWeight: 500, color: c.textMuted,
+        background: "transparent", border: `1px solid ${c.borderColor}`,
+        fontFamily: "inherit", marginTop: -4,
+      }}>
+        Decline
+      </button>
+
+      {/* Inline blocker hint */}
+      <div style={{ fontSize: 10.5, color: c.textMuted, textAlign: "center", marginTop: -4 }}>
+        No open RFIs · ready to approve
+      </div>
+    </div>
+  );
+}
+
 export default function DealCardLayoutMockup() {
   const c = useThemeColors();
   const [params] = useSearchParams();
-  const variant = params.get("v") === "b" ? "b" : "a";
+  const variant = (params.get("v") === "b" ? "b" : params.get("v") === "b2" ? "b2" : "a") as "a" | "b" | "b2";
 
   return (
     <div style={{ minHeight: "100vh", background: c.isDark ? "#060608" : "#f4f4f5", display: "flex", alignItems: "center", justifyContent: "center", padding: 24, fontFamily: "Inter, sans-serif" }}>
@@ -134,7 +237,7 @@ export default function DealCardLayoutMockup() {
           <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: "#E91E8C", border: "1px solid rgba(233,30,140,0.4)", borderRadius: 9, padding: "2px 8px" }}>U/W Review</span>
           <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: c.textMuted, border: `1px solid ${c.borderColor}`, borderRadius: 9, padding: "2px 8px" }}>PEO</span>
           <div style={{ marginLeft: "auto", fontSize: 11, color: c.textMuted }}>
-            Mockup {variant.toUpperCase()} — {variant === "a" ? "classic pricing cards in rail" : "premium badge rail"}
+            Mockup {variant.toUpperCase()} — {variant === "a" ? "classic pricing cards in rail" : variant === "b" ? "premium badge rail" : "premium badge rail (refined)"}
           </div>
           <X style={{ width: 16, height: 16, color: c.textMuted }} />
         </div>
@@ -180,8 +283,10 @@ export default function DealCardLayoutMockup() {
                 onDecline={() => {}}
                 onModify={() => {}}
               />
-            ) : (
+            ) : variant === "b" ? (
               <RailVariantB />
+            ) : (
+              <RailVariantBRefined />
             )}
           </div>
         </div>
