@@ -1,5 +1,6 @@
 - [Git push workflow](git-push-workflow.md) — feature work ships to GitHub branch `awf-os-brendy-sprint-1` via the github connection token in code_execution; NEVER main.
 - [Deal card modal](deal-card-modal.md) — opens only via login + clicking a Pipeline deal (openDealCard event); no direct route, so static screenshots can't reach it — use the testing skill.
+- [Deal card layout](deal-card-layout.md) — right rail = PricingRail (persistent 264px); Tasks restored as 7th nav tab; TaskDrawer.tsx orphaned; Request Proposal CTA now only via header KPI strip.
 - [CA WC rating ZIP](ca-wc-rating-zip.md) — CA quotes need a 5-digit ZIP; engine must persist `zip` in breakdown.inputs or re-rating any saved CA quote 500s with TerritoryRatingError.
 - [Long wizard e2e runs](long-wizard-e2e.md) — runTest caps at ~10 min; split wizard e2e into draft-resume runs and patch quote_drafts.state server-side; NY has no rates ($0 expected).
 - [Long-running shell jobs](long-running-shell-jobs.md) — detached background jobs get reaped silently; fit must-finish runs in one <120s foreground call, and `pkill -f` self-matches unless you use a `[x]` class.

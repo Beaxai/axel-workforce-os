@@ -14,7 +14,7 @@ import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import {
   X, Star, LayoutDashboard, ClipboardList, Folder, Calculator, Shield,
-  MapPin, Users, Banknote, Gauge, ShieldCheck,
+  MapPin, Users, Banknote, Gauge, ShieldCheck, CheckSquare,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useThemeColors } from "@/lib/use-theme-colors";
@@ -32,8 +32,7 @@ import SubjectivitiesTab from "./SubjectivitiesTab";
 import PricingRail from "./PricingRail";
 import ReRateBanner from "./ReRateBanner";
 import SectionEditorOverlay from "./SectionEditorOverlay";
-import { DocumentsTab, QuoteTab, PolicyTab } from "./SupportingTabs";
-import TaskDrawer from "./TaskDrawer";
+import { DocumentsTab, QuoteTab, PolicyTab, TasksTab } from "./SupportingTabs";
 import wcShieldIcon from "@assets/Shield-Icon_1780952893965.png";
 
 import type { IndicationMetric } from "./IndicationDetailView";
@@ -45,8 +44,7 @@ interface DealCardShellProps {
   onDealUpdated?: () => void;
 }
 
-// Tasks left the tab rail — they live in the persistent right-side TaskDrawer.
-type TabKey = "overview" | "submission" | "subjectivities" | "documents" | "quote" | "policy";
+type TabKey = "overview" | "submission" | "subjectivities" | "documents" | "quote" | "policy" | "tasks";
 
 const NAV: Array<{ key: TabKey; label: string; Icon: typeof LayoutDashboard }> = [
   { key: "overview", label: "Overview", Icon: LayoutDashboard },
@@ -56,6 +54,7 @@ const NAV: Array<{ key: TabKey; label: string; Icon: typeof LayoutDashboard }> =
   { key: "documents", label: "Documents", Icon: Folder },
   { key: "quote", label: "Quote", Icon: Calculator },
   { key: "policy", label: "Policy", Icon: Shield },
+  { key: "tasks", label: "Tasks", Icon: CheckSquare },
 ];
 
 const INTERNAL = new Set(["ADMIN", "CSA", "AGENT", "UNDERWRITER"]);
@@ -1265,8 +1264,7 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
             })}
           </div>
 
-          {/* Content — the primary Request Proposal action lives in the
-              TaskDrawer's "Next Action" card, not above the tab content. */}
+          {/* Content */}
           <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
           <div style={{ flex: 1, minWidth: 0, minHeight: 0, padding: 14, overflow: "auto" }}>
             {!payload ? (
@@ -1314,26 +1312,8 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
                 {tab === "submission" && <SubmissionTab sections={sections} aggregateComplete={payload.aggregateComplete} total={payload.total} onOpenSection={setOpenSection} />}
                 {tab === "subjectivities" && <SubjectivitiesTab dealId={dealId} />}
                 {tab === "documents" && <DocumentsTab dealId={dealId} timeWindow={timeWindow} />}
-                {/* Pricing & decisions — formerly the right rail; now a card row
-                    at the top of the Quote tab (hidden while a KPI detail view
-                    is open to keep that surface focused). */}
-                {tab === "quote" && !quoteDetail && payload && (
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14, alignItems: "start", marginBottom: 18 }}>
-                    <PricingRail
-                      wcPremium={((deal?.wcPremium as string) || quoteWcPremium) ?? null}
-                      wfsMonthly={wfsPricing.monthly}
-                      wfsPepm={wfsPricing.pepm ?? ((deal?.wfsPepmRate as string) || null)}
-                      wfsBusy={wfsBusy}
-                      wfsError={wfsError}
-                      onGetWfsQuote={handleGetWfsQuote}
-                      canApprove={payload.canApprove}
-                      busy={decisionBusy}
-                      openBlocking={openBlocking}
-                      approveError={approveError}
-                      onApprove={handleApprove}
-                      onDecline={handleDecline}
-                    />
-                  </div>
+                {tab === "tasks" && (
+                  <TasksTab dealId={dealId} timeWindow={timeWindow} />
                 )}
                 {tab === "quote" && (
                   <QuoteTab
@@ -1355,20 +1335,26 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
           </div>
           </div>
 
-          {/* Persistent, collapsible task drawer — replaces the old Tasks tab
-              so tasks stay in view on every tab. */}
-          <TaskDrawer
-            dealId={dealId}
-            timeWindow={timeWindow}
-            nextAction={payload ? {
-              label: "Request Proposal",
-              hint: (() => {
-                const n = (payload.sections ?? []).filter((s) => s.status !== "complete").length;
-                return n > 0 ? `${n} section${n > 1 ? "s" : ""} to complete` : null;
-              })(),
-              onClick: openIndicationForm,
-            } : undefined}
-          />
+          {/* Persistent pricing + decision rail — WC/WFS pricing and
+              Approve/Decline visible on every tab. */}
+          {payload && (
+            <div style={{ width: 264, flexShrink: 0, borderLeft: `1px solid ${c.borderColor}`, padding: 12, overflow: "auto", display: "flex", flexDirection: "column", gap: 14 }}>
+              <PricingRail
+                wcPremium={((deal?.wcPremium as string) || quoteWcPremium) ?? null}
+                wfsMonthly={wfsPricing.monthly}
+                wfsPepm={wfsPricing.pepm ?? ((deal?.wfsPepmRate as string) || null)}
+                wfsBusy={wfsBusy}
+                wfsError={wfsError}
+                onGetWfsQuote={handleGetWfsQuote}
+                canApprove={payload.canApprove}
+                busy={decisionBusy}
+                openBlocking={openBlocking}
+                approveError={approveError}
+                onApprove={handleApprove}
+                onDecline={handleDecline}
+              />
+            </div>
+          )}
         </div>
       </div>
 
