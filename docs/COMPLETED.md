@@ -8,29 +8,27 @@ finishes, a new dated section is added here (companion to
 
 ## NOT COMPLETED — what remains in this sprint, and what each item is waiting on
 
-*(Status as of 2026-08-02. "Q" numbers refer to the questions doc. Sources: the State
+*(Status as of 2026-08-10. "Q" numbers refer to the questions doc. Sources: the State
 Document's binding process spec (§6) and phase plan (§5), and the engineering
 instructions. This block gets updated as items finish and move into the log below.)*
 
 **Buildable now — no decision needed:**
 
-- **Broker fee (WC-2)** — the 7% editable fee field on deals, checklist tie-in, and
-  paid-status tracking. *(§6A item 10, §6F.)* The "email the client a payment link if
-  unpaid at bind" automation within it waits on email (Q15) and on what pay-to-bind
-  means (Q14).
-- **Light-mode closeout (D2)** — migrate the last four quote-flow screens onto the
-  design tokens and record the contrast checks in both modes. The doc's only ACTIVE
-  phase. *(§4.)*
+- **Real signatures** — a live signing flow for the bind checklist *(§6F)*. SignWell
+  won Q13 and the API key is now loaded (Q6 closed) — buildable whenever prioritized.
+- **Stripe payment webhook** — auto-mark broker fees PAID when the client pays the
+  Stripe link (deal ID already rides in the link metadata); until built, CSA marks
+  paid manually.
+- **Stage-placement fix + duplicate hard block** — the two v2.7 answers that became
+  build items (complete submissions → U/W Review; duplicate submissions blocked).
 
-**Waiting on ONE decision each:**
+**Waiting on something:**
 
 - **Turn on the security work (SEC-1)** — merge + tag the demo deals → waiting on
   **Q1–Q4** (mostly Q1).
-- **Deal email receiving (WC-5)** — carrier replies landing on the deal card; Curtis's
-  critical path *(§6C, §6F)* → waiting on **Q5** (the email domain), with **Q15**
-  (sending service) as its pair.
-- **Real signatures** — a live signing flow for the bind checklist *(§6F)* → waiting
-  on **Q13** (SignWell vs HelloSign), then the account/key (Q6).
+- **Deal email receiving (WC-5)** — code is built and live-tested; domain is
+  `axelins.com` (Q5 closed) → waiting only on **DNS setup** (Resend verification,
+  listener MX, webhook signing secret). On Brendan.
 - **Permanent file storage** — binders and policies somewhere durable *(§2)* → waiting
   on **Q7** (Amazon vs Cloudflare). A real go-live blocker.
 - **Deal card right rail** — close the 4C divergence *(§4)* → waiting on **Q9**.
@@ -45,6 +43,46 @@ instructions. This block gets updated as items finish and move into the log belo
   Request to Bind, pay-to-bind → waiting on **Q13–Q17** and the State Doc v2.5 update
   (Q17) to become work orders.
 - **Client logins for "My Program"** *(§6B)* → waiting on **Q8**.
+
+---
+
+## 2026-08-10 — Broker fee live, light mode closed out, keys in: Stripe verified, Resend/SignWell loaded
+
+**Broker fee (WC-2) — COMPLETE.** Deals carry an editable broker fee (default 7% of
+the WC premium from the latest quote — the server computes the amount everywhere; no
+surface recalculates it). ADMIN/CSA can adjust the percent, mark paid, waive, or
+reinstate as unpaid; the bind checklist's broker-fee line mirrors the status
+automatically. It never blocks submission or binding (per v2.7 §7A). If the fee is
+unpaid at bind, a dunning email goes to the client and agent — sent exactly once,
+even under concurrent binds.
+
+**Stripe payment link — LIVE (Q14 closed).** The dunning email now carries a real
+Stripe payment link for the exact fee amount, generated per deal with the deal ID in
+metadata for later reconciliation. Verified end-to-end against both keys.
+Development uses the test key (fake cards, no real charges); production
+automatically uses the live key. If Stripe is ever unreachable, dunning falls back
+to a portal link rather than failing — binding is never held up by the payment
+provider. *(Still open: a Stripe webhook to auto-mark fees PAID on payment;
+until then CSA marks paid manually.)*
+
+**Light-mode closeout (D2) — COMPLETE.** The last four quote-flow screens (Business
+Details, Loss History, Extraction Operations, Driving & Delivery Exposure) migrated
+off hardcoded dark colors onto the theme tokens. All four passed visual acceptance
+in BOTH light and dark mode (screenshots via the browser test run); typecheck stayed
+at zero.
+
+**Keys loaded (Q6 closed, Q15A unblocked).** Curtis added `RESEND_API_KEY`,
+`SIGNWELL_API_KEY`, and both Stripe keys to the workspace. SignWell's key slots into
+the existing signing service — real signatures unblock when that build starts.
+Outbound email switched from dev-logging to real sending.
+
+**Email domain settled (Q5 closed in practice): `axelins.com`.** The app is
+configured for `deals@axelins.com` outbound and `listener.axelins.com` inbound.
+Remaining is DNS-only, on Brendan: verify the domain in Resend (SPF/DKIM records),
+add the MX record on the listener subdomain, create the `email.received` webhook
+pointing at `/api/webhooks/resend-inbound`, and hand over its signing secret. Until
+the domain verifies, sends fall back to Resend's onboarding address (deliverable
+only to the account owner).
 
 ---
 
