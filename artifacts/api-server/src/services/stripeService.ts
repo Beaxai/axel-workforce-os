@@ -5,13 +5,24 @@
 
 const STRIPE_API = "https://api.stripe.com/v1";
 
+/**
+ * Key selection: development uses STRIPE_SECRET_TEST_KEY (fake cards, no real
+ * charges) when present; production uses STRIPE_SECRET_KEY (live). Falls back
+ * to whichever exists so a missing test key never silently disables Stripe in dev.
+ */
+function stripeKey(): string | undefined {
+  const live = process.env.STRIPE_SECRET_KEY;
+  const test = process.env.STRIPE_SECRET_TEST_KEY;
+  return process.env.NODE_ENV === "production" ? live || test : test || live;
+}
+
 function form(data: Record<string, string>): string {
   return new URLSearchParams(data).toString();
 }
 
 async function stripePost(path: string, data: Record<string, string>): Promise<any> {
-  const key = process.env.STRIPE_SECRET_KEY;
-  if (!key) throw new Error("STRIPE_SECRET_KEY not set");
+  const key = stripeKey();
+  if (!key) throw new Error("No Stripe key configured (STRIPE_SECRET_KEY / STRIPE_SECRET_TEST_KEY)");
   const resp = await fetch(`${STRIPE_API}${path}`, {
     method: "POST",
     headers: {
@@ -28,7 +39,7 @@ async function stripePost(path: string, data: Record<string, string>): Promise<a
 }
 
 export function stripeConfigured(): boolean {
-  return !!process.env.STRIPE_SECRET_KEY;
+  return !!stripeKey();
 }
 
 /**
