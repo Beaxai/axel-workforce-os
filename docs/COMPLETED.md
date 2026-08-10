@@ -14,13 +14,15 @@ instructions. This block gets updated as items finish and move into the log belo
 
 **Buildable now — no decision needed:**
 
-- **Real signatures** — a live signing flow for the bind checklist *(§6F)*. SignWell
-  won Q13 and the API key is now loaded (Q6 closed) — buildable whenever prioritized.
-- **Stripe payment webhook** — auto-mark broker fees PAID when the client pays the
-  Stripe link (deal ID already rides in the link metadata); until built, CSA marks
-  paid manually.
-- **Stage-placement fix + duplicate hard block** — the two v2.7 answers that became
-  build items (complete submissions → U/W Review; duplicate submissions blocked).
+- **Quote-acceptance / bind-order PDF** — the one signable document without a
+  generator yet; buildable once Curtis says template vs. our one-pager design
+  (see questions doc 2026-08-10 item D).
+- **Signature field placement** — envelopes currently use free-form signing;
+  placing exact signature/initial fields on the ACORD + supplemental is a
+  refinement pass (questions doc item E).
+
+*(2026-08-10: real signatures, the Stripe payment webhook, the stage-placement
+fix, and the duplicate hard block all moved to the completed log below.)*
 
 **Waiting on something:**
 
@@ -43,6 +45,34 @@ instructions. This block gets updated as items finish and move into the log belo
   Request to Bind, pay-to-bind → waiting on **Q13–Q17** and the State Doc v2.5 update
   (Q17) to become work orders.
 - **Client logins for "My Program"** *(§6B)* → waiting on **Q8**.
+
+---
+
+## 2026-08-10 (later) — Real signatures, Stripe webhook, stage fix, pipeline UX
+
+- **Real SignWell signing (§6F).** Sending a bind package now generates the real
+  PDFs (ACORD 130, Axel supplemental, carrier supplemental) and creates a real
+  SignWell envelope for the client + Axel signer. When everyone signs, the platform
+  downloads the signed PDF, marks the deal bound, checks off the ACORD + supplemental
+  checklist items, and advances the account to New Client. Webhook at
+  `/api/webhooks/signwell` treats every event as a hint and confirms against
+  SignWell's API, so forged calls are harmless. **Blocked on one click:** the
+  SignWell account email must be verified before real sends work (questions doc,
+  2026-08-10 items A/B).
+- **Stripe payment webhook.** `/api/webhooks/stripe` auto-marks the broker fee PAID
+  when the payment link is paid — same trust model (re-fetches the session from
+  Stripe before acting), idempotent, and it ACKs only after processing so Stripe
+  retries transient failures. Needs the `checkout.session.completed` event pointed
+  at it in the Stripe dashboard.
+- **Stage placement fixed (v2.7 §6 Seg 2).** Complete final submissions now land in
+  **U/W Review** (was: Indication); incomplete ones still go to Submission Review.
+- **Duplicate hard block: already done.** Verified in code — duplicate submissions
+  for an account with an active deal are blocked atomically with a 409 + automated
+  response and an activity log entry. No new work was needed.
+- **Pipeline board UX.** Manual drag-between-stages is gone — stages advance
+  automatically as work completes, so the board is now a read surface (cards still
+  click through to the deal card). Horizontal navigation is click-and-hold
+  drag-panning instead of the scrollbar. All verified by an automated UI test pass.
 
 ---
 
