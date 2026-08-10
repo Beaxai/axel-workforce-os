@@ -327,27 +327,40 @@ router.post("/signwell", async (req: Request, res: Response) => {
 // forged webhook can at worst trigger a harmless re-check.
 // ---------------------------------------------------------------------------
 router.post("/stripe", async (req: Request, res: Response) => {
-  res.status(200).json({ received: true });
+  // ACK only after processing succeeds: Stripe retries on non-2xx, so a
+  // transient Stripe-API/DB failure here becomes a retry instead of a
+  // silently dropped payment. Irrelevant/unverifiable events still 200
+  // immediately — retrying those is pointless.
   try {
     const payload: any = typeof req.body === "object" ? req.body : JSON.parse(String(req.body || "{}"));
-    if (payload?.type !== "checkout.session.completed") return;
     const sessionId: string | undefined = payload?.data?.object?.id;
-    if (!sessionId || !sessionId.startsWith("cs_")) return;
-    if (!stripeConfigured()) return;
+    if (
+      payload?.type !== "checkout.session.completed" ||
+      !sessionId ||
+      !sessionId.startsWith("cs_") ||
+      !stripeConfigured()
+    ) {
+      return res.status(200).json({ received: true });
+    }
 
     const session = await stripeGet(`/checkout/sessions/${sessionId}`);
-    if (session?.payment_status !== "paid") return;
     const dealId: string | undefined = session?.metadata?.dealId;
-    if (session?.metadata?.purpose !== "broker_fee" || !dealId) return;
+    if (session?.payment_status !== "paid" || session?.metadata?.purpose !== "broker_fee" || !dealId) {
+      return res.status(200).json({ received: true });
+    }
 
     // setBrokerFeeStatus is idempotent (no-op when already PAID) and also
     // satisfies the checklist's broker-fee line + logs the activity.
     const result = await setBrokerFeeStatus(dealId, "PAID", "Stripe (payment link)");
     if (!result.ok) {
+      // "Deal not found" is permanent — retrying won't fix it; log and ACK.
       console.error(`[stripe webhook] could not mark broker fee paid for deal ${dealId}: ${result.error}`);
+      return res.status(200).json({ received: true, note: result.error });
     }
+    return res.status(200).json({ received: true });
   } catch (err) {
-    console.error("[stripe webhook] processing error:", err instanceof Error ? err.message : err);
+    console.error("[stripe webhook] transient processing error (Stripe will retry):", err instanceof Error ? err.message : err);
+    return res.status(500).json({ error: "transient processing failure — retry" });
   }
 });
 

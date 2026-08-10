@@ -424,7 +424,12 @@ export default function Pipeline() {
     }
     st.active = false;
     setPanning(false);
-    // st.panned stays true until the click-capture below consumes it.
+    if (e.type === "pointercancel") {
+      // A canceled gesture emits no click, so leaving `panned` set would
+      // suppress the NEXT unrelated click. Clear it now.
+      st.panned = false;
+    }
+    // On pointerup, st.panned stays true until click-capture consumes it.
   };
 
   const onBoardClickCapture = (e: React.MouseEvent) => {
