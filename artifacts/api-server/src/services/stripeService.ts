@@ -20,7 +20,7 @@ async function stripePost(path: string, data: Record<string, string>): Promise<a
     },
     body: form(data),
   });
-  const body = await resp.json();
+  const body: any = await resp.json();
   if (!resp.ok) {
     throw new Error(`Stripe ${path} ${resp.status}: ${body?.error?.message || JSON.stringify(body)}`);
   }
