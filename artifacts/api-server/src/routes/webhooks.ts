@@ -10,7 +10,7 @@ import {
   activityLogTable,
   PROSPECT_STAGES,
 } from "@workspace/db";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, ne } from "drizzle-orm";
 import { retrieveAndStoreSignedDocuments } from "../services/helloSignService";
 import { getSignwellDocument } from "../services/signwellService";
 
@@ -194,6 +194,17 @@ router.post("/signwell", async (req: Request, res: Response) => {
       { event_type: eventType, received_at: new Date().toISOString(), signer: payload?.event?.related_signer?.email || null },
     ];
 
+    // Trust model: EVERY event is a hint only. Before any state change (or
+    // even a "viewed" activity row), confirm against SignWell's API — the
+    // live document is the sole source of truth, so forged payloads can at
+    // worst trigger a harmless re-sync.
+    const live = await getSignwellDocument(doc.id).catch((err) => {
+      console.error("[signwell webhook] confirmation fetch failed:", err instanceof Error ? err.message : err);
+      return null;
+    });
+    if (!live) return;
+    const liveStatus = String(live.status || "").toLowerCase();
+
     if (eventType === "document_viewed") {
       await db
         .update(signatureRequestsTable)
@@ -213,13 +224,6 @@ router.post("/signwell", async (req: Request, res: Response) => {
     }
 
     if (eventType === "document_signed" || eventType === "document_completed") {
-      // Server-side confirmation: fetch the document's true state from SignWell.
-      const live = await getSignwellDocument(doc.id).catch((err) => {
-        console.error("[signwell webhook] confirmation fetch failed:", err instanceof Error ? err.message : err);
-        return null;
-      });
-      if (!live) return;
-
       const liveRecipients: any[] = live.recipients || [];
       const signedEmails = new Set(
         liveRecipients.filter((r) => ["signed", "completed", "complete"].includes(String(r.status).toLowerCase())).map((r) => String(r.email).toLowerCase()),
@@ -229,21 +233,27 @@ router.post("/signwell", async (req: Request, res: Response) => {
           ? { ...s, status: "signed", signed_at: new Date().toISOString() }
           : s,
       );
-      const allSigned = String(live.status).toLowerCase() === "completed" || updatedSigners.every((s: any) => s.status === "signed");
+      // "allSigned" comes exclusively from the live document status —
+      // recipient-derived state alone never triggers finalization.
+      const allSigned = liveStatus === "completed";
 
+      // Never downgrade a terminal `signed` record (e.g. late/replayed
+      // partial event after completion): conditional updates only.
       await db
         .update(signatureRequestsTable)
         .set({
           signers: updatedSigners,
-          status: allSigned ? "signed" : "partially_signed",
+          ...(allSigned ? {} : { status: "partially_signed" }),
           webhookEvents: updatedEvents,
           updatedAt: new Date(),
         })
-        .where(eq(signatureRequestsTable.id, sigRecord.id));
-      await db
-        .update(dealsTable)
-        .set({ bindStatus: allSigned ? "signed" : "partially_signed" })
-        .where(eq(dealsTable.id, sigRecord.dealId!));
+        .where(and(eq(signatureRequestsTable.id, sigRecord.id), ne(signatureRequestsTable.status, "signed")));
+      if (!allSigned) {
+        await db
+          .update(dealsTable)
+          .set({ bindStatus: "partially_signed" })
+          .where(and(eq(dealsTable.id, sigRecord.dealId!), ne(dealsTable.bindStatus, "signed")));
+      }
 
       if (logDealId && !allSigned) {
         const signerEmail = payload?.event?.related_signer?.email;
@@ -266,10 +276,22 @@ router.post("/signwell", async (req: Request, res: Response) => {
     }
 
     if (eventType === "document_declined" || eventType === "document_expired" || eventType === "document_canceled") {
+      // Only act if the live document actually reports the terminal status
+      // the webhook claims — otherwise it's forged/stale; record and ignore.
+      const claimedStatus = eventType.replace("document_", "");
+      const liveMatches =
+        liveStatus === claimedStatus || (claimedStatus === "canceled" && ["canceled", "cancelled"].includes(liveStatus));
+      if (!liveMatches) {
+        await db
+          .update(signatureRequestsTable)
+          .set({ webhookEvents: updatedEvents, updatedAt: new Date() })
+          .where(eq(signatureRequestsTable.id, sigRecord.id));
+        return;
+      }
       await db
         .update(signatureRequestsTable)
-        .set({ status: eventType.replace("document_", ""), webhookEvents: updatedEvents, updatedAt: new Date() })
-        .where(eq(signatureRequestsTable.id, sigRecord.id));
+        .set({ status: claimedStatus, webhookEvents: updatedEvents, updatedAt: new Date() })
+        .where(and(eq(signatureRequestsTable.id, sigRecord.id), ne(signatureRequestsTable.status, "signed")));
       if (logDealId) {
         await db.insert(activityLogTable).values({
           dealId: logDealId,

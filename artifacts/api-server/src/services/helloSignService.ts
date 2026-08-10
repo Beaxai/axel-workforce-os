@@ -6,7 +6,7 @@ import {
   submissionAnswersTable,
   activityLogTable,
 } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, ne } from "drizzle-orm";
 import crypto from "crypto";
 import fs from "fs";
 import path from "path";
@@ -98,23 +98,11 @@ export async function sendBindPackageForSignature(bindPackageId: string) {
   const clientSigId = `sig_client_${crypto.randomUUID().slice(0, 8)}`;
   const axelSigId = `sig_axel_${crypto.randomUUID().slice(0, 8)}`;
 
-  // Real SignWell send when the key is configured; stub otherwise (keyless dev).
-  let externalId = `stub_${crypto.randomUUID()}`;
-  let provider: "SignWell" | "stub" = "stub";
+  // Generate PDFs before taking any lock (pure computation, no state).
+  let files: SignwellFile[] = [];
   if (signwellConfigured()) {
-    const files = await buildSignatureFiles(docsToSign, answers);
+    files = await buildSignatureFiles(docsToSign, answers);
     if (files.length === 0) throw new Error("Could not generate any PDFs for the signable documents.");
-    const swDoc = await createSignwellDocument({
-      name: `Bind package — ${deal?.businessName || clientName}`,
-      files,
-      recipients: [
-        { id: clientSigId, name: clientName, email: clientEmail },
-        { id: axelSigId, name: "Axel Insurance Services", email: AXEL_SIGNER_EMAIL },
-      ],
-      metadata: { dealId: String(bindPkg.dealId), bindPackageId, purpose: "bind_package" },
-    });
-    externalId = swDoc.id;
-    provider = "SignWell";
   }
 
   const signersPayload = [
@@ -136,53 +124,99 @@ export async function sendBindPackageForSignature(bindPackageId: string) {
     },
   ];
 
-  const [sigRecord] = await db
-    .insert(signatureRequestsTable)
-    .values({
-      bindPackageId,
-      dealId: bindPkg.dealId,
-      proposalId: null,
-      hellosignSignatureRequestId: externalId,
-      hellosignFilesUrl: null,
-      signers: signersPayload,
-      status: "awaiting_signature",
-    })
-    .returning();
+  // Single-envelope guard: everything below runs with a row lock on the bind
+  // package, so concurrent send requests serialize; the second sender sees an
+  // active request and aborts before creating a duplicate envelope/emails.
+  // (The provider call inside the tx is a deliberate tradeoff — it is one
+  // short API call and the lock is a single row.)
+  return await db.transaction(async (tx) => {
+    const [lockedPkg] = await tx
+      .select()
+      .from(bindDocumentPackagesTable)
+      .where(eq(bindDocumentPackagesTable.id, bindPackageId))
+      .for("update")
+      .limit(1);
+    if (!lockedPkg) throw new Error("Bind package not found: " + bindPackageId);
 
-  await db
-    .update(bindDocumentPackagesTable)
-    .set({
-      status: "pending_signature",
-      hellosignSignatureRequestId: externalId,
-      signatureRequestId: sigRecord.id,
-      updatedAt: new Date(),
-    })
-    .where(eq(bindDocumentPackagesTable.id, bindPackageId));
+    if (lockedPkg.signatureRequestId) {
+      const [existing] = await tx
+        .select()
+        .from(signatureRequestsTable)
+        .where(eq(signatureRequestsTable.id, lockedPkg.signatureRequestId))
+        .limit(1);
+      if (existing && ["awaiting_signature", "partially_signed", "signed"].includes(existing.status)) {
+        throw new Error(
+          existing.status === "signed"
+            ? "This bind package has already been fully signed."
+            : "A signature request is already out for this bind package. Use resend to remind signers.",
+        );
+      }
+      // declined/expired/canceled → fall through and allow a fresh envelope.
+    }
 
-  await db
-    .update(dealsTable)
-    .set({ bindStatus: "sent_for_signature" })
-    .where(eq(dealsTable.id, bindPkg.dealId!));
+    let externalId = `stub_${crypto.randomUUID()}`;
+    let provider: "SignWell" | "stub" = "stub";
+    if (signwellConfigured()) {
+      const swDoc = await createSignwellDocument({
+        name: `Bind package — ${deal?.businessName || clientName}`,
+        files,
+        recipients: [
+          { id: clientSigId, name: clientName, email: clientEmail },
+          { id: axelSigId, name: "Axel Insurance Services", email: AXEL_SIGNER_EMAIL },
+        ],
+        metadata: { dealId: String(bindPkg.dealId), bindPackageId, purpose: "bind_package" },
+      });
+      externalId = swDoc.id;
+      provider = "SignWell";
+    }
 
-  const sentLogDealId = bindPkg.dealId;
-  if (sentLogDealId) {
-    await db.insert(activityLogTable).values({
-      dealId: sentLogDealId,
-      entityType: "deal",
-      entityId: sentLogDealId,
-      eventType: "signature_request_sent",
-      description: `Bind documents sent for signature (${provider === "stub" ? "STUB MODE — no SIGNWELL_API_KEY" : signwellTestMode() ? "SignWell TEST MODE" : "SignWell"}). Awaiting signatures from: ${signersPayload.map((s) => s.name).join(", ")}.`,
-      metadata: {
-        hellosign_signature_request_id: externalId,
-        signature_request_id: sigRecord.id,
-        signers: signersPayload.map((s) => ({ name: s.name, email: s.email, role: s.role })),
-        test_mode: signwellTestMode(),
-        provider,
-      },
-    });
-  }
+    const [sigRecord] = await tx
+      .insert(signatureRequestsTable)
+      .values({
+        bindPackageId,
+        dealId: bindPkg.dealId,
+        proposalId: null,
+        hellosignSignatureRequestId: externalId,
+        hellosignFilesUrl: null,
+        signers: signersPayload,
+        status: "awaiting_signature",
+      })
+      .returning();
 
-  return { signatureRequestId: sigRecord.id, helloSignId: externalId };
+    await tx
+      .update(bindDocumentPackagesTable)
+      .set({
+        status: "pending_signature",
+        hellosignSignatureRequestId: externalId,
+        signatureRequestId: sigRecord.id,
+        updatedAt: new Date(),
+      })
+      .where(eq(bindDocumentPackagesTable.id, bindPackageId));
+
+    await tx
+      .update(dealsTable)
+      .set({ bindStatus: "sent_for_signature" })
+      .where(eq(dealsTable.id, bindPkg.dealId!));
+
+    if (bindPkg.dealId) {
+      await tx.insert(activityLogTable).values({
+        dealId: bindPkg.dealId,
+        entityType: "deal",
+        entityId: bindPkg.dealId,
+        eventType: "signature_request_sent",
+        description: `Bind documents sent for signature (${provider === "stub" ? "STUB MODE — no SIGNWELL_API_KEY" : signwellTestMode() ? "SignWell TEST MODE" : "SignWell"}). Awaiting signatures from: ${signersPayload.map((s) => s.name).join(", ")}.`,
+        metadata: {
+          hellosign_signature_request_id: externalId,
+          signature_request_id: sigRecord.id,
+          signers: signersPayload.map((s) => ({ name: s.name, email: s.email, role: s.role })),
+          test_mode: signwellTestMode(),
+          provider,
+        },
+      });
+    }
+
+    return { signatureRequestId: sigRecord.id, helloSignId: externalId };
+  });
 }
 
 export async function retrieveAndStoreSignedDocuments(helloSignRequestId: string) {
@@ -194,22 +228,44 @@ export async function retrieveAndStoreSignedDocuments(helloSignRequestId: string
 
   if (!sigRecord) throw new Error("Signature request not found for HS ID: " + helloSignRequestId);
 
-  const storagePath = `signed-documents/${sigRecord.dealId}/${helloSignRequestId}/signed_bind_package.pdf`;
+  // Atomic finalization claim: exactly one caller wins the OPEN→signed
+  // transition; duplicate webhook deliveries (or a concurrent legacy handler)
+  // match zero rows and stop here, so bind side effects and activity logs run
+  // once. This also makes `signed` terminal — nothing below can be re-entered.
+  const claimed = await db
+    .update(signatureRequestsTable)
+    .set({ status: "signed", signedAt: new Date(), updatedAt: new Date() })
+    .where(and(eq(signatureRequestsTable.id, sigRecord.id), ne(signatureRequestsTable.status, "signed")))
+    .returning({ id: signatureRequestsTable.id });
+  if (claimed.length === 0) return;
 
-  // Real provider: download the completed (signed) PDF and persist it under
-  // uploads/ (same local-storage home as loss-history and policy documents;
-  // durable storage is Q7). Best-effort — a download failure must not stop
-  // the bind bookkeeping; the PDF stays retrievable from SignWell.
-  if (signwellConfigured() && !helloSignRequestId.startsWith("stub_")) {
+  // Download the completed (signed) PDF into uploads/ (same local-storage
+  // home as loss-history and policy documents; durable storage is Q7).
+  // Only a stub id (keyless dev) skips the download — every real external id
+  // is SignWell, since the HelloSign-era service never made network calls.
+  // The storage path is only persisted when the file actually exists on disk
+  // (or in stub mode, where the synthetic path is the documented dev fiction);
+  // if the download fails the bind still completes — signing DID happen per
+  // the provider — but the path stays null and an explicit warning is logged,
+  // so the PDF can be re-pulled from SignWell later.
+  const isStub = helloSignRequestId.startsWith("stub_");
+  const candidatePath = `signed-documents/${sigRecord.dealId}/${helloSignRequestId}/signed_bind_package.pdf`;
+  let storagePath: string | null = isStub ? candidatePath : null;
+  let downloadError: string | null = null;
+  if (!isStub && signwellConfigured()) {
     try {
       const pdf = await downloadCompletedPdf(helloSignRequestId);
       if (pdf) {
-        const abs = path.join(process.cwd(), "uploads", storagePath);
+        const abs = path.join(process.cwd(), "uploads", candidatePath);
         fs.mkdirSync(path.dirname(abs), { recursive: true });
         fs.writeFileSync(abs, pdf);
+        storagePath = candidatePath;
+      } else {
+        downloadError = "SignWell returned no completed PDF yet";
       }
     } catch (err) {
-      console.error(`[signwell] completed PDF download failed for ${helloSignRequestId}:`, err instanceof Error ? err.message : err);
+      downloadError = err instanceof Error ? err.message : String(err);
+      console.error(`[signwell] completed PDF download failed for ${helloSignRequestId}:`, downloadError);
     }
   }
 
@@ -239,15 +295,12 @@ export async function retrieveAndStoreSignedDocuments(helloSignRequestId: string
       );
   }
 
-  await db
-    .update(signatureRequestsTable)
-    .set({
-      status: "signed",
-      signedDocumentsPath: storagePath,
-      signedAt: new Date(),
-      updatedAt: new Date(),
-    })
-    .where(eq(signatureRequestsTable.id, sigRecord.id));
+  if (storagePath) {
+    await db
+      .update(signatureRequestsTable)
+      .set({ signedDocumentsPath: storagePath, updatedAt: new Date() })
+      .where(eq(signatureRequestsTable.id, sigRecord.id));
+  }
 
   await db
     .update(bindDocumentPackagesTable)
@@ -281,5 +334,16 @@ export async function retrieveAndStoreSignedDocuments(helloSignRequestId: string
         signature_request_id: sigRecord.id,
       },
     });
+
+    if (downloadError) {
+      await db.insert(activityLogTable).values({
+        dealId: signedLogDealId,
+        entityType: "deal",
+        entityId: signedLogDealId,
+        eventType: "signed_pdf_download_failed",
+        description: `Deal bound, but the signed PDF could not be downloaded from SignWell yet (${downloadError}). It remains available in SignWell.`,
+        metadata: { hellosign_signature_request_id: helloSignRequestId, error: downloadError },
+      });
+    }
   }
 }
