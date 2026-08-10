@@ -13,6 +13,50 @@ settled correctly before launch. Newest at the top.
 
 ---
 
+## Updated 2026-08-10 — SignWell is wired; two small actions + three odds and ends 🖊️
+
+The real SignWell signing flow is now built and pushed: sending a bind package
+generates the actual PDFs (ACORD 130, Axel supplemental, carrier supplemental),
+creates a real SignWell envelope for the client + an Axel signer, and when everyone
+has signed, the platform downloads the signed PDF, marks the deal bound, and checks
+off the ACORD 130 + supplemental items on the bind checklist automatically.
+
+**Two quick actions needed from you (Curtis):**
+
+- **A. Verify the SignWell account email.** The API key works, but SignWell refuses
+  to create documents until the account email is verified — look for SignWell's
+  verification email in the inbox that created the account and click the link.
+  Until then, every send attempt fails with "verify your email." Two minutes.
+- **B. Register the webhook in the SignWell dashboard** (or hand Brendan a login and
+  we'll do it): point it at `<production URL>/api/webhooks/signwell`. No secret to
+  copy over — our handler confirms every event against SignWell's API directly, so a
+  forged webhook can't do anything.
+
+**Odds and ends to rule on (small, non-blocking):**
+
+- **C. Who is the Axel counter-signer?** The envelope includes an "Axel Authorized
+  Signer" alongside the client. We defaulted the address to
+  `signatures@axelins.com` — does that mailbox exist (or should it, when the domain
+  DNS goes in), and who actually signs on Axel's behalf? If Axel shouldn't
+  counter-sign at all and only the client signs, say so and we'll drop the second
+  signer.
+- **D. The bind order / quote acceptance isn't in the envelope yet.** We attach the
+  three documents we can generate (ACORD 130, Axel supplemental, carrier
+  supplemental). There's no PDF generator for the bind order / quote acceptance
+  form yet, so it stays listed in the package but isn't sent for signature.
+  Per v2.7 the signed quote acceptance is subjectivity #1 — do you have a template
+  form we should build from, or should we design a simple one-pager (quote summary
+  + billing frequency + acceptance signature block)?
+- **E. Where signers sign on the page.** Right now signers can sign/initial
+  anywhere on the documents (SignWell's default). Precise signature-field placement
+  on the ACORD and supplemental forms is a refinement pass — fine to do, just not
+  free. OK to launch with free-form signing and refine later? (Suggested: yes.)
+
+Once A is done we run the live end-to-end test (test mode — free, watermarked, no
+real emails to clients).
+
+---
+
 ## Updated 2026-08-09 (evening) — keys & domain unblocked 🔓
 
 Movement on three of the still-waiting items, from today's exchange:
