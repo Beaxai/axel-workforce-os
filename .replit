@@ -60,3 +60,9 @@ timeoutMs = 20000
 
 [nix]
 channel = "stable-25_05"
+
+[userenv]
+
+[userenv.shared]
+LISTENER_EMAIL_DOMAIN = "listener.axelins.com"
+OUTBOUND_EMAIL_FROM = "deals@axelins.com"

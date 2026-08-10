@@ -14,3 +14,5 @@ Three routing layers, in order: (1) recipient = deal listener address, (2) `[AXL
 **How to apply:** any new outbound email path must go through `sendDealEmail` (Reply-To + subject token + Message-ID recording) or replies won't route.
 
 Status 2026-08-09: domain is owned and Curtis gave Brendan credentials — go-live is config-only (RESEND_API_KEY, LISTENER_EMAIL_DOMAIN, OUTBOUND_EMAIL_FROM, RESEND_WEBHOOK_SECRET, MX on listener subdomain, webhook → /api/webhooks/resend-inbound). Only remaining code change: real Stripe payment link in broker-fee dunning once Stripe keys land.
+
+Domain confirmed 2026-08-10: axelins.com — OUTBOUND_EMAIL_FROM=deals@axelins.com, LISTENER_EMAIL_DOMAIN=listener.axelins.com (set in shared env). Pending: Resend domain verification + MX on listener subdomain + RESEND_WEBHOOK_SECRET.
