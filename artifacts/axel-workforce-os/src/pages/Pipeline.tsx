@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef, type DragEvent, type ReactNode } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from "react";
 import {
   SectionHeader,
   GlassCard,
@@ -183,13 +183,10 @@ export default function Pipeline() {
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
   const [showNewDeal, setShowNewDeal] = useState(false);
-  const [draggingId, setDraggingId] = useState<string | null>(null);
-  const [dragOverStage, setDragOverStage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [viewMode, setViewMode] = useState<"kanban" | "list">("kanban");
   const [appetiteFilter, setAppetiteFilter] = useState<string>("");
   const [dealAppetiteMap, setDealAppetiteMap] = useState<Record<string, string>>({});
-  const [bindConfirm, setBindConfirm] = useState<{ dealId: string; name: string; prevStage?: string } | null>(null);
 
   const [form, setForm] = useState({
     businessName: "",
@@ -379,68 +376,63 @@ export default function Pipeline() {
     }
   };
 
-  const handleDragStart = (e: DragEvent, dealId: string) => {
-    e.dataTransfer.setData("text/plain", dealId);
-    e.dataTransfer.effectAllowed = "move";
-    setDraggingId(dealId);
+  // Manual stage dragging is intentionally gone: stages advance automatically
+  // as work completes (submission → U/W Review, approval, bind via checklist,
+  // tracker completion → Client), so the board is a read surface. The one
+  // remaining "move" is opening the deal card and doing the actual work.
+
+  // Click-and-hold drag-panning for the horizontal board (replaces relying on
+  // the scroll bar). Pointer events on the board viewport: hold + move pans
+  // scrollLeft; a real pan (>5px) suppresses the ensuing click so cards don't
+  // open after a pan gesture.
+  const boardRef = useRef<HTMLDivElement | null>(null);
+  const panState = useRef<{ startX: number; startScroll: number; panned: boolean; active: boolean }>({
+    startX: 0,
+    startScroll: 0,
+    panned: false,
+    active: false,
+  });
+  const [panning, setPanning] = useState(false);
+
+  const onBoardPointerDown = (e: React.PointerEvent) => {
+    if (e.button !== 0) return;
+    const el = boardRef.current;
+    if (!el) return;
+    // Don't hijack interactions that need native behavior (text inputs, links).
+    const target = e.target as HTMLElement;
+    if (target.closest("input, textarea, select, a, button")) return;
+    panState.current = { startX: e.clientX, startScroll: el.scrollLeft, panned: false, active: true };
   };
 
-  const handleDragOver = (e: DragEvent, stageKey: string) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-    setDragOverStage(stageKey);
-  };
-
-  const handleDragLeave = () => {
-    setDragOverStage(null);
-  };
-
-  // Move a deal to a stage optimistically and persist. The server (Step D) owns
-  // the bind-readiness gate + implementation-tracker trigger — the board just
-  // PATCHes the stage. On a 409 (not bind-ready) we snap the card back and
-  // surface the server's reason.
-  const commitStageMove = useCallback(async (dealId: string, stageKey: string, prevStage?: string) => {
-    setDeals((prev) => prev.map((d) => (d.id === dealId ? { ...d, stage: stageKey } : d)));
-    try {
-      await api.patch(`/deals/${dealId}`, { stage: stageKey });
-    } catch (err) {
-      // Snap back to the prior column (prevStage is captured at drop time, so
-      // rollback is deterministic even under overlapping updates).
-      setDeals((prev) => prev.map((d) => (d.id === dealId ? { ...d, stage: prevStage } : d)));
-      const raw = err instanceof Error ? err.message : String(err);
-      let reason = raw;
-      try {
-        const parsed = JSON.parse(raw);
-        if (typeof parsed === "string") reason = parsed;
-        else if (parsed && typeof parsed === "object") reason = JSON.stringify(parsed);
-      } catch { /* not JSON — use raw */ }
-      window.alert(reason);
-      fetchDeals();
+  const onBoardPointerMove = (e: React.PointerEvent) => {
+    const st = panState.current;
+    const el = boardRef.current;
+    if (!st.active || !el) return;
+    const dx = e.clientX - st.startX;
+    if (!st.panned && Math.abs(dx) > 5) {
+      st.panned = true;
+      setPanning(true);
+      el.setPointerCapture(e.pointerId);
     }
-  }, [fetchDeals]);
-
-  const handleDrop = async (e: DragEvent, stageKey: string) => {
-    e.preventDefault();
-    setDragOverStage(null);
-    const dealId = e.dataTransfer.getData("text/plain");
-    if (!dealId) return;
-    setDraggingId(null);
-
-    const deal = deals.find((d) => d.id === dealId);
-    if (!deal || deal.stage === stageKey) return;
-
-    // Entering Bound requires an explicit confirm before the server gate runs.
-    if (stageKey === "BOUND") {
-      setBindConfirm({ dealId, name: deal.businessName || "this deal", prevStage: deal.stage });
-      return;
-    }
-
-    await commitStageMove(dealId, stageKey, deal.stage);
+    if (st.panned) el.scrollLeft = st.startScroll - dx;
   };
 
-  const handleDragEnd = () => {
-    setDraggingId(null);
-    setDragOverStage(null);
+  const endBoardPan = (e: React.PointerEvent) => {
+    const st = panState.current;
+    if (st.active && st.panned && boardRef.current?.hasPointerCapture(e.pointerId)) {
+      boardRef.current.releasePointerCapture(e.pointerId);
+    }
+    st.active = false;
+    setPanning(false);
+    // st.panned stays true until the click-capture below consumes it.
+  };
+
+  const onBoardClickCapture = (e: React.MouseEvent) => {
+    if (panState.current.panned) {
+      e.stopPropagation();
+      e.preventDefault();
+      panState.current.panned = false;
+    }
   };
 
   const inputStyle: React.CSSProperties = {
@@ -777,11 +769,21 @@ export default function Pipeline() {
         </div>
       ) : (
         <div
+          ref={boardRef}
+          onPointerDown={onBoardPointerDown}
+          onPointerMove={onBoardPointerMove}
+          onPointerUp={endBoardPan}
+          onPointerCancel={endBoardPan}
+          onClickCapture={onBoardClickCapture}
           style={{
             display: "flex",
             gap: "12px",
             flex: 1,
             paddingBottom: "12px",
+            overflowX: "auto",
+            scrollbarWidth: "none",
+            cursor: panning ? "grabbing" : "default",
+            userSelect: panning ? "none" : undefined,
           }}
         >
           {STAGES.map((stage) => {
@@ -789,14 +791,11 @@ export default function Pipeline() {
             const visibleCount = visibleByStage[stage.key] ?? CARDS_PER_PAGE;
             const visibleDeals = stageDeals.slice(0, visibleCount);
             const hasMore = stageDeals.length > visibleDeals.length;
-            const isDropTarget = dragOverStage === stage.key;
+            const isDropTarget = false;
             return (
               <div
                 key={stage.key}
                 style={{ minWidth: "280px", width: "280px", flexShrink: 0, display: "flex", flexDirection: "column" }}
-                onDragOver={(e) => handleDragOver(e, stage.key)}
-                onDragLeave={handleDragLeave}
-                onDrop={(e) => handleDrop(e, stage.key)}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px", paddingLeft: "4px" }}>
                   <span style={{ fontSize: "11px", fontWeight: 600, color: textMuted }}>{stage.num}</span>
@@ -814,17 +813,13 @@ export default function Pipeline() {
                     {visibleDeals.map((deal) => (
                       <div
                         key={deal.id}
-                        draggable
-                        onDragStart={(e) => handleDragStart(e, deal.id)}
-                        onDragEnd={handleDragEnd}
                         onClick={() => openDealCard(deal.id)}
                         style={{
                           background: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.02)",
                           border: `1px solid ${borderSubtle}`,
                           borderRadius: "10px",
                           padding: "12px",
-                          cursor: "grab",
-                          opacity: draggingId === deal.id ? 0.4 : 1,
+                          cursor: "pointer",
                           transition: "border-color 0.15s, opacity 0.15s",
                         }}
                         onMouseEnter={(e) => {
@@ -1077,33 +1072,6 @@ export default function Pipeline() {
           <GhostButton onClick={() => setShowNewDeal(false)} style={{ padding: "10px 24px" }}>
             Cancel
           </GhostButton>
-        </div>
-      </Modal>
-
-      <Modal isOpen={bindConfirm !== null} onClose={() => setBindConfirm(null)} title="Move to Bound?">
-        <div style={{ minWidth: "420px" }}>
-          <p style={{ fontSize: "14px", color: textPrimary, margin: "0 0 8px" }}>
-            Move <strong>{bindConfirm?.name}</strong> to <strong>Bound</strong>?
-          </p>
-          <p style={{ fontSize: "13px", color: textMuted, margin: 0 }}>
-            Binding is gated server-side — the deal must have a completed submission and an
-            approved quote. Binding also creates the implementation tracker(s).
-          </p>
-          <div style={{ display: "flex", gap: "12px", marginTop: "24px" }}>
-            <PinkButton
-              onClick={() => {
-                const c = bindConfirm;
-                setBindConfirm(null);
-                if (c) commitStageMove(c.dealId, "BOUND", c.prevStage);
-              }}
-              style={{ padding: "10px 24px" }}
-            >
-              Confirm Bind
-            </PinkButton>
-            <GhostButton onClick={() => setBindConfirm(null)} style={{ padding: "10px 24px" }}>
-              Cancel
-            </GhostButton>
-          </div>
         </div>
       </Modal>
 

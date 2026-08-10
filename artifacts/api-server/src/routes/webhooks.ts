@@ -13,6 +13,8 @@ import {
 import { and, eq, inArray, ne } from "drizzle-orm";
 import { retrieveAndStoreSignedDocuments } from "../services/helloSignService";
 import { getSignwellDocument } from "../services/signwellService";
+import { stripeGet, stripeConfigured } from "../services/stripeService";
+import { setBrokerFeeStatus } from "../lib/broker-fee";
 
 /**
  * Auto-transition the linked account from a Prospect stage to "New Client" on
@@ -312,6 +314,40 @@ router.post("/signwell", async (req: Request, res: Response) => {
       .where(eq(signatureRequestsTable.id, sigRecord.id));
   } catch (err) {
     console.error("[signwell webhook] processing error:", err instanceof Error ? err.message : err);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Stripe webhook — auto-marks the broker fee PAID when its payment link is
+// paid. Register in the Stripe dashboard pointing at /api/webhooks/stripe with
+// the `checkout.session.completed` event. Same trust model as SignWell: the
+// payload is a hint only — we re-fetch the Checkout Session from Stripe's API
+// with our own key and act on ITS payment_status + metadata (payment-link
+// metadata propagates onto sessions), so no signing secret is required and a
+// forged webhook can at worst trigger a harmless re-check.
+// ---------------------------------------------------------------------------
+router.post("/stripe", async (req: Request, res: Response) => {
+  res.status(200).json({ received: true });
+  try {
+    const payload: any = typeof req.body === "object" ? req.body : JSON.parse(String(req.body || "{}"));
+    if (payload?.type !== "checkout.session.completed") return;
+    const sessionId: string | undefined = payload?.data?.object?.id;
+    if (!sessionId || !sessionId.startsWith("cs_")) return;
+    if (!stripeConfigured()) return;
+
+    const session = await stripeGet(`/checkout/sessions/${sessionId}`);
+    if (session?.payment_status !== "paid") return;
+    const dealId: string | undefined = session?.metadata?.dealId;
+    if (session?.metadata?.purpose !== "broker_fee" || !dealId) return;
+
+    // setBrokerFeeStatus is idempotent (no-op when already PAID) and also
+    // satisfies the checklist's broker-fee line + logs the activity.
+    const result = await setBrokerFeeStatus(dealId, "PAID", "Stripe (payment link)");
+    if (!result.ok) {
+      console.error(`[stripe webhook] could not mark broker fee paid for deal ${dealId}: ${result.error}`);
+    }
+  } catch (err) {
+    console.error("[stripe webhook] processing error:", err instanceof Error ? err.message : err);
   }
 });
 

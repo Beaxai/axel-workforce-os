@@ -38,6 +38,18 @@ async function stripePost(path: string, data: Record<string, string>): Promise<a
   return body;
 }
 
+/** Authenticated GET — used to server-side-confirm webhook claims. */
+export async function stripeGet(path: string): Promise<any> {
+  const key = stripeKey();
+  if (!key) throw new Error("No Stripe key configured (STRIPE_SECRET_KEY / STRIPE_SECRET_TEST_KEY)");
+  const resp = await fetch(`${STRIPE_API}${path}`, { headers: { Authorization: `Bearer ${key}` } });
+  const body: any = await resp.json();
+  if (!resp.ok) {
+    throw new Error(`Stripe GET ${path} ${resp.status}: ${body?.error?.message || JSON.stringify(body)}`);
+  }
+  return body;
+}
+
 export function stripeConfigured(): boolean {
   return !!stripeKey();
 }
