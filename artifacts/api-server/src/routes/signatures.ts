@@ -7,6 +7,7 @@ import {
 } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import { sendBindPackageForSignature } from "../services/helloSignService";
+import { signwellConfigured, sendSignwellReminder } from "../services/signwellService";
 
 const router = Router();
 
@@ -77,6 +78,16 @@ router.post("/:dealId/resend", async (req: Request<{ dealId: string }>, res: Res
 
   if (!sigRecord) return res.status(404).json({ error: "No signature request found." });
   if (sigRecord.status === "signed") return res.status(400).json({ error: "Already fully signed." });
+
+  // Real provider: trigger SignWell's reminder emails to pending recipients.
+  const externalId = sigRecord.hellosignSignatureRequestId;
+  if (signwellConfigured() && externalId && !externalId.startsWith("stub_")) {
+    try {
+      await sendSignwellReminder(externalId);
+    } catch (err: any) {
+      return res.status(502).json({ error: `SignWell reminder failed: ${err.message}` });
+    }
+  }
 
   await db.insert(activityLogTable).values({
     dealId: req.params.dealId,

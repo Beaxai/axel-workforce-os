@@ -12,6 +12,50 @@ import {
 } from "@workspace/db";
 import { and, eq, inArray } from "drizzle-orm";
 import { retrieveAndStoreSignedDocuments } from "../services/helloSignService";
+import { getSignwellDocument } from "../services/signwellService";
+
+/**
+ * Auto-transition the linked account from a Prospect stage to "New Client" on
+ * bind completion. Idempotent: a conditional UPDATE ... WHERE stage IN
+ * (prospect stages) RETURNING inside a tx — duplicate deliveries match zero
+ * rows, so no duplicate stage change or activity row. Shared by the SignWell
+ * and legacy HelloSign completion handlers.
+ */
+async function advanceAccountOnBind(boundDealId: string): Promise<void> {
+  const [deal] = await db
+    .select({ accountId: dealsTable.accountId })
+    .from(dealsTable)
+    .where(eq(dealsTable.id, boundDealId));
+  const accountId = deal?.accountId;
+  if (!accountId) return;
+  await db.transaction(async (tx) => {
+    const [account] = await tx
+      .select({ id: accountsTable.id, clientStage: accountsTable.clientStage })
+      .from(accountsTable)
+      .where(eq(accountsTable.id, accountId));
+    if (!account) return;
+    const fromStage = account.clientStage ?? "—";
+    const advanced = await tx
+      .update(accountsTable)
+      .set({ clientStage: "New Client", updatedAt: new Date() })
+      .where(and(eq(accountsTable.id, accountId), inArray(accountsTable.clientStage, [...PROSPECT_STAGES])))
+      .returning({ id: accountsTable.id });
+    if (advanced.length === 0) return; // already advanced or not a prospect
+    await tx.insert(activityLogTable).values({
+      dealId: boundDealId,
+      entityType: "account",
+      entityId: accountId,
+      eventType: "stage_changed",
+      description: `Stage changed from "${fromStage}" to "New Client" (deal bound).`,
+      metadata: {
+        changes: [{ field: "clientStage", label: "Stage", from: fromStage, to: "New Client" }],
+        trigger: "bind_completed",
+        dealId: boundDealId,
+      },
+      createdBy: null,
+    });
+  });
+}
 import { processInboundEmail, type InboundEmail } from "../lib/inbound-email";
 
 const router = Router();
@@ -114,6 +158,138 @@ router.post("/resend-inbound", express.text({ type: "*/*", limit: "10mb" }), asy
   } catch (err) {
     console.error("Resend inbound webhook error:", err);
     return res.status(500).json({ error: "processing failed" });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// SignWell webhook (v2.7: SignWell platform-wide). Register in the SignWell
+// dashboard pointing at /api/webhooks/signwell. Events carry
+// { event: { type, related_signer? }, data: { object: <document> } }.
+// Trust model: instead of relying on payload hashes, any state-changing event
+// is server-side confirmed by re-fetching the document from SignWell's API —
+// a forged webhook can therefore never mark a deal signed.
+// ---------------------------------------------------------------------------
+router.post("/signwell", async (req: Request, res: Response) => {
+  res.status(200).send("ok");
+  try {
+    const payload: any = typeof req.body === "object" ? req.body : JSON.parse(String(req.body || "{}"));
+    const eventType: string | undefined = payload?.event?.type;
+    const doc: any = payload?.data?.object;
+    if (!eventType || !doc?.id) return;
+
+    const [sigRecord] = await db
+      .select()
+      .from(signatureRequestsTable)
+      .where(eq(signatureRequestsTable.hellosignSignatureRequestId, doc.id))
+      .limit(1);
+    if (!sigRecord) {
+      console.warn("[signwell webhook] no matching signature_request for document", doc.id);
+      return;
+    }
+    if (sigRecord.status === "signed") return; // terminal — idempotent
+
+    const logDealId = sigRecord.dealId;
+    const updatedEvents = [
+      ...((sigRecord.webhookEvents as any[]) || []),
+      { event_type: eventType, received_at: new Date().toISOString(), signer: payload?.event?.related_signer?.email || null },
+    ];
+
+    if (eventType === "document_viewed") {
+      await db
+        .update(signatureRequestsTable)
+        .set({ webhookEvents: updatedEvents, updatedAt: new Date() })
+        .where(eq(signatureRequestsTable.id, sigRecord.id));
+      if (logDealId) {
+        await db.insert(activityLogTable).values({
+          dealId: logDealId,
+          entityType: "deal",
+          entityId: logDealId,
+          eventType: "signature_viewed",
+          description: `Bind document package viewed${payload?.event?.related_signer?.email ? " by " + payload.event.related_signer.email : ""}.`,
+          metadata: { signwell_document_id: doc.id },
+        });
+      }
+      return;
+    }
+
+    if (eventType === "document_signed" || eventType === "document_completed") {
+      // Server-side confirmation: fetch the document's true state from SignWell.
+      const live = await getSignwellDocument(doc.id).catch((err) => {
+        console.error("[signwell webhook] confirmation fetch failed:", err instanceof Error ? err.message : err);
+        return null;
+      });
+      if (!live) return;
+
+      const liveRecipients: any[] = live.recipients || [];
+      const signedEmails = new Set(
+        liveRecipients.filter((r) => ["signed", "completed", "complete"].includes(String(r.status).toLowerCase())).map((r) => String(r.email).toLowerCase()),
+      );
+      const updatedSigners = ((sigRecord.signers as any[]) || []).map((s: any) =>
+        signedEmails.has(String(s.email).toLowerCase()) && s.status !== "signed"
+          ? { ...s, status: "signed", signed_at: new Date().toISOString() }
+          : s,
+      );
+      const allSigned = String(live.status).toLowerCase() === "completed" || updatedSigners.every((s: any) => s.status === "signed");
+
+      await db
+        .update(signatureRequestsTable)
+        .set({
+          signers: updatedSigners,
+          status: allSigned ? "signed" : "partially_signed",
+          webhookEvents: updatedEvents,
+          updatedAt: new Date(),
+        })
+        .where(eq(signatureRequestsTable.id, sigRecord.id));
+      await db
+        .update(dealsTable)
+        .set({ bindStatus: allSigned ? "signed" : "partially_signed" })
+        .where(eq(dealsTable.id, sigRecord.dealId!));
+
+      if (logDealId && !allSigned) {
+        const signerEmail = payload?.event?.related_signer?.email;
+        const signerName = updatedSigners.find((s: any) => s.email?.toLowerCase() === String(signerEmail || "").toLowerCase())?.name || "A signer";
+        await db.insert(activityLogTable).values({
+          dealId: logDealId,
+          entityType: "deal",
+          entityId: logDealId,
+          eventType: "document_signed",
+          description: `${signerName} signed the bind documents. Awaiting remaining signatures.`,
+          metadata: { signwell_document_id: doc.id, signers: updatedSigners },
+        });
+      }
+
+      if (allSigned) {
+        await retrieveAndStoreSignedDocuments(doc.id);
+        await advanceAccountOnBind(sigRecord.dealId!);
+      }
+      return;
+    }
+
+    if (eventType === "document_declined" || eventType === "document_expired" || eventType === "document_canceled") {
+      await db
+        .update(signatureRequestsTable)
+        .set({ status: eventType.replace("document_", ""), webhookEvents: updatedEvents, updatedAt: new Date() })
+        .where(eq(signatureRequestsTable.id, sigRecord.id));
+      if (logDealId) {
+        await db.insert(activityLogTable).values({
+          dealId: logDealId,
+          entityType: "deal",
+          entityId: logDealId,
+          eventType: "signature_request_" + eventType.replace("document_", ""),
+          description: `Signature request ${eventType.replace("document_", "")}${payload?.event?.related_signer?.email ? " by " + payload.event.related_signer.email : ""}.`,
+          metadata: { signwell_document_id: doc.id },
+        });
+      }
+      return;
+    }
+
+    // Unhandled event types: just record them.
+    await db
+      .update(signatureRequestsTable)
+      .set({ webhookEvents: updatedEvents, updatedAt: new Date() })
+      .where(eq(signatureRequestsTable.id, sigRecord.id));
+  } catch (err) {
+    console.error("[signwell webhook] processing error:", err instanceof Error ? err.message : err);
   }
 });
 
@@ -251,64 +427,7 @@ router.post("/hellosign", async (req: Request, res: Response) => {
           .where(eq(signatureRequestsTable.id, sigRecord.id));
 
         await retrieveAndStoreSignedDocuments(helloSignId);
-
-        // Auto-transition the linked account from a Prospect stage to "New Client"
-        // on bind completion, and log it to the account's activity feed. Mirrors
-        // the manual PATCH /accounts/:id stage_changed path; createdBy is null
-        // (system action). Only Prospect-stage accounts are advanced so an
-        // already-active client is never downgraded.
-        //
-        // Idempotent under duplicate `all_signed` delivery: the stage update is a
-        // single conditional UPDATE ... WHERE client_stage IN (prospect stages)
-        // RETURNING, run inside a transaction with the activity insert. A second
-        // delivery matches zero rows (stage is already "New Client"), so no
-        // duplicate row is written and no duplicate activity is logged.
-        const boundDealId = sigRecord.dealId;
-        if (boundDealId) {
-          const [deal] = await db
-            .select({ accountId: dealsTable.accountId })
-            .from(dealsTable)
-            .where(eq(dealsTable.id, boundDealId));
-
-          const accountId = deal?.accountId;
-          if (accountId) {
-            await db.transaction(async (tx) => {
-              const [account] = await tx
-                .select({ id: accountsTable.id, clientStage: accountsTable.clientStage })
-                .from(accountsTable)
-                .where(eq(accountsTable.id, accountId));
-              if (!account) return;
-              const fromStage = account.clientStage ?? "—";
-
-              const advanced = await tx
-                .update(accountsTable)
-                .set({ clientStage: "New Client", updatedAt: new Date() })
-                .where(
-                  and(
-                    eq(accountsTable.id, accountId),
-                    inArray(accountsTable.clientStage, [...PROSPECT_STAGES]),
-                  ),
-                )
-                .returning({ id: accountsTable.id });
-
-              if (advanced.length === 0) return; // already advanced or not a prospect
-
-              await tx.insert(activityLogTable).values({
-                dealId: boundDealId,
-                entityType: "account",
-                entityId: accountId,
-                eventType: "stage_changed",
-                description: `Stage changed from "${fromStage}" to "New Client" (deal bound).`,
-                metadata: {
-                  changes: [{ field: "clientStage", label: "Stage", from: fromStage, to: "New Client" }],
-                  trigger: "bind_completed",
-                  dealId: boundDealId,
-                },
-                createdBy: null,
-              });
-            });
-          }
-        }
+        if (sigRecord.dealId) await advanceAccountOnBind(sigRecord.dealId);
         break;
       }
 
