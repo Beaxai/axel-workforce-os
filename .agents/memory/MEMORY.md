@@ -13,4 +13,5 @@
 - [Deposit monitor invariants](deposit-monitor-invariants.md) — §6E monitor is non-gating, columns are system-managed (stripped from generic routes), startup runs after the bind tx commits.
 - [Inbound email routing](email-routing.md) — 3-layer reply routing (listener addr → subject token → Message-ID); webhooks only reachable via /api/webhooks; HMAC needs req.rawBody, not re-serialized JSON.
 - [Broker fee invariants](broker-fee-invariants.md) — non-blocking; server computes amount from latest quote (client never recalculates); PAID/WAIVED exit only via reinstate-unpaid; dunning claims once post-bind.
+- [SignWell integration](signwell-integration.md) — webhooks are hints only (re-fetch live doc; completed = live status); signed is terminal; 401 "verify your email" until SignWell account email verified.
 - [Deal-card phase time filter](phase-time-filter.md) — stage moves live under 3 event types (STAGE_CHANGE, deal_approved, deal_declined); keep multi-interval union; drag uses window pointermove hit-testing; dialog height must stay fixed (92vh).
