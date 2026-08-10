@@ -18,6 +18,15 @@ export const implementationTrackersTable = pgTable("implementation_trackers", {
   status: text("status").default("IN_PROGRESS"),
   assignedSpecialist: uuid("assigned_specialist").references(() => usersTable.id),
   overallProgress: integer("overall_progress").default(0),
+  // --- PEO tracker fields (v2.7 §7G) — null for WC trackers ---
+  /** Date the Client Service Agreement (CSA-PEO) was signed; anchors payroll scheduling. */
+  csaPeoSignedDate: date("csa_peo_signed_date"),
+  /** Payroll start date. Defaults to CSA-PEO signing + 14 days; editable. */
+  payrollStartDate: date("payroll_start_date"),
+  /** Employee onboarding "M" — total employees to onboard (counts live in PEO systems). */
+  employeesTotal: integer("employees_total"),
+  /** Employee onboarding "N" — employees onboarded so far, per PEO partner updates. */
+  employeesOnboarded: integer("employees_onboarded"),
   createdAt: timestamp("created_at", { withTimezone: true }).default(sql`now()`),
   completedAt: timestamp("completed_at", { withTimezone: true }),
 });

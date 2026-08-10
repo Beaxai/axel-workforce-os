@@ -14,9 +14,12 @@ import {
   implementationTrackersTable,
   implementationPhasesTable,
   implementationTasksTable,
+  dealSubjectivitiesTable,
   type Deal,
 } from "@workspace/db";
 import { eq, and, or, asc } from "drizzle-orm";
+import { SUBJ_KEYS } from "./subjectivities";
+import { PEO_TASK_KEYS, PAYROLL_START_OFFSET_DAYS } from "./peo-tracker";
 
 type Db = typeof db;
 type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
@@ -154,6 +157,41 @@ export async function instantiateJourneysForDeal(deal: Deal, dbc: DbOrTx): Promi
     }
 
     created.push(template.id);
+
+    // §7G phase 1 edge: the CSA-PEO is usually signed BEFORE bind (it's a bind
+    // subjectivity), so the subjectivity-route hook fired when no tracker
+    // existed yet. Catch up here: a PEO tracker born with the CSA-PEO already
+    // SATISFIED completes phase 1 immediately and anchors payroll scheduling.
+    if (template.productType === "PEO") {
+      const [signedSubj] = await dbc
+        .select({ satisfiedAt: dealSubjectivitiesTable.satisfiedAt, satisfiedBy: dealSubjectivitiesTable.satisfiedBy })
+        .from(dealSubjectivitiesTable)
+        .where(
+          and(
+            eq(dealSubjectivitiesTable.dealId, deal.id),
+            eq(dealSubjectivitiesTable.systemKey, SUBJ_KEYS.CSA_PEO),
+            eq(dealSubjectivitiesTable.status, "SATISFIED"),
+          ),
+        )
+        .limit(1);
+      if (signedSubj) {
+        const signedDate = (signedSubj.satisfiedAt ?? new Date()).toISOString().slice(0, 10);
+        await dbc
+          .update(implementationTrackersTable)
+          .set({ csaPeoSignedDate: signedDate, payrollStartDate: addDays(signedDate, PAYROLL_START_OFFSET_DAYS) })
+          .where(eq(implementationTrackersTable.id, tracker!.id));
+        await dbc
+          .update(implementationTasksTable)
+          .set({ status: "COMPLETE", completedAt: signedSubj.satisfiedAt ?? new Date(), completedBy: signedSubj.satisfiedBy ?? null })
+          .where(
+            and(
+              eq(implementationTasksTable.trackerId, tracker!.id),
+              eq(implementationTasksTable.systemKey, PEO_TASK_KEYS.CSA_PEO),
+              eq(implementationTasksTable.status, "PENDING"),
+            ),
+          );
+      }
+    }
   }
 
   return { created, skipped, noTemplate: false, ambiguous };

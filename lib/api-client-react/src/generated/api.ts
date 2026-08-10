@@ -74,6 +74,7 @@ import type {
   SectionPatchRequest,
   SectionPatchResponse,
   StageActionResponse,
+  UpdateJourneyPeoRequest,
   UpdateJourneyTaskStatusRequest,
   UpdateJourneyTemplatePhaseRequest,
   UpdateJourneyTemplateRequest,
@@ -4860,6 +4861,93 @@ export const useUpdateJourneyTaskStatus = <
   TContext
 > => {
   return useMutation(getUpdateJourneyTaskStatusMutationOptions(options));
+};
+
+/**
+ * @summary Update PEO tracker fields (payroll start date, employee onboarding N of M)
+ */
+export const getUpdateJourneyPeoUrl = (id: string) => {
+  return `/api/journeys/${id}/peo`;
+};
+
+export const updateJourneyPeo = async (
+  id: string,
+  updateJourneyPeoRequest: UpdateJourneyPeoRequest,
+  options?: RequestInit,
+): Promise<Journey> => {
+  return customFetch<Journey>(getUpdateJourneyPeoUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateJourneyPeoRequest),
+  });
+};
+
+export const getUpdateJourneyPeoMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateJourneyPeo>>,
+    TError,
+    { id: string; data: BodyType<UpdateJourneyPeoRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateJourneyPeo>>,
+  TError,
+  { id: string; data: BodyType<UpdateJourneyPeoRequest> },
+  TContext
+> => {
+  const mutationKey = ["updateJourneyPeo"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateJourneyPeo>>,
+    { id: string; data: BodyType<UpdateJourneyPeoRequest> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateJourneyPeo(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateJourneyPeoMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateJourneyPeo>>
+>;
+export type UpdateJourneyPeoMutationBody = BodyType<UpdateJourneyPeoRequest>;
+export type UpdateJourneyPeoMutationError = ErrorType<void>;
+
+/**
+ * @summary Update PEO tracker fields (payroll start date, employee onboarding N of M)
+ */
+export const useUpdateJourneyPeo = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateJourneyPeo>>,
+    TError,
+    { id: string; data: BodyType<UpdateJourneyPeoRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateJourneyPeo>>,
+  TError,
+  { id: string; data: BodyType<UpdateJourneyPeoRequest> },
+  TContext
+> => {
+  return useMutation(getUpdateJourneyPeoMutationOptions(options));
 };
 
 /**

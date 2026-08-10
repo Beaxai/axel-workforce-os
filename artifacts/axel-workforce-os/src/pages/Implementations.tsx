@@ -9,9 +9,11 @@ import {
   useGetJourneys,
   useGetJourney,
   useUpdateJourneyTaskStatus,
+  useUpdateJourneyPeo,
   getGetJourneyQueryKey,
   getGetJourneysQueryKey,
   type Journey,
+  type JourneyDetail,
   type JourneyTask,
 } from "@workspace/api-client-react";
 import { useThemeColors } from "@/lib/use-theme-colors";
@@ -69,7 +71,12 @@ function JourneyDetailPanel({
           queryClient.invalidateQueries({ queryKey: getGetJourneyQueryKey(journeyId) });
           queryClient.invalidateQueries({ queryKey: getGetJourneysQueryKey() });
         },
-        onError: () => setTaskError("Could not complete that task. Please try again."),
+        onError: (err: unknown) => {
+          // Surface the server's reason — the §7G go-live gate returns a 409
+          // explaining exactly which phases are still open.
+          const anyErr = err as { error?: string; message?: string } | undefined;
+          setTaskError(anyErr?.error || anyErr?.message || "Could not complete that task. Please try again.");
+        },
       },
     );
   };
@@ -77,6 +84,11 @@ function JourneyDetailPanel({
   // INTERNAL audience: staff work everything except the client's own tasks.
   const canCompleteTask = (task: JourneyTask) =>
     task.ownerType !== "CLIENT" && task.status !== "COMPLETE";
+
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: getGetJourneyQueryKey(journeyId) });
+    queryClient.invalidateQueries({ queryKey: getGetJourneysQueryKey() });
+  };
 
   const backButton = (
     <button
@@ -137,6 +149,9 @@ function JourneyDetailPanel({
           </span>
         </GlassCard>
       )}
+      {journey.productType === "PEO" && (
+        <PeoControls journey={journey} onSaved={invalidate} onError={setTaskError} />
+      )}
       <JourneyView
         journey={journey}
         audience="INTERNAL"
@@ -144,6 +159,131 @@ function JourneyDetailPanel({
         canCompleteTask={canCompleteTask}
       />
     </div>
+  );
+}
+
+/**
+ * §7G PEO work surface: payroll start date (defaulted to CSA-PEO signing + 14
+ * days, editable) and the employee-onboarding N of M counts. Counts hitting
+ * N ≥ M auto-completes phase 3 server-side.
+ */
+function PeoControls({
+  journey,
+  onSaved,
+  onError,
+}: {
+  journey: JourneyDetail;
+  onSaved: () => void;
+  onError: (msg: string | null) => void;
+}) {
+  const c = useThemeColors();
+  const updatePeo = useUpdateJourneyPeo();
+  const [payrollDate, setPayrollDate] = useState(journey.payrollStartDate ?? "");
+  const [total, setTotal] = useState(journey.employeesTotal?.toString() ?? "");
+  const [onboarded, setOnboarded] = useState(journey.employeesOnboarded?.toString() ?? "");
+
+  useEffect(() => {
+    setPayrollDate(journey.payrollStartDate ?? "");
+    setTotal(journey.employeesTotal?.toString() ?? "");
+    setOnboarded(journey.employeesOnboarded?.toString() ?? "");
+  }, [journey.payrollStartDate, journey.employeesTotal, journey.employeesOnboarded]);
+
+  const save = () => {
+    onError(null);
+    const data: { payrollStartDate?: string; employeesTotal?: number; employeesOnboarded?: number } = {};
+    if (payrollDate && payrollDate !== journey.payrollStartDate) data.payrollStartDate = payrollDate;
+    const t = total === "" ? null : Number(total);
+    const n = onboarded === "" ? null : Number(onboarded);
+    if (t !== null && Number.isFinite(t) && t !== journey.employeesTotal) data.employeesTotal = t;
+    if (n !== null && Number.isFinite(n) && n !== journey.employeesOnboarded) data.employeesOnboarded = n;
+    if (Object.keys(data).length === 0) return;
+    updatePeo.mutate(
+      { id: journey.id, data },
+      {
+        onSuccess: onSaved,
+        onError: (err: unknown) => {
+          const anyErr = err as { error?: string; message?: string } | undefined;
+          onError(anyErr?.error || anyErr?.message || "Could not save PEO fields.");
+        },
+      },
+    );
+  };
+
+  const inputStyle: React.CSSProperties = {
+    background: c.inputBg,
+    border: `1px solid ${c.borderColor}`,
+    borderRadius: 8,
+    color: c.textPrimary,
+    fontSize: 13.5,
+    padding: "7px 10px",
+    width: 130,
+  };
+  const labelStyle: React.CSSProperties = { fontSize: 12, color: c.textMuted, display: "block", marginBottom: 4 };
+
+  return (
+    <GlassCard padding="16px 20px" style={{ marginBottom: 16 }}>
+      <div style={{ display: "flex", gap: 20, alignItems: "flex-end", flexWrap: "wrap" }}>
+        <div>
+          <span style={labelStyle}>CSA-PEO signed</span>
+          <span data-testid="text-csa-peo-signed" style={{ fontSize: 13.5, color: c.textPrimary }}>
+            {journey.csaPeoSignedDate ?? "Not yet signed"}
+          </span>
+        </div>
+        <div>
+          <label style={labelStyle} htmlFor="peo-payroll-start">Payroll start (signing + 14d, editable)</label>
+          <input
+            id="peo-payroll-start"
+            data-testid="input-payroll-start"
+            type="date"
+            value={payrollDate}
+            onChange={(e) => setPayrollDate(e.target.value)}
+            style={inputStyle}
+          />
+        </div>
+        <div>
+          <label style={labelStyle} htmlFor="peo-emp-onboarded">Employees onboarded (N)</label>
+          <input
+            id="peo-emp-onboarded"
+            data-testid="input-employees-onboarded"
+            type="number"
+            min={0}
+            value={onboarded}
+            onChange={(e) => setOnboarded(e.target.value)}
+            style={inputStyle}
+          />
+        </div>
+        <div>
+          <label style={labelStyle} htmlFor="peo-emp-total">Employees total (M)</label>
+          <input
+            id="peo-emp-total"
+            data-testid="input-employees-total"
+            type="number"
+            min={0}
+            value={total}
+            onChange={(e) => setTotal(e.target.value)}
+            style={inputStyle}
+          />
+        </div>
+        <button
+          type="button"
+          data-testid="button-save-peo"
+          onClick={save}
+          disabled={updatePeo.isPending}
+          style={{
+            background: "var(--accent-primary)",
+            color: "#fff",
+            border: "none",
+            borderRadius: 8,
+            padding: "8px 18px",
+            fontSize: 13.5,
+            fontWeight: 600,
+            cursor: updatePeo.isPending ? "wait" : "pointer",
+          }}
+        >
+          {updatePeo.isPending ? "Saving…" : "Save"}
+        </button>
+      </div>
+    </GlassCard>
   );
 }
 

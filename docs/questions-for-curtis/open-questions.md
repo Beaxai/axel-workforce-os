@@ -13,6 +13,37 @@ settled correctly before launch. Newest at the top.
 
 ---
 
+## Updated 2026-08-10 (later) — PEO implementation tracker is built; two clarifications 🏗️
+
+The PEO implementation journey (§7G) is now built end to end: PEO deals get their
+own 5-phase tracker at bind (CSA-PEO → implementation meeting → employee
+onboarding → payroll setup → go-live), with the WC deliverables (binder/policy,
+policy on file, claims kit) as sub-items inside it. The CSA-PEO checklist item
+auto-completes phase 1 when satisfied and sets the payroll start date to signing
++ 14 days (editable). Employee onboarding is tracked as N of M counts; go-live is
+hard-gated on BOTH onboarding and payroll being done, and completing everything
+flips the account to Active Client automatically. Two things the docs don't
+settle:
+
+- **F. Calendly link for the implementation meeting (phase 2).** The State Doc says
+  the meeting is booked via "Calendly link to PEO implementation team." Whose
+  Calendly account is that, and what's the link? For now the CSA marks the meeting
+  task done manually; if you give us the link we can surface it in the tracker
+  (and later auto-complete on the Calendly webhook).
+- **G. How does the PEO partner report onboarding counts?** The doc says "PEO
+  partner role updates; interim daily follow-ups; future API." Today a CSA/admin
+  enters the N-of-M counts in the tracker. Should we create actual logins for PEO
+  partner staff (a new role that can ONLY update those counts), or do the daily
+  follow-ups land by email and a CSA keys them in? Suggested: CSA keys them in for
+  launch, PEO-partner role later.
+
+Also note: the CSA-PEO document itself has no template in the system yet — same
+situation as the quote-acceptance PDF (question D below). Until there's a
+template, the CSA-PEO gets signed outside the platform and a CSA checks the
+checklist item off manually, which still triggers all the automation above.
+
+---
+
 ## Updated 2026-08-10 — SignWell is wired; two small actions + three odds and ends 🖊️
 
 The real SignWell signing flow is now built and pushed: sending a bind package

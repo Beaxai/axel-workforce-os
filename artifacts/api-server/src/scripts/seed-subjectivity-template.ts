@@ -9,7 +9,7 @@ import {
   subjectivityTemplateItemsTable,
 } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
-import { SUBJ_TEMPLATE_NAME, SUBJ_KEYS } from "../lib/subjectivities";
+import { SUBJ_TEMPLATE_NAME, PEO_SUBJ_TEMPLATE_NAME, SUBJ_KEYS } from "../lib/subjectivities";
 
 const ITEMS = [
   { key: SUBJ_KEYS.ACORD_130, name: "Signed ACORD 130 application", sortOrder: 1, isConditional: false, isBlocking: true, notes: "AcroForm pre-filled from submission data" },
@@ -24,20 +24,40 @@ const ITEMS = [
   { key: SUBJ_KEYS.BROKER_FEE, name: "Axel broker fee", sortOrder: 10, isConditional: false, isBlocking: false, notes: "7% default, deal-level editable. TRACKED, NON-BLOCKING — never prevents carrier submission or binding" },
 ];
 
-export async function seedSubjectivityTemplate(dbc: typeof db = db): Promise<{ templateId: string; created: boolean }> {
+// §7G: PEO subjectivities = the FULL WC checklist PLUS the signed Client
+// Service Agreement (CSA-PEO). Named "CSA-PEO" everywhere to avoid collision
+// with the CSA (Client Service Associate) role.
+const PEO_ITEMS = [
+  ...ITEMS,
+  {
+    key: SUBJ_KEYS.CSA_PEO,
+    name: "Signed Client Service Agreement (CSA-PEO)",
+    sortOrder: 11,
+    isConditional: false,
+    isBlocking: true,
+    notes: "PEO only (§7G). Signing date anchors payroll scheduling (start = signing + 14 days). Satisfying this item auto-completes PEO tracker phase 1.",
+  },
+];
+
+async function seedOne(
+  dbc: typeof db,
+  productType: "WC" | "PEO",
+  name: string,
+  items: typeof PEO_ITEMS,
+): Promise<{ templateId: string; created: boolean }> {
   const [existing] = await dbc
     .select({ id: subjectivityTemplatesTable.id })
     .from(subjectivityTemplatesTable)
-    .where(and(eq(subjectivityTemplatesTable.isSystem, true), eq(subjectivityTemplatesTable.productType, "WC")))
+    .where(and(eq(subjectivityTemplatesTable.isSystem, true), eq(subjectivityTemplatesTable.productType, productType)))
     .limit(1);
   if (existing) return { templateId: existing.id, created: false };
 
   const [tpl] = await dbc
     .insert(subjectivityTemplatesTable)
-    .values({ name: SUBJ_TEMPLATE_NAME, productType: "WC", isActive: true, isSystem: true })
+    .values({ name, productType, isActive: true, isSystem: true })
     .returning();
 
-  for (const i of ITEMS) {
+  for (const i of items) {
     await dbc.insert(subjectivityTemplateItemsTable).values({
       templateId: tpl!.id,
       name: i.name,
@@ -51,9 +71,19 @@ export async function seedSubjectivityTemplate(dbc: typeof db = db): Promise<{ t
   return { templateId: tpl!.id, created: true };
 }
 
+export async function seedSubjectivityTemplate(dbc: typeof db = db): Promise<{ templateId: string; created: boolean }> {
+  return seedOne(dbc, "WC", SUBJ_TEMPLATE_NAME, ITEMS);
+}
+
+export async function seedPeoSubjectivityTemplate(dbc: typeof db = db): Promise<{ templateId: string; created: boolean }> {
+  return seedOne(dbc, "PEO", PEO_SUBJ_TEMPLATE_NAME, PEO_ITEMS);
+}
+
 async function main() {
   const r = await seedSubjectivityTemplate();
-  console.log(r.created ? `Seeded subjectivity template ${r.templateId}` : `Subjectivity template already present (${r.templateId}) — no change`);
+  console.log(r.created ? `Seeded WC subjectivity template ${r.templateId}` : `WC subjectivity template already present (${r.templateId}) — no change`);
+  const p = await seedPeoSubjectivityTemplate();
+  console.log(p.created ? `Seeded PEO subjectivity template ${p.templateId}` : `PEO subjectivity template already present (${p.templateId}) — no change`);
   process.exit(0);
 }
 

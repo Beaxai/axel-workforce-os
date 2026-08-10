@@ -106,6 +106,7 @@ export * from "./submissionFieldType";
 export * from "./submissionSection";
 export * from "./submissionSectionKey";
 export * from "./submissionSectionStatus";
+export * from "./updateJourneyPeoRequest";
 export * from "./updateJourneyTaskStatusRequest";
 export * from "./updateJourneyTaskStatusRequestStatus";
 export * from "./updateJourneyTemplatePhaseRequest";

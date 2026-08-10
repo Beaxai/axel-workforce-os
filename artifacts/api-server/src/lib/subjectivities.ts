@@ -15,7 +15,11 @@ export const SUBJ_KEYS = {
   WAIVER_FORMS: "SUBJ_WAIVER_FORMS",
   LOSS_HISTORY: "SUBJ_LOSS_HISTORY",
   BROKER_FEE: "SUBJ_BROKER_FEE",
+  /** §7G — PEO deals only: full WC checklist PLUS the signed Client Service Agreement (CSA-PEO). */
+  CSA_PEO: "SUBJ_CSA_PEO",
 } as const;
+
+export const PEO_SUBJ_TEMPLATE_NAME = "PEO Bind Subjectivities";
 
 import {
   db,

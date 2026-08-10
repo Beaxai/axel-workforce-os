@@ -706,6 +706,20 @@ export interface Journey {
   overallProgress: number;
   createdAt?: string | null;
   completedAt?: string | null;
+  /** PEO only — date the Client Service Agreement (CSA-PEO) was signed */
+  csaPeoSignedDate?: string | null;
+  /** PEO only — payroll start date (defaults to CSA-PEO signing + 14 days, editable) */
+  payrollStartDate?: string | null;
+  /** PEO only — total employees to onboard (M) */
+  employeesTotal?: number | null;
+  /** PEO only — employees onboarded so far (N) */
+  employeesOnboarded?: number | null;
+}
+
+export interface UpdateJourneyPeoRequest {
+  payrollStartDate?: string | null;
+  employeesTotal?: number | null;
+  employeesOnboarded?: number | null;
 }
 
 export interface JourneyPhase {

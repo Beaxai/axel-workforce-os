@@ -1283,6 +1283,36 @@ paths:
                 $ref: "#/components/schemas/JourneyTask"
         "404":
           description: Journey or task not found
+        "409":
+          description: Go-live gate — phases 3 and 4 must complete first (PEO)
+  /journeys/{id}/peo:
+    patch:
+      operationId: updateJourneyPeo
+      tags: [journeys]
+      summary: Update PEO tracker fields (payroll start date, employee onboarding N of M)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateJourneyPeoRequest"
+      responses:
+        "200":
+          description: Updated journey
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Journey"
+        "404":
+          description: Journey not found
+        "400":
+          description: Not a PEO journey or invalid counts
   /deals/{dealId}/subjectivities:
     get:
       operationId: getDealSubjectivities
@@ -2648,7 +2678,35 @@ components:
         completedAt:
           type: string
           nullable: true
+        csaPeoSignedDate:
+          type: string
+          nullable: true
+          description: PEO only — date the Client Service Agreement (CSA-PEO) was signed
+        payrollStartDate:
+          type: string
+          nullable: true
+          description: PEO only — payroll start date (defaults to CSA-PEO signing + 14 days, editable)
+        employeesTotal:
+          type: integer
+          nullable: true
+          description: PEO only — total employees to onboard (M)
+        employeesOnboarded:
+          type: integer
+          nullable: true
+          description: PEO only — employees onboarded so far (N)
       required: [id, type, productType, goLiveDate, status, overallProgress]
+    UpdateJourneyPeoRequest:
+      type: object
+      properties:
+        payrollStartDate:
+          type: string
+          nullable: true
+        employeesTotal:
+          type: integer
+          nullable: true
+        employeesOnboarded:
+          type: integer
+          nullable: true
     JourneyPhase:
       type: object
       properties:

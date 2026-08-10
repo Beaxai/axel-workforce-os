@@ -37,6 +37,10 @@ type DbOrTx = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
  *
  * Only PENDING tasks are touched: a task a human already completed is never overwritten,
  * and re-uploading the same document type is a no-op.
+ *
+ * §7G: PEO trackers carry the WC deliverables as SUB-ITEMS using these same
+ * task keys, so this automation drives WC and PEO trackers alike (a deal only
+ * ever has one tracker — the one matching its product type).
  */
 export async function applyWcDocumentUpload(
   dealId: string,
@@ -47,7 +51,12 @@ export async function applyWcDocumentUpload(
   const [tracker] = await dbc
     .select({ id: implementationTrackersTable.id })
     .from(implementationTrackersTable)
-    .where(and(eq(implementationTrackersTable.dealId, dealId), eq(implementationTrackersTable.productType, "WC")))
+    .where(
+      and(
+        eq(implementationTrackersTable.dealId, dealId),
+        inArray(implementationTrackersTable.productType, ["WC", "PEO"]),
+      ),
+    )
     .limit(1);
   if (!tracker) return { completed: [], trackerId: null };
 

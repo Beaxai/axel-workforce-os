@@ -1379,6 +1379,26 @@ export const GetJourneysResponseItem = zod.object({
   overallProgress: zod.number(),
   createdAt: zod.string().nullish(),
   completedAt: zod.string().nullish(),
+  csaPeoSignedDate: zod
+    .string()
+    .nullish()
+    .describe(
+      "PEO only — date the Client Service Agreement (CSA-PEO) was signed",
+    ),
+  payrollStartDate: zod
+    .string()
+    .nullish()
+    .describe(
+      "PEO only — payroll start date (defaults to CSA-PEO signing + 14 days, editable)",
+    ),
+  employeesTotal: zod
+    .number()
+    .nullish()
+    .describe("PEO only — total employees to onboard (M)"),
+  employeesOnboarded: zod
+    .number()
+    .nullish()
+    .describe("PEO only — employees onboarded so far (N)"),
 });
 export const GetJourneysResponse = zod.array(GetJourneysResponseItem);
 
@@ -1403,6 +1423,26 @@ export const GetJourneyResponse = zod
     overallProgress: zod.number(),
     createdAt: zod.string().nullish(),
     completedAt: zod.string().nullish(),
+    csaPeoSignedDate: zod
+      .string()
+      .nullish()
+      .describe(
+        "PEO only — date the Client Service Agreement (CSA-PEO) was signed",
+      ),
+    payrollStartDate: zod
+      .string()
+      .nullish()
+      .describe(
+        "PEO only — payroll start date (defaults to CSA-PEO signing + 14 days, editable)",
+      ),
+    employeesTotal: zod
+      .number()
+      .nullish()
+      .describe("PEO only — total employees to onboard (M)"),
+    employeesOnboarded: zod
+      .number()
+      .nullish()
+      .describe("PEO only — employees onboarded so far (N)"),
   })
   .and(
     zod.object({
@@ -1458,6 +1498,54 @@ export const UpdateJourneyTaskStatusResponse = zod.object({
   dueDate: zod.string().nullish(),
   completedAt: zod.string().nullish(),
   sortOrder: zod.number(),
+});
+
+/**
+ * @summary Update PEO tracker fields (payroll start date, employee onboarding N of M)
+ */
+export const UpdateJourneyPeoParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const UpdateJourneyPeoBody = zod.object({
+  payrollStartDate: zod.string().nullish(),
+  employeesTotal: zod.number().nullish(),
+  employeesOnboarded: zod.number().nullish(),
+});
+
+export const UpdateJourneyPeoResponse = zod.object({
+  id: zod.string().uuid(),
+  dealId: zod.string().uuid().nullish(),
+  policyId: zod.string().uuid().nullish(),
+  type: zod.enum(["IMPLEMENTATION", "ONBOARDING"]),
+  templateId: zod.string().uuid().nullish(),
+  productType: zod.string(),
+  goLiveDate: zod.string(),
+  status: zod.enum(["IN_PROGRESS", "COMPLETE"]),
+  assignedSpecialist: zod.string().uuid().nullish(),
+  overallProgress: zod.number(),
+  createdAt: zod.string().nullish(),
+  completedAt: zod.string().nullish(),
+  csaPeoSignedDate: zod
+    .string()
+    .nullish()
+    .describe(
+      "PEO only — date the Client Service Agreement (CSA-PEO) was signed",
+    ),
+  payrollStartDate: zod
+    .string()
+    .nullish()
+    .describe(
+      "PEO only — payroll start date (defaults to CSA-PEO signing + 14 days, editable)",
+    ),
+  employeesTotal: zod
+    .number()
+    .nullish()
+    .describe("PEO only — total employees to onboard (M)"),
+  employeesOnboarded: zod
+    .number()
+    .nullish()
+    .describe("PEO only — employees onboarded so far (N)"),
 });
 
 /**

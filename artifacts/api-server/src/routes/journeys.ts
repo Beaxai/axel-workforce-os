@@ -23,6 +23,7 @@ import {
 } from "@workspace/db";
 import { eq, and, asc, inArray } from "drizzle-orm";
 import { z } from "zod/v4";
+import { PEO_TASK_KEYS, goLiveBlockers } from "../lib/peo-tracker";
 
 const router: IRouter = Router();
 
@@ -69,6 +70,10 @@ function mapJourney(t: TrackerRow) {
     overallProgress: t.overallProgress ?? 0,
     createdAt: toIso(t.createdAt),
     completedAt: toIso(t.completedAt),
+    csaPeoSignedDate: t.csaPeoSignedDate,
+    payrollStartDate: t.payrollStartDate,
+    employeesTotal: t.employeesTotal,
+    employeesOnboarded: t.employeesOnboarded,
   };
 }
 
@@ -370,6 +375,18 @@ router.patch("/:id/tasks/:taskId", async (req, res) => {
   }
   if (!allowed) return res.status(403).json({ error: "Insufficient permissions" });
 
+  // §7G phase 5 — the PEO go-live task gates on BOTH phase 3 (employee
+  // onboarding) and phase 4 (payroll setup). Server-enforced; the client
+  // cannot flip go-live early.
+  if (parsed.data.status === "COMPLETE" && task.systemKey === PEO_TASK_KEYS.GO_LIVE) {
+    const blockers = await goLiveBlockers(tracker.id);
+    if (blockers.length > 0) {
+      return res.status(409).json({
+        error: `Go-live gates on employee onboarding AND payroll setup (§7G). Still open: ${blockers.join("; ")}.`,
+      });
+    }
+  }
+
   const status = parsed.data.status;
   // Atomic: the task write and the progress/Active-Client recompute must commit or roll
   // back together. If they were separate and the process died between them on the LAST
@@ -390,6 +407,91 @@ router.patch("/:id/tasks/:taskId", async (req, res) => {
   });
 
   return res.json(mapTask(updated!));
+});
+
+/* ------------------------- PEO tracker fields (§7G) ----------------------- */
+
+const updatePeoSchema = z
+  .object({
+    payrollStartDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Expected YYYY-MM-DD").nullable().optional(),
+    employeesTotal: z.number().int().min(0).nullable().optional(),
+    employeesOnboarded: z.number().int().min(0).nullable().optional(),
+  })
+  .refine((v) => v.payrollStartDate !== undefined || v.employeesTotal !== undefined || v.employeesOnboarded !== undefined, {
+    message: "Provide at least one field to update",
+  });
+
+/**
+ * §7G phases 3 + 4 — payroll start date (editable; defaulted from CSA-PEO
+ * signing + 14 days) and employee-onboarding counts (Axel tracks N of M only;
+ * paperwork lives in the PEO's systems). When N ≥ M (M > 0), the phase-3 task
+ * auto-completes — PENDING only, a human's explicit completion is never
+ * overwritten, and completed tasks are never un-completed by a count edit
+ * (reopening is an explicit human action on the task itself).
+ */
+router.patch("/:id/peo", async (req, res) => {
+  const actor = actorFrom(req);
+  const parsed = updatePeoSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues });
+
+  const [tracker] = await db
+    .select()
+    .from(implementationTrackersTable)
+    .where(eq(implementationTrackersTable.id, req.params.id))
+    .limit(1);
+  if (!tracker) return res.status(404).json({ error: "Journey not found" });
+  if (tracker.productType !== "PEO") {
+    return res.status(400).json({ error: "PEO fields only apply to PEO journeys" });
+  }
+  // Internal-only: ADMIN/CSA anywhere; AGENT/UNDERWRITER as assigned specialist.
+  const allowed =
+    INTERNAL_ROLES.has(actor.role) && (VIEW_ALL_ROLES.has(actor.role) || tracker.assignedSpecialist === actor.id);
+  if (!allowed) return res.status(403).json({ error: "Insufficient permissions" });
+
+  const patch: Partial<TrackerRow> = {};
+  if (parsed.data.payrollStartDate !== undefined) patch.payrollStartDate = parsed.data.payrollStartDate;
+  if (parsed.data.employeesTotal !== undefined) patch.employeesTotal = parsed.data.employeesTotal;
+  if (parsed.data.employeesOnboarded !== undefined) patch.employeesOnboarded = parsed.data.employeesOnboarded;
+
+  const row = await db.transaction(async (tx) => {
+    const [updated] = await tx
+      .update(implementationTrackersTable)
+      .set(patch)
+      .where(eq(implementationTrackersTable.id, tracker.id))
+      .returning();
+
+    const total = updated!.employeesTotal ?? 0;
+    const onboarded = updated!.employeesOnboarded ?? 0;
+    if (total > 0 && onboarded >= total) {
+      const done = await tx
+        .update(implementationTasksTable)
+        .set({ status: "COMPLETE", completedAt: new Date(), completedBy: actor.id })
+        .where(
+          and(
+            eq(implementationTasksTable.trackerId, tracker.id),
+            eq(implementationTasksTable.systemKey, PEO_TASK_KEYS.EMP_ONBOARDING),
+            eq(implementationTasksTable.status, "PENDING"),
+          ),
+        )
+        .returning({ id: implementationTasksTable.id });
+      if (done.length > 0) await recomputeProgress(tracker.id, tx);
+    }
+    // Keep the phase-4 task due date in step with an edited payroll start.
+    if (parsed.data.payrollStartDate) {
+      await tx
+        .update(implementationTasksTable)
+        .set({ dueDate: parsed.data.payrollStartDate })
+        .where(
+          and(
+            eq(implementationTasksTable.trackerId, tracker.id),
+            eq(implementationTasksTable.systemKey, PEO_TASK_KEYS.PAYROLL_SETUP),
+          ),
+        );
+    }
+    return updated;
+  });
+
+  return res.json(mapJourney(row!));
 });
 
 export default router;

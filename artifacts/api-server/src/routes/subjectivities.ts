@@ -2,7 +2,8 @@ import { Router, type IRouter } from "express";
 import { db, dealSubjectivitiesTable, SUBJECTIVITY_STATUSES } from "@workspace/db";
 import { asc, eq } from "drizzle-orm";
 import { z } from "zod/v4";
-import { recomputeLossHistorySubjectivity } from "../lib/subjectivities";
+import { recomputeLossHistorySubjectivity, SUBJ_KEYS } from "../lib/subjectivities";
+import { applyCsaPeoSigned } from "../lib/peo-tracker";
 
 /** Mounted under /deals — §6A checklist for one deal. */
 export const dealSubjectivitiesRouter: IRouter = Router();
@@ -45,5 +46,15 @@ subjectivitiesRouter.patch("/:id", async (req, res) => {
     .where(eq(dealSubjectivitiesTable.id, req.params.id))
     .returning();
   if (!row) return res.status(404).json({ error: "Subjectivity not found" });
+
+  // §7G phase 1 — "CSA-PEO executed: auto from checklist." Satisfying the
+  // CSA-PEO item completes the PEO tracker's phase-1 task and anchors payroll
+  // scheduling (idempotent inside applyCsaPeoSigned; PENDING-only; no tracker
+  // yet — e.g. pre-bind — is a harmless no-op, bind-time completion is caught
+  // because the subjectivity is already SATISFIED... see webhook path).
+  if (satisfied && row.systemKey === SUBJ_KEYS.CSA_PEO && row.dealId) {
+    await applyCsaPeoSigned(row.dealId, req.user?.id, db);
+  }
+
   return res.json(row);
 });
