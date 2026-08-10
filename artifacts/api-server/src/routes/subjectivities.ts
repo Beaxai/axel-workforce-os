@@ -53,7 +53,7 @@ subjectivitiesRouter.patch("/:id", async (req, res) => {
   // yet — e.g. pre-bind — is a harmless no-op, bind-time completion is caught
   // because the subjectivity is already SATISFIED... see webhook path).
   if (satisfied && row.systemKey === SUBJ_KEYS.CSA_PEO && row.dealId) {
-    await applyCsaPeoSigned(row.dealId, req.user?.id, db);
+    await applyCsaPeoSigned(row.dealId, req.user?.id, db, row.satisfiedAt);
   }
 
   return res.json(row);

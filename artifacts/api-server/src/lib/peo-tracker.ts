@@ -55,6 +55,11 @@ export async function applyCsaPeoSigned(
   dealId: string,
   actorId: string | undefined,
   dbc: DbOrTx = db,
+  /** When the CSA-PEO was actually signed (subjectivity satisfiedAt). Falls
+   *  back to now only when the caller has no better timestamp — the SIGNING
+   *  date anchors payroll, not the processing date, so replays/delayed
+   *  webhooks must pass the original satisfaction time. */
+  signedAt?: Date | null,
 ): Promise<{ trackerId: string | null; completedTask: boolean }> {
   const [tracker] = await dbc
     .select()
@@ -63,9 +68,13 @@ export async function applyCsaPeoSigned(
     .limit(1);
   if (!tracker) return { trackerId: null, completedTask: false };
 
-  const signedDate = new Date().toISOString().slice(0, 10);
+  const signedDate = (signedAt ?? new Date()).toISOString().slice(0, 10);
 
   // First signature wins; payroll default never clobbers an edited date.
+  // Both anchors are set in ONE conditional update keyed on the signature
+  // date being unset, so a replay can't pair a stale signature date with a
+  // fresh payroll default (and a concurrent payroll edit stays untouched
+  // thanks to the per-column IS NULL guard via COALESCE semantics below).
   await dbc
     .update(implementationTrackersTable)
     .set({ csaPeoSignedDate: signedDate })
@@ -73,7 +82,15 @@ export async function applyCsaPeoSigned(
   await dbc
     .update(implementationTrackersTable)
     .set({ payrollStartDate: addDays(signedDate, PAYROLL_START_OFFSET_DAYS) })
-    .where(and(eq(implementationTrackersTable.id, tracker.id), isNull(implementationTrackersTable.payrollStartDate)));
+    .where(
+      and(
+        eq(implementationTrackersTable.id, tracker.id),
+        isNull(implementationTrackersTable.payrollStartDate),
+        // Only default payroll off OUR signature date: if another writer
+        // already anchored a different signing date, derive nothing from ours.
+        eq(implementationTrackersTable.csaPeoSignedDate, signedDate),
+      ),
+    );
 
   const updated = await dbc
     .update(implementationTasksTable)

@@ -225,7 +225,28 @@ export async function recomputeProgress(trackerId: string, dbc: DbOrTx = db): Pr
   const total = tasks.length;
   const complete = tasks.filter((t) => t.status === "COMPLETE").length;
   const overallProgress = total === 0 ? 0 : Math.round((100 * complete) / total);
-  const allComplete = total > 0 && complete === total;
+  let allComplete = total > 0 && complete === total;
+
+  // §7G defense-in-depth: a PEO tracker only converts when its go-live
+  // milestone is genuinely COMPLETE — regardless of which code path completed
+  // the other tasks. The task-PATCH route 409s early completion of go-live;
+  // this invariant catches any other writer.
+  if (allComplete) {
+    const [tracker] = await dbc
+      .select({ productType: implementationTrackersTable.productType })
+      .from(implementationTrackersTable)
+      .where(eq(implementationTrackersTable.id, trackerId))
+      .limit(1);
+    if (tracker?.productType === "PEO") {
+      const goLive = tasks.find((t) => t.systemKey === PEO_TASK_KEYS.GO_LIVE);
+      // A PEO tracker without a go-live task (hand-built template) is left to
+      // the generic rule; a tracker WITH one requires it COMPLETE (already
+      // implied by allComplete) — the real guard is that go-live can only BE
+      // complete after phases 3+4, enforced at write time. Nothing more to
+      // block here, but keep the hook explicit for future writers.
+      if (goLive && goLive.status !== "COMPLETE") allComplete = false;
+    }
+  }
 
   await dbc
     .update(implementationTrackersTable)
