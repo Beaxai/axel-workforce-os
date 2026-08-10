@@ -1,6 +1,7 @@
 import { db, dealsTable, dealSubjectivitiesTable, activityLogTable, contactsTable, usersTable, quotesTable, type Deal } from "@workspace/db";
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { sendDealEmail } from "../services/emailService";
+import { createBrokerFeePaymentLink } from "../services/stripeService";
 
 // ---------------------------------------------------------------------------
 // WC-2 Axel broker fee — deal-level, default 7% of premium, ADMIN/CSA-editable,
@@ -167,9 +168,13 @@ export async function sendBrokerFeeDunning(deal: Deal): Promise<{ sent: boolean;
   }
 
   const { amount, percent: pct } = await computeBrokerFee(claimed);
-  // Q14 open: no payment provider wired — link goes to the client portal stub.
-  const paymentLink = `${process.env.CLIENT_URL || ""}/pay/broker-fee/${deal.id}`;
   const business = claimed.businessName || "your business";
+  // Q14 resolved: Stripe. Real payment link when configured and an amount is
+  // known; otherwise fall back to the portal stub — dunning is never blocked
+  // by the payment provider.
+  const stripeLink =
+    amount != null && amount > 0 ? await createBrokerFeePaymentLink({ dealId: deal.id, businessName: business, amount }) : null;
+  const paymentLink = stripeLink || `${process.env.CLIENT_URL || ""}/pay/broker-fee/${deal.id}`;
 
   await sendDealEmail({
     dealId: deal.id,
