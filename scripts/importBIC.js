@@ -1,6 +1,6 @@
 import { resolve } from "path";
 import pg from "pg";
-import XLSX from "xlsx";
+import readXlsxFile from "read-excel-file/node";
 
 const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) {
@@ -9,26 +9,27 @@ if (!DATABASE_URL) {
 }
 
 const xlsxPath = resolve(process.cwd(), "Benchmark - Cannabis Rates 11-25 (1).xlsx");
-let wb;
+let sheetEntries;
 try {
-  wb = XLSX.readFile(xlsxPath);
-} catch {
-  console.error(`Excel file not found at ${xlsxPath}`);
+  sheetEntries = await readXlsxFile(xlsxPath);
+} catch (err) {
+  console.error(`Failed to read Excel file at ${xlsxPath}: ${err.message}`);
   process.exit(1);
 }
 
 const sheetName = process.argv[2] || "BIC";
-const ws = wb.Sheets[sheetName];
-if (!ws) {
-  console.error(`Sheet "${sheetName}" not found. Available: ${wb.SheetNames.join(", ")}`);
+const allSheetNames = sheetEntries.map((s) => s.sheet);
+const sheetEntry = sheetEntries.find((s) => s.sheet === sheetName);
+if (!sheetEntry) {
+  console.error(`Sheet "${sheetName}" not found. Available: ${allSheetNames.join(", ")}`);
   process.exit(1);
 }
 
 console.log(`Importing sheet: ${sheetName}`);
-console.log(`Available sheets: ${wb.SheetNames.join(", ")}`);
+console.log(`Available sheets: ${allSheetNames.join(", ")}`);
 
-const rawData = XLSX.utils.sheet_to_json(ws, { header: 1 });
-const header = rawData[0].map((h) => String(h).trim());
+const rawData = sheetEntry.data;
+const header = rawData[0].map((h) => String(h ?? "").trim());
 const stateIdx = header.indexOf("State");
 const dateIdx = header.indexOf("EffectiveDate");
 const codeIdx = header.indexOf("ClassCode");
@@ -40,14 +41,19 @@ if ([stateIdx, dateIdx, codeIdx, rateIdx].includes(-1)) {
   process.exit(1);
 }
 
-function excelDateToISO(serial) {
-  if (typeof serial === "string") {
-    const d = new Date(serial);
+function toISODate(val) {
+  if (val instanceof Date) {
+    if (isNaN(val.getTime())) return null;
+    return val.toISOString().split("T")[0];
+  }
+  if (typeof val === "string") {
+    const d = new Date(val);
     if (!isNaN(d.getTime())) return d.toISOString().split("T")[0];
     return null;
   }
-  if (typeof serial === "number") {
-    const utcDays = Math.floor(serial - 25569);
+  if (typeof val === "number") {
+    // Excel serial date
+    const utcDays = Math.floor(val - 25569);
     const d = new Date(utcDays * 86400000);
     return d.toISOString().split("T")[0];
   }
@@ -59,10 +65,10 @@ let skipped = 0;
 
 for (let i = 1; i < rawData.length; i++) {
   const r = rawData[i];
-  const state = String(r[stateIdx] || "").trim();
-  const classCode = String(r[codeIdx] || "").trim();
-  const desc = String(r[descIdx] || "").trim();
-  const rateRaw = String(r[rateIdx] || "").trim().replace(/[$%]/g, "");
+  const state = String(r[stateIdx] ?? "").trim();
+  const classCode = String(r[codeIdx] ?? "").trim();
+  const desc = String(r[descIdx] ?? "").trim();
+  const rateRaw = String(r[rateIdx] ?? "").trim().replace(/[$%]/g, "");
 
   if (!state || !classCode || !rateRaw) {
     skipped++;
@@ -76,7 +82,7 @@ for (let i = 1; i < rawData.length; i++) {
     continue;
   }
 
-  const effDate = excelDateToISO(r[dateIdx]);
+  const effDate = toISODate(r[dateIdx]);
   if (!effDate) {
     skipped++;
     console.log(`Skipped row ${i + 1}: invalid date "${r[dateIdx]}"`);

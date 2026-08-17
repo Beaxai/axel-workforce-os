@@ -1,6 +1,6 @@
 import { resolve } from "path";
 import pg from "pg";
-import XLSX from "xlsx";
+import readXlsxFile from "read-excel-file/node";
 
 const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) {
@@ -11,25 +11,43 @@ if (!DATABASE_URL) {
 const filePath = process.argv[2] || resolve(process.cwd(), "data/Combined_Aligned_With_Benchmark_Appetite.xlsx");
 console.log("Reading:", filePath);
 
-let wb: XLSX.WorkBook;
+type SheetEntry = { sheet: string; data: (string | number | boolean | Date | null)[][] };
+let sheetEntries: SheetEntry[];
 try {
-  wb = XLSX.readFile(filePath);
-} catch {
-  console.error(`Excel file not found at ${filePath}`);
+  sheetEntries = (await readXlsxFile(filePath)) as SheetEntry[];
+} catch (err) {
+  console.error(`Failed to read Excel file at ${filePath}: ${(err as Error).message}`);
   console.error("Usage: pnpm --filter @workspace/scripts run ingest-appetite [path-to-xlsx]");
   process.exit(1);
 }
 
-const sheetName = "Combined_All";
-const ws = wb.Sheets[sheetName] || wb.Sheets[wb.SheetNames[0]];
-if (!ws) {
-  console.error(`No sheets found. Available: ${wb.SheetNames.join(", ")}`);
+const TARGET_SHEET = "Combined_All";
+const sheetEntry = sheetEntries.find((s) => s.sheet === TARGET_SHEET) ?? sheetEntries[0];
+if (!sheetEntry) {
+  const available = sheetEntries.map((s) => s.sheet).join(", ");
+  console.error(`No sheets found. Available: ${available}`);
   process.exit(1);
 }
 
-console.log(`Using sheet: ${ws === wb.Sheets[sheetName] ? sheetName : wb.SheetNames[0]}`);
+console.log(`Using sheet: ${sheetEntry.sheet}`);
+const allRows = sheetEntry.data;
 
-const rows: Record<string, unknown>[] = XLSX.utils.sheet_to_json(ws);
+if (allRows.length < 2) {
+  console.error("No data found in worksheet");
+  process.exit(1);
+}
+
+// First row is headers
+const headers = allRows[0].map((h) => String(h ?? "").trim());
+
+// Convert remaining rows to header-keyed objects
+const rows: Record<string, unknown>[] = allRows.slice(1).map((row) => {
+  const obj: Record<string, unknown> = {};
+  headers.forEach((h, i) => {
+    if (h) obj[h] = row[i] ?? null;
+  });
+  return obj;
+});
 console.log(`Rows read: ${rows.length}`);
 
 function normDet(v: unknown): string {
