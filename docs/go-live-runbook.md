@@ -1,5 +1,32 @@
 # Go-Live Runbook — Axel Workforce OS
 
+**Dated: Saturday, August 16, 2026** (prepared for the publish meeting)
+
+## Questions & decisions for tomorrow's call
+
+### Must decide during the call (operational — blocks the smoke test)
+1. **From-address for outbound deal email** — any `@axelins.com` name; the domain is verified and it works the moment it's chosen. Suggestion: `notifications@axelins.com`. Clients/carriers see this in their inbox.
+2. **Publish the app** — Curtis clicks Publish (Autoscale, Public, defaults). Everything below needs the resulting URL.
+3. **Who registers the three webhooks** — Curtis in-meeting or hand Brendan the dashboard logins (SignWell, Stripe, Resend). ~5 minutes total either way.
+
+### Should settle soon (from the open-questions list — full context in `docs/questions-for-curtis/open-questions.md`)
+4. **Q7 — File storage: Amazon S3 or Cloudflare R2?** The one real go-live blocker left. Uploaded binders/policies/signed docs currently live on the app server's disk, which is wiped on every republish. Fine for this testing phase; must be settled before real client documents exist. (Replit's built-in object storage is a third option requiring no external account.)
+5. **Q1–Q3 — Switch on per-user security?** Built and tested, waiting on three yes/no answers: (1) tag old demo deals to the demo agent, (2) broker = marked member of an agency, (3) only the *selling* agent sees a deal (not merely assigned). Suggested: yes / yes / selling-only.
+6. **C — Who counter-signs for Axel in SignWell?** Envelope defaults to `signatures@axelins.com` — that mailbox doesn't exist yet (SiteGround can host or forward it in minutes). Who actually signs on Axel's behalf — or should the client be the only signer?
+7. **Q9 — Deal card right rail ruling** — accept as-built, blend, or original spec. Under review since v2.7.
+8. **Q15B — Carrier email: auto-send on "Request Proposal" or a separate send button?** Suggested: auto-send once the submission is complete.
+
+### Can wait, but on the record
+9. **Q16** — itemized field list for Request Proposal (currently: full submission = the list).
+10. **D** — bind-order / quote-acceptance PDF: is there a template, or should we design a one-pager?
+11. **E** — launch with free-form signature placement, refine field positions later? (Suggested: yes.)
+12. **F** — Calendly link for the PEO implementation meeting (whose account? what link?).
+13. **G** — how the PEO partner reports onboarding counts (suggested: CSA keys them in at launch; PEO-partner login role later).
+14. **Q8 residual** — when does a client on an *agent-sold* deal get their My Program login provisioned?
+
+---
+
+
 Use this top-to-bottom during the publish meeting. Items marked **[Curtis]** need his account/decision; **[Agent]** items are handled in the Replit chat afterward.
 
 ## Already done (no action)
