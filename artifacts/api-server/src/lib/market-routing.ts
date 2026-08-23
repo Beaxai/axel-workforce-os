@@ -190,6 +190,20 @@ export function normalizeRatingInput(raw: unknown): { ok: true; input: RatingInp
     if (invalid.length > 0) errors.push(`Invalid state codes: ${invalid.join(", ")}`);
   }
 
+  if (
+    r.eMod !== undefined &&
+    (typeof r.eMod !== "number" || !Number.isFinite(r.eMod))
+  ) {
+    errors.push("eMod must be a finite number when provided");
+  }
+  if (
+    r.scheduleRating !== undefined &&
+    (typeof r.scheduleRating !== "number" ||
+      !Number.isFinite(r.scheduleRating))
+  ) {
+    errors.push("scheduleRating must be a finite number when provided");
+  }
+
   // Validate ratingUnits if provided
   let normalizedUnits: WcRatingUnit[] | undefined;
   if (r.ratingUnits !== undefined) {
@@ -207,7 +221,15 @@ export function normalizeRatingInput(raw: unknown): { ok: true; input: RatingInp
         const uo = u as Record<string, unknown>;
         if (!isValidState(uo.state)) unitErrors.push(`ratingUnits[${i}].state must be a 2-char state code`);
         if (typeof uo.classCode !== "string" || !uo.classCode) unitErrors.push(`ratingUnits[${i}].classCode is required`);
-        if (typeof uo.annualPayroll !== "number" || uo.annualPayroll < 0) unitErrors.push(`ratingUnits[${i}].annualPayroll must be a non-negative number`);
+        if (
+          typeof uo.annualPayroll !== "number" ||
+          !Number.isFinite(uo.annualPayroll) ||
+          uo.annualPayroll < 0
+        ) {
+          unitErrors.push(
+            `ratingUnits[${i}].annualPayroll must be a finite non-negative number`,
+          );
+        }
         if (unitErrors.length === 0 || unitErrors.every((e) => !e.includes(`[${i}]`))) {
           normalizedUnits.push({
             state: (uo.state as string).toUpperCase(),
@@ -464,7 +486,10 @@ function calculateWcUnit(
   unit: WcRatingUnit,
   eMod: number,
   scheduleRating: number,
-): { premium: number; ruleId: string; breakdown: Record<string, unknown>; warnings: string[] } | null {
+):
+  | { premium: number; ruleId: string; breakdown: Record<string, unknown> }
+  | { error: string }
+  | null {
   const wcRules = rules.filter((r) => r.ruleType === "WC" && r.isActive);
 
   // Require an exact state+classCode match. No fallback.
@@ -482,13 +507,60 @@ function calculateWcUnit(
   const baseRate = Number(data.baseRate ?? 0);
   const stateMultiplier = Number(data.stateMultiplier ?? 1.0);
   const minimumPremium = Number(data.minimumPremium ?? 0);
+  const eModMin = data.eModMin == null ? null : Number(data.eModMin);
+  const eModMax = data.eModMax == null ? null : Number(data.eModMax);
+  const scheduleRatingMin =
+    data.scheduleRatingMin == null ? null : Number(data.scheduleRatingMin);
+  const scheduleRatingMax =
+    data.scheduleRatingMax == null ? null : Number(data.scheduleRatingMax);
+
+  const configuredValues: Array<[string, number | null]> = [
+    ["baseRate", baseRate],
+    ["stateMultiplier", stateMultiplier],
+    ["minimumPremium", minimumPremium],
+    ["eModMin", eModMin],
+    ["eModMax", eModMax],
+    ["scheduleRatingMin", scheduleRatingMin],
+    ["scheduleRatingMax", scheduleRatingMax],
+  ];
+  const invalidConfiguredValue = configuredValues.find(
+    ([, value]) => value != null && !Number.isFinite(value),
+  );
+  if (invalidConfiguredValue) {
+    return {
+      error: `Invalid non-finite WC rule ${invalidConfiguredValue[0]} for ${unit.state}/${unit.classCode}`,
+    };
+  }
+
+  if (eModMin != null && eMod < eModMin) {
+    return {
+      error: `eMod ${eMod} below rule minimum ${data.eModMin} for ${unit.state}/${unit.classCode}`,
+    };
+  }
+  if (eModMax != null && eMod > eModMax) {
+    return {
+      error: `eMod ${eMod} above rule maximum ${data.eModMax} for ${unit.state}/${unit.classCode}`,
+    };
+  }
+  if (
+    scheduleRatingMin != null &&
+    scheduleRating < scheduleRatingMin
+  ) {
+    return {
+      error: `Schedule rating ${scheduleRating} below rule minimum ${data.scheduleRatingMin} for ${unit.state}/${unit.classCode}`,
+    };
+  }
+  if (
+    scheduleRatingMax != null &&
+    scheduleRating > scheduleRatingMax
+  ) {
+    return {
+      error: `Schedule rating ${scheduleRating} above rule maximum ${data.scheduleRatingMax} for ${unit.state}/${unit.classCode}`,
+    };
+  }
 
   const rawPremium = (unit.annualPayroll / 100) * baseRate * eMod * scheduleRating * stateMultiplier;
   const finalPremium = Math.max(rawPremium, minimumPremium);
-
-  const warnings: string[] = [];
-  if (data.eModMin != null && eMod < data.eModMin) warnings.push(`eMod ${eMod} below rule minimum ${data.eModMin} for ${unit.state}/${unit.classCode}`);
-  if (data.eModMax != null && eMod > data.eModMax) warnings.push(`eMod ${eMod} above rule maximum ${data.eModMax} for ${unit.state}/${unit.classCode}`);
 
   return {
     premium: Math.round(finalPremium * 100) / 100,
@@ -505,9 +577,13 @@ function calculateWcUnit(
       rawPremium: Math.round(rawPremium * 100) / 100,
       finalPremium: Math.round(finalPremium * 100) / 100,
     },
-    warnings,
   };
 }
+
+type WcUnitSuccess = Exclude<
+  NonNullable<ReturnType<typeof calculateWcUnit>>,
+  { error: string }
+>;
 
 /**
  * Calculate total WC premium across all rating units.
@@ -521,6 +597,12 @@ export function calculateWcRate(
 ): (NormalizedRateResult & { rateSetId: string; rateSetVersion: number }) | { error: string } {
   const eMod = input.eMod ?? 1.0;
   const scheduleRating = input.scheduleRating ?? 1.0;
+  if (!Number.isFinite(eMod)) {
+    return { error: "WC rating requires a finite eMod" };
+  }
+  if (!Number.isFinite(scheduleRating)) {
+    return { error: "WC rating requires a finite scheduleRating" };
+  }
 
   // Resolve rating units: explicit list or single implicit unit.
   let units: WcRatingUnit[];
@@ -538,13 +620,16 @@ export function calculateWcRate(
     units = [{ state, classCode, annualPayroll }];
   }
 
-  const unitResults: ReturnType<typeof calculateWcUnit>[] = [];
+  const unitResults: WcUnitSuccess[] = [];
   const missingCoverage: string[] = [];
+  const guardrailErrors: string[] = [];
 
   for (const unit of units) {
     const result = calculateWcUnit(rules, unit, eMod, scheduleRating);
     if (!result) {
       missingCoverage.push(`${unit.state}/${unit.classCode}`);
+    } else if ("error" in result) {
+      guardrailErrors.push(result.error);
     } else {
       unitResults.push(result);
     }
@@ -553,11 +638,13 @@ export function calculateWcRate(
   if (missingCoverage.length > 0) {
     return { error: `No WC rate rule for: ${missingCoverage.join(", ")}` };
   }
+  if (guardrailErrors.length > 0) {
+    return { error: `WC rule guardrail failed: ${guardrailErrors.join("; ")}` };
+  }
 
   // All units rated; sum premiums.
   const totalPremium = unitResults.reduce((sum, r) => sum + (r?.premium ?? 0), 0);
   const roundedTotal = Math.round(totalPremium * 100) / 100;
-  const allWarnings = unitResults.flatMap((r) => r?.warnings ?? []);
   const unitBreakdowns = unitResults.map((r) => r?.breakdown ?? {});
 
   // Pick representative rule for the first unit (for rateSetId tracing).
@@ -582,7 +669,7 @@ export function calculateWcRate(
     rateSetId: "", // stamped by caller
     rateSetVersion: 0, // stamped by caller
     calculatedAt: new Date().toISOString(),
-    warnings: allWarnings,
+    warnings: [],
   };
 }
 

@@ -290,6 +290,25 @@ describe("normalizeRatingInput", () => {
     const r = normalizeRatingInput({ productLane: "WC", effectiveDate: "2026-01-01", states: ["CA"], ratingUnits: [] });
     assert.equal(r.ok, false);
   });
+
+  it("rejects non-finite experience and schedule modifiers", () => {
+    for (const input of [
+      { eMod: Number.NaN },
+      { eMod: Number.POSITIVE_INFINITY },
+      { eMod: "not-a-number" },
+      { scheduleRating: Number.NaN },
+      { scheduleRating: Number.NEGATIVE_INFINITY },
+      { scheduleRating: "not-a-number" },
+    ]) {
+      const result = normalizeRatingInput({
+        productLane: "WC",
+        effectiveDate: "2026-01-01",
+        states: ["CA"],
+        ...input,
+      });
+      assert.equal(result.ok, false, `expected rejection for ${JSON.stringify(input)}`);
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -557,6 +576,81 @@ describe("calculateWcRate — exact-match and no-fallback", () => {
     assert.equal(result.comparableAnnualAmount, 2500);
   });
 
+  it("rejects an eMod below the configured rule minimum", () => {
+    const guarded = makeWcRateRule("r1", "rs1", "m1", "CA", "5183", 2);
+    guarded.ruleData = {
+      ...(guarded.ruleData as Record<string, unknown>),
+      eModMin: 0.9,
+    };
+    const result = calculateWcRate([guarded], makeInput({ eMod: 0.8 }));
+    assert.ok("error" in result);
+    assert.match(result.error, /eMod 0.8 below rule minimum 0.9/);
+  });
+
+  it("rejects an eMod above the configured rule maximum", () => {
+    const guarded = makeWcRateRule("r1", "rs1", "m1", "CA", "5183", 2);
+    guarded.ruleData = {
+      ...(guarded.ruleData as Record<string, unknown>),
+      eModMax: 1.2,
+    };
+    const result = calculateWcRate([guarded], makeInput({ eMod: 1.3 }));
+    assert.ok("error" in result);
+    assert.match(result.error, /eMod 1.3 above rule maximum 1.2/);
+  });
+
+  it("rejects a schedule rating below the configured rule minimum", () => {
+    const guarded = makeWcRateRule("r1", "rs1", "m1", "CA", "5183", 2);
+    guarded.ruleData = {
+      ...(guarded.ruleData as Record<string, unknown>),
+      scheduleRatingMin: 0.85,
+    };
+    const result = calculateWcRate(
+      [guarded],
+      makeInput({ scheduleRating: 0.8 }),
+    );
+    assert.ok("error" in result);
+    assert.match(result.error, /Schedule rating 0.8 below rule minimum 0.85/);
+  });
+
+  it("rejects a schedule rating above the configured rule maximum", () => {
+    const guarded = makeWcRateRule("r1", "rs1", "m1", "CA", "5183", 2);
+    guarded.ruleData = {
+      ...(guarded.ruleData as Record<string, unknown>),
+      scheduleRatingMax: 1.1,
+    };
+    const result = calculateWcRate(
+      [guarded],
+      makeInput({ scheduleRating: 1.15 }),
+    );
+    assert.ok("error" in result);
+    assert.match(result.error, /Schedule rating 1.15 above rule maximum 1.1/);
+  });
+
+  it("rejects non-finite submitted modifiers before rule evaluation", () => {
+    for (const input of [
+      makeInput({ eMod: Number.NaN }),
+      makeInput({ scheduleRating: Number.POSITIVE_INFINITY }),
+    ]) {
+      const result = calculateWcRate(
+        [makeWcRateRule("r1", "rs1", "m1", "CA", "5183", 2)],
+        input,
+      );
+      assert.ok("error" in result);
+      assert.match(result.error, /finite/);
+    }
+  });
+
+  it("rejects non-finite configured modifier bounds", () => {
+    const guarded = makeWcRateRule("r1", "rs1", "m1", "CA", "5183", 2);
+    guarded.ruleData = {
+      ...(guarded.ruleData as Record<string, unknown>),
+      eModMax: "not-a-number",
+    };
+    const result = calculateWcRate([guarded], makeInput());
+    assert.ok("error" in result);
+    assert.match(result.error, /Invalid non-finite WC rule eModMax/);
+  });
+
   it("returns error when WC lane has no rules at all", () => {
     const input = makeInput({ states: ["CA"], classCodes: ["5183"], annualPayroll: 100_000 });
     const result = calculateWcRate([], input);
@@ -737,6 +831,22 @@ describe("rankCandidates — no-fallback WC exclusion", () => {
     assert.equal(exclusions.length, 0, `unexpected exclusions: ${JSON.stringify(exclusions)}`);
     assert.equal(ranked.length, 1);
     assert.equal(ranked[0].generatedRate, 5000); // 2000 + 3000
+  });
+
+  it("excludes a market whose exact rule rejects the submitted modifier", () => {
+    const candidate = makeCandidate("m-guarded", 2);
+    candidate.rateRules[0].ruleData = {
+      ...(candidate.rateRules[0].ruleData as Record<string, unknown>),
+      eModMax: 1.1,
+    };
+    const result = rankCandidates([candidate], makeInput({ eMod: 1.2 }));
+    assert.equal(result.ranked.length, 0);
+    assert.equal(result.exclusions.length, 1);
+    assert.equal(result.exclusions[0].reason, "RATE_CALCULATION_ERROR");
+    assert.match(
+      result.exclusions[0].detail ?? "",
+      /eMod 1.2 above rule maximum 1.1/,
+    );
   });
 });
 

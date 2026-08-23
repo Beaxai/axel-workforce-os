@@ -14,7 +14,10 @@ import {
   dealMarketsTable,
 } from "@workspace/db";
 import { eq, and, desc, asc } from "drizzle-orm";
-import { cannabisApplicationAnswersSchema } from "@workspace/cannabis-application";
+import {
+  cannabisApplicationAnswersSchema,
+  routableCannabisApplicationAnswersSchema,
+} from "@workspace/cannabis-application";
 import { fillAcord130, fillTreanSupp, fillAxelCannabisApplication } from "../services/applicationPdfService";
 import { buildIndicationSummaryPdf } from "../services/indicationPdfService";
 import { findOrCreateAccount } from "../lib/accounts";
@@ -193,6 +196,31 @@ router.post("/submit-for-approval", async (req, res) => {
     wcRatingBreakdown, workforceProfile,
   } = req.body;
 
+  const isPeoSubmission = !!(workforceProfile?.isPEO) || coverageType === "PEO";
+  const isAso = !!(workforceProfile?.isASO) || coverageType === "ASO";
+  const shouldRouteMarkets =
+    !isAso &&
+    (coverageType === "WC" || coverageType === "PEO" || !coverageType);
+  const normalizedExperienceMod =
+    experienceMod == null || experienceMod === "" ? 1 : Number(experienceMod);
+  const normalizedScheduleRating =
+    workforceProfile?.scheduleRating == null ||
+    workforceProfile.scheduleRating === ""
+      ? 1
+      : Number(workforceProfile.scheduleRating);
+  if (
+    shouldRouteMarkets &&
+    (!Number.isFinite(normalizedExperienceMod) ||
+      !Number.isFinite(normalizedScheduleRating))
+  ) {
+    return res.status(422).json({
+      error:
+        "Experience modification and schedule rating must be finite numbers before market routing.",
+      marketRoutingRequired: true,
+      invalidRatingInput: true,
+    });
+  }
+
   // Accept only a real YYYY-MM-DD calendar date; otherwise persist null.
   // Regex alone would let impossible dates (e.g. 2026-99-99) reach the DB, so we
   // round-trip through Date to confirm the day actually exists.
@@ -206,11 +234,27 @@ router.post("/submit-for-approval", async (req, res) => {
       : null;
   })();
 
-  // Validate cannabis application answers if supplied. The schema is permissive
-  // (every field has a default) so partial drafts pass; we only reject malformed
-  // shapes (e.g. wrong types).
   let parsedCannabisAnswers: ReturnType<typeof cannabisApplicationAnswersSchema.parse> | null = null;
-  if (cannabisApplicationAnswers) {
+  if (shouldRouteMarkets) {
+    if (!cannabisApplicationAnswers) {
+      return res.status(422).json({
+        error: "A completed application package is required before market routing.",
+        marketRoutingRequired: true,
+        applicationPackageRequired: true,
+      });
+    }
+    const parseResult =
+      routableCannabisApplicationAnswersSchema.safeParse(cannabisApplicationAnswers);
+    if (!parseResult.success) {
+      return res.status(422).json({
+        error: "The application package is incomplete and cannot be routed.",
+        issues: parseResult.error.issues,
+        marketRoutingRequired: true,
+        applicationPackageRequired: true,
+      });
+    }
+    parsedCannabisAnswers = parseResult.data;
+  } else if (cannabisApplicationAnswers) {
     const parseResult = cannabisApplicationAnswersSchema.safeParse(cannabisApplicationAnswers);
     if (!parseResult.success) {
       return res.status(400).json({
@@ -348,12 +392,6 @@ router.post("/submit-for-approval", async (req, res) => {
   // Resolve routing before writing quotes, generated documents, or successful
   // submission activity. A failed routing record keeps its deal ID for review,
   // but is explicitly non-blocking for a corrected resubmission.
-  const isPeoSubmission = !!(workforceProfile?.isPEO) || coverageType === "PEO";
-  const isAso = !!(workforceProfile?.isASO) || coverageType === "ASO";
-  const shouldRouteMarkets =
-    !isAso &&
-    (coverageType === "WC" || coverageType === "PEO" || !coverageType);
-
   const failRouting = async (
     error: string,
     extra: Record<string, unknown>,
@@ -465,11 +503,8 @@ router.post("/submit-for-approval", async (req, res) => {
       ratingUnits: ratingUnits.length > 0 ? ratingUnits : undefined,
       annualPayroll: totalPayroll != null ? Number(totalPayroll) : undefined,
       headcount: totalEmployees != null ? Number(totalEmployees) : undefined,
-      eMod: experienceMod != null ? Number(experienceMod) : 1,
-      scheduleRating:
-        workforceProfile?.scheduleRating != null
-          ? Number(workforceProfile.scheduleRating)
-          : 1,
+      eMod: normalizedExperienceMod,
+      scheduleRating: normalizedScheduleRating,
     };
     const rankResult = await rankAndPersistProvisional(deal.id, ratingInput);
     if (!rankResult.ok) {

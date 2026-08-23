@@ -1,22 +1,28 @@
 ---
 name: Multi-market routing
-description: Approved invariants for market-specific rating, ordered submission routing, ranking locks, and correspondence isolation.
+description: Product invariants for market-specific rating, ordered dispatch, ranking locks, package readiness, and correspondence isolation.
 ---
 
-Use first-class, structured markets, underwriters, appetite rules, and source-neutral rate rules. WC and PEO are separate ranking lanes. `deal_markets` is the authoritative ranked source for indication, proposal, dispatch, and the deal card.
+WC carriers and PEO programs are separate ranking lanes. A persisted per-deal ranking snapshot is authoritative for pricing, proposals, dispatch, and correspondence.
 
-**Why:** The existing engine produces one benchmark rate and the existing P5 listener identifies only a deal. Automatic multi-market placement needs deterministic per-market rates, strict secondary-market privacy, and correspondence that cannot leak across markets.
+**Why:** Automatic multi-market placement needs deterministic per-market rates, strict secondary-market privacy, and correspondence that cannot leak between recipients.
 
-**How to apply:** Show only Primary pricing outside ADMIN/CSA. Route separate messages to ranks 1–4 in order. Give every routed deal-market its own listener/thread identity. The first provider-accepted market send permanently locks the ranked set; later re-rates cannot change recipients, ranks, or visible Primary pricing.
+**How to apply:** Show only Primary pricing outside ADMIN/CSA. Route ranks 1–4 in order with separate market thread identities. The first provider-accepted send permanently locks membership, order, and pricing.
 
-Routing failures keep an audit deal with `routing_failed`, but that record must not block a corrected resubmission. Resolve eligibility before writing quotes, generated documents, success activity, or a dispatch batch.
+Correctable routing failures must remain auditable without blocking a corrected resubmission.
 
-**Why:** The API must return a deal ID for internal review without turning a correctable no-market result into a duplicate-submission dead end.
+**Why:** Internal review needs a durable trace, but incomplete or no-market submissions must not become duplicate-submission dead ends.
 
-**How to apply:** Duplicate checks ignore routing-failed deals. Queue only after the completed application package is persisted.
+**How to apply:** Record the failure before returning it, keep success-only side effects out, and exclude failed routing attempts from active-submission duplicate checks.
 
-Dispatch uses a durable per-batch worker lease. Cancellation is unavailable while a worker owns the batch, and an abandoned started provider attempt becomes `DELIVERY_UNKNOWN`, never an automatic retry.
+Only a complete, validated carrier application package may enter dispatch. Configured WC modifier bounds are hard eligibility limits, not warnings.
 
-**Why:** Email delivery can outlive a process or database request; retrying an uncertain attempt can send duplicate submissions or route after cancellation.
+**Why:** Markets must never receive blank forms or pricing outside their configured underwriting guardrails.
 
-**How to apply:** Claim before provider I/O, verify the claim before every send, preserve attempt history across manual retries, and require human review for uncertain delivery.
+**How to apply:** Fail closed before queue creation when canonical answers, required documents, exact state/class rules, eMod bounds, or schedule-rating bounds are incomplete.
+
+Provider dispatch is at-most-once per recorded attempt; uncertain delivery requires human review instead of an automatic resend.
+
+**Why:** Provider I/O can outlive a worker process, and retrying an uncertain attempt can send duplicates or route after cancellation.
+
+**How to apply:** Serialize queue/cancel operations, preserve attempt history, and treat a started attempt with no durable completion as terminally uncertain.

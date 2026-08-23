@@ -295,5 +295,179 @@ export const cannabisApplicationAnswersSchema = z.object({
   signatoryDate: text,
 });
 
+/**
+ * Final-submission contract used before an application can be routed to a
+ * market. The canonical schema intentionally accepts partial drafts; this
+ * stricter schema proves the persisted record can generate a useful carrier
+ * package instead of three mostly blank PDFs.
+ */
+export const routableCannabisApplicationAnswersSchema =
+  cannabisApplicationAnswersSchema.superRefine((answers, ctx) => {
+    const requiredText: Array<[keyof typeof answers, string]> = [
+      ["legalBusinessName", "Legal business name"],
+      ["fein", "FEIN"],
+      ["entityType", "Entity type"],
+      ["businessStreetAddress", "Business street address"],
+      ["businessCity", "Business city"],
+      ["businessState", "Business state"],
+      ["businessZip", "Business ZIP"],
+      ["primaryContactName", "Primary contact name"],
+      ["contactEmail", "Contact email"],
+      ["contactPhone", "Contact phone"],
+      ["primaryClassOfBusiness", "Primary class of business"],
+      ["totalEmployeesAll", "Total employees"],
+      ["annualPayroll", "Annual payroll"],
+      ["signatoryName", "Signatory name"],
+      ["signatoryDate", "Signatory date"],
+    ];
+
+    for (const [field, label] of requiredText) {
+      const value = answers[field];
+      if (typeof value !== "string" || value.trim() === "") {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [field],
+          message: `${label} is required for market routing`,
+        });
+      }
+    }
+
+    if (!/^[A-Z]{2}$/i.test(answers.businessState.trim())) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["businessState"],
+        message: "Business state must be a two-letter code",
+      });
+    }
+    if (!/^\d{5}(?:-\d{4})?$/.test(answers.businessZip.trim())) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["businessZip"],
+        message: "Business ZIP must be a valid 5- or 9-digit ZIP",
+      });
+    }
+    if (!answers.contactEmail.includes("@")) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["contactEmail"],
+        message: "Contact email must be valid",
+      });
+    }
+    if (!(Number(answers.totalEmployeesAll) > 0)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["totalEmployeesAll"],
+        message: "Total employees must be greater than zero",
+      });
+    }
+    if (!(Number(answers.annualPayroll) > 0)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["annualPayroll"],
+        message: "Annual payroll must be greater than zero",
+      });
+    }
+
+    if (answers.locations.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["locations"],
+        message: "At least one complete location is required for market routing",
+      });
+    }
+    answers.locations.forEach((location, index) => {
+      for (const field of ["loc", "streetAddress", "city", "state", "zip"] as const) {
+        if (!location[field].trim()) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["locations", index, field],
+            message: `${field} is required for a routed location`,
+          });
+        }
+      }
+      if (location.state && !/^[A-Z]{2}$/i.test(location.state.trim())) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["locations", index, "state"],
+          message: "Location state must be a two-letter code",
+        });
+      }
+      if (location.zip && !/^\d{5}(?:-\d{4})?$/.test(location.zip.trim())) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["locations", index, "zip"],
+          message: "Location ZIP must be valid",
+        });
+      }
+    });
+
+    if (answers.classCodes.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["classCodes"],
+        message: "At least one class-code payroll row is required for market routing",
+      });
+    }
+    answers.classCodes.forEach((row, index) => {
+      if (!row.loc.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["classCodes", index, "loc"],
+          message: "Class-code location is required",
+        });
+      }
+      if (!row.classCode.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["classCodes", index, "classCode"],
+          message: "Class code is required",
+        });
+      }
+      if (!(Number(row.annualPayroll) > 0)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["classCodes", index, "annualPayroll"],
+          message: "Class-code annual payroll must be greater than zero",
+        });
+      }
+    });
+
+    const generalQuestions = [
+      "q1_aircraftWatercraft",
+      "q2_hazardousMaterial",
+      "q3_undergroundOrAbove15ft",
+      "q4_workOnWater",
+      "q5_otherBusiness",
+      "q6_subcontractorsUsed",
+      "q7_workSubletWithoutCoi",
+      "q8_writtenSafetyProgram",
+      "q9_groupTransportation",
+      "q10_employeesUnder16OrOver60",
+      "q11_seasonalEmployees",
+      "q12_volunteerLabor",
+      "q13_employeesWithHandicaps",
+      "q14_outOfStateTravel",
+      "q15_athleticTeamsSponsored",
+      "q16_physicalsRequired",
+      "q17_otherInsurance",
+      "q18_priorCoverageDeclined",
+      "q19_employeeHealthPlans",
+      "q20_workForOtherBusinesses",
+      "q21_leasedEmployees",
+      "q22_workFromHome",
+      "q23_taxLiensOrBankruptcy",
+      "q24_unpaidWcPremium",
+    ] as const;
+    for (const field of generalQuestions) {
+      if (answers[field] === "") {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [field],
+          message: "A yes/no answer is required for market routing",
+        });
+      }
+    }
+  });
+
 export type CannabisApplicationAnswers = z.infer<typeof cannabisApplicationAnswersSchema>;
 export type CanonicalKey = keyof CannabisApplicationAnswers;

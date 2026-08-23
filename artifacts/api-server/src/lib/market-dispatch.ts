@@ -29,8 +29,10 @@ import {
   marketsTable,
   marketUnderwritersTable,
   submissionAnswersTable,
+  dealDocumentsTable,
   dealsTable,
 } from "@workspace/db";
+import { routableCannabisApplicationAnswersSchema } from "@workspace/cannabis-application";
 import {
   and,
   eq,
@@ -96,6 +98,55 @@ export async function queueMarketDispatch(
       .limit(1);
     if (existing) {
       return { alreadyQueued: true as const, batchId: existing.id };
+    }
+
+    const [submission] = await tx
+      .select({
+        answers: submissionAnswersTable.answers,
+        status: submissionAnswersTable.status,
+      })
+      .from(submissionAnswersTable)
+      .where(
+        and(
+          eq(submissionAnswersTable.dealId, dealId),
+          eq(submissionAnswersTable.status, "submitted"),
+        ),
+      )
+      .orderBy(desc(submissionAnswersTable.createdAt))
+      .limit(1);
+    const packageParse = routableCannabisApplicationAnswersSchema.safeParse(
+      submission?.answers,
+    );
+    if (!packageParse.success) {
+      throw new Error(
+        `Market dispatch requires a persisted, completed application package for deal ${dealId}`,
+      );
+    }
+
+    const requiredDocumentTypes = [
+      "axel_cannabis_application",
+      "acord_130",
+      "trean_cannabis_supp",
+    ];
+    const packageDocuments = await tx
+      .select({ documentType: dealDocumentsTable.documentType })
+      .from(dealDocumentsTable)
+      .where(
+        and(
+          eq(dealDocumentsTable.dealId, dealId),
+          inArray(dealDocumentsTable.documentType, requiredDocumentTypes),
+        ),
+      );
+    const persistedDocumentTypes = new Set(
+      packageDocuments.map((document) => document.documentType),
+    );
+    const missingDocuments = requiredDocumentTypes.filter(
+      (documentType) => !persistedDocumentTypes.has(documentType),
+    );
+    if (missingDocuments.length > 0) {
+      throw new Error(
+        `Market dispatch package is missing required documents for deal ${dealId}: ${missingDocuments.join(", ")}`,
+      );
     }
 
     const rankedMarkets = await tx
@@ -637,9 +688,17 @@ async function buildSubmissionAttachments(
       .limit(1)
       .then((rows) => rows[0]),
     db
-      .select({ answers: submissionAnswersTable.answers })
+      .select({
+        answers: submissionAnswersTable.answers,
+        status: submissionAnswersTable.status,
+      })
       .from(submissionAnswersTable)
-      .where(eq(submissionAnswersTable.dealId, dealId))
+      .where(
+        and(
+          eq(submissionAnswersTable.dealId, dealId),
+          eq(submissionAnswersTable.status, "submitted"),
+        ),
+      )
       .orderBy(desc(submissionAnswersTable.createdAt))
       .limit(1)
       .then((rows) => rows[0]),
@@ -647,6 +706,14 @@ async function buildSubmissionAttachments(
 
   if (!deal) {
     throw new Error(`Deal ${dealId} not found while building submission package`);
+  }
+  const packageParse = routableCannabisApplicationAnswersSchema.safeParse(
+    submission?.answers,
+  );
+  if (!packageParse.success) {
+    throw new Error(
+      `Deal ${dealId} has no persisted, completed application package`,
+    );
   }
 
   const summary = [
@@ -668,27 +735,25 @@ async function buildSubmissionAttachments(
     },
   ];
 
-  if (submission?.answers) {
-    const [axel, acord, trean] = await Promise.all([
-      fillAxelCannabisApplication(submission.answers),
-      fillAcord130(submission.answers),
-      fillTreanSupp(submission.answers),
-    ]);
-    attachments.push(
-      {
-        filename: "axel-cannabis-wc-application.pdf",
-        content: Buffer.from(axel).toString("base64"),
-      },
-      {
-        filename: "acord-130.pdf",
-        content: Buffer.from(acord).toString("base64"),
-      },
-      {
-        filename: "trean-cannabis-supplement.pdf",
-        content: Buffer.from(trean).toString("base64"),
-      },
-    );
-  }
+  const [axel, acord, trean] = await Promise.all([
+    fillAxelCannabisApplication(packageParse.data),
+    fillAcord130(packageParse.data),
+    fillTreanSupp(packageParse.data),
+  ]);
+  attachments.push(
+    {
+      filename: "axel-cannabis-wc-application.pdf",
+      content: Buffer.from(axel).toString("base64"),
+    },
+    {
+      filename: "acord-130.pdf",
+      content: Buffer.from(acord).toString("base64"),
+    },
+    {
+      filename: "trean-cannabis-supplement.pdf",
+      content: Buffer.from(trean).toString("base64"),
+    },
+  );
 
   return attachments;
 }
