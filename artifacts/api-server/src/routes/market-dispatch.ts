@@ -19,6 +19,7 @@ import {
 } from "@workspace/db";
 import { and, eq, inArray, desc } from "drizzle-orm";
 import {
+  cancelMarketDispatch,
   getDispatchStatus,
   isManualDispatchRetryEligible,
 } from "../lib/market-dispatch";
@@ -196,88 +197,10 @@ router.post("/:dealId/cancel", async (req, res) => {
   }
 
   try {
-    const outcome = await db.transaction(async (tx) => {
-      const [batch] = await tx
-        .select()
-        .from(dispatchBatchesTable)
-        .where(
-          and(
-            eq(dispatchBatchesTable.dealId, dealId),
-            inArray(dispatchBatchesTable.status, ["QUEUED", "PROCESSING", "FAILED"]),
-          ),
-        )
-        .orderBy(desc(dispatchBatchesTable.createdAt))
-        .limit(1)
-        .for("update");
-      if (!batch) return { ok: false as const, status: 404, error: "No active dispatch batch found for this deal" };
-      if (batch.status === "PROCESSING" || batch.workerClaimId) {
-        return {
-          ok: false as const,
-          status: 409,
-          error: "Cannot cancel while a dispatch worker is processing this batch. Review delivery status when it finishes.",
-        };
-      }
-
-      const items = await tx
-        .select()
-        .from(dispatchItemsTable)
-        .where(eq(dispatchItemsTable.batchId, batch.id));
-      const [lockedMarket] = await tx
-        .select({ id: dealMarketsTable.id })
-        .from(dealMarketsTable)
-        .where(
-          and(
-            eq(dealMarketsTable.dealId, dealId),
-            eq(dealMarketsTable.rankingState, "LOCKED"),
-          ),
-        )
-        .limit(1);
-      if (items.some((item) => item.status === "SENT") || lockedMarket) {
-        return {
-          ok: false as const,
-          status: 409,
-          error: "Cannot cancel: at least one market received the submission and the ranking is locked.",
-        };
-      }
-
-      await tx
-        .update(dispatchBatchesTable)
-        .set({
-          status: "CANCELLED",
-          cancelledAt: new Date(),
-          cancelledBy: actor.id,
-          cancelReason: reason.trim(),
-          workerClaimId: null,
-          workerClaimedAt: null,
-          updatedAt: new Date(),
-        })
-        .where(eq(dispatchBatchesTable.id, batch.id));
-      await tx
-        .update(dealMarketsTable)
-        .set({
-          rankingState: "PROVISIONAL",
-          sendStatus: "PENDING",
-          sendAttemptCount: 0,
-          lastSendError: null,
-          updatedAt: new Date(),
-        })
-        .where(eq(dealMarketsTable.dealId, dealId));
-      await tx.insert(activityLogTable).values({
-        dealId,
-        entityType: "deal",
-        entityId: dealId,
-        eventType: "market_dispatch_cancelled",
-        description: `${actorName} cancelled the market dispatch batch. Markets reset to PROVISIONAL. Reason: ${reason.trim()}.`,
-        metadata: {
-          batch_id: batch.id,
-          cancelled_by: actor.id,
-          reason: reason.trim(),
-          deal_market_ids: items.map((item) => item.dealMarketId),
-          internal: true,
-        },
-        createdBy: actor.id,
-      });
-      return { ok: true as const, batchId: batch.id };
+    const outcome = await cancelMarketDispatch(dealId, {
+      actorId: actor.id,
+      actorName,
+      reason: reason.trim(),
     });
 
     if (!outcome.ok) {

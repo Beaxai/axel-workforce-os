@@ -20,6 +20,7 @@ import {
 } from "@workspace/cannabis-application";
 import {
   buildSubmissionAttachments,
+  cancelMarketDispatch,
   queueMarketDispatch,
 } from "../lib/market-dispatch.js";
 import { hashCanonicalApplicationAnswers } from "../lib/canonical-routing-package.js";
@@ -30,6 +31,7 @@ let dealId: string | null = null;
 let marketId: string | null = null;
 let secondMarketId: string | null = null;
 let dealMarketId: string | null = null;
+let retryBatchId: string | null = null;
 
 const yesNoAnswers = {
   q1_aircraftWatercraft: "no",
@@ -398,6 +400,7 @@ describe("market dispatch package gate (database integration)", () => {
         routingInputSnapshot: originalBatch.routingInputSnapshot,
       })
       .returning({ id: dispatchBatchesTable.id });
+    retryBatchId = retryBatch.id;
     await db.insert(dispatchItemsTable).values({
       batchId: retryBatch.id,
       dealMarketId,
@@ -414,5 +417,52 @@ describe("market dispatch package gate (database integration)", () => {
       attachments.every((attachment) => attachment.content.length > 0),
       true,
     );
+  });
+
+  it("refuses to cancel and reroute a delivery-unknown batch", async () => {
+    assert.ok(dealId);
+    assert.ok(dealMarketId);
+    assert.ok(retryBatchId);
+    await db
+      .update(dispatchBatchesTable)
+      .set({ status: "FAILED", updatedAt: new Date() })
+      .where(eq(dispatchBatchesTable.id, retryBatchId));
+    await db
+      .update(dispatchItemsTable)
+      .set({ status: "DELIVERY_UNKNOWN", updatedAt: new Date() })
+      .where(eq(dispatchItemsTable.batchId, retryBatchId));
+    await db
+      .update(dealMarketsTable)
+      .set({
+        rankingState: "FAILED",
+        sendStatus: "DELIVERY_UNKNOWN",
+        lastSendError: "Provider acceptance could not be confirmed",
+        updatedAt: new Date(),
+      })
+      .where(eq(dealMarketsTable.id, dealMarketId));
+
+    const outcome = await cancelMarketDispatch(dealId, {
+      actorName: "Integration Test Admin",
+      reason: "Attempt to reroute an ambiguous delivery",
+    });
+    assert.equal(outcome.ok, false);
+    if (outcome.ok) assert.fail("delivery-unknown batch was cancelled");
+    assert.equal(outcome.status, 409);
+    assert.match(outcome.error, /delivery is unknown/i);
+
+    const [batchAfter] = await db
+      .select({ status: dispatchBatchesTable.status })
+      .from(dispatchBatchesTable)
+      .where(eq(dispatchBatchesTable.id, retryBatchId));
+    const [marketAfter] = await db
+      .select({
+        rankingState: dealMarketsTable.rankingState,
+        sendStatus: dealMarketsTable.sendStatus,
+      })
+      .from(dealMarketsTable)
+      .where(eq(dealMarketsTable.id, dealMarketId));
+    assert.equal(batchAfter.status, "FAILED");
+    assert.equal(marketAfter.rankingState, "FAILED");
+    assert.equal(marketAfter.sendStatus, "DELIVERY_UNKNOWN");
   });
 });
