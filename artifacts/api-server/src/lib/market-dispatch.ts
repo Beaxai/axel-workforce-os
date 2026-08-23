@@ -390,6 +390,18 @@ export async function processQueuedMarketDispatches(): Promise<void> {
   }
 }
 
+/**
+ * Process one known batch. The production sweep uses this internally; keeping
+ * the targeted entry point public lets regression tests exercise a single
+ * fixture without accidentally sweeping unrelated live work.
+ */
+export async function processMarketDispatchBatch(
+  batchId: string,
+  dealId: string,
+): Promise<void> {
+  await processBatch(batchId, dealId);
+}
+
 async function processBatch(batchId: string, dealId: string): Promise<void> {
   const claimId = randomUUID();
   const claimExpiredBefore = new Date(Date.now() - WORKER_CLAIM_TTL_MS);
