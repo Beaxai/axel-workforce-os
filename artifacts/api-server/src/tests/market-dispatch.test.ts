@@ -13,6 +13,10 @@
 
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import {
+  executeDispatchSendStages,
+  isManualDispatchRetryEligible,
+} from "../lib/market-dispatch.js";
 
 // ---------------------------------------------------------------------------
 // Tests: inbound resolver route method constants
@@ -217,6 +221,35 @@ describe("dispatch outcome classification", () => {
     assert.equal(providerAccepted("dev_logged"), false);
     assert.equal(providerAccepted("failed"), false);
   });
+
+  it("treats an exception after provider I/O starts as DELIVERY_UNKNOWN", async () => {
+    let providerAccepted = false;
+    const result = await executeDispatchSendStages(
+      async () => ({ package: "ready" }),
+      async () => {
+        providerAccepted = true;
+        throw new Error("outbound audit insert failed after provider acceptance");
+      },
+    );
+    assert.equal(providerAccepted, true);
+    assert.equal(result.outcome, "DELIVERY_UNKNOWN");
+    assert.equal(result.providerAccepted, false);
+  });
+
+  it("keeps package-generation failures retryable before provider I/O", async () => {
+    let providerCalled = false;
+    const result = await executeDispatchSendStages(
+      async () => {
+        throw new Error("temporary PDF generation failure");
+      },
+      async () => {
+        providerCalled = true;
+        return { outcome: "SUCCESS", providerAccepted: true };
+      },
+    );
+    assert.equal(providerCalled, false);
+    assert.equal(result.outcome, "TRANSIENT_FAILURE");
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -224,15 +257,20 @@ describe("dispatch outcome classification", () => {
 // ---------------------------------------------------------------------------
 
 describe("dispatch retry and cancel preconditions", () => {
-  it("retry is only allowed on FAILED or DELIVERY_UNKNOWN items", () => {
-    const retryableStatuses = ["FAILED", "DELIVERY_UNKNOWN"];
-    const nonRetryable = ["PENDING", "SENT", "SKIPPED"];
+  it("retry is allowed only for confirmed FAILED items", () => {
+    const retryableStatuses = ["FAILED"];
+    const nonRetryable = [
+      "PENDING",
+      "SENT",
+      "SKIPPED",
+      "DELIVERY_UNKNOWN",
+    ];
 
     for (const s of retryableStatuses) {
-      assert.ok(["FAILED", "DELIVERY_UNKNOWN"].includes(s), `${s} should be retryable`);
+      assert.equal(isManualDispatchRetryEligible(s), true);
     }
     for (const s of nonRetryable) {
-      assert.ok(!["FAILED", "DELIVERY_UNKNOWN"].includes(s), `${s} should not be retryable`);
+      assert.equal(isManualDispatchRetryEligible(s), false);
     }
   });
 

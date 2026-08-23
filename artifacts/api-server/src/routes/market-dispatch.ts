@@ -4,7 +4,7 @@
  * Mounted at /market-dispatch
  *
  * GET  /:dealId          — dispatch state for a deal
- * POST /:dealId/retry    — retry terminal failed/delivery-unknown items
+ * POST /:dealId/retry    — retry confirmed failed items
  * POST /:dealId/cancel   — cancel undelivered batch; resets deal_markets to PROVISIONAL
  */
 
@@ -18,7 +18,10 @@ import {
   activityLogTable,
 } from "@workspace/db";
 import { and, eq, inArray, desc } from "drizzle-orm";
-import { getDispatchStatus } from "../lib/market-dispatch";
+import {
+  getDispatchStatus,
+  isManualDispatchRetryEligible,
+} from "../lib/market-dispatch";
 
 const router: IRouter = Router();
 
@@ -49,7 +52,7 @@ router.get("/:dealId", async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
-// POST /:dealId/retry — retry terminal failed/delivery-unknown items deliberately
+// POST /:dealId/retry — retry confirmed failed items deliberately
 // ---------------------------------------------------------------------------
 router.post("/:dealId/retry", async (req, res) => {
   const { dealId } = req.params;
@@ -83,8 +86,7 @@ router.post("/:dealId/retry", async (req, res) => {
       });
     }
 
-    // Load items that are FAILED or DELIVERY_UNKNOWN — these can be retried.
-    const items = await db
+    const terminalItems = await db
       .select()
       .from(dispatchItemsTable)
       .where(
@@ -94,8 +96,16 @@ router.post("/:dealId/retry", async (req, res) => {
         ),
       );
 
+    // DELIVERY_UNKNOWN is terminal. Provider acceptance may have happened, so
+    // requeueing it could duplicate a carrier submission.
+    const items = terminalItems.filter((item) =>
+      isManualDispatchRetryEligible(item.status),
+    );
     if (items.length === 0) {
-      return res.status(409).json({ error: "No failed or delivery-unknown items to retry" });
+      return res.status(409).json({
+        error:
+          "No confirmed failed items are eligible for retry. Delivery-unknown items require manual provider review and cannot be requeued.",
+      });
     }
 
     const dealMarketIds = items.map((i) => i.dealMarketId);

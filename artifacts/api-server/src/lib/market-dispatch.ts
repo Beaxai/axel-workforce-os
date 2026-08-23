@@ -712,12 +712,47 @@ async function lockDealMarkets(dealId: string, batchId: string): Promise<void> {
 // attemptSend — builds the email and calls the email service
 // ---------------------------------------------------------------------------
 
-interface AttemptResult {
+export interface AttemptResult {
   outcome: "SUCCESS" | "TRANSIENT_FAILURE" | "PERMANENT_FAILURE" | "DELIVERY_UNKNOWN";
   providerAccepted: boolean;
   providerMessageId?: string | null;
   error?: string;
   skippedConcurrent?: boolean;
+}
+
+/**
+ * Keep failures before provider I/O retryable, but treat every exception after
+ * the provider call begins as ambiguous. The provider may have accepted the
+ * message before a network or local persistence failure surfaced.
+ */
+export async function executeDispatchSendStages<T>(
+  buildPayload: () => Promise<T>,
+  sendToProvider: (payload: T) => Promise<AttemptResult>,
+): Promise<AttemptResult> {
+  let payload: T;
+  try {
+    payload = await buildPayload();
+  } catch (error: unknown) {
+    return {
+      outcome: "TRANSIENT_FAILURE",
+      providerAccepted: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+
+  try {
+    return await sendToProvider(payload);
+  } catch (error: unknown) {
+    return {
+      outcome: "DELIVERY_UNKNOWN",
+      providerAccepted: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+export function isManualDispatchRetryEligible(status: string): boolean {
+  return status === "FAILED";
 }
 
 export async function buildSubmissionAttachments(
@@ -938,65 +973,65 @@ async function attemptSend(
 
   const marketName = market?.name ?? "Market";
 
-  // Send via emailService with dealMarketId + idempotencyKey.
-  let sendResult: Awaited<ReturnType<typeof sendDealEmail>>;
-  try {
-    const attachments = await buildSubmissionAttachments(batchId, dealId);
-    sendResult = await sendDealEmail({
-      dealId,
-      dealMarketId,
-      to: [toEmail],
-      subject: `Workers' Compensation Submission — ${marketName}`,
-      text: `Please find the attached submission package for your review.\n\nThis message was sent to ${marketName} as part of an automatic multi-market routing.`,
-      sentBy: "system",
-      idempotencyKey,
-      attachments,
-    });
-  } catch (err: unknown) {
-    const errMsg = err instanceof Error ? err.message : String(err);
-    logger.error({ err, itemId, dealMarketId }, "market-dispatch: sendDealEmail threw");
-    await finalizeAttempt(attemptId, "TRANSIENT_FAILURE", null, errMsg);
-    return { outcome: "TRANSIENT_FAILURE", providerAccepted: false, error: errMsg };
-  }
+  const result = await executeDispatchSendStages(
+    () => buildSubmissionAttachments(batchId, dealId),
+    async (attachments) => {
+      const sendResult = await sendDealEmail({
+        dealId,
+        dealMarketId,
+        to: [toEmail],
+        subject: `Workers' Compensation Submission — ${marketName}`,
+        text: `Please find the attached submission package for your review.\n\nThis message was sent to ${marketName} as part of an automatic multi-market routing.`,
+        sentBy: "system",
+        idempotencyKey,
+        attachments,
+      });
 
-  // dev_logged is NOT provider acceptance — treat as success for test purposes
-  // but do NOT lock the ranking. The spec says "provider-accepted status ('sent')"
-  // and "dev_logged is not provider acceptance".
-  if (sendResult.status === "sent") {
-    await finalizeAttempt(attemptId, "SUCCESS", sendResult.providerMessageId ?? null, null);
-    return {
-      outcome: "SUCCESS",
-      providerAccepted: true,
-      providerMessageId: sendResult.providerMessageId,
-    };
-  }
+      if (sendResult.status === "sent") {
+        return {
+          outcome: "SUCCESS",
+          providerAccepted: true,
+          providerMessageId: sendResult.providerMessageId,
+        };
+      }
+      if (sendResult.status === "dev_logged") {
+        return {
+          outcome: "SUCCESS",
+          providerAccepted: false,
+          providerMessageId: null,
+        };
+      }
+      const error = sendResult.error ?? "Provider returned failure";
+      const outcome =
+        sendResult.failureKind === "DELIVERY_UNKNOWN"
+          ? "DELIVERY_UNKNOWN"
+          : sendResult.failureKind === "PERMANENT"
+            ? "PERMANENT_FAILURE"
+            : "TRANSIENT_FAILURE";
+      return { outcome, providerAccepted: false, error };
+    },
+  );
 
-  if (sendResult.status === "dev_logged") {
-    // Not provider-accepted — record as dev_logged success for dev environments.
-    // Per spec: dev_logged is not provider acceptance. We record a transient failure
-    // so that in live mode retries would go to the real provider, but we do NOT
-    // lock the ranking. In dev mode, we still need the dispatch to progress, so
-    // treat it as a non-locking success.
-    await finalizeAttempt(
-      attemptId,
-      "SUCCESS",
-      null,
-      "dev_logged — not provider accepted",
-      "DEV_LOGGED",
+  if (result.outcome === "DELIVERY_UNKNOWN") {
+    logger.error(
+      { itemId, dealMarketId, error: result.error },
+      "market-dispatch: provider attempt became delivery-unknown",
     );
-    return { outcome: "SUCCESS", providerAccepted: false, providerMessageId: null };
   }
-
-  // failed
-  const errMsg = sendResult.error ?? "Provider returned failure";
-  const outcome =
-    sendResult.failureKind === "DELIVERY_UNKNOWN"
-      ? "DELIVERY_UNKNOWN"
-      : sendResult.failureKind === "PERMANENT"
-        ? "PERMANENT_FAILURE"
-        : "TRANSIENT_FAILURE";
-  await finalizeAttempt(attemptId, outcome, null, errMsg);
-  return { outcome, providerAccepted: false, error: errMsg };
+  await finalizeAttempt(
+    attemptId,
+    result.outcome,
+    result.providerMessageId ?? null,
+    result.outcome === "SUCCESS"
+      ? result.providerAccepted
+        ? null
+        : "dev_logged — not provider accepted"
+      : result.error ?? null,
+    result.outcome === "SUCCESS" && !result.providerAccepted
+      ? "DEV_LOGGED"
+      : null,
+  );
+  return result;
 }
 
 async function finalizeAttempt(
