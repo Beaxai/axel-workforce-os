@@ -64,5 +64,5 @@ channel = "stable-25_05"
 [userenv]
 
 [userenv.shared]
-LISTENER_EMAIL_DOMAIN = "listener.axelins.com"
-OUTBOUND_EMAIL_FROM = "deals@axelins.com"
+LISTENER_EMAIL_DOMAIN = "submissions.axelins.com"
+OUTBOUND_EMAIL_FROM = "submissions@axelins.com"

@@ -1,6 +1,7 @@
 import { pgTable, uuid, text, timestamp, jsonb } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { dealsTable } from "./deals";
+import { dealMarketsTable } from "./markets";
 
 // Outbound emails sent on behalf of a deal (carrier/UW correspondence).
 // providerMessageId + rfcMessageId are stored so inbound replies can be
@@ -9,6 +10,9 @@ import { dealsTable } from "./deals";
 export const dealOutboundEmailsTable = pgTable("deal_outbound_emails", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   dealId: uuid("deal_id").references(() => dealsTable.id).notNull(),
+  // Nullable: identifies the market thread when this is a market-specific send;
+  // null = general deal correspondence.
+  dealMarketId: uuid("deal_market_id").references(() => dealMarketsTable.id),
   // Resend's own id for the send (provider-scoped).
   providerMessageId: text("provider_message_id"),
   // RFC 5322 Message-ID header value, used for In-Reply-To/References matching.

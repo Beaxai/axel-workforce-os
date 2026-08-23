@@ -19,7 +19,7 @@ import {
 import { api } from "@/lib/api";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { useAuthStore } from "@/lib/auth-store";
-import type { SectionView, SubmissionPayload, ActivityRow, SectionPatchResponse, RfiRow, RfiListResponse, QuoteVariation, QuoteVariationsResponse, ApplyVariationResponse, PreviewVariationResponse, VariationLevers, DealTeamMember, DealDirectoryEntry } from "./types";
+import type { SectionView, SubmissionPayload, ActivityRow, SectionPatchResponse, RfiRow, RfiListResponse, QuoteVariation, QuoteVariationsResponse, ApplyVariationResponse, PreviewVariationResponse, VariationLevers, DealTeamMember, DealDirectoryEntry, MarketRoutingSummary } from "./types";
 import UserMiniProfile from "@/components/user-profile/UserMiniProfile";
 import type { CreateRfiInput } from "./OverviewTab";
 import { PHASES, phaseIndex } from "./stage-map";
@@ -282,6 +282,11 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
   const isInternal = !!user && INTERNAL.has(user.role);
   const canPost = !!user && (isInternal || user.role === "EMPLOYER");
 
+  // Market Routing State
+  const [routingSummary, setRoutingSummary] = useState<MarketRoutingSummary | null>(null);
+  const [selectedMarketIdState, setSelectedMarketIdState] = useState<string | null>(null);
+  const selectedMarketIdRef = useRef<string | null>(null);
+
   // Monotonic load sequence: bumped whenever the target deal changes so
   // slower responses from a previous deal can't overwrite the current one
   // (e.g. rapid deal switching or back/forward through ?deal= history).
@@ -305,12 +310,26 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
   const fetchActivity = useCallback(async () => {
     const seq = loadSeqRef.current;
     try {
-      const res = await api.get<{ activity: ActivityRow[] }>(`/deal-card/${dealId}/activity`);
+      const mId = selectedMarketIdRef.current;
+      const url = mId ? `/deal-card/${dealId}/activity?dealMarketId=${mId}` : `/deal-card/${dealId}/activity`;
+      const res = await api.get<{ activity: ActivityRow[] }>(url);
       if (seq !== loadSeqRef.current) return;
       setActivity(res.activity || []);
     } catch {
       if (seq !== loadSeqRef.current) return;
       setActivity([]);
+    }
+  }, [dealId]);
+
+  const fetchRoutingSummary = useCallback(async () => {
+    const seq = loadSeqRef.current;
+    try {
+      const res = await api.get<MarketRoutingSummary>(`/deal-card/${dealId}/market-routing-summary`);
+      if (seq !== loadSeqRef.current) return;
+      setRoutingSummary(res);
+    } catch {
+      if (seq !== loadSeqRef.current) return;
+      setRoutingSummary(null);
     }
   }, [dealId]);
 
@@ -345,6 +364,24 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
     }
   }, [dealId]);
 
+  const handleMarketSelected = useCallback((id: string | null) => {
+    selectedMarketIdRef.current = id;
+    setSelectedMarketIdState(id);
+    fetchActivity();
+  }, [fetchActivity]);
+
+  const handleRetryRouting = useCallback(async () => {
+    await api.post(`/market-dispatch/${dealId}/retry`, {});
+    await fetchRoutingSummary();
+    await fetchActivity();
+  }, [dealId, fetchRoutingSummary, fetchActivity]);
+
+  const handleCancelRouting = useCallback(async (reason: string) => {
+    await api.post(`/market-dispatch/${dealId}/cancel`, { reason });
+    await fetchRoutingSummary();
+    await fetchActivity();
+  }, [dealId, fetchRoutingSummary, fetchActivity]);
+
   useEffect(() => {
     if (!isOpen || !dealId) return;
     loadSeqRef.current += 1;
@@ -369,10 +406,15 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
     setQuoteDetail(null); // don't reopen a prior deal's KPI detail view (would hide the pricing row)
     setSubmissionFocus(null); // don't replay a prior deal's KPI jump on the new deal's Submission tab
     setMarkerPopup(null);
+    selectedMarketIdRef.current = null;
+    setSelectedMarketIdState(null);
+    setRoutingSummary(null);
+
     fetchSubmission();
     fetchActivity();
     fetchRfis();
-  }, [isOpen, dealId, fetchSubmission, fetchActivity, fetchRfis]);
+    fetchRoutingSummary();
+  }, [isOpen, dealId, fetchSubmission, fetchActivity, fetchRfis, fetchRoutingSummary]);
 
   const sections = payload?.sections ?? [];
   const deal = payload?.deal;
@@ -749,7 +791,11 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
   const handleSend = async (message: string, mentions?: string[]) => {
     setPosting(true);
     try {
-      await api.post(`/deal-card/${dealId}/messages`, { message, mentions: mentions ?? [] });
+      const payload: any = { message, mentions: mentions ?? [] };
+      if (selectedMarketIdRef.current) {
+        payload.dealMarketId = selectedMarketIdRef.current;
+      }
+      await api.post(`/deal-card/${dealId}/messages`, payload);
       await fetchActivity();
     } catch {
       /* ignore */
@@ -1333,6 +1379,11 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
                     onApplyVariation={handleApplyVariation}
                     onPreviewLevers={handlePreviewLevers}
                     onApplyLevers={handleApplyLevers}
+                    routingSummary={routingSummary}
+                    selectedMarketId={selectedMarketIdState}
+                    onSelectMarket={handleMarketSelected}
+                    onRetryRouting={handleRetryRouting}
+                    onCancelRouting={handleCancelRouting}
                   />
                 )}
                 {tab === "submission" && <SubmissionTab key={dealId} sections={sections} aggregateComplete={payload.aggregateComplete} total={payload.total} access={payload.access} savingSection={savingSection} onSaveSection={handleSaveSection} canRequestProposal={isInternal} proposalStatus={(deal?.proposalStatus as string | null) ?? null} onRequestProposal={handleRequestProposal} focusRequest={submissionFocus} />}

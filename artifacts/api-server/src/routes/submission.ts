@@ -11,12 +11,15 @@ import {
   activityLogTable,
   quotesTable,
   accountsTable,
+  dealMarketsTable,
 } from "@workspace/db";
 import { eq, and, desc, asc } from "drizzle-orm";
 import { cannabisApplicationAnswersSchema } from "@workspace/cannabis-application";
 import { fillAcord130, fillTreanSupp, fillAxelCannabisApplication } from "../services/applicationPdfService";
 import { buildIndicationSummaryPdf } from "../services/indicationPdfService";
 import { findOrCreateAccount } from "../lib/accounts";
+import { rankAndPersistProvisional, type RatingInput } from "../lib/market-routing";
+import { queueMarketDispatch } from "../lib/market-dispatch";
 
 const router: IRouter = Router();
 
@@ -261,10 +264,20 @@ router.post("/submit-for-approval", async (req, res) => {
 
     if (!accountCreated) {
       const priorDeals = await tx
-        .select({ id: dealsTable.id, referenceCode: dealsTable.referenceCode, stage: dealsTable.stage })
+        .select({
+          id: dealsTable.id,
+          referenceCode: dealsTable.referenceCode,
+          stage: dealsTable.stage,
+          submissionStatus: dealsTable.submissionStatus,
+        })
         .from(dealsTable)
         .where(eq(dealsTable.accountId, account.id));
-      const blocking = priorDeals.find((d) => d.stage !== "LOST" && d.stage !== "CLIENT");
+      const blocking = priorDeals.find(
+        (d) =>
+          d.stage !== "LOST" &&
+          d.stage !== "CLIENT" &&
+          d.submissionStatus !== "routing_failed",
+      );
       if (blocking) {
         await tx.insert(activityLogTable).values({
           dealId: blocking.id,
@@ -317,9 +330,180 @@ router.post("/submit-for-approval", async (req, res) => {
   }
 
   const deal = dealOutcome.deal;
+  const actorUser = req.user;
+  const actorName = actorUser
+    ? [actorUser.firstName, actorUser.lastName].filter(Boolean).join(" ") || actorUser.email
+    : null;
+
+  let marketPricing: {
+    annualAmount: number;
+    productLane: "WC" | "PEO";
+    status: "QUEUED";
+  } | null = null;
+  let routingQueued = false;
+  let routedProductLane: "WC" | "PEO" | null = null;
+  let primaryMarketRate: number | null = null;
+  let primaryMarketBreakdown: Record<string, unknown> | null = null;
+
+  // Resolve routing before writing quotes, generated documents, or successful
+  // submission activity. A failed routing record keeps its deal ID for review,
+  // but is explicitly non-blocking for a corrected resubmission.
+  const isPeoSubmission = !!(workforceProfile?.isPEO) || coverageType === "PEO";
+  const isAso = !!(workforceProfile?.isASO) || coverageType === "ASO";
+  const shouldRouteMarkets =
+    !isAso &&
+    (coverageType === "WC" || coverageType === "PEO" || !coverageType);
+
+  const failRouting = async (
+    error: string,
+    extra: Record<string, unknown>,
+  ) => {
+    await db.transaction(async (tx) => {
+      await tx
+        .update(dealsTable)
+        .set({ stage: "SUBMISSION_REVIEW", submissionStatus: "routing_failed" })
+        .where(eq(dealsTable.id, deal.id));
+      await tx.insert(activityLogTable).values({
+        dealId: deal.id,
+        entityType: "deal",
+        entityId: deal.id,
+        eventType: "market_routing_failed",
+        description: error,
+        metadata: {
+          ...extra,
+          author: actorName ?? null,
+          role: actorUser?.role ?? null,
+          internal: true,
+        },
+        createdBy: actorUser?.id,
+      });
+    });
+  };
+
+  if (shouldRouteMarkets && !hasIndication) {
+    const error = "A completed market indication is required before final submission.";
+    await failRouting(error, { market_routing_required: true });
+    return res.status(422).json({
+      error,
+      dealId: deal.id,
+      marketRoutingRequired: true,
+    });
+  }
+
+  if (hasIndication && shouldRouteMarkets) {
+    const productLane: "WC" | "PEO" = isPeoSubmission ? "PEO" : "WC";
+    const routingStates: string[] = [];
+    if (businessState && typeof businessState === "string" && businessState.length === 2) {
+      routingStates.push(businessState.toUpperCase());
+    }
+    if (Array.isArray(statesOfOperation)) {
+      for (const state of statesOfOperation as string[]) {
+        if (
+          typeof state === "string" &&
+          state.length === 2 &&
+          !routingStates.includes(state.toUpperCase())
+        ) {
+          routingStates.push(state.toUpperCase());
+        }
+      }
+    }
+    if (routingStates.length === 0 && Array.isArray(workforceProfile?.locations)) {
+      for (const location of workforceProfile.locations as Array<{ state?: string }>) {
+        if (location.state?.length === 2) {
+          const upper = location.state.toUpperCase();
+          if (!routingStates.includes(upper)) routingStates.push(upper);
+        }
+      }
+    }
+
+    const classCodes: string[] = [];
+    const ratingUnits: NonNullable<RatingInput["ratingUnits"]> = [];
+    if (Array.isArray(workforceProfile?.locations)) {
+      for (const location of workforceProfile.locations as Array<{
+        state?: string;
+        classCodes?: Array<{ classCode?: string | number; annualPayroll?: number }>;
+      }>) {
+        if (!location.state || !Array.isArray(location.classCodes)) continue;
+        for (const row of location.classCodes) {
+          if (!row.classCode || !Number.isFinite(Number(row.annualPayroll))) continue;
+          const classCode = String(row.classCode);
+          ratingUnits.push({
+            state: location.state.toUpperCase(),
+            classCode,
+            annualPayroll: Number(row.annualPayroll),
+          });
+          if (!classCodes.includes(classCode)) classCodes.push(classCode);
+        }
+      }
+    }
+    if (wcRatingBreakdown?.classCode) {
+      const classCode = String(wcRatingBreakdown.classCode);
+      if (!classCodes.includes(classCode)) classCodes.push(classCode);
+    }
+    if (Array.isArray(workforceProfile?.classCodes)) {
+      for (const classCode of workforceProfile.classCodes as string[]) {
+        if (!classCodes.includes(classCode)) classCodes.push(classCode);
+      }
+    }
+
+    if (routingStates.length === 0) {
+      const error = "At least one valid applicant state is required for market routing.";
+      await failRouting(error, { market_routing_required: true, product_lane: productLane });
+      return res.status(422).json({
+        error,
+        dealId: deal.id,
+        marketRoutingRequired: true,
+      });
+    }
+
+    const ratingInput: RatingInput = {
+      productLane,
+      effectiveDate: normalizedEffectiveDate ?? new Date().toISOString().slice(0, 10),
+      states: routingStates,
+      vertical: vertical ?? null,
+      classCodes: classCodes.length > 0 ? classCodes : undefined,
+      ratingUnits: ratingUnits.length > 0 ? ratingUnits : undefined,
+      annualPayroll: totalPayroll != null ? Number(totalPayroll) : undefined,
+      headcount: totalEmployees != null ? Number(totalEmployees) : undefined,
+      eMod: experienceMod != null ? Number(experienceMod) : 1,
+      scheduleRating:
+        workforceProfile?.scheduleRating != null
+          ? Number(workforceProfile.scheduleRating)
+          : 1,
+    };
+    const rankResult = await rankAndPersistProvisional(deal.id, ratingInput);
+    if (!rankResult.ok) {
+      const error = `No eligible ${productLane} markets found for this submission: ${rankResult.error}`;
+      await failRouting(error, { no_eligible_markets: true, product_lane: productLane });
+      return res.status(422).json({
+        error,
+        dealId: deal.id,
+        noEligibleMarkets: true,
+      });
+    }
+    const primaryMarket = rankResult.result.ranked.find((market) => market.isPrimary);
+    if (!primaryMarket) {
+      const error = `No ${productLane} markets qualified for this submission. Internal review required.`;
+      await failRouting(error, { no_eligible_markets: true, product_lane: productLane });
+      return res.status(422).json({
+        error,
+        dealId: deal.id,
+        noEligibleMarkets: true,
+      });
+    }
+
+    routedProductLane = productLane;
+    primaryMarketRate = primaryMarket.generatedRate;
+    primaryMarketBreakdown = primaryMarket.rateBreakdownSnapshot;
+    marketPricing = {
+      annualAmount: primaryMarket.generatedRate,
+      productLane,
+      status: "QUEUED",
+    };
+  }
 
   if (wcRatingBreakdown && workforceProfile) {
-    const finalPremium = Number(wcRatingBreakdown.finalPremium ?? 0);
+    const finalPremium = primaryMarketRate ?? Number(wcRatingBreakdown.finalPremium ?? 0);
     await db.insert(quotesTable).values({
       dealId: deal.id,
       status: "SUBMITTED",
@@ -328,12 +512,12 @@ router.post("/submit-for-approval", async (req, res) => {
       headcount: totalEmployees ?? null,
       eMod: experienceMod ? String(experienceMod) : "1.0",
       scheduleRating: workforceProfile.scheduleRating != null ? String(workforceProfile.scheduleRating) : "1.0",
-      isPeo: !!workforceProfile.isPEO,
+      isPeo: routedProductLane === "PEO" || !!workforceProfile.isPEO,
       wcPremium: String(finalPremium),
       wcFinalPremium: String(finalPremium),
       wcIndicationMin: premiumLow != null ? String(premiumLow) : null,
       wcIndicationMax: premiumHigh != null ? String(premiumHigh) : null,
-      wcRatingBreakdown,
+      wcRatingBreakdown: primaryMarketBreakdown ?? wcRatingBreakdown,
       workforceProfile,
       ratedAt: new Date(),
     });
@@ -436,10 +620,6 @@ router.post("/submit-for-approval", async (req, res) => {
 
   await db.insert(dealDocumentsTable).values(docRecords);
 
-  const actorUser = req.user;
-  const actorName = actorUser
-    ? [actorUser.firstName, actorUser.lastName].filter(Boolean).join(" ") || actorUser.email
-    : null;
   await db.insert(activityLogTable).values({
     dealId: deal.id,
     entityType: "deal",
@@ -473,12 +653,20 @@ router.post("/submit-for-approval", async (req, res) => {
     metadata: { deal_id: deal.id, reference_code: referenceCode },
   });
 
+  if (routedProductLane) {
+    // Queue only after submission answers and generated document records exist,
+    // so the asynchronous worker cannot race an incomplete attachment package.
+    await queueMarketDispatch(deal.id, actorUser?.id);
+    routingQueued = true;
+  }
+
   return res.json({
     success: true,
     dealId: deal.id,
     documentCount: docRecords.length,
     cannabisApplicationPersisted: !!parsedCannabisAnswers,
     message: "Submission received. Documents generated and attached to deal.",
+    ...(routingQueued ? { routingQueued: true, marketPricing } : {}),
   });
 });
 

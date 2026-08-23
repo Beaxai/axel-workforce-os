@@ -3,10 +3,14 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { sql } from "drizzle-orm";
 import { dealsTable } from "./deals";
+import { dealMarketsTable } from "./markets";
 
 export const activityLogTable = pgTable("activity_log", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   dealId: uuid("deal_id").references(() => dealsTable.id),
+  // Nullable: scopes this activity record to a specific market thread;
+  // null = general deal activity.
+  dealMarketId: uuid("deal_market_id").references(() => dealMarketsTable.id),
   entityType: text("entity_type").notNull(),
   entityId: uuid("entity_id").notNull(),
   eventType: text("event_type").notNull(),

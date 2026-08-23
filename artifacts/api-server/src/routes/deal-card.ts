@@ -18,11 +18,15 @@ import {
   quotesTable,
   usersTable,
   orgMembersTable,
+  dealMarketsTable,
+  marketsTable,
+  marketUnderwritersTable,
+  dispatchBatchesTable,
   type Deal,
   type Account,
   type DealRfi,
 } from "@workspace/db";
-import { eq, desc, and, sql, inArray } from "drizzle-orm";
+import { eq, desc, and, sql, inArray, isNull, asc } from "drizzle-orm";
 import {
   generateQuoteVariations,
   type VariationBaseInputs,
@@ -44,6 +48,7 @@ import {
   type DealCardActor,
   type SectionKey,
 } from "../lib/deal-sections";
+import { sendDealEmail } from "../services/emailService";
 
 const router: IRouter = Router();
 
@@ -209,6 +214,11 @@ async function loadDealTeam(
 
 /* --------------------------------------------------------------------------
  * GET /deal-card/:id/activity — role-filtered collaboration feed
+ *
+ * ADMIN/CSA: all activity including market-scoped activity.
+ * All other roles: no secondary market activity. Existing internal-note
+ * visibility remains unchanged for internal staff.
+ * Optional ?dealMarketId= to filter to a specific market thread (ADMIN/CSA only).
  * ------------------------------------------------------------------------ */
 router.get("/:id/activity", async (req, res) => {
   const actor = actorFrom(req);
@@ -216,16 +226,51 @@ router.get("/:id/activity", async (req, res) => {
   if (!deal) return res.status(404).json({ error: "Deal not found" });
   if (!canViewDeal(deal, actor)) return res.status(403).json({ error: "Insufficient permissions" });
 
-  const rows = await db
+  const dealMarketIdFilter = req.query.dealMarketId as string | undefined;
+
+  // If filtering by dealMarketId, only ADMIN/CSA may do so.
+  const isAdminCsa = actor.role === "ADMIN" || actor.role === "CSA";
+  if (dealMarketIdFilter && !isAdminCsa) {
+    return res.status(403).json({ error: "Only ADMIN/CSA may filter activity by market" });
+  }
+
+  let rows = await db
     .select()
     .from(activityLogTable)
     .where(eq(activityLogTable.dealId, deal.id))
     .orderBy(desc(activityLogTable.createdAt));
 
-  // §8: internal notes are never rendered for external parties.
-  const filtered = INTERNAL_ROLES.has(actor.role)
-    ? rows
-    : rows.filter((r) => !(r.metadata as { internal?: boolean } | null)?.internal);
+  if (dealMarketIdFilter) {
+    rows = rows.filter((r) => r.dealMarketId === dealMarketIdFilter);
+  }
+
+  if (isAdminCsa) {
+    // ADMIN/CSA see everything (all market-scoped activity, internal notes).
+    return res.json({ activity: rows });
+  }
+
+  // Non-ADMIN/CSA: filter out internal notes AND secondary market activity.
+  // We need to know which dealMarketId (if any) is Primary so we can allow
+  // Primary-scoped activity through.
+  const [primaryDm] = await db
+    .select({ id: dealMarketsTable.id })
+    .from(dealMarketsTable)
+    .where(and(eq(dealMarketsTable.dealId, deal.id), eq(dealMarketsTable.isPrimary, true)))
+    .limit(1);
+
+  const primaryDmId = primaryDm?.id ?? null;
+
+  const filtered = rows.filter((r) => {
+    // Strip internal activity.
+    if (
+      !INTERNAL_ROLES.has(actor.role) &&
+      (r.metadata as { internal?: boolean } | null)?.internal
+    ) return false;
+    // Allow general deal activity (no market scope).
+    if (r.dealMarketId == null) return true;
+    // Allow primary market activity; strip secondary market activity.
+    return r.dealMarketId === primaryDmId;
+  });
 
   return res.json({ activity: filtered });
 });
@@ -236,6 +281,7 @@ router.get("/:id/activity", async (req, res) => {
 const messageSchema = z.object({
   message: z.string().trim().min(1).max(5000),
   internal: z.boolean().optional(),
+  dealMarketId: z.string().uuid().optional(),
   // @mention display names selected via the composer autocomplete; stored in
   // metadata so the feed can highlight them without re-resolving users.
   mentions: z.array(z.string().trim().min(1).max(120)).max(20).optional(),
@@ -259,6 +305,59 @@ router.post("/:id/messages", async (req, res) => {
   const u = req.user!;
   const author = [u.firstName, u.lastName].filter(Boolean).join(" ") || u.email;
 
+  if (parsed.data.dealMarketId) {
+    if (actor.role !== "ADMIN" && actor.role !== "CSA") {
+      return res.status(403).json({ error: "Only ADMIN/CSA may send market correspondence" });
+    }
+    if (internal) {
+      return res.status(400).json({ error: "Market correspondence cannot be an internal note" });
+    }
+
+    const [recipient] = await db
+      .select({
+        marketName: marketsTable.name,
+        underwriterEmail: marketUnderwritersTable.email,
+      })
+      .from(dealMarketsTable)
+      .innerJoin(marketsTable, eq(dealMarketsTable.marketId, marketsTable.id))
+      .leftJoin(
+        marketUnderwritersTable,
+        eq(dealMarketsTable.assignedUnderwriterId, marketUnderwritersTable.id),
+      )
+      .where(
+        and(
+          eq(dealMarketsTable.id, parsed.data.dealMarketId),
+          eq(dealMarketsTable.dealId, deal.id),
+        ),
+      )
+      .limit(1);
+
+    if (!recipient) {
+      return res.status(404).json({ error: "Selected market thread was not found" });
+    }
+    if (!recipient.underwriterEmail) {
+      return res.status(409).json({ error: "Selected market has no assigned underwriter email" });
+    }
+
+    const result = await sendDealEmail({
+      dealId: deal.id,
+      dealMarketId: parsed.data.dealMarketId,
+      to: [recipient.underwriterEmail],
+      subject: `${deal.businessName ?? "Applicant"} submission — ${recipient.marketName}`,
+      text: `${parsed.data.message}\n\n— ${author}`,
+      sentBy: author,
+    });
+    if (!result.ok) {
+      return res.status(502).json({
+        error:
+          result.failureKind === "DELIVERY_UNKNOWN"
+            ? "Delivery status is unknown. Review the thread before retrying."
+            : result.error ?? "Market email failed",
+      });
+    }
+    return res.json({ success: true, outboundId: result.outboundId, status: result.status });
+  }
+
   const [entry] = await db
     .insert(activityLogTable)
     .values({
@@ -273,6 +372,118 @@ router.post("/:id/messages", async (req, res) => {
     .returning();
 
   return res.json({ success: true, entry });
+});
+
+/* --------------------------------------------------------------------------
+ * GET /deal-card/:id/market-routing-summary
+ *
+ * ADMIN/CSA: full routing summary with all ranks, generated rates, appetite
+ *   results, underwriter info, lock state, retries, and failures.
+ * All other roles: primary-only summary (annualAmount, productLane, status)
+ *   — no secondary market names, rates, or metadata.
+ * ------------------------------------------------------------------------ */
+router.get("/:id/market-routing-summary", async (req, res) => {
+  const actor = actorFrom(req);
+  const deal = await loadDeal(req.params.id);
+  if (!deal) return res.status(404).json({ error: "Deal not found" });
+  if (!canViewDeal(deal, actor)) return res.status(403).json({ error: "Insufficient permissions" });
+
+  const isAdminCsa = actor.role === "ADMIN" || actor.role === "CSA";
+
+  // Load deal_markets for this deal.
+  const dealMarkets = await db
+    .select()
+    .from(dealMarketsTable)
+    .where(eq(dealMarketsTable.dealId, deal.id))
+    .orderBy(asc(dealMarketsTable.rank));
+
+  if (dealMarkets.length === 0) {
+    return res.json({ hasMarkets: false, markets: [], primaryPricing: null });
+  }
+
+  // Load batch info.
+  const [batch] = await db
+    .select()
+    .from(dispatchBatchesTable)
+    .where(eq(dispatchBatchesTable.dealId, deal.id))
+    .orderBy(desc(dispatchBatchesTable.createdAt));
+
+  // Load markets + underwriters for display.
+  const marketIds = [...new Set(dealMarkets.map((dm) => dm.marketId))];
+  const underwriterIds = [...new Set(dealMarkets.map((dm) => dm.assignedUnderwriterId).filter((id): id is string => !!id))];
+
+  const [marketRows, underwriterRows] = await Promise.all([
+    marketIds.length > 0
+      ? db.select({ id: marketsTable.id, name: marketsTable.name, marketType: marketsTable.marketType })
+          .from(marketsTable)
+          .where(inArray(marketsTable.id, marketIds))
+      : Promise.resolve([]),
+    underwriterIds.length > 0
+      ? db.select({ id: marketUnderwritersTable.id, name: marketUnderwritersTable.name, email: marketUnderwritersTable.email })
+          .from(marketUnderwritersTable)
+          .where(inArray(marketUnderwritersTable.id, underwriterIds))
+      : Promise.resolve([]),
+  ]);
+
+  const marketMap = new Map(marketRows.map((m) => [m.id, m]));
+  const uwMap = new Map(underwriterRows.map((u) => [u.id, u]));
+
+  const primaryDm = dealMarkets.find((dm) => dm.isPrimary);
+
+  if (!isAdminCsa) {
+    // Non-ADMIN/CSA: return only primary-only summary — no secondary names, rates, or metadata.
+    if (!primaryDm) {
+      return res.json({ hasMarkets: true, primaryPricing: null });
+    }
+    return res.json({
+      hasMarkets: true,
+      primaryPricing: {
+        annualAmount: Number(primaryDm.generatedRate),
+        productLane: primaryDm.marketType === "WC_CARRIER" ? "WC" : "PEO",
+        rankingState: primaryDm.rankingState,
+        sendStatus: primaryDm.sendStatus,
+      },
+    });
+  }
+
+  // ADMIN/CSA: full routing summary.
+  const fullSummary = dealMarkets.map((dm) => {
+    const market = marketMap.get(dm.marketId);
+    const uw = dm.assignedUnderwriterId ? uwMap.get(dm.assignedUnderwriterId) : null;
+    return {
+      dealMarketId: dm.id,
+      rank: dm.rank,
+      isPrimary: dm.isPrimary,
+      isRouted: dm.isRouted,
+      marketId: dm.marketId,
+      marketName: market?.name ?? null,
+      marketType: dm.marketType,
+      generatedRate: Number(dm.generatedRate),
+      appetiteOutcome: dm.appetiteOutcome,
+      rankingState: dm.rankingState,
+      sendStatus: dm.sendStatus,
+      sendAttemptCount: dm.sendAttemptCount,
+      lastSendError: dm.lastSendError,
+      sentAt: dm.sentAt,
+      lockedAt: dm.lockedAt,
+      assignedUnderwriter: uw ? { id: uw.id, name: uw.name, email: uw.email } : null,
+    };
+  });
+
+  return res.json({
+    hasMarkets: true,
+    batchId: batch?.id ?? null,
+    batchStatus: batch?.status ?? null,
+    markets: fullSummary,
+    primaryPricing: primaryDm
+      ? {
+          annualAmount: Number(primaryDm.generatedRate),
+          productLane: primaryDm.marketType === "WC_CARRIER" ? "WC" : "PEO",
+          rankingState: primaryDm.rankingState,
+          sendStatus: primaryDm.sendStatus,
+        }
+      : null,
+  });
 });
 
 /* --------------------------------------------------------------------------

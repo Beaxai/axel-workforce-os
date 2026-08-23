@@ -1,10 +1,12 @@
 import app from "./app";
 import { purgeExpiredClassifyCache } from "./lib/aiClassifyCache";
 import { sweepDepositDay21Tasks } from "./lib/deposit-monitor";
+import { processQueuedMarketDispatches } from "./lib/market-dispatch";
 import { logger } from "./lib/logger";
 
 const CLASSIFY_CACHE_SWEEP_INTERVAL_MS = 60 * 60 * 1000;
 const DEPOSIT_SWEEP_INTERVAL_MS = 60 * 60 * 1000;
+const MARKET_DISPATCH_SWEEP_INTERVAL_MS = 30 * 1000;
 
 /** §6E day-21 CSA task sweeper (WC-3b Task 2) — hourly + on boot; idempotent. */
 function startDepositSweeper(): void {
@@ -22,6 +24,22 @@ function startDepositSweeper(): void {
   const timer = setInterval(() => {
     void sweep();
   }, DEPOSIT_SWEEP_INTERVAL_MS);
+  timer.unref();
+}
+
+/** Market dispatch worker — 30-second sweep + immediate boot sweep; unref'd. */
+function startMarketDispatchSweeper(): void {
+  const sweep = async (): Promise<void> => {
+    try {
+      await processQueuedMarketDispatches();
+    } catch (err) {
+      logger.error({ err }, "Market dispatch sweep failed");
+    }
+  };
+  void sweep();
+  const timer = setInterval(() => {
+    void sweep();
+  }, MARKET_DISPATCH_SWEEP_INTERVAL_MS);
   timer.unref();
 }
 
@@ -65,4 +83,5 @@ app.listen(port, (err) => {
   logger.info({ port }, "Server listening");
   startClassifyCacheSweeper();
   startDepositSweeper();
+  startMarketDispatchSweeper();
 });

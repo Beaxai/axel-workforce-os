@@ -6,7 +6,10 @@ import { GlassCard, SectionHeader, PinkButton, GhostButton, AxelBadge } from "@/
 import { Plus, X, Building2, Shield, Users, Truck, Search, Edit2, Check } from "lucide-react";
 import { useThemeStore } from "@/lib/theme-store";
 
-const TABS = ["Agents", "Carriers", "PEO Partners", "Vendors"] as const;
+import { useAuthStore } from "@/lib/auth-store";
+import { format } from "date-fns";
+
+const BASE_TABS = ["Agents", "Carriers", "PEO Partners", "Vendors"] as const;
 const TAB_TYPE: Record<string, string> = { Agents: "Agent", Carriers: "Carrier", "PEO Partners": "PEO", Vendors: "Vendor" };
 const STATUS_COLORS: Record<string, string> = { Active: "#1EE97B", Pending: "#E9C31E", Suspended: "#E91E1E", Inactive: "#888" };
 
@@ -19,14 +22,20 @@ const inputStyle: React.CSSProperties = {
 
 export default function Network() {
   const { theme } = useThemeStore();
+  const { user } = useAuthStore();
   const isDark = theme === "dark";
   const [tab, setTab] = useState<string>("Agents");
   const [showAdd, setShowAdd] = useState(false);
+  const [showAddMarket, setShowAddMarket] = useState(false);
   const [search, setSearch] = useState("");
   const [editingVendor, setEditingVendor] = useState<string | null>(null);
   const [vendorEdits, setVendorEdits] = useState<any>({});
   const navigate = useNavigate();
   const qc = useQueryClient();
+
+  const TABS = (user?.role === "ADMIN" || user?.role === "CSA")
+    ? [...BASE_TABS, "Markets"]
+    : BASE_TABS;
 
   const partnerType = TAB_TYPE[tab];
   const { data: partners = [] } = useQuery({
@@ -41,6 +50,13 @@ export default function Network() {
 
   const { data: deals = [] } = useQuery({ queryKey: ["deals"], queryFn: () => api.get<any[]>("/deals") });
   const { data: policies = [] } = useQuery({ queryKey: ["policies"], queryFn: () => api.get<any[]>("/policies") });
+
+  const { data: marketsResp } = useQuery({
+    queryKey: ["markets"],
+    queryFn: () => api.get<{ data: any[] }>("/markets"),
+    enabled: tab === "Markets" && (user?.role === "ADMIN" || user?.role === "CSA"),
+  });
+  const markets = marketsResp?.data || [];
 
   const createMut = useMutation({
     mutationFn: (data: any) => api.post("/partners", data),
@@ -57,16 +73,27 @@ export default function Network() {
     (p.agencyName || "").toLowerCase().includes(search.toLowerCase())
   );
 
+  const filteredMarkets = markets.filter((m: any) =>
+    m.name.toLowerCase().includes(search.toLowerCase()) ||
+    m.marketType.toLowerCase().includes(search.toLowerCase())
+  );
+
   const textPrimary = isDark ? "#fff" : "#111";
   const textMuted = isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.58)";
 
   return (
     <div style={{ maxWidth: "1200px" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
-        <SectionHeader title="Network" subtitle={`${allPartners.length} total partners`} />
-        <PinkButton onClick={() => setShowAdd(true)} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-          <Plus style={{ width: 16, height: 16 }} /> Add Partner
-        </PinkButton>
+        <SectionHeader title="Network" subtitle={tab === "Markets" ? `${markets.length} total markets` : `${allPartners.length} total partners`} />
+        {tab === "Markets" && user?.role === "ADMIN" ? (
+          <PinkButton onClick={() => setShowAddMarket(true)} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <Plus style={{ width: 16, height: 16 }} /> Add Market
+          </PinkButton>
+        ) : tab !== "Markets" ? (
+          <PinkButton onClick={() => setShowAdd(true)} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <Plus style={{ width: 16, height: 16 }} /> Add Partner
+          </PinkButton>
+        ) : null}
       </div>
 
       <div style={{ display: "flex", gap: "8px", marginBottom: "20px" }}>
@@ -97,8 +124,44 @@ export default function Network() {
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-        {filtered.map((p: any) => {
-          if (tab === "Vendors") {
+        {tab === "Markets" ? (
+          <>
+            {filteredMarkets.map((m: any) => (
+              <GlassCard
+                key={m.id}
+                style={{ cursor: "pointer", transition: "border-color 0.15s" }}
+                onClick={() => navigate(`/network/markets/${m.id}`)}
+              >
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+                  <div>
+                    <p style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, margin: 0 }}>{m.name}</p>
+                    <div style={{ display: "flex", gap: "6px", alignItems: "center", marginTop: "4px" }}>
+                      <span style={{ fontSize: "11px", padding: "2px 6px", borderRadius: "4px", background: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.06)", color: textPrimary, fontWeight: 500 }}>
+                        {m.marketType === "WC_CARRIER" ? "WC Carrier" : "PEO Program"}
+                      </span>
+                      <span style={{ fontSize: "11px", padding: "2px 6px", borderRadius: "4px", background: m.isAppointed ? "rgba(30,233,123,0.1)" : "rgba(233,30,30,0.1)", color: m.isAppointed ? "#1EE97B" : "#E91E1E", fontWeight: 500 }}>
+                        {m.isAppointed ? "Appointed" : "Not Appointed"}
+                      </span>
+                    </div>
+                    <p style={{ fontSize: "13px", color: textMuted, marginTop: "8px", marginBottom: 0 }}>
+                      Effective: {m.effectiveDate ? format(new Date(m.effectiveDate), "MMM d, yyyy") : "TBD"}
+                    </p>
+                  </div>
+                  <AxelBadge
+                    label={m.isActive ? "Active" : "Inactive"}
+                    color={m.isActive ? "green" : "gray"}
+                  />
+                </div>
+              </GlassCard>
+            ))}
+            {filteredMarkets.length === 0 && (
+              <GlassCard><p style={{ fontSize: "14px", color: textMuted, textAlign: "center", margin: 0 }}>No markets found</p></GlassCard>
+            )}
+          </>
+        ) : (
+          <>
+            {filtered.map((p: any) => {
+              if (tab === "Vendors") {
             const isEditing = editingVendor === p.id;
             return (
               <GlassCard key={p.id}>
@@ -184,11 +247,14 @@ export default function Network() {
           );
         })}
         {filtered.length === 0 && (
-          <GlassCard><p style={{ fontSize: "14px", color: textMuted, textAlign: "center" }}>No {tab.toLowerCase()} found</p></GlassCard>
+          <GlassCard><p style={{ fontSize: "14px", color: textMuted, textAlign: "center", margin: 0 }}>No {tab.toLowerCase()} found</p></GlassCard>
+        )}
+        </>
         )}
       </div>
 
       {showAdd && <AddPartnerModal partnerType={partnerType} onClose={() => setShowAdd(false)} onSubmit={(data: any) => createMut.mutate(data)} />}
+      {showAddMarket && <AddMarketModal onClose={() => setShowAddMarket(false)} />}
     </div>
   );
 }
@@ -285,6 +351,63 @@ function AddPartnerModal({ partnerType, onClose, onSubmit }: { partnerType: stri
             <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={3} style={{ ...inputStyle, resize: "vertical" }} />
           </div>
           <PinkButton onClick={handleSubmit} style={{ marginTop: "8px" }}>Add {partnerType}</PinkButton>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AddMarketModal({ onClose }: { onClose: () => void }) {
+  const { theme } = useThemeStore();
+  const isDark = theme === "dark";
+  const qc = useQueryClient();
+  const [form, setForm] = useState({ name: "", marketType: "WC_CARRIER", productLane: "WC" });
+
+  const createMarket = useMutation({
+    mutationFn: (data: any) => api.post("/markets", data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["markets"] }); onClose(); },
+  });
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--overlay-bg)", backdropFilter: "var(--overlay-blur)", WebkitBackdropFilter: "var(--overlay-blur)" }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: "420px", background: isDark ? "rgba(18,18,24,0.82)" : "rgba(255,255,255,0.92)", backdropFilter: "blur(40px)", WebkitBackdropFilter: "blur(40px)", border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)"}`, borderRadius: "16px", padding: "32px", boxShadow: isDark ? "0 24px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06)" : "0 24px 80px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.8)" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "24px" }}>
+          <h2 style={{ fontSize: "20px", fontWeight: 600, color: isDark ? "#fff" : "#111", margin: 0 }}>Add Market</h2>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.55)", cursor: "pointer" }}><X style={{ width: 20, height: 20 }} /></button>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+          <div>
+            <label style={{ fontSize: "13px", color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.55)", marginBottom: "4px", display: "block" }}>Market Name *</label>
+            <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} style={inputStyle} placeholder="e.g. Travelers WC, AmTrust PEO" />
+          </div>
+
+          <div>
+            <label style={{ fontSize: "13px", color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.55)", marginBottom: "4px", display: "block" }}>Market Type</label>
+            <select
+              value={form.marketType}
+              onChange={(e) => {
+                const val = e.target.value;
+                setForm({ ...form, marketType: val, productLane: val === "WC_CARRIER" ? "WC" : "PEO" });
+              }}
+              style={inputStyle}
+            >
+              <option value="WC_CARRIER">Workers Comp Carrier</option>
+              <option value="PEO_PROGRAM">PEO Program</option>
+            </select>
+          </div>
+
+          <div>
+            <label style={{ fontSize: "13px", color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.55)", marginBottom: "4px", display: "block" }}>Product Lane</label>
+            <select value={form.productLane} disabled style={{ ...inputStyle, opacity: 0.7 }}>
+              <option value="WC">WC</option>
+              <option value="PEO">PEO</option>
+            </select>
+          </div>
+
+          <PinkButton onClick={() => createMarket.mutate(form)} disabled={!form.name.trim() || createMarket.isPending} style={{ marginTop: "8px" }}>
+            {createMarket.isPending ? "Creating..." : "Create Market"}
+          </PinkButton>
         </div>
       </div>
     </div>
