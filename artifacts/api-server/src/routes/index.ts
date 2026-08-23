@@ -32,6 +32,8 @@ import proposalsRouter from "./proposals";
 import signaturesRouter from "./signatures";
 import documentsRouter from "./documents";
 import appetiteRouter from "./appetite";
+import marketsRouter from "./markets";
+import marketDispatchRouter from "./market-dispatch";
 import aiRouter from "./ai";
 import dealCardRouter from "./deal-card";
 import geoRouter from "./geo";
@@ -113,6 +115,10 @@ router.use("/proposals", requireRoles(...INTERNAL_SALES), proposalsRouter);
 router.use("/signatures", requireRoles("ADMIN", "CSA", "UNDERWRITER"), signaturesRouter);
 router.use("/documents", requireRoles(...INTERNAL_SALES), documentsRouter);
 router.use("/appetite", requireRoles("ADMIN", "CSA", "UNDERWRITER"), appetiteRouter);
+// Markets: ADMIN/CSA reads + simulation; ADMIN-only mutations enforced inside router.
+router.use("/markets", requireRoles("ADMIN", "CSA"), marketsRouter);
+// Market dispatch management: ADMIN/CSA only; role gate also enforced inside router.
+router.use("/market-dispatch", requireRoles("ADMIN", "CSA"), marketDispatchRouter);
 router.use("/ai", requireRoles(...INTERNAL_SALES), aiRouter);
 // Deal Card hub (Phase 4C): broad role gate; §8 access matrix enforced inside.
 router.use(

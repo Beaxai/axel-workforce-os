@@ -11,11 +11,12 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Sparkles, AlertTriangle, ArrowUp, Plus, Check, CircleSlash, X, ArrowRight, SlidersHorizontal, FileUp, RefreshCw, Zap, Link2, FilePlus2 } from "lucide-react";
-import type { ActivityRow, RfiRow, QuoteVariation, VariationLevers, PreviewVariationResponse, DealDirectoryEntry } from "./types";
+import type { ActivityRow, RfiRow, QuoteVariation, VariationLevers, PreviewVariationResponse, DealDirectoryEntry, MarketRoutingSummary } from "./types";
 import { STATUS_COLORS } from "./icons";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import UserMiniProfile from "@/components/user-profile/UserMiniProfile";
 import { useAuthStore } from "@/lib/auth-store";
+import MarketRoutingPanel from "./MarketRoutingPanel";
 
 /**
  * Feature flag: AI Quote Variations row on the deal card Overview tab.
@@ -55,6 +56,11 @@ interface OverviewTabProps {
   onApplyVariation: (v: QuoteVariation) => void;
   onPreviewLevers: (levers: VariationLevers) => Promise<PreviewVariationResponse>;
   onApplyLevers: (levers: VariationLevers, label: string) => void;
+  routingSummary: MarketRoutingSummary | null;
+  selectedMarketId: string | null;
+  onSelectMarket: (id: string | null) => void;
+  onRetryRouting: () => Promise<void>;
+  onCancelRouting: (reason: string) => Promise<void>;
 }
 
 /** Human countdown from now → dueAt. Returns label + urgency color. */
@@ -357,6 +363,7 @@ export default function OverviewTab({
   activity, canPost, posting, onSend, directory, rfis, isInternal, rfiBusy, onCreateRfi, onResolveRfi,
   variations, basePremium, baseLevers, varHasQuote, varUsedAi, varLoading, varApplying,
   onGenerateVariations, onApplyVariation, onPreviewLevers, onApplyLevers,
+  routingSummary, selectedMarketId, onSelectMarket, onRetryRouting, onCancelRouting,
 }: OverviewTabProps) {
   const c = useThemeColors();
   const authUser = useAuthStore((s) => s.user);
@@ -499,8 +506,34 @@ export default function OverviewTab({
     fontSize: 9.5, color: c.textMuted, marginTop: 6, fontStyle: "italic",
   };
 
+  const isInternalAdminOrCsa = isInternal && (authUser?.role === 'ADMIN' || authUser?.role === 'CSA');
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <MarketRoutingPanel
+        summary={routingSummary}
+        selectedMarketId={selectedMarketId}
+        onSelectMarket={onSelectMarket}
+        onRetry={onRetryRouting}
+        onCancel={onCancelRouting}
+        isInternalAdminOrCsa={isInternalAdminOrCsa}
+      />
+
+      {selectedMarketId && (
+        <div style={{ padding: "8px 12px", background: c.bg, border: `1px solid ${c.borderColor}`, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: 12, fontWeight: 500, color: c.textPrimary }}>
+            Viewing email thread for {routingSummary?.markets?.find(m => m.dealMarketId === selectedMarketId)?.marketName || 'selected market'}. Messages send to its assigned underwriter.
+          </span>
+          <button
+            type="button"
+            onClick={() => onSelectMarket(null)}
+            style={{ fontSize: 11, fontWeight: 600, color: 'var(--accent-primary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+          >
+            Return to All Activity
+          </button>
+        </div>
+      )}
+
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         {/* Feed filter — small, subtle text tabs. */}
         <div style={{ display: "flex", gap: 14, paddingLeft: AVATAR_W + ROW_GAP }}>
@@ -951,7 +984,11 @@ export default function OverviewTab({
                 if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); }
               }}
               onBlur={() => setMentionQuery(null)}
-              placeholder="Type a message"
+              placeholder={
+                selectedMarketId
+                  ? `Email ${routingSummary?.markets?.find((m) => m.dealMarketId === selectedMarketId)?.marketName ?? "selected market"}`
+                  : "Type a message"
+              }
               style={{ flex: 1, background: "transparent", border: "none", outline: "none", fontSize: 12, color: c.inputText, fontFamily: "inherit" }}
             />
             <button

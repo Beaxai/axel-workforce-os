@@ -170,3 +170,44 @@ export interface SectionPatchResponse {
   total?: number;
   deal?: SubmissionDeal;
 }
+
+// -------------------------
+// Market Routing Types
+// -------------------------
+
+export interface MarketRoutingMarket {
+  dealMarketId: string;
+  rank: number | null;
+  isPrimary: boolean;
+  isRouted: boolean;
+  marketName: string;
+  marketType: string;
+  generatedRate: number | null;
+  appetiteOutcome: string | null;
+  rankingState: string;
+  sendStatus: string;
+  sendAttemptCount: number;
+  lastSendError: string | null;
+  sentAt: string | null;
+  lockedAt: string | null;
+  assignedUnderwriter: {
+    id: string;
+    name: string;
+    email: string;
+  } | null;
+}
+
+export interface PrimaryPricing {
+  annualAmount: number | null;
+  productLane: string | null;
+  rankingState: string;
+  sendStatus: string;
+}
+
+export interface MarketRoutingSummary {
+  hasMarkets: boolean;
+  batchId?: string | null;
+  batchStatus?: string | null;
+  markets?: MarketRoutingMarket[];
+  primaryPricing?: PrimaryPricing | null;
+}

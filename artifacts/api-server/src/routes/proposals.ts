@@ -9,6 +9,7 @@ import {
   submissionAnswersTable,
   lossHistoryDocumentsTable,
   dealDocumentsTable,
+  dealMarketsTable,
 } from "@workspace/db";
 import { eq, desc, and, inArray } from "drizzle-orm";
 import { PIPELINE_STAGES } from "@workspace/pipeline";
@@ -283,16 +284,59 @@ router.post("/:dealId/create-from-quote", async (req, res) => {
 
     if (!quote) return res.status(404).json({ error: "No quote found for this deal" });
 
-    const wcBreakdown = (quote.wcRatingBreakdown as any)?.data || quote.wcRatingBreakdown;
-    const wfsBreakdown = (quote.wfsRatingBreakdown as any)?.data || quote.wfsRatingBreakdown;
+    // Use the Primary deal_market generatedRate when available (multi-market routing).
+    // Never expose secondary market rates. Fall back to the legacy quote for historical
+    // deals that have no deal_markets.
+    const [primaryDealMarket] = await db
+      .select({
+        generatedRate: dealMarketsTable.generatedRate,
+        rateBreakdownSnapshot: dealMarketsTable.rateBreakdownSnapshot,
+        marketType: dealMarketsTable.marketType,
+        isPrimary: dealMarketsTable.isPrimary,
+      })
+      .from(dealMarketsTable)
+      .where(
+        and(
+          eq(dealMarketsTable.dealId, dealId),
+          eq(dealMarketsTable.isPrimary, true),
+        ),
+      )
+      .limit(1);
 
-    const wcPremium = wcBreakdown?.result?.wcPremium ?? wcBreakdown?.calculation?.finalPremium ?? (Number(quote.wcPremium) || 0);
+    const wcBreakdown = primaryDealMarket
+      ? primaryDealMarket.rateBreakdownSnapshot
+      : ((quote.wcRatingBreakdown as Record<string, unknown> | null)?.data ?? quote.wcRatingBreakdown);
+    const wfsBreakdown = (quote.wfsRatingBreakdown as Record<string, unknown> | null)?.data ?? quote.wfsRatingBreakdown;
+    const primaryBreakdown =
+      (primaryDealMarket?.rateBreakdownSnapshot as Record<string, unknown> | null) ?? null;
+    const isPrimaryPeo = primaryDealMarket?.marketType === "PEO_PROGRAM";
+
+    // Primary market generatedRate takes precedence over the legacy quote premium.
+    const wcPremium = isPrimaryPeo
+      ? Number(primaryBreakdown?.wcAnnual ?? 0)
+      : primaryDealMarket
+        ? Number(primaryDealMarket.generatedRate)
+      : ((wcBreakdown as Record<string, unknown> | null)?.result as Record<string, unknown> | undefined)?.wcPremium as number | undefined
+        ?? ((wcBreakdown as Record<string, unknown> | null)?.calculation as Record<string, unknown> | undefined)?.finalPremium as number | undefined
+        ?? (Number(quote.wcPremium) || 0);
     const wcMonthlyPremium = wcPremium / 12;
-    const wfsMonthlyFee = wfsBreakdown?.result?.monthlyWFSFee ?? wfsBreakdown?.calculation?.monthlyWFSFee ?? (Number(quote.monthlyWfsFee) || 0);
-    const wfsAnnualTotal = wfsBreakdown?.calculation?.annualWFSFee ?? (wfsMonthlyFee * 12);
-    const pepm = wfsBreakdown?.result?.pepm ?? wfsBreakdown?.calculation?.pepm ?? (Number(quote.pepm) || 0);
-    const totalMonthly = wcMonthlyPremium + wfsMonthlyFee;
-    const totalAnnual = wcPremium + wfsAnnualTotal;
+    const wfsResult = (wfsBreakdown as Record<string, unknown> | null)?.result as Record<string, unknown> | undefined;
+    const wfsCalc = (wfsBreakdown as Record<string, unknown> | null)?.calculation as Record<string, unknown> | undefined;
+    const primaryPeoTotal = isPrimaryPeo ? Number(primaryDealMarket?.generatedRate ?? 0) : null;
+    const wfsAnnualTotal = isPrimaryPeo
+      ? Math.max(0, (primaryPeoTotal ?? 0) - wcPremium)
+      : (wfsCalc?.annualWFSFee as number | undefined) ??
+        (((wfsResult?.monthlyWFSFee as number | undefined) ??
+          (wfsCalc?.monthlyWFSFee as number | undefined) ??
+          (Number(quote.monthlyWfsFee) || 0)) * 12);
+    const wfsMonthlyFee = wfsAnnualTotal / 12;
+    const pepm = isPrimaryPeo
+      ? Number(primaryBreakdown?.effectivePepm ?? 0)
+      : (wfsResult?.pepm as number | undefined) ??
+        (wfsCalc?.pepm as number | undefined) ??
+        (Number(quote.pepm) || 0);
+    const totalAnnual = isPrimaryPeo ? primaryPeoTotal ?? 0 : wcPremium + wfsAnnualTotal;
+    const totalMonthly = totalAnnual / 12;
 
     // WC-2: broker fee appears on the proposal — percent from the deal
     // (default 7), amount = percent of the WC annual premium. Invoiced by

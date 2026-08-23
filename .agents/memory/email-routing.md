@@ -13,6 +13,12 @@ Three routing layers, in order: (1) recipient = deal listener address, (2) `[AXL
 
 **How to apply:** any new outbound email path must go through `sendDealEmail` (Reply-To + subject token + Message-ID recording) or replies won't route.
 
-Status 2026-08-09: domain is owned and Curtis gave Brendan credentials — go-live is config-only (RESEND_API_KEY, LISTENER_EMAIL_DOMAIN, OUTBOUND_EMAIL_FROM, RESEND_WEBHOOK_SECRET, MX on listener subdomain, webhook → /api/webhooks/resend-inbound). Only remaining code change: real Stripe payment link in broker-fee dunning once Stripe keys land.
+## Partner-facing domain architecture
+Use `submissions@axelins.com` as the visible sender and `submissions.axelins.com` as the receiving-only listener domain. Keep the root MX assigned to Microsoft 365.
 
-Domain confirmed 2026-08-10: axelins.com — OUTBOUND_EMAIL_FROM=deals@axelins.com, LISTENER_EMAIL_DOMAIN=listener.axelins.com (set in shared env). Pending: Resend domain verification + MX on listener subdomain + RESEND_WEBHOOK_SECRET.
+**Why:** A recognizable root-domain sender helps partner trust, while the dedicated receiving subdomain lets Resend route replies to deal cards without interfering with normal company email.
+
+**How to apply:** New live correspondence uses the submissions domain. Legacy listener rows belong to test data and are intentionally not migrated.
+
+## Resend receiving-domain gotcha
+Resend's Receiving MX check always targets the ROOT of the domain entry (`name: ""`). A domain entry `example.com` can never verify receiving on a subdomain. To receive on `deals.example.com` while the root MX serves real company mail, add `deals.example.com` as its own separate Resend domain entry (same region); its receiving check then targets the subdomain itself. Diagnose via `GET https://api.resend.com/domains/:id` — the `records[]` array shows expected name/value/status directly (no dashboard screenshots needed).

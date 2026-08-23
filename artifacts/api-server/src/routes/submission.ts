@@ -11,12 +11,24 @@ import {
   activityLogTable,
   quotesTable,
   accountsTable,
+  dealMarketsTable,
 } from "@workspace/db";
 import { eq, and, desc, asc } from "drizzle-orm";
-import { cannabisApplicationAnswersSchema } from "@workspace/cannabis-application";
+import {
+  cannabisApplicationAnswersSchema,
+  routableCannabisApplicationAnswersSchema,
+} from "@workspace/cannabis-application";
 import { fillAcord130, fillTreanSupp, fillAxelCannabisApplication } from "../services/applicationPdfService";
 import { buildIndicationSummaryPdf } from "../services/indicationPdfService";
 import { findOrCreateAccount } from "../lib/accounts";
+import { rankAndPersistProvisional, type RatingInput } from "../lib/market-routing";
+import { queueMarketDispatch } from "../lib/market-dispatch";
+import {
+  buildCanonicalRatingInput,
+  deriveCanonicalRoutingFacts,
+  findCanonicalIndicationMismatches,
+  hashCanonicalApplicationAnswers,
+} from "../lib/canonical-routing-package";
 
 const router: IRouter = Router();
 
@@ -190,6 +202,32 @@ router.post("/submit-for-approval", async (req, res) => {
     wcRatingBreakdown, workforceProfile,
   } = req.body;
 
+  const isPeoSubmission = !!(workforceProfile?.isPEO) || coverageType === "PEO";
+  const isAso = !!(workforceProfile?.isASO) || coverageType === "ASO";
+  const shouldRouteMarkets =
+    !isAso &&
+    (coverageType === "WC" || coverageType === "PEO" || !coverageType);
+  const hasIndication = !!(wcRatingBreakdown && workforceProfile);
+  let normalizedExperienceMod =
+    experienceMod == null || experienceMod === "" ? 1 : Number(experienceMod);
+  const normalizedScheduleRating =
+    workforceProfile?.scheduleRating == null ||
+    workforceProfile.scheduleRating === ""
+      ? 1
+      : Number(workforceProfile.scheduleRating);
+  if (
+    shouldRouteMarkets &&
+    (!Number.isFinite(normalizedExperienceMod) ||
+      !Number.isFinite(normalizedScheduleRating))
+  ) {
+    return res.status(422).json({
+      error:
+        "Experience modification and schedule rating must be finite numbers before market routing.",
+      marketRoutingRequired: true,
+      invalidRatingInput: true,
+    });
+  }
+
   // Accept only a real YYYY-MM-DD calendar date; otherwise persist null.
   // Regex alone would let impossible dates (e.g. 2026-99-99) reach the DB, so we
   // round-trip through Date to confirm the day actually exists.
@@ -203,11 +241,53 @@ router.post("/submit-for-approval", async (req, res) => {
       : null;
   })();
 
-  // Validate cannabis application answers if supplied. The schema is permissive
-  // (every field has a default) so partial drafts pass; we only reject malformed
-  // shapes (e.g. wrong types).
   let parsedCannabisAnswers: ReturnType<typeof cannabisApplicationAnswersSchema.parse> | null = null;
-  if (cannabisApplicationAnswers) {
+  let applicationSnapshotHash: string | null = null;
+  if (shouldRouteMarkets) {
+    if (!cannabisApplicationAnswers) {
+      return res.status(422).json({
+        error: "A completed application package is required before market routing.",
+        marketRoutingRequired: true,
+        applicationPackageRequired: true,
+      });
+    }
+    const parseResult =
+      routableCannabisApplicationAnswersSchema.safeParse(cannabisApplicationAnswers);
+    if (!parseResult.success) {
+      return res.status(422).json({
+        error: "The application package is incomplete and cannot be routed.",
+        issues: parseResult.error.issues,
+        marketRoutingRequired: true,
+        applicationPackageRequired: true,
+      });
+    }
+    parsedCannabisAnswers = parseResult.data;
+    const canonicalFacts = deriveCanonicalRoutingFacts(parsedCannabisAnswers);
+    normalizedExperienceMod = canonicalFacts.eMod;
+    if (hasIndication) {
+      const mismatches = findCanonicalIndicationMismatches(
+        parsedCannabisAnswers,
+        {
+          statesOfOperation,
+          totalPayroll,
+          totalEmployees,
+          experienceMod,
+          workforceProfile,
+        },
+      );
+      if (mismatches.length > 0) {
+        return res.status(422).json({
+          error:
+            "The rated indication does not match the completed application package.",
+          mismatches,
+          marketRoutingRequired: true,
+          routingPackageMismatch: true,
+        });
+      }
+    }
+    applicationSnapshotHash =
+      hashCanonicalApplicationAnswers(parsedCannabisAnswers);
+  } else if (cannabisApplicationAnswers) {
     const parseResult = cannabisApplicationAnswersSchema.safeParse(cannabisApplicationAnswers);
     if (!parseResult.success) {
       return res.status(400).json({
@@ -243,8 +323,6 @@ router.post("/submit-for-approval", async (req, res) => {
   // A final submission arriving WITH rating data means the indication step is
   // already behind us, so the deal lands directly in UW_REVIEW; without
   // rating data it needs review first and stays in SUBMISSION_REVIEW.
-  const hasIndication = !!(wcRatingBreakdown && workforceProfile);
-
   // HARD BLOCK on prior submission (State Doc v2.7 §6 Segment 2 branch b):
   // if this company already has an active submission in the pipeline, the
   // agent cannot enter another one — automated response, submission stops.
@@ -261,10 +339,20 @@ router.post("/submit-for-approval", async (req, res) => {
 
     if (!accountCreated) {
       const priorDeals = await tx
-        .select({ id: dealsTable.id, referenceCode: dealsTable.referenceCode, stage: dealsTable.stage })
+        .select({
+          id: dealsTable.id,
+          referenceCode: dealsTable.referenceCode,
+          stage: dealsTable.stage,
+          submissionStatus: dealsTable.submissionStatus,
+        })
         .from(dealsTable)
         .where(eq(dealsTable.accountId, account.id));
-      const blocking = priorDeals.find((d) => d.stage !== "LOST" && d.stage !== "CLIENT");
+      const blocking = priorDeals.find(
+        (d) =>
+          d.stage !== "LOST" &&
+          d.stage !== "CLIENT" &&
+          d.submissionStatus !== "routing_failed",
+      );
       if (blocking) {
         await tx.insert(activityLogTable).values({
           dealId: blocking.id,
@@ -317,23 +405,129 @@ router.post("/submit-for-approval", async (req, res) => {
   }
 
   const deal = dealOutcome.deal;
+  const actorUser = req.user;
+  const actorName = actorUser
+    ? [actorUser.firstName, actorUser.lastName].filter(Boolean).join(" ") || actorUser.email
+    : null;
+
+  let marketPricing: {
+    annualAmount: number;
+    productLane: "WC" | "PEO";
+    status: "QUEUED";
+  } | null = null;
+  let routingQueued = false;
+  let routedProductLane: "WC" | "PEO" | null = null;
+  let primaryMarketRate: number | null = null;
+  let primaryMarketBreakdown: Record<string, unknown> | null = null;
+  let routedRatingInput: RatingInput | null = null;
+
+  // Resolve routing before writing quotes, generated documents, or successful
+  // submission activity. A failed routing record keeps its deal ID for review,
+  // but is explicitly non-blocking for a corrected resubmission.
+  const failRouting = async (
+    error: string,
+    extra: Record<string, unknown>,
+  ) => {
+    await db.transaction(async (tx) => {
+      await tx
+        .update(dealsTable)
+        .set({ stage: "SUBMISSION_REVIEW", submissionStatus: "routing_failed" })
+        .where(eq(dealsTable.id, deal.id));
+      await tx.insert(activityLogTable).values({
+        dealId: deal.id,
+        entityType: "deal",
+        entityId: deal.id,
+        eventType: "market_routing_failed",
+        description: error,
+        metadata: {
+          ...extra,
+          author: actorName ?? null,
+          role: actorUser?.role ?? null,
+          internal: true,
+        },
+        createdBy: actorUser?.id,
+      });
+    });
+  };
+
+  if (shouldRouteMarkets && !hasIndication) {
+    const error = "A completed market indication is required before final submission.";
+    await failRouting(error, { market_routing_required: true });
+    return res.status(422).json({
+      error,
+      dealId: deal.id,
+      marketRoutingRequired: true,
+    });
+  }
+
+  if (hasIndication && shouldRouteMarkets) {
+    const productLane: "WC" | "PEO" = isPeoSubmission ? "PEO" : "WC";
+    const ratingInput = buildCanonicalRatingInput(
+      parsedCannabisAnswers!,
+      {
+        productLane,
+        effectiveDate:
+          normalizedEffectiveDate ?? new Date().toISOString().slice(0, 10),
+        vertical: vertical ?? null,
+        scheduleRating: normalizedScheduleRating,
+        applicationSnapshotHash: applicationSnapshotHash!,
+      },
+    );
+    routedRatingInput = ratingInput;
+    const rankResult = await rankAndPersistProvisional(deal.id, ratingInput);
+    if (!rankResult.ok) {
+      const error = `No eligible ${productLane} markets found for this submission: ${rankResult.error}`;
+      await failRouting(error, { no_eligible_markets: true, product_lane: productLane });
+      return res.status(422).json({
+        error,
+        dealId: deal.id,
+        noEligibleMarkets: true,
+      });
+    }
+    const primaryMarket = rankResult.result.ranked.find((market) => market.isPrimary);
+    if (!primaryMarket) {
+      const error = `No ${productLane} markets qualified for this submission. Internal review required.`;
+      await failRouting(error, { no_eligible_markets: true, product_lane: productLane });
+      return res.status(422).json({
+        error,
+        dealId: deal.id,
+        noEligibleMarkets: true,
+      });
+    }
+
+    routedProductLane = productLane;
+    primaryMarketRate = primaryMarket.generatedRate;
+    primaryMarketBreakdown = primaryMarket.rateBreakdownSnapshot;
+    marketPricing = {
+      annualAmount: primaryMarket.generatedRate,
+      productLane,
+      status: "QUEUED",
+    };
+  }
 
   if (wcRatingBreakdown && workforceProfile) {
-    const finalPremium = Number(wcRatingBreakdown.finalPremium ?? 0);
+    const finalPremium = primaryMarketRate ?? Number(wcRatingBreakdown.finalPremium ?? 0);
     await db.insert(quotesTable).values({
       dealId: deal.id,
       status: "SUBMITTED",
       state: businessState || workforceProfile.locations?.[0]?.state || null,
-      annualPayroll: totalPayroll != null ? String(totalPayroll) : null,
-      headcount: totalEmployees ?? null,
-      eMod: experienceMod ? String(experienceMod) : "1.0",
-      scheduleRating: workforceProfile.scheduleRating != null ? String(workforceProfile.scheduleRating) : "1.0",
-      isPeo: !!workforceProfile.isPEO,
+      annualPayroll:
+        routedRatingInput?.annualPayroll != null
+          ? String(routedRatingInput.annualPayroll)
+          : totalPayroll != null
+            ? String(totalPayroll)
+            : null,
+      headcount: routedRatingInput?.headcount ?? totalEmployees ?? null,
+      eMod: String(routedRatingInput?.eMod ?? normalizedExperienceMod),
+      scheduleRating: String(
+        routedRatingInput?.scheduleRating ?? normalizedScheduleRating,
+      ),
+      isPeo: routedProductLane === "PEO" || !!workforceProfile.isPEO,
       wcPremium: String(finalPremium),
       wcFinalPremium: String(finalPremium),
       wcIndicationMin: premiumLow != null ? String(premiumLow) : null,
       wcIndicationMax: premiumHigh != null ? String(premiumHigh) : null,
-      wcRatingBreakdown,
+      wcRatingBreakdown: primaryMarketBreakdown ?? wcRatingBreakdown,
       workforceProfile,
       ratedAt: new Date(),
     });
@@ -410,6 +604,7 @@ router.post("/submit-for-approval", async (req, res) => {
         documentType: "axel_cannabis_application",
         metadata: {
           generatedBy: "system",
+          applicationSnapshotHash,
           downloadPath: `/api/submission/applications/${deal.id}/axel-cannabis-application.pdf`,
         },
       },
@@ -419,6 +614,7 @@ router.post("/submit-for-approval", async (req, res) => {
         documentType: "acord_130",
         metadata: {
           generatedBy: "system",
+          applicationSnapshotHash,
           downloadPath: `/api/submission/applications/${deal.id}/acord-130.pdf`,
         },
       },
@@ -428,6 +624,7 @@ router.post("/submit-for-approval", async (req, res) => {
         documentType: "trean_cannabis_supp",
         metadata: {
           generatedBy: "system",
+          applicationSnapshotHash,
           downloadPath: `/api/submission/applications/${deal.id}/trean-supp.pdf`,
         },
       },
@@ -436,10 +633,6 @@ router.post("/submit-for-approval", async (req, res) => {
 
   await db.insert(dealDocumentsTable).values(docRecords);
 
-  const actorUser = req.user;
-  const actorName = actorUser
-    ? [actorUser.firstName, actorUser.lastName].filter(Boolean).join(" ") || actorUser.email
-    : null;
   await db.insert(activityLogTable).values({
     dealId: deal.id,
     entityType: "deal",
@@ -473,12 +666,20 @@ router.post("/submit-for-approval", async (req, res) => {
     metadata: { deal_id: deal.id, reference_code: referenceCode },
   });
 
+  if (routedProductLane) {
+    // Queue only after submission answers and generated document records exist,
+    // so the asynchronous worker cannot race an incomplete attachment package.
+    await queueMarketDispatch(deal.id, actorUser?.id);
+    routingQueued = true;
+  }
+
   return res.json({
     success: true,
     dealId: deal.id,
     documentCount: docRecords.length,
     cannabisApplicationPersisted: !!parsedCannabisAnswers,
     message: "Submission received. Documents generated and attached to deal.",
+    ...(routingQueued ? { routingQueued: true, marketPricing } : {}),
   });
 });
 

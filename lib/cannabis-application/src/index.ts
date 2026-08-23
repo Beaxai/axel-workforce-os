@@ -1,5 +1,6 @@
 export {
   cannabisApplicationAnswersSchema,
+  routableCannabisApplicationAnswersSchema,
   locationRowSchema,
   classCodeRowSchema,
   ownerOfficerSchema,

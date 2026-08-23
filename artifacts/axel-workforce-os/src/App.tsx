@@ -40,6 +40,7 @@ import AccountDetail from "@/pages/AccountDetail";
 import Implementations from "@/pages/Implementations";
 import Billing from "@/pages/Billing";
 import Network from "@/pages/Network";
+import MarketDetail from "@/pages/network/MarketDetail";
 import AgentDetail from "@/pages/network/AgentDetail";
 import CarrierDetail from "@/pages/network/CarrierDetail";
 import PEODetail from "@/pages/network/PEODetail";
@@ -312,6 +313,7 @@ function App() {
               }
             >
               <Route path="/network" element={<Network />} />
+              <Route path="/network/markets/:id" element={<MarketDetail />} />
               <Route path="/network/agents/:id" element={<AgentDetail />} />
               <Route path="/network/carriers/:id" element={<CarrierDetail />} />
               <Route path="/network/peo/:id" element={<PEODetail />} />
