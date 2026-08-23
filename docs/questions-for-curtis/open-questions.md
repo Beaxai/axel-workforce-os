@@ -13,6 +13,49 @@ settled correctly before launch. Newest at the top.
 
 ---
 
+## Added 2026-08-23 — Which price should a broker or customer see?
+
+The existing master rate sheet can produce a general Workers' Comp estimate.
+The market-routing plan then ranks eligible carrier programs and identifies one
+Primary market. We need to decide whether people see a general estimate first,
+or only the Primary market's indicative estimate.
+
+**Option A — Early general estimate, then Primary market estimate later**
+
+```text
+Master rate-sheet estimate
+        ↓
+Market matching and ranking
+        ↓
+Primary market estimate
+```
+
+This is the smallest change to the current indication screen, but the user may
+see one number early and a different number later.
+
+**Option B — Master rate sheet works in the background; show Primary only**
+
+```text
+Master rate sheet works in the background
+        ↓
+Market matching and ranking
+        ↓
+User sees only the Primary market estimate
+```
+
+This gives the broker/customer one clear, market-aligned indication. It requires
+enough submission data to match and rate markets before any price is shown.
+
+**Question:** Should the indication and final proposal show only the Primary
+market's indicative price, with the master rate sheet used behind the scenes?
+
+**Suggested answer:** Option B — show the Primary market estimate only.
+
+*(Source: `docs/reference/multi-market-routing-verbatim.md`, Primary / Secondary
+Market Logic item 2 and Rules item 2.)*
+
+---
+
 ## Updated 2026-08-10 (later) — PEO implementation tracker is built; two clarifications 🏗️
 
 The PEO implementation journey (§7G) is now built end to end: PEO deals get their

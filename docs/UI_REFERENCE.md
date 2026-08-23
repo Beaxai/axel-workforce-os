@@ -13,6 +13,9 @@ term, workflow, or important UI decision is introduced or changed.
 - Use the [verbatim multi-market routing reference](reference/multi-market-routing-verbatim.md)
   before changing carrier eligibility, market ranking, dispatch, or
   market-specific correspondence.
+- Use the [multi-market routing review tracker](reference/multi-market-routing-review.md)
+  to see which routing decisions are verified, pending implementation, or still
+  awaiting a business decision.
 - Record agreed changes in **Interface Decisions** with the date and reason.
 - Keep the language business-friendly. Technical implementation details should
   only be included when they affect what a user can edit, see, or do.
@@ -240,6 +243,14 @@ decision that future edits need to respect.
 - Underlying content must dim and remain behind the dialog.
 - Save actions close the dialog after a successful update; Cancel and close
   actions do not save.
+
+### 2026-08-23 — Carrier-First Target Model
+
+- A carrier is the parent business identity.
+- A market/program is a carrier-owned submission option.
+- Carrier information is shared; program-level appetite, routing underwriters,
+  and indicative pricing configuration remain distinct.
+- This is the agreed target model and remains pending implementation.
 
 ---
 
