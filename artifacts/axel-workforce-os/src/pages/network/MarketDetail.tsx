@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
@@ -152,6 +153,83 @@ function Field({ label, value, isDark }: { label: string; value?: string | null;
       <p style={{ fontSize: "12px", color: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.4)", margin: 0 }}>{label}</p>
       <p style={{ fontSize: "14px", color: isDark ? "#fff" : "#111", margin: "2px 0 0" }}>{value || "—"}</p>
     </div>
+  );
+}
+
+function MarketModal({
+  title,
+  children,
+  footer,
+  onClose,
+  isDark,
+}: {
+  title: string;
+  children: ReactNode;
+  footer: ReactNode;
+  onClose: () => void;
+  isDark: boolean;
+}) {
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [onClose]);
+
+  return createPortal(
+    <div
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 2147483647,
+        display: "grid",
+        placeItems: "center",
+        padding: "16px",
+        background: "rgba(3, 4, 8, 0.72)",
+        backdropFilter: "blur(6px)",
+        WebkitBackdropFilter: "blur(6px)",
+      }}
+    >
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        onMouseDown={(event) => event.stopPropagation()}
+        style={{
+          width: "min(560px, calc(100vw - 32px))",
+          maxHeight: "calc(100dvh - 32px)",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+          background: isDark ? "rgba(20, 20, 28, 0.98)" : "rgba(255, 255, 255, 0.98)",
+          border: `1px solid ${isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.12)"}`,
+          borderRadius: "16px",
+          boxShadow: isDark ? "0 28px 96px rgba(0,0,0,0.72)" : "0 28px 88px rgba(0,0,0,0.25)",
+        }}
+      >
+        <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px", padding: "20px 24px 16px", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}` }}>
+          <h3 style={{ fontSize: "18px", fontWeight: 600, color: isDark ? "#fff" : "#111", margin: 0 }}>{title}</h3>
+          <button type="button" aria-label={`Close ${title}`} onClick={onClose} style={{ width: "32px", height: "32px", display: "grid", placeItems: "center", border: "none", borderRadius: "8px", color: isDark ? "rgba(255,255,255,0.72)" : "rgba(0,0,0,0.62)", background: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.06)", cursor: "pointer" }}>
+            <X style={{ width: "16px", height: "16px" }} />
+          </button>
+        </header>
+        <div style={{ minHeight: 0, overflowY: "auto", padding: "20px 24px" }}>{children}</div>
+        <footer style={{ display: "flex", gap: "8px", padding: "16px 24px 20px", borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}` }}>
+          {footer}
+        </footer>
+      </section>
+    </div>,
+    document.body,
   );
 }
 
@@ -366,10 +444,20 @@ function AddAppetiteModal({ marketId, marketLane, onClose, isDark }: { marketId:
   };
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--overlay-bg)", backdropFilter: "var(--overlay-blur)", WebkitBackdropFilter: "var(--overlay-blur)" }} onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} style={{ width: "520px", maxHeight: "85vh", overflowY: "auto", background: isDark ? "rgba(18,18,24,0.82)" : "rgba(255,255,255,0.92)", backdropFilter: "blur(40px)", WebkitBackdropFilter: "blur(40px)", border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)"}`, borderRadius: "16px", padding: "24px", boxShadow: isDark ? "0 24px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06)" : "0 24px 80px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.8)" }}>
-        <h3 style={{ fontSize: "18px", fontWeight: 600, color: isDark ? "#fff" : "#111", margin: "0 0 16px 0" }}>Add Appetite Rule</h3>
-        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+    <MarketModal
+      title="Add Appetite Rule"
+      onClose={onClose}
+      isDark={isDark}
+      footer={
+        <>
+          <GhostButton onClick={onClose} style={{ flex: 1 }}>Cancel</GhostButton>
+          <PinkButton onClick={handleSubmit} disabled={!form.primaryUnderwriterId || createMut.isPending} style={{ flex: 1 }}>
+            {createMut.isPending ? "Saving…" : "Save rule"}
+          </PinkButton>
+        </>
+      }
+    >
+      <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
           <div><label style={{ fontSize: "12px", color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.55)" }}>Outcome</label>
             <select value={form.appetiteOutcome} onChange={(e) => setForm({ ...form, appetiteOutcome: e.target.value })} style={inputStyle}>
               <option value="MATCHED">Matched</option>
@@ -414,13 +502,8 @@ function AddAppetiteModal({ marketId, marketLane, onClose, isDark }: { marketId:
             </select>
           </div>
 
-          <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
-            <PinkButton onClick={handleSubmit} disabled={!form.primaryUnderwriterId || createMut.isPending} style={{ flex: 1 }}>Save</PinkButton>
-            <GhostButton onClick={onClose} style={{ flex: 1 }}>Cancel</GhostButton>
-          </div>
-        </div>
       </div>
-    </div>
+    </MarketModal>
   );
 }
 
