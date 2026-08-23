@@ -10,6 +10,9 @@ term, workflow, or important UI decision is introduced or changed.
   unclear.
 - Use **Screen Reference** before changing a screen, so related controls and
   data are not accidentally separated.
+- Use the [verbatim multi-market routing reference](reference/multi-market-routing-verbatim.md)
+  before changing carrier eligibility, market ranking, dispatch, or
+  market-specific correspondence.
 - Record agreed changes in **Interface Decisions** with the date and reason.
 - Keep the language business-friendly. Technical implementation details should
   only be included when they affect what a user can edit, see, or do.
