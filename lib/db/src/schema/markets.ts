@@ -422,6 +422,11 @@ export const dispatchBatchesTable = pgTable(
     // a compare-and-set lease prevents concurrent sweep/cancel races.
     workerClaimId: uuid("worker_claim_id"),
     workerClaimedAt: timestamp("worker_claimed_at", { withTimezone: true }),
+    // Immutable carrier package captured when the batch is queued. Workers
+    // render from this snapshot rather than mutable submission answers.
+    applicationSnapshot: jsonb("application_snapshot"),
+    applicationSnapshotHash: text("application_snapshot_hash"),
+    routingInputSnapshot: jsonb("routing_input_snapshot"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().default(sql`now()`),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().default(sql`now()`),
   },

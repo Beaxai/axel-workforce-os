@@ -1,7 +1,7 @@
 import { after, before, describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import {
   db,
   accountsTable,
@@ -18,12 +18,18 @@ import {
   cannabisApplicationAnswersSchema,
   routableCannabisApplicationAnswersSchema,
 } from "@workspace/cannabis-application";
-import { queueMarketDispatch } from "../lib/market-dispatch.js";
+import {
+  buildSubmissionAttachments,
+  queueMarketDispatch,
+} from "../lib/market-dispatch.js";
+import { hashCanonicalApplicationAnswers } from "../lib/canonical-routing-package.js";
 
 const fixtureId = randomUUID().replaceAll("-", "").slice(0, 12);
 let accountId: string | null = null;
 let dealId: string | null = null;
 let marketId: string | null = null;
+let secondMarketId: string | null = null;
+let dealMarketId: string | null = null;
 
 const yesNoAnswers = {
   q1_aircraftWatercraft: "no",
@@ -90,6 +96,8 @@ const completedAnswers = cannabisApplicationAnswersSchema.parse({
   signatoryDate: "2026-08-22",
   ...yesNoAnswers,
 });
+const completedApplicationHash =
+  hashCanonicalApplicationAnswers(completedAnswers);
 
 describe("market dispatch package gate (database integration)", () => {
   before(async () => {
@@ -134,19 +142,44 @@ describe("market dispatch package gate (database integration)", () => {
       .returning({ id: marketsTable.id });
     marketId = market.id;
 
-    await db.insert(dealMarketsTable).values({
-      dealId,
-      marketId,
-      marketType: "WC_CARRIER",
-      generatedRate: "2500",
-      rateBreakdownSnapshot: { totalPremium: 2500 },
-      rank: 1,
-      isPrimary: true,
-      isRouted: true,
-      appetiteOutcome: "MATCHED",
-      rankingState: "PROVISIONAL",
-      sendStatus: "PENDING",
-    });
+    const [dealMarket] = await db
+      .insert(dealMarketsTable)
+      .values({
+        dealId,
+        marketId,
+        marketType: "WC_CARRIER",
+        generatedRate: "2500",
+        rateBreakdownSnapshot: {
+          totalPremium: 2500,
+          routingPackageSnapshot: {
+            version: 1,
+            applicationHash: completedApplicationHash,
+            ratingInput: {
+              productLane: "WC",
+              states: ["CA"],
+              ratingUnits: [
+                {
+                  state: "CA",
+                  classCode: "8810",
+                  annualPayroll: 150000,
+                },
+              ],
+              annualPayroll: 150000,
+              headcount: 3,
+              eMod: 1,
+              scheduleRating: 1,
+            },
+          },
+        },
+        rank: 1,
+        isPrimary: true,
+        isRouted: true,
+        appetiteOutcome: "MATCHED",
+        rankingState: "PROVISIONAL",
+        sendStatus: "PENDING",
+      })
+      .returning({ id: dealMarketsTable.id });
+    dealMarketId = dealMarket.id;
   });
 
   after(async () => {
@@ -161,6 +194,11 @@ describe("market dispatch package gate (database integration)", () => {
     }
     if (marketId) {
       await db.delete(marketsTable).where(eq(marketsTable.id, marketId));
+    }
+    if (secondMarketId) {
+      await db
+        .delete(marketsTable)
+        .where(eq(marketsTable.id, secondMarketId));
     }
     if (accountId) {
       await db.delete(accountsTable).where(eq(accountsTable.id, accountId));
@@ -216,6 +254,41 @@ describe("market dispatch package gate (database integration)", () => {
     assert.equal(batches.length, 0);
   });
 
+  it("refuses a complete package that differs from the ranked pricing snapshot", async () => {
+    assert.ok(dealId);
+    const divergentAnswers = {
+      ...completedAnswers,
+      businessState: "TX",
+      locations: completedAnswers.locations.map((location) => ({
+        ...location,
+        state: "TX",
+      })),
+    };
+    assert.equal(
+      routableCannabisApplicationAnswersSchema.safeParse(divergentAnswers)
+        .success,
+      true,
+    );
+    await db
+      .update(submissionAnswersTable)
+      .set({ answers: divergentAnswers, updatedAt: new Date() })
+      .where(eq(submissionAnswersTable.dealId, dealId));
+    await assert.rejects(
+      queueMarketDispatch(dealId),
+      /does not match the ranked pricing snapshot/,
+    );
+    const batches = await db
+      .select({ id: dispatchBatchesTable.id })
+      .from(dispatchBatchesTable)
+      .where(eq(dispatchBatchesTable.dealId, dealId));
+    assert.equal(batches.length, 0);
+
+    await db
+      .update(submissionAnswersTable)
+      .set({ answers: completedAnswers, updatedAt: new Date() })
+      .where(eq(submissionAnswersTable.dealId, dealId));
+  });
+
   it("queues exactly one ranked item after the complete package is persisted", async () => {
     assert.ok(dealId);
     await db.insert(dealDocumentsTable).values(
@@ -227,7 +300,10 @@ describe("market dispatch package gate (database integration)", () => {
         dealId,
         name: `${documentType} fixture`,
         documentType,
-        metadata: { generatedBy: "integration-test" },
+        metadata: {
+          generatedBy: "integration-test",
+          applicationSnapshotHash: completedApplicationHash,
+        },
       })),
     );
 
@@ -235,10 +311,108 @@ describe("market dispatch package gate (database integration)", () => {
     assert.ok("batchId" in queued);
     assert.equal("itemCount" in queued ? queued.itemCount : null, 1);
 
+    const [persistedBatch] = await db
+      .select({
+        applicationSnapshot: dispatchBatchesTable.applicationSnapshot,
+        applicationSnapshotHash:
+          dispatchBatchesTable.applicationSnapshotHash,
+        routingInputSnapshot: dispatchBatchesTable.routingInputSnapshot,
+      })
+      .from(dispatchBatchesTable)
+      .where(eq(dispatchBatchesTable.id, queued.batchId));
+    assert.equal(
+      persistedBatch.applicationSnapshotHash,
+      completedApplicationHash,
+    );
+    assert.deepEqual(persistedBatch.applicationSnapshot, completedAnswers);
+    assert.ok(persistedBatch.routingInputSnapshot);
+
     const items = await db
       .select({ id: dispatchItemsTable.id })
       .from(dispatchItemsTable)
       .where(eq(dispatchItemsTable.batchId, queued.batchId));
     assert.equal(items.length, 1);
+  });
+
+  it("builds a retried failed batch from its own snapshots when unrelated ranking rows exist", async () => {
+    assert.ok(dealId);
+    assert.ok(dealMarketId);
+    const [originalBatch] = await db
+      .select()
+      .from(dispatchBatchesTable)
+      .where(eq(dispatchBatchesTable.dealId, dealId))
+      .orderBy(desc(dispatchBatchesTable.createdAt))
+      .limit(1);
+    assert.ok(originalBatch.applicationSnapshot);
+    assert.ok(originalBatch.applicationSnapshotHash);
+    assert.ok(originalBatch.routingInputSnapshot);
+
+    await db
+      .update(dispatchBatchesTable)
+      .set({ status: "CANCELLED", cancelledAt: new Date() })
+      .where(eq(dispatchBatchesTable.id, originalBatch.id));
+    await db
+      .update(dealMarketsTable)
+      .set({ rankingState: "FAILED", sendStatus: "FAILED" })
+      .where(eq(dealMarketsTable.id, dealMarketId));
+
+    const [newerMarket] = await db
+      .insert(marketsTable)
+      .values({
+        name: `Dispatch Re-rate Market ${fixtureId}`,
+        marketType: "WC_CARRIER",
+        productLane: "WC",
+        isActive: true,
+        isAppointed: true,
+      })
+      .returning({ id: marketsTable.id });
+    secondMarketId = newerMarket.id;
+    await db.insert(dealMarketsTable).values({
+      dealId,
+      marketId: newerMarket.id,
+      marketType: "WC_CARRIER",
+      generatedRate: "2400",
+      rateBreakdownSnapshot: {
+        totalPremium: 2400,
+        routingPackageSnapshot: {
+          version: 1,
+          applicationHash: "b".repeat(64),
+          ratingInput: { productLane: "WC", states: ["TX"] },
+        },
+      },
+      rank: 5,
+      isPrimary: false,
+      isRouted: false,
+      appetiteOutcome: "MATCHED",
+      rankingState: "PROVISIONAL",
+      sendStatus: "PENDING",
+    });
+
+    const [retryBatch] = await db
+      .insert(dispatchBatchesTable)
+      .values({
+        dealId,
+        status: "QUEUED",
+        applicationSnapshot: originalBatch.applicationSnapshot,
+        applicationSnapshotHash: originalBatch.applicationSnapshotHash,
+        routingInputSnapshot: originalBatch.routingInputSnapshot,
+      })
+      .returning({ id: dispatchBatchesTable.id });
+    await db.insert(dispatchItemsTable).values({
+      batchId: retryBatch.id,
+      dealMarketId,
+      rank: 1,
+      status: "PENDING",
+    });
+
+    const attachments = await buildSubmissionAttachments(
+      retryBatch.id,
+      dealId,
+    );
+    assert.equal(attachments.length, 4);
+    assert.equal(
+      attachments.every((attachment) => attachment.content.length > 0),
+      true,
+    );
   });
 });

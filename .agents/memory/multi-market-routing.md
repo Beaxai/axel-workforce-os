@@ -15,11 +15,11 @@ Correctable routing failures must remain auditable without blocking a corrected 
 
 **How to apply:** Record the failure before returning it, keep success-only side effects out, and exclude failed routing attempts from active-submission duplicate checks.
 
-Only a complete, validated carrier application package may enter dispatch. Configured WC modifier bounds are hard eligibility limits, not warnings.
+Only a complete, validated carrier application package may enter dispatch. Rating and carrier documents must originate from the same canonical application snapshot. Configured WC modifier bounds are hard eligibility limits, not warnings.
 
 **Why:** Markets must never receive blank forms or pricing outside their configured underwriting guardrails.
 
-**How to apply:** Fail closed before queue creation when canonical answers, required documents, exact state/class rules, eMod bounds, or schedule-rating bounds are incomplete.
+**How to apply:** Reject indication/package fact mismatches before ranking. Derive rating units from canonical answers, snapshot the package when queued, and render dispatch attachments from that immutable snapshot. Fail closed on missing documents, exact rules, or modifier bounds.
 
 Provider dispatch is at-most-once per recorded attempt; uncertain delivery requires human review instead of an automatic resend.
 

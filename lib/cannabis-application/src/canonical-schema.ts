@@ -432,6 +432,62 @@ export const routableCannabisApplicationAnswersSchema =
       }
     });
 
+    const locationIds = new Set<string>();
+    answers.locations.forEach((location, index) => {
+      const locationId = location.loc.trim();
+      if (locationIds.has(locationId)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["locations", index, "loc"],
+          message: "Routed location identifiers must be unique",
+        });
+      }
+      locationIds.add(locationId);
+    });
+
+    let classPayrollTotal = 0;
+    let classEmployeeTotal = 0;
+    answers.classCodes.forEach((row, index) => {
+      if (!locationIds.has(row.loc.trim())) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["classCodes", index, "loc"],
+          message: "Class-code location must reference a routed location",
+        });
+      }
+      classPayrollTotal += Number(row.annualPayroll) || 0;
+      classEmployeeTotal +=
+        (Number(row.fullTime) || 0) + (Number(row.partTime) || 0);
+    });
+    if (
+      Math.abs(classPayrollTotal - Number(answers.annualPayroll)) > 0.01
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["annualPayroll"],
+        message:
+          "Annual payroll must equal the sum of class-code payroll rows",
+      });
+    }
+    if (classEmployeeTotal !== Number(answers.totalEmployeesAll)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["totalEmployeesAll"],
+        message:
+          "Total employees must equal the sum of class-code employee rows",
+      });
+    }
+    if (
+      answers.experienceModifier.trim() !== "" &&
+      !Number.isFinite(Number(answers.experienceModifier))
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["experienceModifier"],
+        message: "Experience modifier must be a finite number",
+      });
+    }
+
     const generalQuestions = [
       "q1_aircraftWatercraft",
       "q2_hazardousMaterial",

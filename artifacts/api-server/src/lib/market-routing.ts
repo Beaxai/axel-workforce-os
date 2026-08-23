@@ -75,6 +75,8 @@ export interface RatingInput {
   eMod?: number;
   /** Schedule rating modifier. Applied to all units. */
   scheduleRating?: number;
+  /** Hash of the validated canonical carrier application used for this rating. */
+  applicationSnapshotHash?: string;
 }
 
 export type ExclusionReason =
@@ -846,6 +848,26 @@ export function rankCandidates(
   const ranked: RankedMarketResult[] = rated.map((r, idx) => {
     const rank = idx + 1;
     const isRouted = rank <= 4;
+    const routingPackageSnapshot = input.applicationSnapshotHash
+      ? {
+          version: 1 as const,
+          applicationHash: input.applicationSnapshotHash,
+          ratingInput: {
+            productLane: input.productLane,
+            effectiveDate: input.effectiveDate,
+            states: [...input.states],
+            vertical: input.vertical ?? null,
+            classCodes: input.classCodes ? [...input.classCodes] : [],
+            ratingUnits: input.ratingUnits
+              ? input.ratingUnits.map((unit) => ({ ...unit }))
+              : [],
+            annualPayroll: input.annualPayroll ?? null,
+            headcount: input.headcount ?? null,
+            eMod: input.eMod ?? 1,
+            scheduleRating: input.scheduleRating ?? 1,
+          },
+        }
+      : null;
     return {
       rank,
       isPrimary: rank === 1,
@@ -859,7 +881,10 @@ export function rankCandidates(
       rateSetId: r.result.rateSetId,
       rateSetVersion: r.result.rateSetVersion,
       generatedRate: r.result.comparableAnnualAmount,
-      rateBreakdownSnapshot: r.result.breakdown,
+      rateBreakdownSnapshot: {
+        ...r.result.breakdown,
+        routingPackageSnapshot,
+      },
     };
   });
 

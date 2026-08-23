@@ -52,6 +52,10 @@ import {
   fillTreanSupp,
 } from "../services/applicationPdfService";
 import { logger } from "./logger";
+import {
+  hashCanonicalApplicationAnswers,
+  readPersistedRoutingPackageSnapshot,
+} from "./canonical-routing-package";
 
 const MAX_ATTEMPTS = 3;
 const WORKER_CLAIM_TTL_MS = 10 * 60 * 1000;
@@ -122,32 +126,9 @@ export async function queueMarketDispatch(
         `Market dispatch requires a persisted, completed application package for deal ${dealId}`,
       );
     }
-
-    const requiredDocumentTypes = [
-      "axel_cannabis_application",
-      "acord_130",
-      "trean_cannabis_supp",
-    ];
-    const packageDocuments = await tx
-      .select({ documentType: dealDocumentsTable.documentType })
-      .from(dealDocumentsTable)
-      .where(
-        and(
-          eq(dealDocumentsTable.dealId, dealId),
-          inArray(dealDocumentsTable.documentType, requiredDocumentTypes),
-        ),
-      );
-    const persistedDocumentTypes = new Set(
-      packageDocuments.map((document) => document.documentType),
+    const currentApplicationHash = hashCanonicalApplicationAnswers(
+      packageParse.data,
     );
-    const missingDocuments = requiredDocumentTypes.filter(
-      (documentType) => !persistedDocumentTypes.has(documentType),
-    );
-    if (missingDocuments.length > 0) {
-      throw new Error(
-        `Market dispatch package is missing required documents for deal ${dealId}: ${missingDocuments.join(", ")}`,
-      );
-    }
 
     const rankedMarkets = await tx
       .select()
@@ -164,10 +145,74 @@ export async function queueMarketDispatch(
     if (routedMarkets.length === 0) {
       throw new Error(`No routed PROVISIONAL deal_markets found for deal ${dealId}`);
     }
+    const routingSnapshots = rankedMarkets.map((market) =>
+      readPersistedRoutingPackageSnapshot(market.rateBreakdownSnapshot),
+    );
+    if (routingSnapshots.some((snapshot) => !snapshot)) {
+      throw new Error(
+        `Market dispatch requires a canonical routing snapshot for every ranked market on deal ${dealId}`,
+      );
+    }
+    const expectedApplicationHashes = new Set(
+      routingSnapshots.map((snapshot) => snapshot!.applicationHash),
+    );
+    if (
+      expectedApplicationHashes.size !== 1 ||
+      !expectedApplicationHashes.has(currentApplicationHash)
+    ) {
+      throw new Error(
+        `Market dispatch application package does not match the ranked pricing snapshot for deal ${dealId}`,
+      );
+    }
+    const routingInputSnapshot = routingSnapshots[0]!.ratingInput;
+
+    const requiredDocumentTypes = [
+      "axel_cannabis_application",
+      "acord_130",
+      "trean_cannabis_supp",
+    ];
+    const packageDocuments = await tx
+      .select({
+        documentType: dealDocumentsTable.documentType,
+        metadata: dealDocumentsTable.metadata,
+      })
+      .from(dealDocumentsTable)
+      .where(
+        and(
+          eq(dealDocumentsTable.dealId, dealId),
+          inArray(dealDocumentsTable.documentType, requiredDocumentTypes),
+        ),
+      );
+    const persistedDocumentTypes = new Set(
+      packageDocuments
+        .filter(
+          (document) =>
+            (
+              document.metadata as {
+                applicationSnapshotHash?: unknown;
+              } | null
+            )?.applicationSnapshotHash === currentApplicationHash,
+        )
+        .map((document) => document.documentType),
+    );
+    const missingDocuments = requiredDocumentTypes.filter(
+      (documentType) => !persistedDocumentTypes.has(documentType),
+    );
+    if (missingDocuments.length > 0) {
+      throw new Error(
+        `Market dispatch package is missing required documents for deal ${dealId}: ${missingDocuments.join(", ")}`,
+      );
+    }
 
     const [batch] = await tx
       .insert(dispatchBatchesTable)
-      .values({ dealId, status: "QUEUED" })
+      .values({
+        dealId,
+        status: "QUEUED",
+        applicationSnapshot: packageParse.data,
+        applicationSnapshotHash: currentApplicationHash,
+        routingInputSnapshot,
+      })
       .returning({ id: dispatchBatchesTable.id });
 
     await tx
@@ -400,7 +445,13 @@ async function processBatch(batchId: string, dealId: string): Promise<void> {
     }
 
     // Attempt to send this item.
-    const result = await attemptSend(item.id, item.dealMarketId, dealId, attemptCount + 1);
+    const result = await attemptSend(
+      batchId,
+      item.id,
+      item.dealMarketId,
+      dealId,
+      attemptCount + 1,
+    );
 
     if (result.outcome === "SUCCESS") {
       // Atomically lock all deal_markets for this deal on the first accepted send.
@@ -669,10 +720,11 @@ interface AttemptResult {
   skippedConcurrent?: boolean;
 }
 
-async function buildSubmissionAttachments(
+export async function buildSubmissionAttachments(
+  batchId: string,
   dealId: string,
 ): Promise<Array<{ filename: string; content: string }>> {
-  const [deal, submission] = await Promise.all([
+  const [deal, batch, rankedMarkets] = await Promise.all([
     db
       .select({
         businessName: dealsTable.businessName,
@@ -689,41 +741,85 @@ async function buildSubmissionAttachments(
       .then((rows) => rows[0]),
     db
       .select({
-        answers: submissionAnswersTable.answers,
-        status: submissionAnswersTable.status,
+        applicationSnapshot: dispatchBatchesTable.applicationSnapshot,
+        applicationSnapshotHash:
+          dispatchBatchesTable.applicationSnapshotHash,
+        routingInputSnapshot: dispatchBatchesTable.routingInputSnapshot,
       })
-      .from(submissionAnswersTable)
+      .from(dispatchBatchesTable)
       .where(
         and(
-          eq(submissionAnswersTable.dealId, dealId),
-          eq(submissionAnswersTable.status, "submitted"),
+          eq(dispatchBatchesTable.id, batchId),
+          eq(dispatchBatchesTable.dealId, dealId),
         ),
       )
-      .orderBy(desc(submissionAnswersTable.createdAt))
       .limit(1)
       .then((rows) => rows[0]),
+    db
+      .select({
+        rateBreakdownSnapshot: dealMarketsTable.rateBreakdownSnapshot,
+      })
+      .from(dispatchItemsTable)
+      .innerJoin(
+        dealMarketsTable,
+        eq(dispatchItemsTable.dealMarketId, dealMarketsTable.id),
+      )
+      .where(eq(dispatchItemsTable.batchId, batchId)),
   ]);
 
   if (!deal) {
     throw new Error(`Deal ${dealId} not found while building submission package`);
   }
+  if (!batch) {
+    throw new Error(
+      `Dispatch batch ${batchId} not found while building submission package`,
+    );
+  }
   const packageParse = routableCannabisApplicationAnswersSchema.safeParse(
-    submission?.answers,
+    batch.applicationSnapshot,
   );
   if (!packageParse.success) {
     throw new Error(
-      `Deal ${dealId} has no persisted, completed application package`,
+      `Dispatch batch ${batchId} has no immutable completed application snapshot`,
     );
   }
+  const calculatedApplicationHash = hashCanonicalApplicationAnswers(
+    packageParse.data,
+  );
+  if (
+    !batch.applicationSnapshotHash ||
+    batch.applicationSnapshotHash !== calculatedApplicationHash
+  ) {
+    throw new Error(
+      `Dispatch batch ${batchId} application snapshot integrity check failed`,
+    );
+  }
+  const rankingSnapshots = rankedMarkets.map((market) =>
+    readPersistedRoutingPackageSnapshot(market.rateBreakdownSnapshot),
+  );
+  if (
+    rankingSnapshots.length === 0 ||
+    rankingSnapshots.some(
+      (snapshot) =>
+        !snapshot ||
+        snapshot.applicationHash !== calculatedApplicationHash,
+    )
+  ) {
+    throw new Error(
+      `Dispatch batch ${batchId} no longer matches its ranked pricing snapshot`,
+    );
+  }
+  const routingInput =
+    (batch.routingInputSnapshot as Record<string, unknown> | null) ?? {};
 
   const summary = [
-    `Business: ${deal.businessName ?? "Unnamed Business"}`,
+    `Business: ${packageParse.data.legalBusinessName}`,
     `Product: ${deal.productType ?? "Workers' Compensation"}`,
-    `State: ${deal.state ?? "—"}`,
+    `State: ${packageParse.data.businessState}`,
     `Vertical: ${deal.vertical ?? "—"}`,
-    `Annual payroll: ${deal.annualPayroll ?? "—"}`,
-    `Full-time employees: ${deal.employeeCountFt ?? "—"}`,
-    `Coverage effective date: ${deal.coverageEffectiveDate ?? "—"}`,
+    `Annual payroll: ${packageParse.data.annualPayroll}`,
+    `Total employees: ${packageParse.data.totalEmployeesAll}`,
+    `Coverage effective date: ${String(routingInput.effectiveDate ?? deal.coverageEffectiveDate ?? "—")}`,
     "",
     "Generated by Axel Workforce OS from the completed submission.",
   ].join("\n");
@@ -759,6 +855,7 @@ async function buildSubmissionAttachments(
 }
 
 async function attemptSend(
+  batchId: string,
   itemId: string,
   dealMarketId: string,
   dealId: string,
@@ -844,7 +941,7 @@ async function attemptSend(
   // Send via emailService with dealMarketId + idempotencyKey.
   let sendResult: Awaited<ReturnType<typeof sendDealEmail>>;
   try {
-    const attachments = await buildSubmissionAttachments(dealId);
+    const attachments = await buildSubmissionAttachments(batchId, dealId);
     sendResult = await sendDealEmail({
       dealId,
       dealMarketId,

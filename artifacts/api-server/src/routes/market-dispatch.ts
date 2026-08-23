@@ -72,6 +72,16 @@ router.post("/:dealId/retry", async (req, res) => {
     if (!batch) {
       return res.status(404).json({ error: "No dispatch batch found for this deal" });
     }
+    if (
+      !batch.applicationSnapshot ||
+      !batch.applicationSnapshotHash ||
+      !batch.routingInputSnapshot
+    ) {
+      return res.status(409).json({
+        error:
+          "This dispatch predates immutable package snapshots and cannot be retried automatically.",
+      });
+    }
 
     // Load items that are FAILED or DELIVERY_UNKNOWN — these can be retried.
     const items = await db
@@ -109,7 +119,13 @@ router.post("/:dealId/retry", async (req, res) => {
 
       const [retryBatch] = await tx
         .insert(dispatchBatchesTable)
-        .values({ dealId, status: "QUEUED" })
+        .values({
+          dealId,
+          status: "QUEUED",
+          applicationSnapshot: batch.applicationSnapshot,
+          applicationSnapshotHash: batch.applicationSnapshotHash,
+          routingInputSnapshot: batch.routingInputSnapshot,
+        })
         .returning({ id: dispatchBatchesTable.id });
       retryBatchId = retryBatch.id;
 
