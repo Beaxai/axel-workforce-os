@@ -9,8 +9,9 @@ import {
   partnersTable,
 } from "@workspace/db";
 import { and, eq, desc } from "drizzle-orm";
-import { findUserByEmail, getAuthUserById } from "../lib/auth";
+import { getAuthUserById } from "../lib/auth";
 import { createOrMatchAgency } from "../lib/agencies";
+import { upsertAgentProfile } from "../lib/agent-profiles";
 
 const router: IRouter = Router();
 
@@ -75,27 +76,32 @@ router.patch("/:id", async (req, res) => {
 // registration approved and links it to the new user. Idempotent on email:
 // reuses an existing user instead of creating a duplicate.
 router.post("/:id/approve", async (req: Request<{ id: string }>, res: Response) => {
-  const [reg] = await db
-    .select()
-    .from(agentRegistrationsTable)
-    .where(eq(agentRegistrationsTable.id, req.params.id));
-  if (!reg) return res.status(404).json({ error: "Not found" });
-  if (reg.userId) return res.status(409).json({ error: "Registration already linked to a user" });
-  if (!reg.email) return res.status(400).json({ error: "Registration is missing an email" });
+  const approval = await db.transaction(async (tx) => {
+    const [reg] = await tx
+      .select()
+      .from(agentRegistrationsTable)
+      .where(eq(agentRegistrationsTable.id, req.params.id))
+      .for("update");
+    if (!reg) return { kind: "notFound" as const };
+    if (!reg.email) return { kind: "missingEmail" as const };
+    if (reg.userId && reg.partnerId) {
+      return {
+        kind: "existing" as const,
+        registrationId: reg.id,
+        userId: reg.userId,
+        partnerId: reg.partnerId,
+      };
+    }
 
-  const orgId = reg.partnerId ?? null;
-  const roleMetadata = {
-    agencyName: reg.agencyName ?? null,
-    licenseNumbers: reg.licenseNumbers ?? [],
-    statesLicensed: reg.statesLicensed ?? [],
-    linesOfAuthority: reg.linesOfAuthority ?? [],
-    eoCarrier: reg.eoCarrier ?? null,
-    eoExpiration: reg.eoExpirationDate ?? null,
-  };
-
-  const existing = await findUserByEmail(reg.email);
-
-  const userId = await db.transaction(async (tx) => {
+    const orgId = reg.partnerId ?? null;
+    const roleMetadata = {
+      agencyName: reg.agencyName ?? null,
+      licenseNumbers: reg.licenseNumbers ?? [],
+      statesLicensed: reg.statesLicensed ?? [],
+      linesOfAuthority: reg.linesOfAuthority ?? [],
+      eoCarrier: reg.eoCarrier ?? null,
+      eoExpiration: reg.eoExpirationDate ?? null,
+    };
     const agency = await createOrMatchAgency(tx, {
       legalName: reg.agencyName,
       dba: reg.agencyDba,
@@ -107,13 +113,14 @@ router.post("/:id/approve", async (req: Request<{ id: string }>, res: Response) 
       statesLicensed: reg.statesLicensed,
       linesOfAuthority: reg.linesOfAuthority,
     });
-    if (reg.partnerId) {
+    let partnerId = reg.partnerId;
+    if (partnerId) {
       const [linkedPartner] = await tx
         .update(partnersTable)
         .set({ agencyId: agency.id, updatedAt: new Date() })
         .where(
           and(
-            eq(partnersTable.id, reg.partnerId),
+            eq(partnersTable.id, partnerId),
             eq(partnersTable.partnerType, "Agent"),
           ),
         )
@@ -123,16 +130,43 @@ router.post("/:id/approve", async (req: Request<{ id: string }>, res: Response) 
           "Registration partner link must reference an Agent partner",
         );
       }
+    } else {
+      const partnerName = `${reg.firstName} ${reg.lastName}`.trim();
+      const [partner] = await tx
+        .insert(partnersTable)
+        .values({
+          partnerType: "Agent",
+          name: partnerName,
+          agencyName: agency.legalName,
+          agencyId: agency.id,
+          licenseStates: Array.isArray(reg.statesLicensed)
+            ? reg.statesLicensed.filter(
+                (state): state is string => typeof state === "string",
+              )
+            : null,
+          npn: reg.individualNpn,
+          contactEmail: reg.email.toLowerCase().trim(),
+          contactPhone: reg.phone,
+          status: "Active",
+        })
+        .returning({ id: partnersTable.id });
+      partnerId = partner.id;
     }
 
-    let uid: string;
-    if (existing) {
-      uid = existing.id;
-    } else {
+    let uid = reg.userId;
+    if (!uid) {
+      const normalizedEmail = reg.email.toLowerCase().trim();
+      const [existing] = await tx
+        .select()
+        .from(usersTable)
+        .where(eq(usersTable.email, normalizedEmail));
+      uid = existing?.id;
+    }
+    if (!uid) {
       const [user] = await tx
         .insert(usersTable)
         .values({
-          email: reg.email!.toLowerCase().trim(),
+          email: reg.email.toLowerCase().trim(),
           firstName: reg.firstName ?? null,
           lastName: reg.lastName ?? null,
           phone: reg.phone ?? null,
@@ -142,7 +176,12 @@ router.post("/:id/approve", async (req: Request<{ id: string }>, res: Response) 
       uid = user.id;
       await tx
         .insert(orgMembersTable)
-        .values({ userId: uid, orgId, role: "AGENT", isPrimaryOrg: true });
+        .values({
+          userId: uid,
+          orgId,
+          role: "AGENT",
+          isPrimaryOrg: true,
+        });
     }
     await tx
       .insert(userProfilesTable)
@@ -151,20 +190,53 @@ router.post("/:id/approve", async (req: Request<{ id: string }>, res: Response) 
         target: userProfilesTable.userId,
         set: { roleMetadata, updatedAt: new Date() },
       });
+    await upsertAgentProfile(tx, {
+      partnerId,
+      registrationId: reg.id,
+      userId: uid,
+      firstName: reg.firstName,
+      lastName: reg.lastName || null,
+      title: reg.title,
+      phoneDirect: reg.phone,
+      phoneMobile: null,
+      individualNpn: reg.individualNpn,
+      licenseNumbers:
+        reg.licenseNumbers == null
+          ? null
+          : JSON.parse(JSON.stringify(reg.licenseNumbers)),
+    });
     await tx
       .update(agentRegistrationsTable)
       .set({
         agencyId: agency.id,
         status: "approved",
         userId: uid,
+        partnerId,
         reviewedAt: new Date(),
       })
       .where(eq(agentRegistrationsTable.id, reg.id));
-    return uid;
+    return {
+      kind: "created" as const,
+      registrationId: reg.id,
+      userId: uid,
+      partnerId,
+    };
   });
 
-  const authUser = await getAuthUserById(userId);
-  return res.status(201).json({ user: authUser, registrationId: reg.id });
+  if (approval.kind === "notFound") {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  if (approval.kind === "missingEmail") {
+    res.status(400).json({ error: "Registration is missing an email" });
+    return;
+  }
+  const authUser = await getAuthUserById(approval.userId);
+  res.status(approval.kind === "created" ? 201 : 200).json({
+    user: authUser,
+    registrationId: approval.registrationId,
+    partnerId: approval.partnerId,
+  });
 });
 
 export default router;

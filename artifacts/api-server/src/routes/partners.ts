@@ -1,23 +1,89 @@
 import { Router, type IRouter } from "express";
-import { db, partnersTable, insertPartnerSchema, dealsTable, policiesTable } from "@workspace/db";
+import {
+  agenciesTable,
+  agentProfilesTable,
+  db,
+  partnersTable,
+  insertPartnerSchema,
+} from "@workspace/db";
 import { eq, desc, and } from "drizzle-orm";
 
 const router: IRouter = Router();
 
 router.get("/", async (req, res) => {
   const type = req.query.type as string | undefined;
-  let query = db.select().from(partnersTable).orderBy(desc(partnersTable.createdAt)).$dynamic();
-  if (type) {
-    query = query.where(eq(partnersTable.partnerType, type));
+  if (type === "Agent") {
+    const rows = await db
+      .select({
+        partner: partnersTable,
+        profile: agentProfilesTable,
+        agency: agenciesTable,
+      })
+      .from(partnersTable)
+      .leftJoin(
+        agentProfilesTable,
+        eq(agentProfilesTable.partnerId, partnersTable.id),
+      )
+      .leftJoin(agenciesTable, eq(agenciesTable.id, partnersTable.agencyId))
+      .where(eq(partnersTable.partnerType, "Agent"))
+      .orderBy(desc(partnersTable.createdAt));
+    res.json(
+      rows.map(({ partner, profile, agency }) => ({
+        ...partner,
+        firstName: profile?.firstName ?? null,
+        lastName: profile?.lastName ?? null,
+        title: profile?.title ?? null,
+        phoneDirect: profile?.phoneDirect ?? null,
+        phoneMobile: profile?.phoneMobile ?? null,
+        individualNpn: profile?.individualNpn ?? null,
+        licenseNumbers: profile?.licenseNumbers ?? null,
+        registrationId: profile?.registrationId ?? null,
+        userId: profile?.userId ?? null,
+        agencyLegalName: agency?.legalName ?? null,
+        agencyStatus: agency?.status ?? null,
+      })),
+    );
+    return;
   }
+  let query = db
+    .select()
+    .from(partnersTable)
+    .orderBy(desc(partnersTable.createdAt))
+    .$dynamic();
+  if (type) query = query.where(eq(partnersTable.partnerType, type));
   const rows = await query;
   res.json(rows);
 });
 
 router.get("/:id", async (req, res) => {
-  const [row] = await db.select().from(partnersTable).where(eq(partnersTable.id, req.params.id));
+  const [row] = await db
+    .select({
+      partner: partnersTable,
+      profile: agentProfilesTable,
+      agency: agenciesTable,
+    })
+    .from(partnersTable)
+    .leftJoin(
+      agentProfilesTable,
+      eq(agentProfilesTable.partnerId, partnersTable.id),
+    )
+    .leftJoin(agenciesTable, eq(agenciesTable.id, partnersTable.agencyId))
+    .where(eq(partnersTable.id, req.params.id));
   if (!row) return res.status(404).json({ error: "Not found" });
-  return res.json(row);
+  return res.json({
+    ...row.partner,
+    firstName: row.profile?.firstName ?? null,
+    lastName: row.profile?.lastName ?? null,
+    title: row.profile?.title ?? null,
+    phoneDirect: row.profile?.phoneDirect ?? null,
+    phoneMobile: row.profile?.phoneMobile ?? null,
+    individualNpn: row.profile?.individualNpn ?? null,
+    licenseNumbers: row.profile?.licenseNumbers ?? null,
+    registrationId: row.profile?.registrationId ?? null,
+    userId: row.profile?.userId ?? null,
+    agencyLegalName: row.agency?.legalName ?? null,
+    agencyStatus: row.agency?.status ?? null,
+  });
 });
 
 router.post("/", async (req, res) => {

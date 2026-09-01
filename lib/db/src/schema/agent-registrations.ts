@@ -43,7 +43,7 @@ export const agentRegistrationsTable = pgTable("agent_registrations", {
   onboardingAdminId: uuid("onboarding_admin_id").references(() => usersTable.id),
   referralSource: text("referral_source"),
   partnerId: uuid("partner_id").references(() => partnersTable.id),
-  userId: uuid("user_id"),
+  userId: uuid("user_id").references(() => usersTable.id),
   createdAt: timestamp("created_at", { withTimezone: true }).default(sql`now()`),
 });
 

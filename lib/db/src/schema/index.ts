@@ -22,6 +22,8 @@ export * from "./deal-outbound-emails";
 export * from "./task-send-log";
 export * from "./implementation";
 export * from "./agent-registrations";
+export * from "./agent-profiles";
+export * from "./name-review";
 export * from "./rate-tables";
 export * from "./journey-templates";
 export * from "./agencies";
