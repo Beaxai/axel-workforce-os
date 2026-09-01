@@ -61,6 +61,7 @@ import JourneyTemplateDetail from "@/pages/admin/JourneyTemplateDetail";
 import Welcome from "@/pages/Welcome";
 import DealCardLayoutMockup from "@/pages/dev/DealCardLayoutMockup";
 import NotFound from "@/pages/not-found";
+import TeamPage from "@/pages/TeamPage";
 import { useAuthStore } from "@/lib/auth-store";
 import { GlobalDealCardHost } from "@/components/DealCardModal";
 
@@ -261,6 +262,16 @@ function App() {
             >
               <Route path="/accounts" element={<Accounts />} />
               <Route path="/accounts/:id" element={<AccountDetail />} />
+            </Route>
+
+            <Route
+              element={
+                <ProtectedRoute allowedRoles={["ADMIN", "CSA", "UNDERWRITER"]}>
+                  <AppShell />
+                </ProtectedRoute>
+              }
+            >
+              <Route path="/team" element={<TeamPage />} />
             </Route>
 
             <Route

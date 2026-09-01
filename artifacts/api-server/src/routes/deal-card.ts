@@ -22,6 +22,7 @@ import {
   marketsTable,
   marketUnderwritersTable,
   agentProfilesTable,
+  userProfilesTable,
   partnersTable,
   dispatchBatchesTable,
   type Deal,
@@ -231,6 +232,11 @@ async function loadDealTeam(
   name: string;
   relation: string;
   avatarUrl: string | null;
+  title: string | null;
+  email: string | null;
+  phoneDirect: string | null;
+  phoneMobile: string | null;
+  department: string | null;
   agentFirstName?: string | null;
   agentLastName?: string | null;
   agentPartnerName?: string | null;
@@ -243,12 +249,40 @@ async function loadDealTeam(
   const ids = [...new Set(slots.map((s) => s.id).filter((v): v is string => !!v))];
   if (ids.length === 0) return [];
   const users = await db
-    .select({ id: usersTable.id, firstName: usersTable.firstName, lastName: usersTable.lastName, email: usersTable.email, avatarUrl: usersTable.avatarUrl })
+    .select({
+      id: usersTable.id,
+      firstName: usersTable.firstName,
+      lastName: usersTable.lastName,
+      email: usersTable.email,
+      phone: usersTable.phone,
+      mobile: usersTable.mobile,
+      avatarUrl: usersTable.avatarUrl,
+    })
     .from(usersTable)
     .where(inArray(usersTable.id, ids));
   const byId = new Map(
-    users.map((u) => [u.id, { name: `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim() || u.email, avatarUrl: u.avatarUrl ?? null }]),
+    users.map((u) => [
+      u.id,
+      {
+        name: `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim() || u.email,
+        email: u.email,
+        phoneDirect: u.phone ?? null,
+        phoneMobile: u.mobile ?? null,
+        avatarUrl: u.avatarUrl ?? null,
+      },
+    ]),
   );
+  const profiles = await db
+    .select({
+      userId: userProfilesTable.userId,
+      title: userProfilesTable.title,
+      phoneDirect: userProfilesTable.phoneDirect,
+      phoneMobile: userProfilesTable.phoneMobile,
+      department: userProfilesTable.department,
+    })
+    .from(userProfilesTable)
+    .where(inArray(userProfilesTable.userId, ids));
+  const profileByUserId = new Map(profiles.map((profile) => [profile.userId, profile]));
   const agentRows = await db
     .select({
       userId: agentProfilesTable.userId,
@@ -270,6 +304,11 @@ async function loadDealTeam(
     name: string;
     relation: string;
     avatarUrl: string | null;
+    title: string | null;
+    email: string | null;
+    phoneDirect: string | null;
+    phoneMobile: string | null;
+    department: string | null;
     agentFirstName?: string | null;
     agentLastName?: string | null;
     agentPartnerName?: string | null;
@@ -278,6 +317,7 @@ async function loadDealTeam(
     if (!s.id || seen.has(s.id)) continue;
     seen.add(s.id);
     const u = byId.get(s.id);
+    const profile = profileByUserId.get(s.id);
     const agent = agentByUserId.get(s.id);
     team.push({
       userId: s.id,
@@ -288,6 +328,11 @@ async function loadDealTeam(
         "Agent",
       relation: s.relation,
       avatarUrl: u?.avatarUrl ?? null,
+      title: profile?.title ?? null,
+      email: u?.email ?? null,
+      phoneDirect: profile?.phoneDirect ?? u?.phoneDirect ?? null,
+      phoneMobile: profile?.phoneMobile ?? u?.phoneMobile ?? null,
+      department: profile?.department ?? null,
       agentFirstName: agent?.firstName,
       agentLastName: agent?.lastName,
       agentPartnerName: agent?.partnerName,

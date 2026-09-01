@@ -9,6 +9,8 @@ import { instantiateJourneysForDeal } from "../lib/journey-instantiate";
 import { generateSubjectivitiesForDeal } from "../lib/subjectivities";
 import { startDepositMonitor, resolveDeposit } from "../lib/deposit-monitor";
 import { setBrokerFeePercent, setBrokerFeeStatus, sendBrokerFeeDunning, computeBrokerFee } from "../lib/broker-fee";
+import { validateNewProducingAgentAttachment } from "../lib/agent-assignment-gate";
+import { requireRoles } from "../middleware/require-auth";
 
 const router: IRouter = Router();
 
@@ -210,6 +212,11 @@ router.post("/", async (req, res) => {
   if (invalid) return res.status(400).json({ error: invalid });
   const invalidProduct = validateProductType(parsed.data.productType);
   if (invalidProduct) return res.status(400).json({ error: invalidProduct });
+  const attachmentGate = await validateNewProducingAgentAttachment({
+    agentUserId: parsed.data.producingAgentId,
+    stage: parsed.data.stage ?? "SUBMISSION_REVIEW",
+  });
+  if (!attachmentGate.allowed) return res.status(409).json(attachmentGate);
   let accountId = parsed.data.accountId;
   if (!accountId) {
     const { account } = await findOrCreateAccount({
@@ -252,6 +259,47 @@ function stripBrokerFeeFields<T extends Record<string, unknown>>(
   return safe;
 }
 
+const producingAgentSchema = z.object({
+  producingAgentId: z.string().uuid().nullable(),
+});
+
+router.patch(
+  "/:id/producing-agent",
+  requireRoles("ADMIN", "CSA", "UNDERWRITER"),
+  async (req, res) => {
+    const parsed = producingAgentSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: parsed.error.issues });
+    const dealId = req.params.id as string;
+
+    const result = await db.transaction(async (tx) => {
+      const [existing] = await tx
+        .select()
+        .from(dealsTable)
+        .where(eq(dealsTable.id, dealId))
+        .for("update")
+        .limit(1);
+      if (!existing) return { status: 404, body: { error: "Not found" } };
+
+      const gate = await validateNewProducingAgentAttachment({
+        dbc: tx,
+        agentUserId: parsed.data.producingAgentId,
+        existingAgentUserId: existing.producingAgentId,
+        stage: existing.stage,
+      });
+      if (!gate.allowed) return { status: 409, body: gate };
+
+      const [deal] = await tx
+        .update(dealsTable)
+        .set({ producingAgentId: parsed.data.producingAgentId })
+        .where(eq(dealsTable.id, existing.id))
+        .returning();
+      return { status: 200, body: deal };
+    });
+
+    return res.status(result.status).json(result.body);
+  },
+);
+
 router.patch("/:id", async (req, res) => {
   const parsedRaw = insertDealSchema.partial().safeParse(req.body);
   if (!parsedRaw.success) return res.status(400).json({ error: parsedRaw.error.issues });
@@ -288,6 +336,23 @@ router.patch("/:id", async (req, res) => {
 
     const nextStage = parsed.data.stage ?? undefined;
     const stageChanging = nextStage !== undefined && nextStage !== existing.stage;
+    if (
+      parsed.data.producingAgentId !== undefined &&
+      parsed.data.producingAgentId !== existing.producingAgentId
+    ) {
+      if (!["ADMIN", "CSA", "UNDERWRITER"].includes(req.user?.role ?? "")) {
+        return { status: 403, body: { error: "Insufficient permissions" } };
+      }
+      const attachmentGate = await validateNewProducingAgentAttachment({
+        dbc: tx,
+        agentUserId: parsed.data.producingAgentId,
+        existingAgentUserId: existing.producingAgentId,
+        stage: parsed.data.stage ?? existing.stage,
+      });
+      if (!attachmentGate.allowed) {
+        return { status: 409, body: attachmentGate };
+      }
+    }
 
     // Bind gate (canonical stage 9): entering BOUND requires bind-readiness.
     if (stageChanging && nextStage === "BOUND") {

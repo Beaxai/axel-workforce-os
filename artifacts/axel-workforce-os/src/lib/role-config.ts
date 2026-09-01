@@ -12,6 +12,7 @@ import {
   ClipboardList,
   Calculator,
   Map,
+  Contact,
   type LucideIcon,
 } from "lucide-react";
 import type { PartyRole } from "./auth-store";
@@ -28,6 +29,7 @@ const adminNav: NavItem[] = [
   { label: "Marketplace", path: "/marketplace", icon: Store },
   { label: "Pipeline", path: "/pipeline", icon: Handshake },
   { label: "Accounts", path: "/accounts", icon: Users },
+  { label: "Team", path: "/team", icon: Contact },
   { label: "Implementations", path: "/implementations", icon: Rocket },
   { label: "Billing", path: "/billing", icon: Receipt },
   { label: "Network", path: "/network", icon: Network },
@@ -41,6 +43,7 @@ const csaNav: NavItem[] = [
   { label: "Marketplace", path: "/marketplace", icon: Store },
   { label: "Pipeline", path: "/pipeline", icon: Handshake },
   { label: "Accounts", path: "/accounts", icon: Users },
+  { label: "Team", path: "/team", icon: Contact },
   { label: "Implementations", path: "/implementations", icon: Rocket },
   { label: "Network", path: "/network", icon: Network },
   { label: "Resources", path: "/resources", icon: BookOpen },
@@ -58,6 +61,7 @@ const underwriterNav: NavItem[] = [
   { label: "Home", path: "/dashboard/underwriter", icon: LayoutDashboard },
   { label: "Pipeline", path: "/pipeline", icon: Handshake },
   { label: "Accounts", path: "/accounts", icon: Users },
+  { label: "Team", path: "/team", icon: Contact },
   { label: "Resources", path: "/resources", icon: BookOpen },
 ];
 

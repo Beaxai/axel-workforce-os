@@ -21,10 +21,10 @@ import { useThemeColors } from "@/lib/use-theme-colors";
 import { useAuthStore } from "@/lib/auth-store";
 import type { SectionView, SubmissionPayload, ActivityRow, SectionPatchResponse, RfiRow, RfiListResponse, QuoteVariation, QuoteVariationsResponse, ApplyVariationResponse, PreviewVariationResponse, VariationLevers, DealTeamMember, DealDirectoryEntry, MarketRoutingSummary } from "./types";
 import { displayName } from "@/lib/agent-display-name";
-import UserMiniProfile from "@/components/user-profile/UserMiniProfile";
 import type { CreateRfiInput } from "./OverviewTab";
 import { PHASES, phaseIndex } from "./stage-map";
 import DealHeaderMap, { type MarkerClickInfo } from "./DealHeaderMap";
+import AssignedTeamPopover from "./AssignedTeamPopover";
 import { type GeoMarker, type GeoMarkerClassCode, stateCentroid, zipToLngLat, spreadDuplicates } from "@/lib/geo";
 import LocationPopup from "./LocationPopup";
 import OverviewTab from "./OverviewTab";
@@ -140,30 +140,29 @@ function DealTeamAvatars({ team, directory }: { team?: DealTeamMember[]; directo
   return (
     <div style={{ display: "flex", alignItems: "center" }}>
       {people.map((m, i) => (
-        <UserMiniProfile key={m.userId} userId={m.userId} align="start">
-          <button
-            type="button"
-            title={m.relation ? `${m.name} · ${m.relation}` : m.name}
-            style={{
-              ...base,
-              background: grey,
-              marginLeft: i === 0 ? 0 : -10,
-              cursor: "pointer", padding: 0,
-              fontSize: 13, fontWeight: 600, color: greyText,
-              position: "relative", zIndex: people.length - i,
-            }}
-          >
-            {m.photo ? (
-              <img
-                src={m.photo}
-                alt={m.name}
-                style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-              />
-            ) : (
-              teamInitials(m.name)
-            )}
-          </button>
-        </UserMiniProfile>
+        <button
+          key={m.userId}
+          type="button"
+          title={m.relation ? `${m.name} · ${m.relation}` : m.name}
+          style={{
+            ...base,
+            background: grey,
+            marginLeft: i === 0 ? 0 : -10,
+            cursor: "pointer", padding: 0,
+            fontSize: 13, fontWeight: 600, color: greyText,
+            position: "relative", zIndex: people.length - i,
+          }}
+        >
+          {m.photo ? (
+            <img
+              src={m.photo}
+              alt={m.name}
+              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+            />
+          ) : (
+            teamInitials(m.name)
+          )}
+        </button>
       ))}
     </div>
   );
@@ -1079,7 +1078,13 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
                 <Star style={{ width: 18, height: 18, color: c.textMuted, flexShrink: 0 }} />
                 <div style={{ fontSize: 18, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{deal?.businessName || "Deal"}</div>
                 <div style={{ pointerEvents: "auto", flexShrink: 0 }}>
-                  <DealTeamAvatars team={payload?.team} directory={payload?.directory} />
+                  <AssignedTeamPopover
+                    dealId={dealId}
+                    team={payload?.team}
+                    onUpdated={fetchSubmission}
+                  >
+                    <DealTeamAvatars team={payload?.team} directory={payload?.directory} />
+                  </AssignedTeamPopover>
                 </div>
               </div>
               {(badges.length > 0 || effectiveDate) && (

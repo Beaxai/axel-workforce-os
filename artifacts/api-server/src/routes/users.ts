@@ -23,13 +23,13 @@ import {
 import {
   assembleProfile,
   canViewProfile,
-  isInternalRole,
 } from "../lib/user-profiles";
 
 const router: IRouter = Router();
 
 // Internal staff who may browse the raw user directory + manage users.
 const requireInternalSales = requireRoles("ADMIN", "CSA", "AGENT", "UNDERWRITER");
+const requireInternalDirectory = requireRoles("ADMIN", "CSA", "UNDERWRITER");
 const requireAdmin = requireRoles("ADMIN");
 
 /* ------------------------------------------------------------------ *
@@ -72,6 +72,46 @@ router.get("/", requireInternalSales, async (_req, res) => {
       orgName: orgByUser.get(r.id) ?? null,
       lastLoginAt: lastLoginByUser.get(r.id) ?? null,
     })),
+  );
+});
+
+router.get("/team", requireInternalDirectory, async (_req, res) => {
+  const rows = await db
+    .select({
+      firstName: usersTable.firstName,
+      lastName: usersTable.lastName,
+      email: usersTable.email,
+      title: userProfilesTable.title,
+      phoneDirect: userProfilesTable.phoneDirect,
+      phoneMobile: userProfilesTable.phoneMobile,
+      department: userProfilesTable.department,
+      role: orgMembersTable.role,
+    })
+    .from(usersTable)
+    .innerJoin(orgMembersTable, eq(orgMembersTable.userId, usersTable.id))
+    .leftJoin(userProfilesTable, eq(userProfilesTable.userId, usersTable.id));
+
+  const seen = new Set<string>();
+  return res.json(
+    rows
+      .filter((row) => {
+        if (!["ADMIN", "CSA", "UNDERWRITER"].includes(row.role?.toUpperCase() ?? "")) {
+          return false;
+        }
+        if (seen.has(row.email)) return false;
+        seen.add(row.email);
+        return true;
+      })
+      .map((row) => ({
+        name:
+          `${row.firstName ?? ""} ${row.lastName ?? ""}`.replace(/\s+/g, " ").trim() ||
+          row.email,
+        title: row.title ?? null,
+        email: row.email,
+        phoneDirect: row.phoneDirect ?? null,
+        phoneMobile: row.phoneMobile ?? null,
+        department: row.department ?? null,
+      })),
   );
 });
 
@@ -137,7 +177,7 @@ router.get("/:id/profile", async (req: Request<{ id: string }>, res: Response) =
   if (!(await canViewProfile(viewer, req.params.id))) {
     return res.status(403).json({ error: "Insufficient permissions" });
   }
-  const includeInternal = isInternalRole(viewer.role);
+  const includeInternal = viewer.role === "ADMIN";
   const payload = await assembleProfile(req.params.id, includeInternal);
   if (!payload) return res.status(404).json({ error: "Not found" });
   return res.json(payload);
@@ -178,6 +218,9 @@ const profilePatchSchema = z
     phone: z.string().nullable().optional(),
     mobile: z.string().nullable().optional(),
     title: z.string().nullable().optional(),
+    phoneDirect: z.string().nullable().optional(),
+    phoneMobile: z.string().nullable().optional(),
+    department: z.string().nullable().optional(),
     timezone: z.string().nullable().optional(),
     bio: z.string().nullable().optional(),
     internalNotes: z.string().nullable().optional(),
@@ -215,6 +258,9 @@ router.patch("/:id/profile", async (req: Request<{ id: string }>, res: Response)
   if (data.timezone !== undefined) profileUpdate.timezone = data.timezone;
   if (isAdmin) {
     if (data.title !== undefined) profileUpdate.title = data.title;
+    if (data.phoneDirect !== undefined) profileUpdate.phoneDirect = data.phoneDirect;
+    if (data.phoneMobile !== undefined) profileUpdate.phoneMobile = data.phoneMobile;
+    if (data.department !== undefined) profileUpdate.department = data.department;
     if (data.bio !== undefined) profileUpdate.bio = data.bio;
     if (data.internalNotes !== undefined) profileUpdate.internalNotes = data.internalNotes;
     if (data.roleMetadata !== undefined) profileUpdate.roleMetadata = data.roleMetadata;
@@ -237,7 +283,7 @@ router.patch("/:id/profile", async (req: Request<{ id: string }>, res: Response)
     }
   });
 
-  const includeInternal = isInternalRole(viewer.role);
+  const includeInternal = viewer.role === "ADMIN";
   const payload = await assembleProfile(targetId, includeInternal);
   if (!payload) return res.status(404).json({ error: "Not found" });
   return res.json(payload);

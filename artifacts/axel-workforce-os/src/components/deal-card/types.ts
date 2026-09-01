@@ -64,6 +64,11 @@ export interface DealTeamMember {
   agentFirstName?: string | null;
   agentLastName?: string | null;
   agentPartnerName?: string | null;
+  title?: string | null;
+  email?: string | null;
+  phoneDirect?: string | null;
+  phoneMobile?: string | null;
+  department?: string | null;
 }
 
 /** Scoped participant directory returned with the submission payload —
