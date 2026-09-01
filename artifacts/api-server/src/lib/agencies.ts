@@ -22,6 +22,14 @@ function asDatabaseJson(value: unknown): InsertAgency["statesLicensed"] {
   return JSON.parse(JSON.stringify(value)) as InsertAgency["statesLicensed"];
 }
 
+export function fillAgencyFieldIfEmpty<T>(current: T, incoming: T): T {
+  const empty =
+    current == null ||
+    (typeof current === "string" && current.trim() === "") ||
+    (Array.isArray(current) && current.length === 0);
+  return empty ? incoming : current;
+}
+
 export function normalizeAgencyName(value: string): string {
   return value
     .toLowerCase()
@@ -75,14 +83,14 @@ export async function createOrMatchAgency(
   const [updated] = await writer
     .update(agenciesTable)
     .set({
-      dba: agency.dba ?? input.dba,
+      dba: fillAgencyFieldIfEmpty(agency.dba, input.dba),
       status,
-      mainPhone: agency.mainPhone ?? input.mainPhone,
-      website: agency.website ?? input.website,
-      address: agency.address ?? input.address,
-      agencyNpn: agency.agencyNpn ?? input.agencyNpn,
-      statesLicensed: agency.statesLicensed ?? statesLicensed,
-      linesOfAuthority: agency.linesOfAuthority ?? linesOfAuthority,
+      mainPhone: fillAgencyFieldIfEmpty(agency.mainPhone, input.mainPhone),
+      website: fillAgencyFieldIfEmpty(agency.website, input.website),
+      address: fillAgencyFieldIfEmpty(agency.address, input.address),
+      agencyNpn: fillAgencyFieldIfEmpty(agency.agencyNpn, input.agencyNpn),
+      statesLicensed: fillAgencyFieldIfEmpty(agency.statesLicensed, statesLicensed),
+      linesOfAuthority: fillAgencyFieldIfEmpty(agency.linesOfAuthority, linesOfAuthority),
       updatedAt: new Date(),
     })
     .where(eq(agenciesTable.id, agency.id))

@@ -72,6 +72,17 @@ export function useCreateAgency() {
   });
 }
 
+export function useUpdateAgency() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) =>
+      api.patch<any>(`/agencies/${id}`, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["agencies"] });
+    },
+  });
+}
+
 export function useCreateAgent() {
   const qc = useQueryClient();
   return useMutation({

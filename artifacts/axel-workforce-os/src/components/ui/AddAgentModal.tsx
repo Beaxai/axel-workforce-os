@@ -4,6 +4,8 @@ import { useAgencies, useCreateAgency, useCreateAgent } from "@/hooks/use-contac
 import { useThemeStore } from "@/lib/theme-store";
 import { useContactRoles } from "@/hooks/use-contact-roles";
 
+const US_STATES = ["AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY"];
+
 export function AddAgentModal({ onClose }: { onClose: () => void }) {
   const { theme } = useThemeStore();
   const isDark = theme === "dark";
@@ -16,7 +18,10 @@ export function AddAgentModal({ onClose }: { onClose: () => void }) {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [selectedAgencyId, setSelectedAgencyId] = useState<string>("");
   const [isCreatingAgency, setIsCreatingAgency] = useState(false);
-  const [agencyForm, setAgencyForm] = useState({ legalName: "", dba: "", mainPhone: "", website: "" });
+  const [agencyForm, setAgencyForm] = useState({
+    legalName: "", dba: "", status: "active", mainPhone: "", website: "",
+    address: "", agencyNpn: "", statesLicensed: [] as string[], linesOfAuthority: [] as string[],
+  });
 
   const [agentForm, setAgentForm] = useState({ firstName: "", lastName: "", email: "", title: "", phoneDirect: "", phoneMobile: "", individualNpn: "", licenseStates: [] as string[] });
 
@@ -122,6 +127,15 @@ export function AddAgentModal({ onClose }: { onClose: () => void }) {
                 <label style={labelStyle}>DBA</label>
                 <input value={agencyForm.dba} onChange={e => setAgencyForm({ ...agencyForm, dba: e.target.value })} style={inputStyle} />
               </div>
+              <div>
+                <label style={labelStyle}>Status</label>
+                <select value={agencyForm.status} onChange={e => setAgencyForm({ ...agencyForm, status: e.target.value })} style={inputStyle}>
+                  <option value="pending">Pending</option>
+                  <option value="active">Active</option>
+                  <option value="suspended">Suspended</option>
+                  <option value="terminated">Terminated</option>
+                </select>
+              </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
                 <div>
                  <label style={labelStyle}>Main Phone *</label>
@@ -130,6 +144,37 @@ export function AddAgentModal({ onClose }: { onClose: () => void }) {
                 <div>
                   <label style={labelStyle}>Website</label>
                   <input value={agencyForm.website} onChange={e => setAgencyForm({ ...agencyForm, website: e.target.value })} style={inputStyle} />
+                </div>
+              </div>
+              <div>
+                <label style={labelStyle}>Address</label>
+                <input value={agencyForm.address} onChange={e => setAgencyForm({ ...agencyForm, address: e.target.value })} style={inputStyle} />
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                <div>
+                  <label style={labelStyle}>Agency NPN</label>
+                  <input value={agencyForm.agencyNpn} onChange={e => setAgencyForm({ ...agencyForm, agencyNpn: e.target.value })} style={inputStyle} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Lines of Authority</label>
+                  <input
+                    value={agencyForm.linesOfAuthority.join(", ")}
+                    onChange={e => setAgencyForm({ ...agencyForm, linesOfAuthority: e.target.value.split(",").map(v => v.trim()).filter(Boolean) })}
+                    style={inputStyle}
+                    placeholder="P&C, Life"
+                  />
+                </div>
+              </div>
+              <div>
+                <label style={labelStyle}>States Licensed</label>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", maxHeight: "120px", overflowY: "auto", padding: "8px", background: "var(--input-bg)", borderRadius: "8px", border: "1px solid var(--input-border)" }}>
+                  {US_STATES.map(state => {
+                    const selected = agencyForm.statesLicensed.includes(state);
+                    return <button type="button" key={state} onClick={() => setAgencyForm({
+                      ...agencyForm,
+                      statesLicensed: selected ? agencyForm.statesLicensed.filter(value => value !== state) : [...agencyForm.statesLicensed, state],
+                    })} style={{ padding: "4px 8px", borderRadius: "4px", border: "none", cursor: "pointer", fontSize: "12px", background: selected ? "var(--accent-primary)" : "rgba(128,128,128,0.12)", color: selected ? "#fff" : "var(--input-text)" }}>{state}</button>;
+                  })}
                 </div>
               </div>
             </div>

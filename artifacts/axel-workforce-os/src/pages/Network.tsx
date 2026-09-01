@@ -112,6 +112,7 @@ export default function Network() {
     const result = Object.entries(groups).map(([aid, agents]) => {
       const agency = agencies.find((a: any) => a.id === aid);
       return {
+        agency,
         agencyId: aid,
         agencyName: agency?.legalName || agents[0]?.agencyLegalName || "Unknown Agency",
         agencyStatus: agency?.status || agents[0]?.agencyStatus || "Active",
@@ -220,6 +221,7 @@ export default function Network() {
                 agencyId={group.agencyId}
                 agencyName={group.agencyName}
                 agencyStatus={group.agencyStatus}
+                agency={group.agency}
                 agents={group.agents}
                 deals={deals}
               />
