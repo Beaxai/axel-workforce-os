@@ -7,7 +7,6 @@ export interface Contact {
   entityId: string;
   firstName: string;
   lastName: string;
-  title?: string;
   role?: string;
   email?: string;
   phone?: string;

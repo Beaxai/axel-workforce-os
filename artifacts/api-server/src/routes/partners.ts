@@ -23,12 +23,18 @@ const agencyContactSchema = z.object({
   firstName: z.string().trim().min(1),
   lastName: z.string().trim().min(1),
   email: z.email(),
-  title: z.string().trim().optional(),
   phone: z.string().trim().optional(),
   mobile: z.string().trim().optional(),
-  role: z
-    .enum(["office_manager", "accounting", "licensing", "other"])
-    .default("other"),
+  role: z.enum([
+    "principal",
+    "producer",
+    "account_executive",
+    "account_manager",
+    "accounting_manager",
+    "csr",
+    "marketing",
+    "other",
+  ]),
   isPrimary: z.boolean().default(false),
   notes: z.string().trim().optional(),
 });

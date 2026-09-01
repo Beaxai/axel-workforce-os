@@ -138,7 +138,6 @@ export function AgencyGroupCard({ agency, agencyId, agencyName, agencyStatus, ag
                 key={contact.id}
                 variant="partner_contact"
                 name={`${contact.firstName} ${contact.lastName}`}
-                title={contact.title}
                 role={contact.role}
                 email={contact.email}
                 phoneDirect={contact.phone}
@@ -288,7 +287,6 @@ export function OrgGroupCard({ org, type }: { org: any, type: string }) {
                 key={c.id}
                 variant="partner_contact"
                 name={`${c.firstName} ${c.lastName}`}
-                title={c.title}
                 role={c.role}
                 email={c.email}
                 phoneDirect={c.phone}

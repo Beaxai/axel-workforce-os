@@ -13,6 +13,11 @@ interface ContactModalProps {
   title?: string;
 }
 
+const roleLabel = (role: string) =>
+  role === "csr"
+    ? "CSR"
+    : role.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+
 export function ContactModal({ isOpen, onClose, onSubmit, onDelete, initialData, entityType, title }: ContactModalProps) {
   const { theme } = useThemeStore();
   const isDark = theme === "dark";
@@ -21,7 +26,6 @@ export function ContactModal({ isOpen, onClose, onSubmit, onDelete, initialData,
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
-    title: "",
     role: "",
     email: "",
     phone: "",
@@ -34,7 +38,6 @@ export function ContactModal({ isOpen, onClose, onSubmit, onDelete, initialData,
       setForm({
         firstName: initialData.firstName || "",
         lastName: initialData.lastName || "",
-        title: initialData.title || "",
         role: initialData.role || "",
         email: initialData.email || "",
         phone: initialData.phone || "",
@@ -45,7 +48,6 @@ export function ContactModal({ isOpen, onClose, onSubmit, onDelete, initialData,
       setForm({
         firstName: "",
         lastName: "",
-        title: "",
         role: "",
         email: "",
         phone: "",
@@ -85,20 +87,19 @@ export function ContactModal({ isOpen, onClose, onSubmit, onDelete, initialData,
           </div>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-          <div>
-            <label style={labelStyle}>Title</label>
-            <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} style={inputStyle} />
-          </div>
-          <div>
-             <label style={labelStyle}>Role *</label>
-            <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} style={inputStyle}>
-              <option value="">Select role...</option>
-              {roles.map(r => (
-                 <option key={r} value={r}>{r.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase())}</option>
-              ))}
-            </select>
-          </div>
+        <div>
+          <label style={labelStyle}>Role *</label>
+          <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} style={inputStyle}>
+            <option value="">Select role...</option>
+            {roles.map(r => (
+              <option key={r} value={r}>{roleLabel(r)}</option>
+            ))}
+          </select>
+          {entityType === "agency" && form.role === "producer" && (
+            <p style={{ fontSize: "12px", color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.58)", margin: "6px 0 0" }}>
+              Producers who refer deals and need platform access are added under Agents, not as contacts.
+            </p>
+          )}
         </div>
 
         <div>

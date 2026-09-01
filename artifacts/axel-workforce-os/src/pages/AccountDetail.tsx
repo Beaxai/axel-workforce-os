@@ -358,7 +358,6 @@ export default function AccountDetail() {
                     key={c.id}
                     variant="client_contact"
                     name={`${c.firstName} ${c.lastName}`}
-                    title={c.title}
                     role={c.role}
                     email={c.email}
                     phoneDirect={c.phone}

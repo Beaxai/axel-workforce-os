@@ -41,7 +41,16 @@ export const CONTACT_ROLES = {
     "other",
   ],
   vendor: ["account_manager", "support", "billing", "other"],
-  agency: ["office_manager", "accounting", "licensing", "other"],
+  agency: [
+    "principal",
+    "producer",
+    "account_executive",
+    "account_manager",
+    "accounting_manager",
+    "csr",
+    "marketing",
+    "other",
+  ],
 } as const satisfies Record<
   (typeof CONTACT_ENTITY_TYPES)[number],
   readonly string[]
@@ -84,7 +93,7 @@ export const contactsTable = pgTable(
 );
 
 export const insertContactSchema = createInsertSchema(contactsTable)
-  .omit({ id: true, createdAt: true, updatedAt: true })
+  .omit({ id: true, title: true, createdAt: true, updatedAt: true })
   .extend({ email: z.email().nullable().optional() });
 export type InsertContact = z.infer<typeof insertContactSchema>;
 export type Contact = typeof contactsTable.$inferSelect;

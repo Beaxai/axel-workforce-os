@@ -5,6 +5,7 @@ import { useThemeStore } from "@/lib/theme-store";
 import { useContactRoles } from "@/hooks/use-contact-roles";
 
 const US_STATES = ["AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY"];
+const roleLabel = (role: string) => role === "csr" ? "CSR" : role.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 
 export function AddAgentModal({ onClose }: { onClose: () => void }) {
   const { theme } = useThemeStore();
@@ -241,9 +242,14 @@ export function AddAgentModal({ onClose }: { onClose: () => void }) {
               <input placeholder="Email" type="email" value={contactForm.email} onChange={e => setContactForm({ ...contactForm, email: e.target.value })} style={{ ...inputStyle, padding: "8px" }} />
               <select value={contactForm.role} onChange={e => setContactForm({ ...contactForm, role: e.target.value })} style={{ ...inputStyle, padding: "8px" }}>
                 <option value="">Select role...</option>
-                {(roleVocabulary?.agency || []).map((role) => <option key={role} value={role}>{role.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase())}</option>)}
+                {(roleVocabulary?.agency || []).map((role) => <option key={role} value={role}>{roleLabel(role)}</option>)}
               </select>
             </div>
+            {contactForm.role === "producer" && (
+              <p style={{ fontSize: "12px", color: textMuted, margin: "0 0 8px" }}>
+                Producers who refer deals and need platform access are added under Agents, not as contacts.
+              </p>
+            )}
             <GhostButton onClick={handleAddContact} disabled={!contactForm.firstName || !contactForm.lastName || !contactForm.email || !contactForm.role} style={{ width: "100%", padding: "6px" }}>Add Contact</GhostButton>
           </div>
 

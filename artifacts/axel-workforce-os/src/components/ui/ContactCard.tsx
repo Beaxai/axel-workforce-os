@@ -44,8 +44,11 @@ export function ContactCard({
   const textMuted = isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.58)";
   const iconColor = isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.4)";
   const roleLabel = role
-    ? role.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase())
+    ? role === "csr"
+      ? "CSR"
+      : role.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase())
     : "";
+  const isContact = variant === "client_contact" || variant === "partner_contact";
   const statusKey = status?.toLowerCase();
   const statusStyle =
     statusKey === "active"
@@ -87,10 +90,10 @@ export function ContactCard({
                 </span>
               )}
             </div>
-            {(title || roleLabel) && (
+            {((!isContact && title) || roleLabel) && (
               <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "3px" }}>
-                {title && <span style={{ fontSize: "12px", color: textMuted }}>{title}</span>}
-                {title && roleLabel && <span style={{ color: textMuted, fontSize: "10px" }}>·</span>}
+                {!isContact && title && <span style={{ fontSize: "12px", color: textMuted }}>{title}</span>}
+                {!isContact && title && roleLabel && <span style={{ color: textMuted, fontSize: "10px" }}>·</span>}
                 {roleLabel && <span style={{ fontSize: "10px", color: textMuted, background: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.06)", borderRadius: "999px", padding: "2px 7px" }}>{roleLabel}</span>}
               </div>
             )}
