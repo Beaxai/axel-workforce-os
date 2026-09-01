@@ -60,6 +60,10 @@ export const agentComplianceTable = pgTable("agent_compliance", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).default(sql`now()`),
 });
 
-export const insertAgentRegistrationSchema = createInsertSchema(agentRegistrationsTable).omit({ id: true, createdAt: true });
+export const insertAgentRegistrationSchema = createInsertSchema(
+  agentRegistrationsTable,
+)
+  .omit({ id: true, createdAt: true })
+  .extend({ email: z.email() });
 export type InsertAgentRegistration = z.infer<typeof insertAgentRegistrationSchema>;
 export type AgentRegistration = typeof agentRegistrationsTable.$inferSelect;
