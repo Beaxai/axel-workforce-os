@@ -6,9 +6,11 @@ import {
   usersTable,
   orgMembersTable,
   userProfilesTable,
+  partnersTable,
 } from "@workspace/db";
-import { eq, desc } from "drizzle-orm";
+import { and, eq, desc } from "drizzle-orm";
 import { findUserByEmail, getAuthUserById } from "../lib/auth";
+import { createOrMatchAgency } from "../lib/agencies";
 
 const router: IRouter = Router();
 
@@ -94,6 +96,35 @@ router.post("/:id/approve", async (req: Request<{ id: string }>, res: Response) 
   const existing = await findUserByEmail(reg.email);
 
   const userId = await db.transaction(async (tx) => {
+    const agency = await createOrMatchAgency(tx, {
+      legalName: reg.agencyName,
+      dba: reg.agencyDba,
+      status: "active",
+      mainPhone: reg.agencyPhone,
+      website: reg.agencyWebsite,
+      address: reg.agencyAddress,
+      agencyNpn: reg.agencyNpn,
+      statesLicensed: reg.statesLicensed,
+      linesOfAuthority: reg.linesOfAuthority,
+    });
+    if (reg.partnerId) {
+      const [linkedPartner] = await tx
+        .update(partnersTable)
+        .set({ agencyId: agency.id, updatedAt: new Date() })
+        .where(
+          and(
+            eq(partnersTable.id, reg.partnerId),
+            eq(partnersTable.partnerType, "Agent"),
+          ),
+        )
+        .returning({ id: partnersTable.id });
+      if (!linkedPartner) {
+        throw new Error(
+          "Registration partner link must reference an Agent partner",
+        );
+      }
+    }
+
     let uid: string;
     if (existing) {
       uid = existing.id;
@@ -122,7 +153,12 @@ router.post("/:id/approve", async (req: Request<{ id: string }>, res: Response) 
       });
     await tx
       .update(agentRegistrationsTable)
-      .set({ status: "approved", userId: uid, reviewedAt: new Date() })
+      .set({
+        agencyId: agency.id,
+        status: "approved",
+        userId: uid,
+        reviewedAt: new Date(),
+      })
       .where(eq(agentRegistrationsTable.id, reg.id));
     return uid;
   });

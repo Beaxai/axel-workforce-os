@@ -5,10 +5,12 @@ import { sql } from "drizzle-orm";
 import { usersTable } from "./users";
 import { organizationsTable } from "./organizations";
 import { partnersTable } from "./partners";
+import { agenciesTable } from "./agencies";
 
 export const agentRegistrationsTable = pgTable("agent_registrations", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   agencyName: text("agency_name").notNull(),
+  agencyId: uuid("agency_id").references(() => agenciesTable.id),
   agencyDba: text("agency_dba"),
   agencyAddress: text("agency_address").notNull(),
   agencyPhone: text("agency_phone").notNull(),

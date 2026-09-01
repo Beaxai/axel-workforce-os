@@ -56,12 +56,33 @@ Otherwise proceed.
 
 ---
 
+## ARCHITECTURE DECISION (from Part 0 findings — settled, do not revisit)
+
+partners remains the canonical Network entity for all four partner types.
+Do NOT create a standalone agents table, do NOT migrate Agent-type
+partner rows to a new table, do NOT change the /partners API contract or
+the /network/agents/:partnerId route. Structure is added ALONGSIDE
+partners:
+
+- agencies (new) — the agency org record; Agent-type partners link to it
+- agent_profiles (new, 1:1 with Agent-type partners) — structured
+  person fields
+- contacts (extended) — directory people for client/carrier/PEO/vendor/
+  agency; entity_id for carrier, peo_partner, and vendor contacts is the
+  partners.id of that org's partner row
+
+OUT OF SCOPE: carrier identity is currently spread across partners,
+markets, and organizations (policies.carrier_org_id → organizations).
+Do not attempt to unify these in this build. Do not modify markets,
+organizations, or policies. market_underwriters stays as-is for routing.
+
 ## PART 1 — AGENCIES TABLE + EXTRACTION
 
-The current agent_registrations table embeds agency data as flat text
-columns (agency_name, agency_dba, agency_address, agency_phone,
-agency_website, agency_npn, states_licensed, lines_of_authority). Agencies
-must become first-class records.
+Agency data currently lives as flat text in two places:
+agent_registrations (agency_name, agency_dba, agency_address,
+agency_phone, agency_website, agency_npn, states_licensed,
+lines_of_authority) and partners.agency_name on Agent-type rows.
+Agencies become first-class records.
 
 1. New table: agencies
    - id (uuid pk, default gen_random_uuid())
@@ -77,52 +98,76 @@ must become first-class records.
    - lines_of_authority (jsonb)
    - created_at, updated_at (timestamptz, default now())
 
-2. Alter agent_registrations: add agency_id (uuid, FK to agencies.id,
-   nullable for now).
+2. Alter agent_registrations: add agency_id (uuid, FK agencies.id,
+   nullable). Alter partners: add agency_id (uuid, FK agencies.id,
+   nullable — only meaningful on Agent-type rows).
 
-3. Backfill: for each existing registration row, create an agencies row
-   from its agency_* text columns and set agency_id. Dedupe by
-   lower(trim(agency_name)) — identical names share one agency record.
-   The existing agency_* text columns stay in place (rule 2), the
-   agencies table is now the source of truth.
+3. Backfill, deduped by lower(trim(name)) across BOTH sources so the
+   same agency named in a registration and on a partner row yields ONE
+   agencies record:
+   a. Each agent_registrations row: create-or-match an agencies row
+      from its agency_* columns, set agency_id. (Current row: Test
+      Agency, status pending — the agency record it creates is
+      'pending', matching its registration status.)
+   b. Each Agent-type partners row with non-empty agency_name:
+      create-or-match an agencies row (legal_name = agency_name, status
+      'active' since the partner is live), set partners.agency_id.
+   All source text columns stay in place (rule 2); agencies is now the
+   source of truth.
 
-4. Going forward: when a registration is approved (status transition to
-   approved/active), the approval handler creates-or-matches an agencies
-   record from the registration's agency fields and sets agency_id.
-   Match on lower(trim(agency_name)); if a near-match exists (same name
-   differing only in case/whitespace/punctuation), attach to it rather
-   than creating a duplicate.
+4. Going forward: when a registration is approved, the approval handler
+   creates-or-matches the agencies record and sets agency_id on both the
+   registration and the partner row it creates (Part 2 item 3). Match on
+   lower(trim(agency_name)); near-matches (case/whitespace/punctuation
+   differences only) attach rather than duplicate.
 
-## PART 2 — AGENTS AS ENTITIES
+## PART 2 — AGENT PROFILES (1:1 WITH AGENT-TYPE PARTNERS)
 
-agent_registrations is an intake/workflow record (it carries status,
-reviewed_by, decline_reason, agreement and zoom timestamps). The agent as
-a person needs its own entity record that the Network module reads.
+partners rows for Agents carry only a single name text field and loose
+contact fields. Structured person data goes in a profile table keyed to
+the partner, so all existing wiring (Network API, detail routes, FKs)
+keeps working untouched.
 
-1. New table: agents
-   - id (uuid pk)
-   - agency_id (uuid, FK agencies.id, not null)
-   - registration_id (uuid, FK agent_registrations.id)
-   - user_id (uuid, nullable — links to login account when one exists)
-   - first_name (text, not null), last_name (text, not null)
+1. New table: agent_profiles
+   - partner_id (uuid pk, FK partners.id) — one profile per Agent
+     partner
+   - registration_id (uuid, FK agent_registrations.id, nullable — the
+     registration that spawned this agent, when one exists)
+   - user_id (uuid, FK users.id, nullable — login account when issued)
+   - first_name (text, not null), last_name (text)
    - title (text)
-   - email (text, not null), phone_direct (text), phone_mobile (text)
+   - phone_direct (text), phone_mobile (text)
    - individual_npn (text), license_numbers (jsonb)
-   - status (text check in: pending, active, suspended, terminated)
    - created_at, updated_at
+   Email and status stay on partners (contact_email, status) — do not
+   duplicate them.
 
-   (If Part 0 found an existing partners table serving this purpose,
-   extend it with any missing columns above instead of creating agents,
-   and report the mapping.)
+2. Backfill for existing Agent-type partners rows: split partners.name
+   on the first space into first_name/last_name. Names that do not
+   split cleanly (single token like "Brendy", 3+ tokens, empty) get
+   first_name = full value, last_name = NULL, and a row in a new
+   name_review table (partner_id, original_value, created_at). Do not
+   guess. Copy npn → individual_npn and license_states →
+   license_numbers-adjacent data as appropriate; report the mapping.
 
-2. Backfill: create one agents row from each existing approved/active
-   registration (first_name, last_name, title, email, phone →
-   phone_direct, individual_npn, license_numbers, agency_id, user_id).
+3. Approval handler: approving a registration (a) creates-or-matches
+   the agency (Part 1.4), (b) creates the partners row (partner_type
+   'Agent', name composed from registration first/last, contact_email
+   from registration email, agency_id set), (c) creates the
+   agent_profiles row from the registration's person fields, and
+   (d) sets agent_registrations.partner_id — the FK slot that already
+   exists for exactly this purpose.
 
-3. Approval handler (extends Part 1 item 4): approving a registration
-   creates the agents row.
+4. Also add a real FK from agent_registrations.user_id to users.id
+   (Part 0 found the column exists with no enforced constraint).
+   Validate existing values first (the one row has it unset, so this is
+   safe); report if any value would violate the constraint instead of
+   forcing it.
 
-4. Point the Network > Agents tab API at agents joined to agencies.
+5. Network > Agents tab API keeps reading partners WHERE partner_type =
+   'Agent', now joined to agent_profiles and agencies for display
+   fields. Response shape may gain fields but must not remove or rename
+   existing ones.
 
 ## PART 3 — CONTACTS TABLE EXTENSION
 
@@ -215,17 +260,17 @@ Client contacts in Accounts:
 - Accounts with zero contacts show inline amber warning: "No primary
   contact on file"
 
-## PART 5 — DISPLAY NAME FIX
+## PART 5 — DISPLAY NAME HELPER
 
-No name migration is needed — first_name and last_name already exist and
-are populated. The current UI renders "Brendy" because it is not
-composing the full name.
-
-1. Audit every place an agent name renders (Network cards, detail page,
-   deal cards, activity log, @mentions) and render
-   first_name + " " + last_name consistently.
-2. Add a shared displayName(person) helper; use it everywhere. Trim and
-   collapse whitespace; if last_name is null, render first_name alone.
+1. Add a shared displayName helper used everywhere an agent renders
+   (Network cards, detail page, deal cards, activity log, @mentions):
+   agent_profiles first_name + " " + last_name when a profile exists
+   (last_name null → first_name alone); fall back to partners.name when
+   no profile exists. Trim and collapse whitespace.
+2. Registrations render registration first_name + last_name (already
+   split columns).
+3. Rows in name_review render their fallback normally — the review
+   queue is an admin cleanup list, not a display blocker.
 
 ## PART 6 — AGENT DETAIL PAGE REDESIGN
 
@@ -286,9 +331,10 @@ card (replaced by the chip).
 Axel staff are users, not contacts. Do not put staff in the contacts
 table.
 
-1. New table: staff_profiles — user_id (uuid pk/FK to the users/auth
-   table identified in Part 0), title (text), phone_direct (text),
-   phone_mobile (text), department (text), updated_at.
+1. A user_profiles table already exists (Part 0 table list). Inspect
+   its columns and report them; ADD any of title, phone_direct,
+   phone_mobile, department that are missing rather than creating a new
+   table. Do not rename or repurpose existing user_profiles columns.
 2. Internal-only Team directory view (visible to internal roles only)
    listing staff as staff-variant ContactCards, populated from the user
    record + staff_profiles.
@@ -303,10 +349,19 @@ table.
 1.  Part 0 findings reported (partner_id/user_id references, Network
     data source) before any migration ran
 2.  Backup tables exist for every altered table; row counts reported
-3.  Existing "Test Agency" registration produced one agencies row and
-    one agents row; agency_id set; nothing dropped
-4.  Approving a new registration auto-creates/matches agency and creates
-    the agent; near-duplicate agency names attach, not duplicate
+3.  Backfill: the Test Agency registration produced a pending agencies
+    row; every Agent-type partners row has an agent_profiles row and
+    (where agency_name was present) an agency_id; the same agency name
+    across sources produced ONE agencies record; nothing dropped
+4.  Approving a registration creates-or-matches the agency, creates the
+    partners row and agent_profiles row, and sets
+    agent_registrations.partner_id; near-duplicate agency names attach,
+    not duplicate
+4b. Single-token partner names (e.g. "Brendy") landed in name_review
+    with last_name NULL — no guessed surnames anywhere
+4c. GET /partners?type=Agent returns at least all fields it returned
+    before this build (no removed/renamed fields); existing detail
+    route /network/agents/:partnerId still resolves
 5.  Creating a second agent under an existing agency groups both under
     one agency card in Network
 6.  contacts extended in place — table was not recreated; new columns
@@ -316,8 +371,9 @@ table.
 8.  Invalid email rejected at API on contact and agent create
 9.  Agent detail page renders no dashes and no placeholder cards;
     removed cards are gone
-10. "Brendy" now renders as the full first + last name everywhere it
-    appears
+10. displayName renders profile first+last where a profile exists and
+    falls back to partners.name where it does not; no blank names, no
+    "undefined", no dashes anywhere an agent renders
 11. Suspend requires confirm dialog; on confirm status changes and
     portal access is revoked
 12. Registration chip reflects agent_registrations status transitions
