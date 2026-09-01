@@ -61,7 +61,7 @@ export default function AssignedTeamPopover({ dealId, team, children, onUpdated 
       } catch {
         // Keep the original API message.
       }
-      setError(msg || "Add NPN, license state, and current E&O before this agent can be attached to quoted deals.");
+      setError(msg || "This agent (or their agency) is suspended and cannot be attached to deals.");
     } finally {
       setAssigning(false);
     }

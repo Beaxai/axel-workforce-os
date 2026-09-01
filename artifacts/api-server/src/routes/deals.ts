@@ -212,9 +212,14 @@ router.post("/", async (req, res) => {
   if (invalid) return res.status(400).json({ error: invalid });
   const invalidProduct = validateProductType(parsed.data.productType);
   if (invalidProduct) return res.status(400).json({ error: invalidProduct });
+  if (
+    parsed.data.producingAgentId !== undefined &&
+    !["ADMIN", "CSA", "UNDERWRITER"].includes(req.user?.role ?? "")
+  ) {
+    return res.status(403).json({ error: "Insufficient permissions" });
+  }
   const attachmentGate = await validateNewProducingAgentAttachment({
     agentUserId: parsed.data.producingAgentId,
-    stage: parsed.data.stage ?? "SUBMISSION_REVIEW",
   });
   if (!attachmentGate.allowed) return res.status(409).json(attachmentGate);
   let accountId = parsed.data.accountId;
@@ -284,7 +289,6 @@ router.patch(
         dbc: tx,
         agentUserId: parsed.data.producingAgentId,
         existingAgentUserId: existing.producingAgentId,
-        stage: existing.stage,
       });
       if (!gate.allowed) return { status: 409, body: gate };
 
@@ -338,16 +342,18 @@ router.patch("/:id", async (req, res) => {
     const stageChanging = nextStage !== undefined && nextStage !== existing.stage;
     if (
       parsed.data.producingAgentId !== undefined &&
+      !["ADMIN", "CSA", "UNDERWRITER"].includes(req.user?.role ?? "")
+    ) {
+      return { status: 403, body: { error: "Insufficient permissions" } };
+    }
+    if (
+      parsed.data.producingAgentId !== undefined &&
       parsed.data.producingAgentId !== existing.producingAgentId
     ) {
-      if (!["ADMIN", "CSA", "UNDERWRITER"].includes(req.user?.role ?? "")) {
-        return { status: 403, body: { error: "Insufficient permissions" } };
-      }
       const attachmentGate = await validateNewProducingAgentAttachment({
         dbc: tx,
         agentUserId: parsed.data.producingAgentId,
         existingAgentUserId: existing.producingAgentId,
-        stage: parsed.data.stage ?? existing.stage,
       });
       if (!attachmentGate.allowed) {
         return { status: 409, body: attachmentGate };

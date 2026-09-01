@@ -1,10 +1,9 @@
 import {
   agentProfilesTable,
-  agentRegistrationsTable,
+  agenciesTable,
   db,
   partnersTable,
 } from "@workspace/db";
-import { PIPELINE_STAGE_KEYS } from "@workspace/pipeline";
 import { eq } from "drizzle-orm";
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -12,93 +11,58 @@ type DbOrTx = typeof db | Tx;
 
 export const AGENT_ATTACHMENT_GATE_CODE = "AGENT_ATTACHMENT_BLOCKED";
 export const AGENT_ATTACHMENT_GATE_MESSAGE =
-  "Add NPN, license state, and current E&O before this agent can be attached to quoted deals.";
-
-const UW_REVIEW_INDEX = PIPELINE_STAGE_KEYS.indexOf("UW_REVIEW");
-
-function stageRequiresQualifiedAgent(stage: string | null | undefined): boolean {
-  if (!stage) return false;
-  const index = PIPELINE_STAGE_KEYS.indexOf(stage as (typeof PIPELINE_STAGE_KEYS)[number]);
-  return index >= UW_REVIEW_INDEX;
-}
-
-function profileLicenseStates(value: unknown): string[] {
-  if (!value || typeof value !== "object") return [];
-  const states = (value as { statesLicensed?: unknown }).statesLicensed;
-  return Array.isArray(states)
-    ? states.filter((state): state is string => typeof state === "string" && state.trim().length > 0)
-    : [];
-}
+  "This agent (or their agency) is suspended and cannot be attached to deals.";
 
 export interface AgentAttachmentGateResult {
   allowed: boolean;
   code?: typeof AGENT_ATTACHMENT_GATE_CODE;
   error?: typeof AGENT_ATTACHMENT_GATE_MESSAGE;
-  missing?: Array<"npn" | "licenseState" | "currentEo">;
+}
+
+export function isActiveAgentAgencyAssociation(
+  agentStatus: string | null | undefined,
+  agencyStatus: string | null | undefined,
+): boolean {
+  return agentStatus?.toLowerCase() === "active" && agencyStatus?.toLowerCase() === "active";
 }
 
 /**
- * The single gate for every runtime write that creates a producing-Agent
+ * The single gate for every runtime write that creates a producing-agent
  * association. Existing associations and detach operations intentionally pass.
+ * Attachments only require an active agent and active agency; registration
+ * approval is the compliance checkpoint, not this association operation.
  */
 export async function validateNewProducingAgentAttachment({
   dbc = db,
   agentUserId,
   existingAgentUserId,
-  stage,
 }: {
   dbc?: DbOrTx;
   agentUserId: string | null | undefined;
   existingAgentUserId?: string | null;
-  stage: string | null | undefined;
 }): Promise<AgentAttachmentGateResult> {
   if (
-    !agentUserId ||
-    agentUserId === existingAgentUserId ||
-    !stageRequiresQualifiedAgent(stage)
+    !agentUserId || agentUserId === existingAgentUserId
   ) {
     return { allowed: true };
   }
 
   const [agent] = await dbc
     .select({
-      individualNpn: agentProfilesTable.individualNpn,
-      licenseNumbers: agentProfilesTable.licenseNumbers,
-      legacyLicenseStates: partnersTable.licenseStates,
-      eoExpirationDate: agentRegistrationsTable.eoExpirationDate,
+      agentStatus: partnersTable.status,
+      agencyStatus: agenciesTable.status,
     })
     .from(agentProfilesTable)
     .innerJoin(partnersTable, eq(partnersTable.id, agentProfilesTable.partnerId))
-    .leftJoin(
-      agentRegistrationsTable,
-      eq(agentRegistrationsTable.id, agentProfilesTable.registrationId),
-    )
+    .innerJoin(agenciesTable, eq(agenciesTable.id, partnersTable.agencyId))
     .where(eq(agentProfilesTable.userId, agentUserId))
     .limit(1);
 
-  const missing: AgentAttachmentGateResult["missing"] = [];
-  if (!agent?.individualNpn?.trim()) missing.push("npn");
-  const states = [
-    ...(agent?.legacyLicenseStates ?? []),
-    ...profileLicenseStates(agent?.licenseNumbers),
-  ];
-  if (states.length === 0) missing.push("licenseState");
-
-  const eoDate = agent?.eoExpirationDate
-    ? new Date(agent.eoExpirationDate)
-    : null;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  if (!eoDate || Number.isNaN(eoDate.getTime()) || eoDate < today) {
-    missing.push("currentEo");
-  }
-
-  return missing.length === 0
+  return isActiveAgentAgencyAssociation(agent?.agentStatus, agent?.agencyStatus)
     ? { allowed: true }
     : {
         allowed: false,
         code: AGENT_ATTACHMENT_GATE_CODE,
         error: AGENT_ATTACHMENT_GATE_MESSAGE,
-        missing,
       };
 }

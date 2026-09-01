@@ -7,6 +7,7 @@ import { useContactRoles } from "@/hooks/use-contact-roles";
 import { useNavigate } from "react-router-dom";
 import { displayName } from "@/lib/agent-display-name";
 import { useAuthStore } from "@/lib/auth-store";
+import { agencyEoStatus, agencyRegistrationStatus } from "@/lib/agency-registration-status";
 
 const US_STATES = ["AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY"];
 
@@ -37,6 +38,8 @@ export function AgencyGroupCard({ agency, agencyId, agencyName, agencyStatus, ag
     .reduce((sum, deal) => sum + Number(deal.wcPremium || deal.estimatedPremium || 0), 0);
   const states = Array.isArray(agency?.statesLicensed) ? agency.statesLicensed : [];
   const agencyIsActive = agencyStatus?.toLowerCase() === "active";
+  const registrationStatus = agencyRegistrationStatus(agency?.registration);
+  const eoStatus = agencyEoStatus(agency?.registration);
 
   return (
     <GlassCard padding="0">
@@ -75,6 +78,16 @@ export function AgencyGroupCard({ agency, agencyId, agencyName, agencyStatus, ag
              <p style={{ margin: "5px 0 0", fontSize: "11px", color: textMuted }}>
                {activeDeals.length} deals referred · ${wcPremium.toLocaleString()} WC premium
              </p>
+              <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "6px", marginTop: "6px" }}>
+                <span style={{
+                  padding: "3px 8px", borderRadius: "999px", fontSize: "10px", fontWeight: 600,
+                  color: registrationStatus.color === "green" ? "#1EE97B" : registrationStatus.color === "yellow" ? "#E9C31E" : textMuted,
+                  background: registrationStatus.color === "green" ? "rgba(30,233,123,0.12)" : registrationStatus.color === "yellow" ? "rgba(233,195,30,0.12)" : "rgba(128,128,128,0.12)",
+                }}>
+                  {registrationStatus.label}
+                </span>
+                {eoStatus && <span style={{ fontSize: "11px", color: eoStatus.color, fontWeight: 600 }}>{eoStatus.label}</span>}
+              </div>
           </div>
         </div>
          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>

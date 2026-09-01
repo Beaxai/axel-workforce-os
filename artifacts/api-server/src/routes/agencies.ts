@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { agenciesTable, db } from "@workspace/db";
-import { asc, eq } from "drizzle-orm";
+import { agenciesTable, agentRegistrationsTable, db } from "@workspace/db";
+import { asc, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod/v4";
 import { createOrMatchAgency } from "../lib/agencies";
 import { requireRoles } from "../middleware/require-auth";
@@ -36,7 +36,40 @@ router.get("/", async (_req, res) => {
     .select()
     .from(agenciesTable)
     .orderBy(asc(agenciesTable.legalName));
-  res.json(rows);
+  const registrations = rows.length
+    ? await db
+        .select({
+          agencyId: agentRegistrationsTable.agencyId,
+          agreementSignedAt: agentRegistrationsTable.agreementSignedAt,
+          zoomScheduledAt: agentRegistrationsTable.zoomScheduledAt,
+          eoExpirationDate: agentRegistrationsTable.eoExpirationDate,
+          createdAt: agentRegistrationsTable.createdAt,
+        })
+        .from(agentRegistrationsTable)
+        .where(inArray(agentRegistrationsTable.agencyId, rows.map((agency) => agency.id)))
+        .orderBy(desc(agentRegistrationsTable.createdAt), desc(agentRegistrationsTable.id))
+    : [];
+  // Results are ordered newest-first, so the first value retained per agency is
+  // the deterministic latest linked registration.
+  const registrationByAgency = new Map<string, (typeof registrations)[number]>();
+  for (const registration of registrations) {
+    if (registration.agencyId && !registrationByAgency.has(registration.agencyId)) {
+      registrationByAgency.set(registration.agencyId, registration);
+    }
+  }
+  res.json(rows.map((agency) => {
+    const registration = registrationByAgency.get(agency.id);
+    return {
+      ...agency,
+      registration: registration
+        ? {
+            agreementSignedAt: registration.agreementSignedAt,
+            zoomScheduledAt: registration.zoomScheduledAt,
+            eoExpirationDate: registration.eoExpirationDate,
+          }
+        : null,
+    };
+  }));
 });
 
 router.post("/", requireRoles("ADMIN", "CSA"), async (req, res) => {

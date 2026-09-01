@@ -17,3 +17,4 @@
 - [PEO implementation tracker](peo-tracker.md) — WC sub-items reuse WC task keys; CSA-PEO anchors payroll from satisfiedAt; go-live 409-gated on phases 3+4; pre-bind signing caught up at instantiation.
 - [Deal-card phase time filter](phase-time-filter.md) — stage moves live under 3 event types (STAGE_CHANGE, deal_approved, deal_declined); keep multi-interval union; drag uses window pointermove hit-testing; dialog height must stay fixed (92vh).
 - [Multi-market routing](multi-market-routing.md) — rank first-class markets per product lane; expose only Primary pricing; ordered top-four sends lock the ranking after first accepted delivery.
+- [Producing-Agent attachment eligibility](producing-agent-attachment-eligibility.md) — registration approval is the compliance checkpoint; new attachments require active Agent and agency status.
