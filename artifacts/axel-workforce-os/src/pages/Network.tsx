@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
 import { GlassCard, SectionHeader, PinkButton, GhostButton, AxelBadge } from "@/components/ui/axel-index";
 import { Plus, X, Building2, Shield, Users, Truck, Search, Edit2, Check } from "lucide-react";
 import { useThemeStore } from "@/lib/theme-store";
+import { AgencyGroupCard, OrgGroupCard } from "@/components/ui/NetworkGroups";
+import { AddAgentModal } from "@/components/ui/AddAgentModal";
 
 import { useAuthStore } from "@/lib/auth-store";
 import { format } from "date-fns";
@@ -28,8 +30,6 @@ export default function Network() {
   const [showAdd, setShowAdd] = useState(false);
   const [showAddMarket, setShowAddMarket] = useState(false);
   const [search, setSearch] = useState("");
-  const [editingVendor, setEditingVendor] = useState<string | null>(null);
-  const [vendorEdits, setVendorEdits] = useState<any>({});
   const navigate = useNavigate();
   const qc = useQueryClient();
 
@@ -48,6 +48,11 @@ export default function Network() {
     queryFn: () => api.get<any[]>("/partners"),
   });
 
+  const { data: agencies = [] } = useQuery({
+    queryKey: ["agencies"],
+    queryFn: () => api.get<any[]>("/agencies"),
+  });
+
   const { data: deals = [] } = useQuery({ queryKey: ["deals"], queryFn: () => api.get<any[]>("/deals") });
   const { data: policies = [] } = useQuery({ queryKey: ["policies"], queryFn: () => api.get<any[]>("/policies") });
 
@@ -63,15 +68,64 @@ export default function Network() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["partners"] }); qc.invalidateQueries({ queryKey: ["partners-all"] }); setShowAdd(false); },
   });
 
-  const updateMut = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) => api.patch(`/partners/${id}`, data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["partners"] }); setEditingVendor(null); },
+  const filtered = partners.filter((p: any) => {
+    const term = search.toLowerCase();
+    return (
+      (p.name && p.name.toLowerCase().includes(term)) ||
+      (p.firstName && (p.firstName + " " + p.lastName).toLowerCase().includes(term)) ||
+      (p.agencyLegalName && p.agencyLegalName.toLowerCase().includes(term)) ||
+      (p.email && p.email.toLowerCase().includes(term)) ||
+      (p.contactEmail && p.contactEmail.toLowerCase().includes(term))
+    );
   });
 
-  const filtered = partners.filter((p: any) =>
-    p.name.toLowerCase().includes(search.toLowerCase()) ||
-    (p.agencyName || "").toLowerCase().includes(search.toLowerCase())
-  );
+  const agencyGroups = useMemo(() => {
+    if (tab !== "Agents") return [];
+
+    // Group agents by agencyId
+    const groups: Record<string, any[]> = {};
+    filtered.forEach((agent: any) => {
+      const aid = agent.agencyId || "unassigned";
+      if (!groups[aid]) groups[aid] = [];
+      groups[aid].push(agent);
+    });
+
+    // Also include agencies that match search but have no agents (or maybe not required)
+    // Actually, "search agency/name/email and bubble up matching agency"
+    // Let's just group the filtered agents. If an agency has no matching agents, but its name matches, we should include it and all its agents?
+    // Let's keep it simple: group filtered agents. But if search matches agency name, we should include all its agents.
+
+    const matchedAgencyIds = agencies
+      .filter((a: any) => a.legalName?.toLowerCase().includes(search.toLowerCase()))
+      .map((a: any) => a.id);
+
+    partners.forEach((agent: any) => {
+      const aid = agent.agencyId;
+      if (aid && matchedAgencyIds.includes(aid)) {
+        if (!groups[aid]) groups[aid] = [];
+        if (!groups[aid].find((a: any) => a.id === agent.id)) {
+          groups[aid].push(agent);
+        }
+      }
+    });
+
+    const result = Object.entries(groups).map(([aid, agents]) => {
+      const agency = agencies.find((a: any) => a.id === aid);
+      return {
+        agencyId: aid,
+        agencyName: agency?.legalName || agents[0]?.agencyLegalName || "Unknown Agency",
+        agencyStatus: agency?.status || agents[0]?.agencyStatus || "Active",
+        agents
+      };
+    });
+
+    // Sort by active deal count
+    return result.sort((a, b) => {
+      const aDeals = deals.filter((d: any) => a.agents.some((ag: any) => ag.id === d.producingAgentId) && d.stage !== "Closed Won" && d.stage !== "Closed Lost").length;
+      const bDeals = deals.filter((d: any) => b.agents.some((ag: any) => ag.id === d.producingAgentId) && d.stage !== "Closed Won" && d.stage !== "Closed Lost").length;
+      return bDeals - aDeals;
+    });
+  }, [tab, filtered, partners, agencies, search, deals]);
 
   const filteredMarkets = markets.filter((m: any) =>
     m.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -84,7 +138,7 @@ export default function Network() {
   return (
     <div style={{ maxWidth: "1200px" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
-        <SectionHeader title="Network" subtitle={tab === "Markets" ? `${markets.length} total markets` : `${allPartners.length} total partners`} />
+        <SectionHeader title="Network" subtitle={tab === "Markets" ? `${markets.length} total markets` : tab === "Agents" ? `${agencyGroups.length} total agencies` : `${partners.length} ${tab.toLowerCase()}`} />
         {tab === "Markets" && user?.role === "ADMIN" ? (
           <PinkButton onClick={() => setShowAddMarket(true)} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
             <Plus style={{ width: 16, height: 16 }} /> Add Market
@@ -123,7 +177,7 @@ export default function Network() {
         />
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 420px), 1fr))", gap: "16px" }}>
         {tab === "Markets" ? (
           <>
             {filteredMarkets.map((m: any) => (
@@ -158,102 +212,39 @@ export default function Network() {
               <GlassCard><p style={{ fontSize: "14px", color: textMuted, textAlign: "center", margin: 0 }}>No markets found</p></GlassCard>
             )}
           </>
+        ) : tab === "Agents" ? (
+          <>
+            {agencyGroups.map(group => (
+              <AgencyGroupCard
+                key={group.agencyId}
+                agencyId={group.agencyId}
+                agencyName={group.agencyName}
+                agencyStatus={group.agencyStatus}
+                agents={group.agents}
+                deals={deals}
+              />
+            ))}
+            {agencyGroups.length === 0 && (
+              <GlassCard><p style={{ fontSize: "14px", color: textMuted, textAlign: "center", margin: 0 }}>No agencies found</p></GlassCard>
+            )}
+          </>
         ) : (
           <>
-            {filtered.map((p: any) => {
-              if (tab === "Vendors") {
-            const isEditing = editingVendor === p.id;
-            return (
-              <GlassCard key={p.id}>
-                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
-                  <div style={{ flex: 1 }}>
-                    {isEditing ? (
-                      <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                        <input value={vendorEdits.name || ""} onChange={(e) => setVendorEdits({ ...vendorEdits, name: e.target.value })} style={inputStyle} placeholder="Vendor name" />
-                        <input value={vendorEdits.contactName || ""} onChange={(e) => setVendorEdits({ ...vendorEdits, contactName: e.target.value })} style={inputStyle} placeholder="Contact name" />
-                        <input value={vendorEdits.contactEmail || ""} onChange={(e) => setVendorEdits({ ...vendorEdits, contactEmail: e.target.value })} style={inputStyle} placeholder="Contact email" />
-                        <input value={vendorEdits.notes || ""} onChange={(e) => setVendorEdits({ ...vendorEdits, notes: e.target.value })} style={inputStyle} placeholder="Category" />
-                      </div>
-                    ) : (
-                      <>
-                        <p style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, margin: 0 }}>{p.name}</p>
-                        <p style={{ fontSize: "13px", color: textMuted, margin: "4px 0" }}>{(p.metadata as any)?.category || p.notes || "—"}</p>
-                        <p style={{ fontSize: "13px", color: textMuted }}>{p.contactName} · {p.contactEmail || "—"}</p>
-                      </>
-                    )}
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <AxelBadge label={p.status} color={p.status === "Active" ? "green" : "red"} />
-                    {isEditing ? (
-                      <GhostButton onClick={() => updateMut.mutate({ id: p.id, data: vendorEdits })} style={{ padding: "4px 8px" }}>
-                        <Check style={{ width: 14, height: 14 }} />
-                      </GhostButton>
-                    ) : (
-                      <GhostButton onClick={() => { setEditingVendor(p.id); setVendorEdits({ name: p.name, contactName: p.contactName, contactEmail: p.contactEmail, notes: p.notes }); }} style={{ padding: "4px 8px" }}>
-                        <Edit2 style={{ width: 14, height: 14 }} />
-                      </GhostButton>
-                    )}
-                  </div>
-                </div>
-              </GlassCard>
-            );
-          }
-
-          return (
-            <GlassCard
-              key={p.id}
-              style={{ cursor: "pointer", transition: "border-color 0.15s" }}
-              onClick={() => {
-                if (tab === "Agents") navigate(`/network/agents/${p.id}`);
-                else if (tab === "Carriers") navigate(`/network/carriers/${p.id}`);
-                else if (tab === "PEO Partners") navigate(`/network/peo/${p.id}`);
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
-                <div>
-                  <p style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, margin: 0 }}>{p.name}</p>
-                  {tab === "Agents" && (
-                    <>
-                      <p style={{ fontSize: "13px", color: textMuted, margin: "4px 0" }}>{(p.licenseStates || []).join(", ") || "—"}</p>
-                      <p style={{ fontSize: "13px", color: textMuted }}>
-                        {deals.filter((d: any) => d.producingAgentId === p.id).length} deals referred ·{" "}
-                        ${deals.filter((d: any) => d.producingAgentId === p.id).reduce((s: number, d: any) => s + Number(d.estimatedPremium || 0), 0).toLocaleString()} WC premium
-                      </p>
-                    </>
-                  )}
-                  {tab === "Carriers" && (
-                    <>
-                      <p style={{ fontSize: "13px", color: textMuted, margin: "4px 0" }}>{(p.licenseStates || []).join(", ") || "—"}</p>
-                      <p style={{ fontSize: "13px", color: textMuted }}>
-                        {policies.filter((pol: any) => pol.carrierId === p.id).length} bound policies ·{" "}
-                        ${policies.filter((pol: any) => pol.carrierId === p.id).reduce((s: number, pol: any) => s + Number(pol.premium || 0), 0).toLocaleString()} total premium
-                      </p>
-                    </>
-                  )}
-                  {tab === "PEO Partners" && (
-                    <>
-                      <p style={{ fontSize: "13px", color: textMuted, margin: "4px 0" }}>{(p.metadata as any)?.programName || "—"}</p>
-                      <p style={{ fontSize: "13px", color: textMuted }}>{(p.metadata as any)?.verticalsServed || "—"}</p>
-                      <p style={{ fontSize: "13px", color: textMuted }}>{(p.metadata as any)?.activeClientCount || 0} active clients</p>
-                    </>
-                  )}
-                </div>
-                <AxelBadge
-                  label={p.status}
-                  color={p.status === "Active" ? "green" : p.status === "Pending" ? "yellow" : "red"}
-                />
-              </div>
-            </GlassCard>
-          );
-        })}
-        {filtered.length === 0 && (
-          <GlassCard><p style={{ fontSize: "14px", color: textMuted, textAlign: "center", margin: 0 }}>No {tab.toLowerCase()} found</p></GlassCard>
-        )}
-        </>
+            {filtered.map((p: any) => (
+              <OrgGroupCard key={p.id} org={p} type={tab} />
+            ))}
+            {filtered.length === 0 && (
+              <GlassCard><p style={{ fontSize: "14px", color: textMuted, textAlign: "center", margin: 0 }}>No {tab.toLowerCase()} found</p></GlassCard>
+            )}
+          </>
         )}
       </div>
 
-      {showAdd && <AddPartnerModal partnerType={partnerType} onClose={() => setShowAdd(false)} onSubmit={(data: any) => createMut.mutate(data)} />}
+      {showAdd && partnerType === "Agent" ? (
+        <AddAgentModal onClose={() => setShowAdd(false)} />
+      ) : showAdd ? (
+        <AddPartnerModal partnerType={partnerType} onClose={() => setShowAdd(false)} onSubmit={(data: any) => createMut.mutate(data)} />
+      ) : null}
       {showAddMarket && <AddMarketModal onClose={() => setShowAddMarket(false)} />}
     </div>
   );

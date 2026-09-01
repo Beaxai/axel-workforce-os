@@ -2,13 +2,44 @@ import { Router, type IRouter } from "express";
 import {
   agenciesTable,
   agentProfilesTable,
+  contactsTable,
   db,
   partnersTable,
   insertPartnerSchema,
 } from "@workspace/db";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, sql } from "drizzle-orm";
+import { z } from "zod/v4";
+import { requireRoles } from "../middleware/require-auth";
 
 const router: IRouter = Router();
+
+const agencyContactSchema = z.object({
+  firstName: z.string().trim().min(1),
+  lastName: z.string().trim().min(1),
+  email: z.email(),
+  title: z.string().trim().optional(),
+  phone: z.string().trim().optional(),
+  mobile: z.string().trim().optional(),
+  role: z
+    .enum(["office_manager", "accounting", "licensing", "other"])
+    .default("other"),
+  isPrimary: z.boolean().default(false),
+  notes: z.string().trim().optional(),
+});
+
+const createAgentSchema = z.object({
+  agencyId: z.uuid(),
+  firstName: z.string().trim().min(1),
+  lastName: z.string().trim().min(1),
+  email: z.email(),
+  status: z.enum(["Active", "Pending", "Suspended", "Terminated"]).default("Active"),
+  title: z.string().trim().optional(),
+  phoneDirect: z.string().trim().optional(),
+  phoneMobile: z.string().trim().optional(),
+  individualNpn: z.string().trim().optional(),
+  licenseStates: z.array(z.string().trim().min(2).max(2)).default([]),
+  contacts: z.array(agencyContactSchema).max(10).default([]),
+});
 
 router.get("/", async (req, res) => {
   const type = req.query.type as string | undefined;
@@ -84,6 +115,96 @@ router.get("/:id", async (req, res) => {
     agencyLegalName: row.agency?.legalName ?? null,
     agencyStatus: row.agency?.status ?? null,
   });
+});
+
+router.post("/agents", requireRoles("ADMIN", "CSA"), async (req, res) => {
+  const parsed = createAgentSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: parsed.error.issues });
+  }
+  if (parsed.data.contacts.filter((contact) => contact.isPrimary).length > 1) {
+    return res.status(400).json({ error: "Only one agency contact may be primary" });
+  }
+
+  const created = await db.transaction(async (tx) => {
+    const [agency] = await tx
+      .select()
+      .from(agenciesTable)
+      .where(eq(agenciesTable.id, parsed.data.agencyId))
+      .for("update");
+    if (!agency) return null;
+
+    const displayName = `${parsed.data.firstName} ${parsed.data.lastName}`
+      .replace(/\s+/g, " ")
+      .trim();
+    const [partner] = await tx
+      .insert(partnersTable)
+      .values({
+        partnerType: "Agent",
+        name: displayName,
+        agencyName: agency.legalName,
+        agencyId: agency.id,
+        contactName: displayName,
+        contactEmail: parsed.data.email,
+        contactPhone: parsed.data.phoneDirect,
+        status: parsed.data.status,
+        licenseStates: parsed.data.licenseStates,
+        npn: parsed.data.individualNpn,
+      })
+      .returning();
+
+    const [profile] = await tx
+      .insert(agentProfilesTable)
+      .values({
+        partnerId: partner.id,
+        firstName: parsed.data.firstName,
+        lastName: parsed.data.lastName,
+        title: parsed.data.title,
+        phoneDirect: parsed.data.phoneDirect,
+        phoneMobile: parsed.data.phoneMobile,
+        individualNpn: parsed.data.individualNpn,
+        licenseNumbers:
+          parsed.data.licenseStates.length > 0
+            ? { statesLicensed: parsed.data.licenseStates }
+            : null,
+      })
+      .returning();
+
+    if (parsed.data.contacts.length > 0) {
+      if (parsed.data.contacts.some((contact) => contact.isPrimary)) {
+        await tx.execute(
+          sql`select pg_advisory_xact_lock(hashtextextended(${`agency:${agency.id}`}, 0))`,
+        );
+        await tx
+          .update(contactsTable)
+          .set({ isPrimary: false, updatedAt: new Date() })
+          .where(
+            and(
+              eq(contactsTable.entityType, "agency"),
+              eq(contactsTable.entityId, agency.id),
+              eq(contactsTable.isPrimary, true),
+            ),
+          );
+      }
+      await tx.insert(contactsTable).values(
+        parsed.data.contacts.map((contact) => ({
+          ...contact,
+          entityType: "agency",
+          entityId: agency.id,
+        })),
+      );
+    }
+
+    return {
+      ...partner,
+      ...profile,
+      agencyLegalName: agency.legalName,
+      agencyStatus: agency.status,
+    };
+  });
+
+  if (!created) return res.status(404).json({ error: "Agency not found" });
+  return res.status(201).json(created);
 });
 
 router.post("/", async (req, res) => {
