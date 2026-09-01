@@ -17,6 +17,7 @@ import { useThemeColors } from "@/lib/use-theme-colors";
 import UserMiniProfile from "@/components/user-profile/UserMiniProfile";
 import { useAuthStore } from "@/lib/auth-store";
 import MarketRoutingPanel from "./MarketRoutingPanel";
+import { displayName } from "@/lib/agent-display-name";
 
 /**
  * Feature flag: AI Quote Variations row on the deal card Overview tab.
@@ -456,7 +457,7 @@ export default function OverviewTab({
   const mentionCandidates = useMemo(() => {
     if (mentionQuery === null) return [];
     const q = mentionQuery.toLowerCase();
-    return directory.filter((m) => m.name.toLowerCase().includes(q)).slice(0, 6);
+    return directory.filter((m) => displayName(m).toLowerCase().includes(q)).slice(0, 6);
   }, [directory, mentionQuery]);
 
   /** Track "@partialname" being typed at the end of the input. */
@@ -472,8 +473,9 @@ export default function OverviewTab({
   };
 
   const pickMention = (m: DealDirectoryEntry) => {
-    setText((prev) => prev.replace(/@([\w'.-]{0,40}(?: [\w'.-]{0,40})?)$/, `@${m.name} `));
-    setPickedMentions((prev) => (prev.includes(m.name) ? prev : [...prev, m.name]));
+    const name = displayName(m);
+    setText((prev) => prev.replace(/@([\w'.-]{0,40}(?: [\w'.-]{0,40})?)$/, `@${name} `));
+    setPickedMentions((prev) => (prev.includes(name) ? prev : [...prev, name]));
     setMentionQuery(null);
     inputRef.current?.focus();
   };
@@ -565,7 +567,9 @@ export default function OverviewTab({
           <div key={day} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <div style={dayHeader}>{day}</div>
             {rows.map((row) => {
-              const rawAuthor = authorOf(row);
+              const rawAuthor = row.createdBy
+                ? displayName(membersById.get(row.createdBy) ?? { name: authorOf(row) })
+                : authorOf(row);
               const isSystem = !row.createdBy && rawAuthor === "System";
               const sys = isSystem ? systemEventMeta(row.eventType) : null;
               const author = sys ? "System" : rawAuthor;
@@ -941,12 +945,12 @@ export default function OverviewTab({
                 >
                   <div style={{ width: 22, height: 22, borderRadius: "50%", background: c.hoverBg, color: c.textSecondary, fontSize: 9, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
                     {m.avatarUrl ? (
-                      <img src={m.avatarUrl} alt={m.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                      <img src={m.avatarUrl} alt={displayName(m)} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
                     ) : (
-                      initials(m.name)
+                      initials(displayName(m))
                     )}
                   </div>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: "#fff" }}>{m.name}</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: "#fff" }}>{displayName(m)}</span>
                 </button>
               ))}
             </div>

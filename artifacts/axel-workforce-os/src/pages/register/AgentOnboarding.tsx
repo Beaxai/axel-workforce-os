@@ -2,6 +2,7 @@ import { useThemeColors } from "@/lib/use-theme-colors";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { displayName } from "@/lib/agent-display-name";
 import { GlassCard, GhostButton } from "@/components/ui/axel-index";
 import { Video, CheckCircle } from "lucide-react";
 
@@ -43,7 +44,7 @@ export default function AgentOnboarding() {
               </p>
               {reg && (
                 <p style={{ fontSize: "14px", color: textMuted, marginBottom: "24px" }}>
-                  Applicant: {reg.firstName} {reg.lastName} · {reg.agencyName}
+                  Applicant: {displayName(reg)} · {reg.agencyName}
                 </p>
               )}
               <GhostButton onClick={() => console.log("[Agent Registration] Calendly integration coming soon")} style={{ padding: "12px 24px", fontSize: "15px" }}>

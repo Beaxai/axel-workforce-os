@@ -121,8 +121,8 @@ export default function Network() {
 
     // Sort by active deal count
     return result.sort((a, b) => {
-      const aDeals = deals.filter((d: any) => a.agents.some((ag: any) => ag.id === d.producingAgentId) && d.stage !== "Closed Won" && d.stage !== "Closed Lost").length;
-      const bDeals = deals.filter((d: any) => b.agents.some((ag: any) => ag.id === d.producingAgentId) && d.stage !== "Closed Won" && d.stage !== "Closed Lost").length;
+      const aDeals = deals.filter((d: any) => a.agents.some((ag: any) => ag.userId && ag.userId === d.producingAgentId) && d.stage !== "Closed Won" && d.stage !== "Closed Lost").length;
+      const bDeals = deals.filter((d: any) => b.agents.some((ag: any) => ag.userId && ag.userId === d.producingAgentId) && d.stage !== "Closed Won" && d.stage !== "Closed Lost").length;
       return bDeals - aDeals;
     });
   }, [tab, filtered, partners, agencies, search, deals]);

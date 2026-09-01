@@ -61,6 +61,9 @@ export interface DealTeamMember {
   name: string;
   relation: string;
   avatarUrl?: string | null;
+  agentFirstName?: string | null;
+  agentLastName?: string | null;
+  agentPartnerName?: string | null;
 }
 
 /** Scoped participant directory returned with the submission payload —
@@ -72,6 +75,9 @@ export interface DealDirectoryEntry {
   name: string;
   avatarUrl: string | null;
   role: string | null;
+  agentFirstName?: string | null;
+  agentLastName?: string | null;
+  agentPartnerName?: string | null;
 }
 
 export interface SubmissionPayload {

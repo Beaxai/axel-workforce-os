@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { displayName } from "@/lib/agent-display-name";
 
 export default function AgentRegistrationsPage() {
   const { data: regs = [], isLoading } = useQuery({ queryKey: ["agent-registrations"], queryFn: () => api.get<any[]>("/agent-registrations") });
@@ -37,7 +38,7 @@ export default function AgentRegistrationsPage() {
             ) : regs.map((r: any) => (
               <tr key={r.id} className="hover:bg-slate-50">
                 <td className="px-4 py-3 font-medium text-slate-900">{r.agencyName}</td>
-                <td className="px-4 py-3 text-slate-600">{r.firstName} {r.lastName}</td>
+                <td className="px-4 py-3 text-slate-600">{displayName(r)}</td>
                 <td className="px-4 py-3 text-slate-600">{r.email}</td>
                 <td className="px-4 py-3 text-slate-600">{r.phone}</td>
                 <td className="px-4 py-3">

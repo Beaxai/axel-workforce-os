@@ -20,6 +20,7 @@ import { api } from "@/lib/api";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { useAuthStore } from "@/lib/auth-store";
 import type { SectionView, SubmissionPayload, ActivityRow, SectionPatchResponse, RfiRow, RfiListResponse, QuoteVariation, QuoteVariationsResponse, ApplyVariationResponse, PreviewVariationResponse, VariationLevers, DealTeamMember, DealDirectoryEntry, MarketRoutingSummary } from "./types";
+import { displayName } from "@/lib/agent-display-name";
 import UserMiniProfile from "@/components/user-profile/UserMiniProfile";
 import type { CreateRfiInput } from "./OverviewTab";
 import { PHASES, phaseIndex } from "./stage-map";
@@ -133,8 +134,8 @@ function DealTeamAvatars({ team, directory }: { team?: DealTeamMember[]; directo
   // the first three directory members (matching the card-face avatar row).
   const people: Array<{ userId: string; name: string; relation?: string; photo: string | null }> =
     team && team.length > 0
-      ? team.map((m) => ({ userId: m.userId, name: m.name, relation: m.relation, photo: m.avatarUrl ?? null }))
-      : (directory ?? []).slice(0, 3).map((m) => ({ userId: m.id, name: m.name, photo: m.avatarUrl }));
+      ? team.map((m) => ({ userId: m.userId, name: displayName(m), relation: m.relation, photo: m.avatarUrl ?? null }))
+      : (directory ?? []).slice(0, 3).map((m) => ({ userId: m.id, name: displayName(m), photo: m.avatarUrl }));
   if (people.length === 0) return null;
   return (
     <div style={{ display: "flex", alignItems: "center" }}>

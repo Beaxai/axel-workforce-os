@@ -5,6 +5,7 @@ import { useThemeStore } from "@/lib/theme-store";
 import { useContacts, useCreateContact, useUpdateContact, useDeleteContact } from "@/hooks/use-contacts";
 import { useContactRoles } from "@/hooks/use-contact-roles";
 import { useNavigate } from "react-router-dom";
+import { displayName } from "@/lib/agent-display-name";
 
 export function AgencyGroupCard({ agencyId, agencyName, agencyStatus, agents, deals }: { agencyId: string, agencyName: string, agencyStatus: string, agents: any[], deals: any[] }) {
   const [expanded, setExpanded] = useState(false);
@@ -22,9 +23,9 @@ export function AgencyGroupCard({ agencyId, agencyName, agencyStatus, agents, de
   const [editingContact, setEditingContact] = useState<any>(null);
 
   // Calculate deals for this agency (sum of deals for all its agents)
-  const activeDeals = deals.filter(d => agents.some(a => a.id === d.producingAgentId) && d.stage !== "Closed Won" && d.stage !== "Closed Lost");
+  const activeDeals = deals.filter(d => agents.some(a => a.userId && a.userId === d.producingAgentId) && d.stage !== "Closed Won" && d.stage !== "Closed Lost");
   const wcPremium = deals
-    .filter((deal) => agents.some((agent) => agent.id === deal.producingAgentId))
+    .filter((deal) => agents.some((agent) => agent.userId && agent.userId === deal.producingAgentId))
     .reduce((sum, deal) => sum + Number(deal.wcPremium || deal.estimatedPremium || 0), 0);
   const states = Array.from(new Set(agents.flatMap((agent) => agent.licenseStates || []))).sort();
   const agencyIsActive = agencyStatus?.toLowerCase() === "active";
@@ -57,13 +58,13 @@ export function AgencyGroupCard({ agencyId, agencyName, agencyStatus, agents, de
       {expanded && (
         <div style={{ padding: "0 16px 16px 44px", display: "flex", flexDirection: "column", gap: "12px" }}>
           {agents.map(agent => {
-            const agentDeals = deals.filter((deal) => deal.producingAgentId === agent.id);
+            const agentDeals = deals.filter((deal) => agent.userId && deal.producingAgentId === agent.userId);
             const agentPremium = agentDeals.reduce((sum, deal) => sum + Number(deal.wcPremium || deal.estimatedPremium || 0), 0);
             return (
             <ContactCard
               key={agent.id}
               variant="agent"
-              name={`${agent.firstName || agent.name} ${agent.lastName || ""}`.trim()}
+              name={displayName(agent)}
               subtitle={
                 <>
                   {agent.title ? `${agent.title} · ` : ""}

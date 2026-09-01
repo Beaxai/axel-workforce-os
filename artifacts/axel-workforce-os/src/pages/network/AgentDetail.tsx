@@ -2,9 +2,18 @@ import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { GlassCard, SectionHeader, GhostButton, AxelBadge, PinkButton } from "@/components/ui/axel-index";
-import { ArrowLeft, Edit2, Check, X, UserX } from "lucide-react";
+import { GlassCard, GhostButton, AxelBadge, PinkButton, Modal } from "@/components/ui/axel-index";
+import { ArrowLeft, Edit2, MoreHorizontal, Mail, Phone } from "lucide-react";
 import { useThemeStore } from "@/lib/theme-store";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
+import { openDealCard } from "@/components/DealCardModal";
+import { displayName as getAgentDisplayName } from "@/lib/agent-display-name";
+import { useAuthStore } from "@/lib/auth-store";
 
 const inputStyle: React.CSSProperties = {
   width: "100%", padding: "10px 14px", borderRadius: "8px", border: "1px solid var(--input-border)",
@@ -17,155 +26,398 @@ export default function AgentDetail() {
   const { theme } = useThemeStore();
   const isDark = theme === "dark";
   const qc = useQueryClient();
+  const isAdmin = useAuthStore((state) => state.user?.role === "ADMIN");
   const [editing, setEditing] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<"Suspend" | "Terminate" | null>(null);
   const [form, setForm] = useState<any>({});
 
-  const { data: agent } = useQuery({
+  const { data: agent, isLoading } = useQuery({
     queryKey: ["partner", id],
     queryFn: () => api.get<any>(`/partners/${id}`),
   });
 
-  const { data: deals = [] } = useQuery({ queryKey: ["deals"], queryFn: () => api.get<any[]>("/deals") });
-  const { data: registrations = [] } = useQuery({ queryKey: ["agent-registrations"], queryFn: () => api.get<any[]>("/agent-registrations") });
-
   const updateMut = useMutation({
-    mutationFn: (data: any) => api.patch(`/partners/${id}`, data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["partner", id] }); setEditing(false); },
+    mutationFn: (data: any) =>
+      api.patch(`/partners/${id}/agent-profile`, {
+        ...data,
+        lastName: data.lastName || null,
+        title: data.title || null,
+        email: data.email || null,
+        phoneDirect: data.phoneDirect || null,
+        phoneMobile: data.phoneMobile || null,
+        individualNpn: data.individualNpn || null,
+        licenseStates: String(data.licenseStates || "")
+          .split(",")
+          .map((state) => state.trim().toUpperCase())
+          .filter(Boolean),
+        notes: data.notes || null,
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["partner", id] });
+      setEditing(false);
+    },
   });
 
-  if (!agent) return <div style={{ color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.55)", padding: "40px" }}>Loading...</div>;
+  const statusMut = useMutation({
+    mutationFn: (status: "Suspended" | "Terminated") => api.patch(`/partners/${id}/status`, { status }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["partner", id] });
+      setConfirmAction(null);
+    },
+  });
 
-  const agentDeals = deals.filter((d: any) => d.producingAgentId === id);
-  const reg = registrations.find((r: any) => r.partnerId === id);
+  if (isLoading || !agent) return <div style={{ color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.55)", padding: "40px" }}>Loading...</div>;
 
   const textPrimary = isDark ? "#fff" : "#111";
   const textMuted = isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.58)";
-  const textSecondary = isDark ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.55)";
 
   const startEdit = () => {
-    setForm({ name: agent.name, agencyName: agent.agencyName, npn: agent.npn, contactName: agent.contactName, contactEmail: agent.contactEmail, contactPhone: agent.contactPhone, notes: agent.notes });
+    setForm({
+      firstName: agent.firstName || "",
+      lastName: agent.lastName || "",
+      title: agent.title || "",
+      email: agent.email || agent.contactEmail || "",
+      phoneDirect: agent.phoneDirect || agent.contactPhone || "",
+      phoneMobile: agent.phoneMobile || "",
+      individualNpn: agent.individualNpn || agent.npn || "",
+      licenseStates: (agent.agentLicenseStates || agent.licenseStates || []).join(", "),
+      notes: agent.notes
+    });
     setEditing(true);
   };
 
+  const agentName = getAgentDisplayName(agent);
+  const initials = agentName
+    .split(" ")
+    .filter(Boolean)
+    .map((n: string) => n[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+
+  const avatarStyle = {
+    width: "48px",
+    height: "48px",
+    borderRadius: "50%",
+    background: "rgba(124,58,237,0.18)",
+    color: "#AFA9EC",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: "18px",
+    fontWeight: 600,
+    flexShrink: 0,
+  };
+
+  const registrationDate = agent.registration?.agreementSignedAt || agent.registration?.createdAt;
+  const secondarySegments = [];
+  if (agent.title) secondarySegments.push(<span key="title">{agent.title}</span>);
+  if (agent.agencyLegalName || agent.agencyName) {
+    secondarySegments.push(
+      <button
+        key="agency"
+        onClick={() => navigate("/network")}
+        style={{ background: "none", border: "none", padding: 0, color: "inherit", textDecoration: "underline", cursor: "pointer", fontSize: "inherit" }}
+        className="hover:text-primary transition-colors"
+      >
+        {agent.agencyLegalName || agent.agencyName}
+      </button>
+    );
+  }
+  if (registrationDate) {
+    secondarySegments.push(<span key="reg">Registered {new Date(registrationDate).toLocaleDateString()}</span>);
+  }
+
+  const joinedSecondary = secondarySegments.map((seg, i) => (
+    <span key={`seg-${i}`} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+      {seg}
+      {i < secondarySegments.length - 1 && <span style={{ color: textMuted }}>·</span>}
+    </span>
+  ));
+
+  let regStatusLabel = "No registration";
+  let regStatusColor = "gray";
+
+  if (agent.registration) {
+    if (agent.registration.zoomScheduledAt) {
+      regStatusLabel = "Call scheduled";
+      regStatusColor = "amber";
+    } else if (agent.registration.agreementSignedAt) {
+      regStatusLabel = "Agreement signed";
+      regStatusColor = "green";
+    } else {
+      regStatusLabel = "Awaiting signature";
+      regStatusColor = "amber";
+    }
+  }
+
+  const email = agent.email || agent.contactEmail;
+  const phoneDirect = agent.phoneDirect || agent.contactPhone;
+  const phoneMobile = agent.phoneMobile;
+  const individualNpn = agent.individualNpn || agent.npn;
+  const licenseStates = agent.agentLicenseStates || agent.licenseStates || [];
+  const hasContact = email || phoneDirect || phoneMobile;
+  const hasLicensing = individualNpn || licenseStates.length > 0 || agent.registration?.eoExpirationDate;
+
+  const associatedDeals = agent.associatedDeals || [];
+  const backAgencyName = agent.agencyLegalName || agent.agencyName;
+  const backLabel = backAgencyName ? `Back to ${backAgencyName}` : "Back to Network";
+
   return (
-    <div style={{ maxWidth: "1000px" }}>
-      <button onClick={() => navigate("/network")} style={{ background: "none", border: "none", color: textMuted, cursor: "pointer", display: "flex", alignItems: "center", gap: "6px", marginBottom: "16px", fontSize: "14px" }}>
-        <ArrowLeft style={{ width: 16, height: 16 }} /> Back to Network
+    <div style={{ maxWidth: "960px", margin: "0 auto", paddingBottom: "60px" }}>
+      <button
+        onClick={() => navigate(backAgencyName && agent.agencyId ? `/network#agency-${agent.agencyId}` : "/network")}
+        style={{
+          background: "none",
+          border: "none",
+          color: textMuted,
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          gap: "6px",
+          marginBottom: "24px",
+          fontSize: "13px",
+          padding: 0,
+          fontWeight: 500
+        }}
+        className="hover:text-primary transition-colors"
+      >
+        <ArrowLeft style={{ width: 14, height: 14 }} /> {backLabel}
       </button>
 
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "24px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          <h1 style={{ fontSize: "24px", fontWeight: 700, color: textPrimary, margin: 0 }}>{agent.name}</h1>
-          <AxelBadge label={agent.status} color={agent.status === "Active" ? "green" : agent.status === "Pending" ? "yellow" : "red"} />
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "32px", flexWrap: "wrap", gap: "16px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+          <div style={avatarStyle}>{initials}</div>
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "4px" }}>
+              <h1 style={{ fontSize: "20px", fontWeight: 700, color: textPrimary, margin: 0, letterSpacing: "-0.01em" }}>
+                {agentName}
+              </h1>
+              <AxelBadge label={agent.status || "Active"} color={agent.status === "Active" ? "green" : agent.status === "Pending" ? "yellow" : "red"} />
+            </div>
+            {secondarySegments.length > 0 && (
+              <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "13px", color: textMuted, flexWrap: "wrap" }}>
+                {joinedSecondary}
+              </div>
+            )}
+          </div>
         </div>
         <div style={{ display: "flex", gap: "8px" }}>
-          {editing ? (
-            <>
-              <GhostButton onClick={() => updateMut.mutate(form)}><Check style={{ width: 14, height: 14 }} /> Save</GhostButton>
-              <GhostButton onClick={() => setEditing(false)}><X style={{ width: 14, height: 14 }} /> Cancel</GhostButton>
-            </>
-          ) : (
-            <>
-              <GhostButton onClick={startEdit}><Edit2 style={{ width: 14, height: 14 }} /> Edit</GhostButton>
-              {agent.status !== "Suspended" && (
-                <GhostButton onClick={() => updateMut.mutate({ status: "Suspended" })} style={{ color: "#E91E1E" }}>
-                  <UserX style={{ width: 14, height: 14 }} /> Suspend Agent
+          <PinkButton onClick={startEdit} style={{ display: "flex", alignItems: "center", gap: "6px", background: "#E91E8C" }}>
+            <Edit2 style={{ width: 14, height: 14 }} /> Edit
+          </PinkButton>
+
+          {isAdmin && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <GhostButton style={{ padding: "8px 12px" }}>
+                  <MoreHorizontal style={{ width: 16, height: 16 }} />
                 </GhostButton>
-              )}
-            </>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" style={{ width: "160px" }}>
+                {agent.status !== "Suspended" && agent.status !== "Terminated" && (
+                  <DropdownMenuItem
+                    className="text-red-500 focus:text-red-600 focus:bg-red-500/10 cursor-pointer font-medium"
+                    onSelect={() => setConfirmAction("Suspend")}
+                  >
+                    Suspend Agent
+                  </DropdownMenuItem>
+                )}
+                {agent.status !== "Terminated" && (
+                  <DropdownMenuItem
+                    className="text-red-500 focus:text-red-600 focus:bg-red-500/10 cursor-pointer font-medium"
+                    onSelect={() => setConfirmAction("Terminate")}
+                  >
+                    Terminate Agent
+                  </DropdownMenuItem>
+                )}
+                {agent.status === "Terminated" && (
+                  <DropdownMenuItem
+                    className="cursor-default text-muted-foreground"
+                    disabled
+                  >
+                    Agent Terminated
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px", marginBottom: "24px" }}>
-        <GlassCard>
-          <h3 style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, marginBottom: "16px" }}>Profile</h3>
-          {editing ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-              <div><label style={{ fontSize: "12px", color: textMuted }}>Name</label><input value={form.name || ""} onChange={(e) => setForm({ ...form, name: e.target.value })} style={inputStyle} /></div>
-              <div><label style={{ fontSize: "12px", color: textMuted }}>Agency</label><input value={form.agencyName || ""} onChange={(e) => setForm({ ...form, agencyName: e.target.value })} style={inputStyle} /></div>
-              <div><label style={{ fontSize: "12px", color: textMuted }}>NPN</label><input value={form.npn || ""} onChange={(e) => setForm({ ...form, npn: e.target.value })} style={inputStyle} /></div>
-              <div><label style={{ fontSize: "12px", color: textMuted }}>Notes</label><textarea value={form.notes || ""} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={3} style={{ ...inputStyle, resize: "vertical" }} /></div>
-            </div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-              <Field label="Name" value={agent.name} isDark={isDark} />
-              <Field label="Agency" value={agent.agencyName} isDark={isDark} />
-              <Field label="NPN" value={agent.npn} isDark={isDark} />
-              <Field label="License States" value={(agent.licenseStates || []).join(", ")} isDark={isDark} />
-              <Field label="Notes" value={agent.notes} isDark={isDark} />
-            </div>
-          )}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "16px", marginBottom: "32px" }}>
+        <GlassCard padding="20px">
+          <p style={{ fontSize: "12px", color: textMuted, marginBottom: "8px", fontWeight: 500 }}>Deals Referred</p>
+          <p style={{ fontSize: "24px", color: textPrimary, margin: 0, fontWeight: 600 }}>{agent.dealCount || 0}</p>
         </GlassCard>
-
-        <GlassCard>
-          <h3 style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, marginBottom: "16px" }}>Contact Info</h3>
-          {editing ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-              <div><label style={{ fontSize: "12px", color: textMuted }}>Contact Name</label><input value={form.contactName || ""} onChange={(e) => setForm({ ...form, contactName: e.target.value })} style={inputStyle} /></div>
-              <div><label style={{ fontSize: "12px", color: textMuted }}>Email</label><input value={form.contactEmail || ""} onChange={(e) => setForm({ ...form, contactEmail: e.target.value })} style={inputStyle} /></div>
-              <div><label style={{ fontSize: "12px", color: textMuted }}>Phone</label><input value={form.contactPhone || ""} onChange={(e) => setForm({ ...form, contactPhone: e.target.value })} style={inputStyle} /></div>
-            </div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-              <Field label="Contact Name" value={agent.contactName} isDark={isDark} />
-              <Field label="Email" value={agent.contactEmail} isDark={isDark} />
-              <Field label="Phone" value={agent.contactPhone} isDark={isDark} />
-            </div>
-          )}
+        <GlassCard padding="20px">
+          <p style={{ fontSize: "12px", color: textMuted, marginBottom: "8px", fontWeight: 500 }}>WC Premium</p>
+          <p style={{ fontSize: "24px", color: textPrimary, margin: 0, fontWeight: 600 }}>${(agent.wcPremiumTotal || 0).toLocaleString()}</p>
+        </GlassCard>
+        <GlassCard padding="20px">
+          <p style={{ fontSize: "12px", color: textMuted, marginBottom: "8px", fontWeight: 500 }}>Registration</p>
+          <div style={{ display: "flex", alignItems: "center", height: "32px" }}>
+            {agent.registration ? (
+               <AxelBadge label={regStatusLabel} color={regStatusColor === "amber" ? "yellow" : regStatusColor as any} />
+            ) : (
+               <span style={{ fontSize: "14px", color: textMuted }}>{regStatusLabel}</span>
+            )}
+          </div>
         </GlassCard>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
-        <GlassCard>
-          <h3 style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, marginBottom: "16px" }}>Registration Status</h3>
-          {reg ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-              <Field label="Application Submitted" value={reg.createdAt ? new Date(reg.createdAt).toLocaleDateString() : "—"} isDark={isDark} />
-              <Field label="Agreement Signed" value={reg.agreementSignedAt ? new Date(reg.agreementSignedAt).toLocaleDateString() : "Pending"} isDark={isDark} />
-              <Field label="Onboarding Call" value={reg.zoomCompletedAt ? new Date(reg.zoomCompletedAt).toLocaleDateString() : "Pending"} isDark={isDark} />
-              <Field label="Credentials Issued" value={reg.status === "ACTIVE" ? "Yes" : "Pending"} isDark={isDark} />
-            </div>
-          ) : (
-            <p style={{ fontSize: "14px", color: textMuted }}>No registration record found</p>
-          )}
-        </GlassCard>
-
-        <GlassCard>
-          <h3 style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, marginBottom: "16px" }}>Commission Summary</h3>
-          <p style={{ fontSize: "14px", color: textMuted }}>Commission module — coming in a future phase</p>
-        </GlassCard>
-      </div>
-
-      <div style={{ marginTop: "24px" }}>
-        <GlassCard>
-          <h3 style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, marginBottom: "16px" }}>Associated Deals ({agentDeals.length})</h3>
-          {agentDeals.length === 0 ? (
-            <p style={{ fontSize: "14px", color: textMuted }}>No deals referred by this agent</p>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-              {agentDeals.map((d: any) => (
-                <div key={d.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}` }}>
-                  <div>
-                    <p style={{ fontSize: "14px", fontWeight: 500, color: textPrimary, margin: 0 }}>{d.referenceCode}</p>
-                    <p style={{ fontSize: "12px", color: textMuted, margin: "2px 0 0" }}>{d.businessName || "—"} · {d.state || "—"}</p>
-                  </div>
-                  <AxelBadge label={d.stage?.replace(/_/g, " ") || "—"} color="blue" />
+      <div style={{ display: "grid", gridTemplateColumns: hasContact && hasLicensing ? "repeat(auto-fit, minmax(320px, 1fr))" : "1fr", gap: "24px", marginBottom: "32px" }}>
+        {hasContact && (
+          <GlassCard padding="24px">
+            <h3 style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, marginBottom: "20px" }}>Contact</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              {email && (
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                   <Mail style={{ width: 15, height: 15, color: textMuted }} />
+                    <a href={`mailto:${email}`} style={{ color: "#E91E8C", fontSize: "14px", textDecoration: "none" }} className="hover:underline">{email}</a>
                 </div>
-              ))}
+              )}
+              {phoneDirect && (
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                   <Phone style={{ width: 15, height: 15, color: textMuted }} />
+                    <a href={`tel:${phoneDirect}`} style={{ color: textPrimary, fontSize: "14px", textDecoration: "none" }} className="hover:underline">{phoneDirect}</a>
+                   <span style={{ color: textMuted, fontSize: "12px" }}>Direct</span>
+                </div>
+              )}
+              {phoneMobile && (
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                   <Phone style={{ width: 15, height: 15, color: textMuted }} />
+                    <a href={`tel:${phoneMobile}`} style={{ color: textPrimary, fontSize: "14px", textDecoration: "none" }} className="hover:underline">{phoneMobile}</a>
+                   <span style={{ color: textMuted, fontSize: "12px" }}>Mobile</span>
+                </div>
+              )}
             </div>
-          )}
-        </GlassCard>
-      </div>
-    </div>
-  );
-}
+          </GlassCard>
+        )}
 
-function Field({ label, value, isDark }: { label: string; value?: string | null; isDark: boolean }) {
-  return (
-    <div>
-      <p style={{ fontSize: "12px", color: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.4)", margin: 0 }}>{label}</p>
-      <p style={{ fontSize: "14px", color: isDark ? "#fff" : "#111", margin: "2px 0 0" }}>{value || "—"}</p>
+        {hasLicensing && (
+          <GlassCard padding="24px">
+            <h3 style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, marginBottom: "20px" }}>Licensing</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+              {individualNpn && (
+                <div>
+                  <p style={{ fontSize: "12px", color: textMuted, marginBottom: "4px" }}>NPN</p>
+                  <p style={{ fontSize: "14px", color: textPrimary, margin: 0 }}>{individualNpn}</p>
+                </div>
+              )}
+              {licenseStates.length > 0 && (
+                <div>
+                  <p style={{ fontSize: "12px", color: textMuted, marginBottom: "8px" }}>License States</p>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                    {licenseStates.map((st: string) => (
+                      <span key={st} style={{ background: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)", border: `1px solid ${isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"}`, padding: "2px 8px", borderRadius: "999px", fontSize: "12px", color: textPrimary, fontWeight: 500 }}>
+                        {st}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {agent.registration?.eoExpirationDate && (
+                <div>
+                  <p style={{ fontSize: "12px", color: textMuted, marginBottom: "4px" }}>E&O Status</p>
+                  {new Date(agent.registration.eoExpirationDate) >= new Date() ? (
+                    <p style={{ fontSize: "14px", color: "#1EE97B", margin: 0, fontWeight: 500 }}>E&O current through {new Date(agent.registration.eoExpirationDate).toLocaleDateString()}</p>
+                  ) : (
+                    <p style={{ fontSize: "14px", color: "#E91E1E", margin: 0, fontWeight: 500 }}>E&O expired {new Date(agent.registration.eoExpirationDate).toLocaleDateString()}</p>
+                  )}
+                </div>
+              )}
+            </div>
+          </GlassCard>
+        )}
+      </div>
+
+      <GlassCard padding="24px">
+        <h3 style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, marginBottom: "16px" }}>Associated Deals</h3>
+        {associatedDeals.length === 0 ? (
+          <p style={{ fontSize: "14px", color: textMuted, margin: 0 }}>No deals referred yet</p>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            {associatedDeals.map((d: any, i: number) => {
+              const dealSummary = [
+                d.stage ? d.stage.replace(/_/g, " ") : null,
+                typeof d.premium === "number" ? `$${d.premium.toLocaleString()}` : null,
+              ].filter(Boolean).join(" · ");
+              return (
+                <div
+                  key={d.id}
+                  onClick={() => openDealCard(d.id)}
+                  className="hover-elevate"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "12px 16px",
+                    margin: "0 -16px",
+                    borderRadius: "8px",
+                    cursor: "pointer",
+                    borderBottom: i < associatedDeals.length - 1 ? `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}` : "none",
+                    transition: "background 0.15s"
+                  }}
+                >
+                  <span style={{ fontSize: "14px", fontWeight: 500, color: textPrimary }}>{d.clientName}</span>
+                  {dealSummary && <span style={{ fontSize: "13px", color: textMuted }}>{dealSummary}</span>}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </GlassCard>
+
+      <Modal isOpen={editing} onClose={() => setEditing(false)} title="Edit Agent">
+        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+            <div><label style={{ fontSize: "12px", color: textMuted, display: "block", marginBottom: "4px" }}>First Name</label><input value={form.firstName || ""} onChange={(e) => setForm({ ...form, firstName: e.target.value })} style={inputStyle} /></div>
+            <div><label style={{ fontSize: "12px", color: textMuted, display: "block", marginBottom: "4px" }}>Last Name</label><input value={form.lastName || ""} onChange={(e) => setForm({ ...form, lastName: e.target.value })} style={inputStyle} /></div>
+          </div>
+          <div><label style={{ fontSize: "12px", color: textMuted, display: "block", marginBottom: "4px" }}>Title</label><input value={form.title || ""} onChange={(e) => setForm({ ...form, title: e.target.value })} style={inputStyle} /></div>
+          <div><label style={{ fontSize: "12px", color: textMuted, display: "block", marginBottom: "4px" }}>Email</label><input type="email" value={form.email || ""} onChange={(e) => setForm({ ...form, email: e.target.value })} style={inputStyle} /></div>
+          <div><label style={{ fontSize: "12px", color: textMuted, display: "block", marginBottom: "4px" }}>Direct Phone</label><input value={form.phoneDirect || ""} onChange={(e) => setForm({ ...form, phoneDirect: e.target.value })} style={inputStyle} /></div>
+          <div><label style={{ fontSize: "12px", color: textMuted, display: "block", marginBottom: "4px" }}>Mobile Phone</label><input value={form.phoneMobile || ""} onChange={(e) => setForm({ ...form, phoneMobile: e.target.value })} style={inputStyle} /></div>
+          <div><label style={{ fontSize: "12px", color: textMuted, display: "block", marginBottom: "4px" }}>NPN</label><input value={form.individualNpn || ""} onChange={(e) => setForm({ ...form, individualNpn: e.target.value })} style={inputStyle} /></div>
+          <div><label style={{ fontSize: "12px", color: textMuted, display: "block", marginBottom: "4px" }}>License States</label><input placeholder="CA, NV, OR" value={form.licenseStates || ""} onChange={(e) => setForm({ ...form, licenseStates: e.target.value })} style={inputStyle} /></div>
+          <div><label style={{ fontSize: "12px", color: textMuted, display: "block", marginBottom: "4px" }}>Notes</label><textarea value={form.notes || ""} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={3} style={{ ...inputStyle, resize: "vertical" }} /></div>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px", marginTop: "8px" }}>
+            <GhostButton onClick={() => setEditing(false)}>Cancel</GhostButton>
+            <PinkButton onClick={() => updateMut.mutate(form)} disabled={updateMut.isPending}>
+              {updateMut.isPending ? "Saving..." : "Save Changes"}
+            </PinkButton>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={!!confirmAction}
+        onClose={() => setConfirmAction(null)}
+        title={`${confirmAction} Agent`}
+      >
+        <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+          <p style={{ fontSize: "14px", color: textMuted, lineHeight: 1.5, margin: 0 }}>
+            Are you sure you want to {confirmAction?.toLowerCase()} <strong>{agentName}</strong>?
+            This will immediately revoke their portal access. Open deals need reassignment.
+          </p>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px", marginTop: "8px" }}>
+            <GhostButton onClick={() => setConfirmAction(null)}>Cancel</GhostButton>
+            <PinkButton
+              style={{ background: "#E91E1E", color: "#fff" }}
+              disabled={statusMut.isPending}
+              onClick={() => {
+                if (confirmAction) {
+                  statusMut.mutate(confirmAction === "Suspend" ? "Suspended" : "Terminated");
+                }
+              }}
+            >
+              {statusMut.isPending ? "Applying..." : `Confirm ${confirmAction}`}
+            </PinkButton>
+          </div>
+        </div>
+      </Modal>
+
     </div>
   );
 }

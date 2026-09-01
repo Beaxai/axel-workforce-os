@@ -21,6 +21,8 @@ import {
   dealMarketsTable,
   marketsTable,
   marketUnderwritersTable,
+  agentProfilesTable,
+  partnersTable,
   dispatchBatchesTable,
   type Deal,
   type Account,
@@ -147,7 +149,15 @@ router.get("/:id/submission", async (req, res) => {
  */
 async function loadDealDirectory(
   deal: Deal,
-): Promise<Array<{ id: string; name: string; avatarUrl: string | null; role: string | null }>> {
+): Promise<Array<{
+  id: string;
+  name: string;
+  avatarUrl: string | null;
+  role: string | null;
+  agentFirstName?: string | null;
+  agentLastName?: string | null;
+  agentPartnerName?: string | null;
+}>> {
   const users = await db
     .select({
       id: usersTable.id,
@@ -159,21 +169,51 @@ async function loadDealDirectory(
     })
     .from(usersTable)
     .leftJoin(orgMembersTable, eq(orgMembersTable.userId, usersTable.id));
+  const agentRows = await db
+    .select({
+      userId: agentProfilesTable.userId,
+      firstName: agentProfilesTable.firstName,
+      lastName: agentProfilesTable.lastName,
+      partnerName: partnersTable.name,
+    })
+    .from(agentProfilesTable)
+    .innerJoin(partnersTable, eq(partnersTable.id, agentProfilesTable.partnerId));
+  const agentByUserId = new Map(
+    agentRows
+      .filter((agent) => agent.userId)
+      .map((agent) => [agent.userId!, agent]),
+  );
 
   const teamIds = new Set(
     [deal.ownerId, deal.producingAgentId, deal.referralPartnerId].filter((v): v is string => !!v),
   );
-  const out = new Map<string, { id: string; name: string; avatarUrl: string | null; role: string | null }>();
+  const out = new Map<string, {
+    id: string;
+    name: string;
+    avatarUrl: string | null;
+    role: string | null;
+    agentFirstName?: string | null;
+    agentLastName?: string | null;
+    agentPartnerName?: string | null;
+  }>();
   for (const u of users) {
     const role = u.role ? u.role.toUpperCase() : null;
     const include = (role && INTERNAL_ROLES.has(role)) || teamIds.has(u.id);
     if (!include) continue;
     if (out.has(u.id)) continue;
+    const agent = agentByUserId.get(u.id);
     out.set(u.id, {
       id: u.id,
-      name: `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim() || u.email,
+      name:
+        `${agent?.firstName ?? ""} ${agent?.lastName ?? ""}`.replace(/\s+/g, " ").trim() ||
+        agent?.partnerName ||
+        `${u.firstName ?? ""} ${u.lastName ?? ""}`.replace(/\s+/g, " ").trim() ||
+        u.email,
       avatarUrl: u.avatarUrl ?? null,
       role,
+      agentFirstName: agent?.firstName,
+      agentLastName: agent?.lastName,
+      agentPartnerName: agent?.partnerName,
     });
   }
   // Keep DB (users-table) order so the modal's no-team fallback picks the same
@@ -186,7 +226,15 @@ async function loadDealDirectory(
  * wired to the shared mini-profile popover. Order-stable; duplicates collapsed. */
 async function loadDealTeam(
   deal: Deal,
-): Promise<Array<{ userId: string; name: string; relation: string; avatarUrl: string | null }>> {
+): Promise<Array<{
+  userId: string;
+  name: string;
+  relation: string;
+  avatarUrl: string | null;
+  agentFirstName?: string | null;
+  agentLastName?: string | null;
+  agentPartnerName?: string | null;
+}>> {
   const slots: Array<{ id: string | null; relation: string }> = [
     { id: deal.ownerId, relation: "Owner" },
     { id: deal.producingAgentId, relation: "Producing Agent" },
@@ -201,13 +249,49 @@ async function loadDealTeam(
   const byId = new Map(
     users.map((u) => [u.id, { name: `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim() || u.email, avatarUrl: u.avatarUrl ?? null }]),
   );
+  const agentRows = await db
+    .select({
+      userId: agentProfilesTable.userId,
+      firstName: agentProfilesTable.firstName,
+      lastName: agentProfilesTable.lastName,
+      partnerName: partnersTable.name,
+    })
+    .from(agentProfilesTable)
+    .innerJoin(partnersTable, eq(partnersTable.id, agentProfilesTable.partnerId))
+    .where(inArray(agentProfilesTable.userId, ids));
+  const agentByUserId = new Map(
+    agentRows
+      .filter((agent) => agent.userId)
+      .map((agent) => [agent.userId!, agent]),
+  );
   const seen = new Set<string>();
-  const team: Array<{ userId: string; name: string; relation: string; avatarUrl: string | null }> = [];
+  const team: Array<{
+    userId: string;
+    name: string;
+    relation: string;
+    avatarUrl: string | null;
+    agentFirstName?: string | null;
+    agentLastName?: string | null;
+    agentPartnerName?: string | null;
+  }> = [];
   for (const s of slots) {
     if (!s.id || seen.has(s.id)) continue;
     seen.add(s.id);
     const u = byId.get(s.id);
-    team.push({ userId: s.id, name: u?.name ?? "User", relation: s.relation, avatarUrl: u?.avatarUrl ?? null });
+    const agent = agentByUserId.get(s.id);
+    team.push({
+      userId: s.id,
+      name:
+        `${agent?.firstName ?? ""} ${agent?.lastName ?? ""}`.replace(/\s+/g, " ").trim() ||
+        agent?.partnerName ||
+        u?.name ||
+        "Agent",
+      relation: s.relation,
+      avatarUrl: u?.avatarUrl ?? null,
+      agentFirstName: agent?.firstName,
+      agentLastName: agent?.lastName,
+      agentPartnerName: agent?.partnerName,
+    });
   }
   return team;
 }
