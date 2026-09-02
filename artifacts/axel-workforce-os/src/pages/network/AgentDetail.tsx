@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { openDealCard } from "@/components/DealCardModal";
 import { displayName as getAgentDisplayName } from "@/lib/agent-display-name";
+import { dealDisplayName } from "@/lib/deal-display-name";
 import { useAuthStore } from "@/lib/auth-store";
 
 const inputStyle: React.CSSProperties = {
@@ -302,7 +303,7 @@ export default function AgentDetail() {
                     transition: "background 0.15s"
                   }}
                 >
-                  <span style={{ fontSize: "14px", fontWeight: 500, color: textPrimary }}>{d.clientName}</span>
+                  <span style={{ fontSize: "14px", fontWeight: 500, color: textPrimary }}>{dealDisplayName(d)}</span>
                   {dealSummary && <span style={{ fontSize: "13px", color: textMuted }}>{dealSummary}</span>}
                 </div>
               );

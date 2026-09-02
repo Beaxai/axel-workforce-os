@@ -18,6 +18,7 @@ import { formatK, SplitProductionLine } from "@/components/ui/NetworkGroups";
 import { useContacts, useCreateContact, useUpdateContact, useDeleteContact } from "@/hooks/use-contacts";
 import { useContactRoles } from "@/hooks/use-contact-roles";
 import { openDealCard } from "@/components/DealCardModal";
+import { dealDisplayName } from "@/lib/deal-display-name";
 import { AddAgentModal } from "@/components/ui/AddAgentModal";
 
 const inputStyle: React.CSSProperties = {
@@ -476,7 +477,7 @@ export default function AgencyDetail() {
               <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                 {boundDeals.map(d => (
                   <div key={d.id} onClick={() => openDealCard(d.id)} className="hover-elevate" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px", borderRadius: "8px", cursor: "pointer", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)"}` }}>
-                    <span style={{ fontSize: "13px", fontWeight: 500, color: textPrimary, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.clientName || d.businessName || "Client"}</span>
+                    <span style={{ fontSize: "13px", fontWeight: 500, color: textPrimary, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{dealDisplayName(d)}</span>
                     <span style={{ fontSize: "12px", color: textMuted, flexShrink: 0, marginLeft: "12px" }}>
                       {dealLabel(d)} · {formatKLabel(dealValue(d))}
                     </span>
@@ -493,7 +494,7 @@ export default function AgencyDetail() {
               <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                 {openDeals.map(d => (
                   <div key={d.id} onClick={() => openDealCard(d.id)} className="hover-elevate" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px", borderRadius: "8px", cursor: "pointer", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)"}` }}>
-                    <span style={{ fontSize: "13px", fontWeight: 500, color: textPrimary, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.clientName || d.businessName || "Client"}</span>
+                    <span style={{ fontSize: "13px", fontWeight: 500, color: textPrimary, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{dealDisplayName(d)}</span>
                     <span style={{ fontSize: "12px", color: textMuted, flexShrink: 0, marginLeft: "12px" }}>
                       {dealLabel(d)} · {(d.stage || "").replace(/_/g, " ")} · {formatKLabel(dealValue(d))}
                     </span>

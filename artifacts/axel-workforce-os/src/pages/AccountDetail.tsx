@@ -15,6 +15,7 @@ import { useThemeColors } from "@/lib/use-theme-colors";
 import { useAuthStore } from "@/lib/auth-store";
 import { api } from "@/lib/api";
 import { stageLabel, type PipelineStageKey } from "@workspace/pipeline";
+import { dealDisplayName } from "@/lib/deal-display-name";
 import { ChevronRight, Clock, User, Plus, AlertTriangle } from "lucide-react";
 import { useContacts, useCreateContact, useUpdateContact, useDeleteContact, type Contact } from "@/hooks/use-contacts";
 
@@ -297,7 +298,7 @@ export default function AccountDetail() {
                   onMouseLeave={(e) => { e.currentTarget.style.borderColor = inputBorder; }}
                 >
                   <div>
-                    <p style={{ fontSize: "13px", fontWeight: 500, color: textPrimary, margin: 0 }}>{d.businessName || d.referenceCode}</p>
+                    <p style={{ fontSize: "13px", fontWeight: 500, color: textPrimary, margin: 0 }}>{dealDisplayName(d)}</p>
                     <span style={{ fontSize: "11px", color: textMuted }}>{stageLabel(d.stage as PipelineStageKey) || d.stage}</span>
                   </div>
                   <Badge label={d.productType === "PEO" ? "PEO" : "WC"} color={d.productType === "PEO" ? "purple" : "blue"} />
