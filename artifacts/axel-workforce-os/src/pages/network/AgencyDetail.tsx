@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { GlassCard, GhostButton, PinkButton, Modal, ContactModal } from "@/components/ui/axel-index";
-import { ArrowLeft, Edit2, MoreHorizontal, Mail, Phone, MapPin, ExternalLink, FileCheck, FileMinus, ShieldAlert, ShieldCheck, ChevronRight, Plus } from "lucide-react";
+import { ArrowLeft, Edit2, MoreHorizontal, Mail, Phone, MapPin, ExternalLink, FileCheck, FileMinus, ShieldAlert, ShieldCheck, Plus } from "lucide-react";
 import { useThemeStore } from "@/lib/theme-store";
 import {
   DropdownMenu,
@@ -404,27 +404,47 @@ export default function AgencyDetail() {
         {agents.length === 0 ? (
           <p style={{ fontSize: "14px", color: textMuted, margin: 0 }}>No agents yet.</p>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
             {agents.map(agent => (
               <GlassCard key={agent.id} padding="0" className="hover-elevate" style={{ cursor: "pointer" }} onClick={() => navigate(`/network/agents/${agent.id}`)}>
-                <div style={{ padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "12px", minWidth: 0 }}>
-                    <div style={{ width: "36px", height: "36px", borderRadius: "50%", background: "rgba(124,58,237,0.15)", color: "#7C3AED", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px", fontWeight: 600, flexShrink: 0 }}>
-                      {displayName(agent).split(" ").map((n: string) => n[0]).slice(0, 2).join("").toUpperCase()}
+                <div style={{ padding: "18px 20px" }}>
+                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "16px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "14px", minWidth: 0 }}>
+                      <div style={{ width: "44px", height: "44px", borderRadius: "50%", background: "rgba(124,58,237,0.2)", color: "#A78BFA", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px", fontWeight: 600, flexShrink: 0 }}>
+                        {displayName(agent).split(" ").map((n: string) => n[0]).slice(0, 2).join("").toUpperCase()}
+                      </div>
+                      <div style={{ minWidth: 0 }}>
+                        <p style={{ margin: "0 0 3px", color: textPrimary, fontSize: "15px", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{displayName(agent)}</p>
+                        <p style={{ margin: 0, fontSize: "13px", color: textMuted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                          {[agent.title, legalName].filter(Boolean).join(" · ")}
+                        </p>
+                      </div>
                     </div>
-                    <div style={{ minWidth: 0 }}>
-                      <p style={{ margin: "0 0 2px", color: textPrimary, fontSize: "13px", fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{displayName(agent)}</p>
-                      <p style={{ margin: 0, fontSize: "12px", color: textMuted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                        {[agent.title, agent.email || agent.contactEmail].filter(Boolean).join(" · ")}
-                      </p>
-                    </div>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "12px", flexShrink: 0 }}>
-                    <SplitProductionLine metrics={agent.productionMetrics} />
-                    <span style={{ padding: "2px 8px", borderRadius: "999px", background: agent.status === "Active" ? "rgba(30,233,123,0.15)" : "rgba(233,195,30,0.15)", color: agent.status === "Active" ? "#1EE97B" : "#E9C31E", fontSize: "11px", fontWeight: 600 }}>
+                    <span style={{ padding: "4px 12px", borderRadius: "999px", background: agent.status === "Active" ? "rgba(30,233,123,0.1)" : "rgba(233,195,30,0.12)", color: agent.status === "Active" ? "#56D6A3" : "#E9C31E", fontSize: "12px", fontWeight: 500, flexShrink: 0 }}>
                       {agent.status || "Active"}
                     </span>
-                    <ChevronRight style={{ width: 16, height: 16, color: textMuted }} />
+                  </div>
+
+                  <div style={{ height: "1px", background: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)", margin: "14px 0 12px" }} />
+
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px", flexWrap: "wrap" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "20px", minWidth: 0, flexWrap: "wrap" }}>
+                      {(agent.email || agent.contactEmail) && (
+                        <span style={{ display: "flex", alignItems: "center", gap: "7px", color: "#E91E8C", fontSize: "13px", minWidth: 0 }}>
+                          <Mail style={{ width: 15, height: 15, flexShrink: 0 }} />
+                          <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{agent.email || agent.contactEmail}</span>
+                        </span>
+                      )}
+                      {(agent.phoneDirect || agent.phoneMobile || agent.contactPhone) && (
+                        <span style={{ display: "flex", alignItems: "center", gap: "7px", color: textMuted, fontSize: "13px" }}>
+                          <Phone style={{ width: 15, height: 15, flexShrink: 0 }} />
+                          {agent.phoneDirect || agent.phoneMobile || agent.contactPhone}
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ marginLeft: "auto", flexShrink: 0 }}>
+                      <SplitProductionLine metrics={agent.productionMetrics} />
+                    </div>
                   </div>
                 </div>
               </GlassCard>
