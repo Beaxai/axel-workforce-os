@@ -35,6 +35,7 @@ import DepositCard from "./DepositCard";
 import BrokerFeeCard from "./BrokerFeeCard";
 import ReRateBanner from "./ReRateBanner";
 import { DocumentsTab, QuoteTab, PolicyTab, TasksTab } from "./SupportingTabs";
+import Avatar from "@/components/user-profile/Avatar";
 
 import type { IndicationMetric } from "./IndicationDetailView";
 
@@ -102,12 +103,6 @@ function fmtMoneyShort(v: unknown): string {
   return `$${n.toLocaleString()}`;
 }
 
-function teamInitials(name: string): string {
-  const parts = name.trim().split(/\s+/);
-  if (parts.length >= 2) return `${parts[0][0] ?? ""}${parts[1][0] ?? ""}`.toUpperCase();
-  return (parts[0]?.[0] ?? "?").toUpperCase();
-}
-
 const AVATAR_SIZE = 38;
 
 /**
@@ -125,11 +120,6 @@ function DealTeamAvatars({ team, directory }: { team?: DealTeamMember[]; directo
   const grey = c.isDark ? "rgba(255,255,255,0.13)" : "rgba(0,0,0,0.08)";
   const greyText = c.isDark ? "rgba(255,255,255,0.72)" : "rgba(0,0,0,0.6)";
   const ring = c.bg;
-  const base: CSSProperties = {
-    width: AVATAR_SIZE, height: AVATAR_SIZE, borderRadius: "50%",
-    border: `2px solid ${ring}`, display: "flex", alignItems: "center", justifyContent: "center",
-    flexShrink: 0, overflow: "hidden",
-  };
   // Same people as the Pipeline card face: real team when present, otherwise
   // the first three directory members (matching the card-face avatar row).
   const people: Array<{ userId: string; name: string; relation?: string; photo: string | null }> =
@@ -145,23 +135,23 @@ function DealTeamAvatars({ team, directory }: { team?: DealTeamMember[]; directo
           type="button"
           title={m.relation ? `${m.name} · ${m.relation}` : m.name}
           style={{
-            ...base,
             background: grey,
+            width: AVATAR_SIZE,
+            height: AVATAR_SIZE,
+            borderRadius: "50%",
+            border: `2px solid ${ring}`,
             marginLeft: i === 0 ? 0 : -10,
             cursor: "pointer", padding: 0,
             fontSize: 13, fontWeight: 600, color: greyText,
             position: "relative", zIndex: people.length - i,
           }}
         >
-          {m.photo ? (
-            <img
-              src={m.photo}
-              alt={m.name}
-              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-            />
-          ) : (
-            teamInitials(m.name)
-          )}
+          <Avatar
+            name={m.name}
+            avatarUrl={m.photo}
+            size={AVATAR_SIZE - 4}
+            style={{ background: grey, color: greyText }}
+          />
         </button>
       ))}
     </div>

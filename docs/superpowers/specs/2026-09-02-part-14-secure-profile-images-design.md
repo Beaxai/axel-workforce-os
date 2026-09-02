@@ -2,7 +2,7 @@
 
 ## Goal
 
-Allow a linked Agent, ADMIN, or CSA user to upload, replace, and remove a person's profile image. Store the image on the canonical user identity so the same avatar appears anywhere that person's name already appears, including Agent surfaces, deal cards, and the Team directory.
+Allow any authenticated user to upload, replace, and remove their own profile image. ADMIN and CSA users may additionally manage profile images for linked Agents. Store the image on the canonical user identity so the same avatar appears anywhere that person's name already appears, including Agent surfaces, deal cards, and the Team directory.
 
 Agents without linked user accounts continue to display initials until they are credentialed. This is an accepted limitation.
 
@@ -11,7 +11,7 @@ Agents without linked user accounts continue to display initials until they are 
 ### Included
 
 - Upload, replace, and remove a user profile image.
-- Agent self-service plus ADMIN/CSA management of Agent images.
+- Authenticated user self-service plus ADMIN/CSA management of linked Agent images.
 - Durable Replit App Storage.
 - Canonical persistence through the existing nullable `users.avatarUrl` field.
 - Image display in Agent Detail, Agency Detail Agent roster tiles, user-profile surfaces, assigned-team/deal-card surfaces, and the Team directory wherever the person's name already renders.
@@ -44,7 +44,7 @@ The API accepts source files up to 5 MB. The decoded image must also respect exp
 
 ### Modification
 
-- A linked Agent may upload, replace, or remove their own avatar.
+- Any authenticated user may upload, replace, or remove their own avatar.
 - ADMIN and CSA users may manage an Agent's avatar.
 - Other authenticated users may not modify that avatar.
 - Authorization is enforced server-side using the authenticated user and target user identity.
@@ -111,7 +111,7 @@ The upload control is not shown on read-only surfaces.
 - Limit request size, decoded dimensions, and output dimensions.
 - Generate opaque server-side object names; never trust client paths.
 - Require authentication for upload, removal, and avatar serving.
-- Enforce self or ADMIN/CSA authorization for modification.
+- Enforce self authorization, or ADMIN/CSA authorization when modifying a linked Agent.
 - Set an explicit image content type and safe cache headers when serving.
 - Do not leak storage bucket URLs or signed upload credentials as the persisted public value.
 
@@ -120,8 +120,8 @@ The upload control is not shown on read-only surfaces.
 ### API
 
 - Anonymous upload/remove/read returns 401.
-- Agent self upload/replace/remove succeeds.
-- Agent modifying another user returns 403.
+- Authenticated user self upload/replace/remove succeeds.
+- A user modifying another user returns 403.
 - ADMIN and CSA Agent-avatar management succeeds.
 - Unauthorized roles return 403.
 - Valid PNG, JPEG, and WebP content succeeds.

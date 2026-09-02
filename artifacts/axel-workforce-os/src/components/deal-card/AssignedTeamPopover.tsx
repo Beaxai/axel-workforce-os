@@ -10,6 +10,7 @@ import { useThemeColors } from "@/lib/use-theme-colors";
 import type { DealTeamMember } from "./types";
 import GhostButton from "@/components/ui/GhostButton";
 import { displayName } from "@/lib/agent-display-name";
+import Avatar from "@/components/user-profile/Avatar";
 
 interface AssignedTeamPopoverProps {
   dealId: string;
@@ -24,6 +25,7 @@ interface AgentPartner {
   lastName?: string;
   name: string;
   status: string;
+  avatarUrl?: string | null;
 }
 
 export default function AssignedTeamPopover({ dealId, team, children, onUpdated }: AssignedTeamPopoverProps) {
@@ -116,6 +118,7 @@ export default function AssignedTeamPopover({ dealId, team, children, onUpdated 
                 email={m.email ?? undefined}
                 phoneDirect={m.phoneDirect ?? undefined}
                 phoneMobile={m.phoneMobile ?? undefined}
+                avatarUrl={m.avatarUrl}
               />
             ))
           )}
@@ -138,7 +141,11 @@ export default function AssignedTeamPopover({ dealId, team, children, onUpdated 
                   style={{ width: "100%", justifyContent: "space-between", padding: "8px 12px", border: "1px solid var(--border)", background: "var(--input-bg)", opacity: assigning ? 0.7 : 1, pointerEvents: assigning ? "none" : "auto" }}
                 >
                   <div className="flex items-center gap-2 overflow-hidden">
-                    <UserCircle className="w-4 h-4 flex-shrink-0 text-muted-foreground" />
+                    {currentAgent ? (
+                      <Avatar name={currentAgent.name} avatarUrl={currentAgent.avatarUrl} size={20} />
+                    ) : (
+                      <UserCircle className="w-4 h-4 flex-shrink-0 text-muted-foreground" />
+                    )}
                     <span className="truncate text-sm">
                       {currentAgent ? currentAgent.name : "Assign Producing Agent..."}
                     </span>
@@ -159,11 +166,14 @@ export default function AssignedTeamPopover({ dealId, team, children, onUpdated 
                           onSelect={() => handleAssignAgent(agent.userId)}
                           className="flex items-center justify-between"
                         >
-                          <div className="flex flex-col">
-                            <span>{displayName(agent)}</span>
-                            {agent.status && (
-                              <span className="text-[10px] text-muted-foreground uppercase">{agent.status}</span>
-                            )}
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Avatar name={displayName(agent)} avatarUrl={agent.avatarUrl} size={24} />
+                            <div className="flex flex-col min-w-0">
+                              <span className="truncate">{displayName(agent)}</span>
+                              {agent.status && (
+                                <span className="text-[10px] text-muted-foreground uppercase">{agent.status}</span>
+                              )}
+                            </div>
                           </div>
                           {currentAgent?.userId === agent.userId && <Check className="w-4 h-4 ml-2" />}
                         </CommandItem>

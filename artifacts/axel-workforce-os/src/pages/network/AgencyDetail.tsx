@@ -20,6 +20,7 @@ import { useContactRoles } from "@/hooks/use-contact-roles";
 import { openDealCard } from "@/components/DealCardModal";
 import { dealDisplayName } from "@/lib/deal-display-name";
 import { AddAgentModal } from "@/components/ui/AddAgentModal";
+import Avatar from "@/components/user-profile/Avatar";
 
 const inputStyle: React.CSSProperties = {
   width: "100%", padding: "10px 14px", borderRadius: "8px", border: "1px solid var(--input-border)",
@@ -410,9 +411,7 @@ export default function AgencyDetail() {
                 <div style={{ padding: "18px 20px" }}>
                   <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "16px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "14px", minWidth: 0 }}>
-                      <div style={{ width: "44px", height: "44px", borderRadius: "50%", background: "rgba(124,58,237,0.2)", color: "#A78BFA", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px", fontWeight: 600, flexShrink: 0 }}>
-                        {displayName(agent).split(" ").map((n: string) => n[0]).slice(0, 2).join("").toUpperCase()}
-                      </div>
+                       <Avatar name={displayName(agent)} avatarUrl={agent.avatarUrl} size={44} />
                       <div style={{ minWidth: 0 }}>
                         <p style={{ margin: "0 0 3px", color: textPrimary, fontSize: "15px", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{displayName(agent)}</p>
                         <p style={{ margin: 0, fontSize: "13px", color: textMuted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>

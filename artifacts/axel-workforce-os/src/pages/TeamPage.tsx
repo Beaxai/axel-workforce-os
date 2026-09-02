@@ -14,6 +14,7 @@ interface TeamMember {
   phoneDirect?: string;
   phoneMobile?: string;
   department?: string;
+  avatarUrl?: string | null;
 }
 
 export default function TeamPage() {
@@ -108,6 +109,7 @@ export default function TeamPage() {
                 email={member.email}
                 phoneDirect={member.phoneDirect}
                 phoneMobile={member.phoneMobile}
+                avatarUrl={member.avatarUrl}
               />
             ))}
           </div>

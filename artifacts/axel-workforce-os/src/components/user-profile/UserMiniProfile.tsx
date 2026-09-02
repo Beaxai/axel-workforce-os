@@ -5,6 +5,7 @@ import { AxelBadge } from "@/components/ui/axel-index";
 import { useGetUserProfile, getGetUserProfileQueryKey } from "@workspace/api-client-react";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { Mail, Phone, ArrowUpRight, Check, Copy } from "lucide-react";
+import Avatar from "./Avatar";
 
 const ROLE_BADGE_COLOR: Record<string, string> = {
   ADMIN: "purple",
@@ -27,13 +28,6 @@ const ROLE_LABEL: Record<string, string> = {
   PEO: "PEO Partner",
   VENDOR: "Vendor",
 };
-
-function initials(first?: string | null, last?: string | null, email?: string): string {
-  const a = (first || "").trim();
-  const b = (last || "").trim();
-  if (a || b) return `${a[0] ?? ""}${b[0] ?? ""}`.toUpperCase() || "?";
-  return (email?.[0] ?? "?").toUpperCase();
-}
 
 /** Normalized shape the popover renders. Used for non-user entities (e.g. network
  * partners in global search) that aren't backed by a user_profiles row. */
@@ -180,26 +174,7 @@ export default function UserMiniProfile({
         ) : (
           <div style={{ padding: 16 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
-              <div
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: "50%",
-                  flexShrink: 0,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 15,
-                  fontWeight: 700,
-                  background: "var(--accent-primary-soft)",
-                  color: "var(--accent-primary)",
-                  backgroundImage: profile.avatarUrl ? `url(${profile.avatarUrl})` : undefined,
-                  backgroundSize: "cover",
-                  backgroundPosition: "center",
-                }}
-              >
-                {!profile.avatarUrl && initials(profile.firstName, profile.lastName, profile.email ?? undefined)}
-              </div>
+              <Avatar name={name} avatarUrl={profile.avatarUrl} size={44} />
               <div style={{ minWidth: 0 }}>
                 <p
                   style={{

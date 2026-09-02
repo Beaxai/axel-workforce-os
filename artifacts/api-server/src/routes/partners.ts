@@ -20,6 +20,7 @@ import {
   EMPTY_PRODUCTION_METRICS,
   getProductionMetricsByAgentIds,
 } from "../lib/production-metrics";
+import { projectLinkedUserAvatar } from "../lib/avatar-projection";
 
 const router: IRouter = Router();
 
@@ -77,6 +78,7 @@ router.get("/", async (req, res) => {
         partner: partnersTable,
         profile: agentProfilesTable,
         agency: agenciesTable,
+        portalUser: usersTable,
       })
       .from(partnersTable)
       .leftJoin(
@@ -84,13 +86,14 @@ router.get("/", async (req, res) => {
         eq(agentProfilesTable.partnerId, partnersTable.id),
       )
       .leftJoin(agenciesTable, eq(agenciesTable.id, partnersTable.agencyId))
+      .leftJoin(usersTable, eq(usersTable.id, agentProfilesTable.userId))
       .where(eq(partnersTable.partnerType, "Agent"))
       .orderBy(desc(partnersTable.createdAt));
     const metricsByAgent = await getProductionMetricsByAgentIds(
       rows.flatMap(({ profile }) => (profile?.userId ? [profile.userId] : [])),
     );
     res.json(
-      rows.map(({ partner, profile, agency }) => ({
+      rows.map(({ partner, profile, agency, portalUser }) => ({
         ...partner,
         firstName: profile?.firstName ?? null,
         lastName: profile?.lastName ?? null,
@@ -101,6 +104,7 @@ router.get("/", async (req, res) => {
         licenseNumbers: profile?.licenseNumbers ?? null,
         registrationId: profile?.registrationId ?? null,
         userId: profile?.userId ?? null,
+        avatarUrl: projectLinkedUserAvatar(portalUser),
         agencyLegalName: agency?.legalName ?? null,
         agencyStatus: agency?.status ?? null,
         productionMetrics: profile?.userId
@@ -191,6 +195,7 @@ router.get("/:id", async (req, res) => {
     licenseNumbers: row.profile?.licenseNumbers ?? null,
     registrationId: row.profile?.registrationId ?? null,
     userId: row.profile?.userId ?? null,
+    avatarUrl: projectLinkedUserAvatar(row.portalUser),
     agencyLegalName: row.agency?.legalName ?? null,
     agencyStatus: row.agency?.status ?? null,
     email: row.partner.contactEmail ?? row.portalUser?.email ?? registration?.email,

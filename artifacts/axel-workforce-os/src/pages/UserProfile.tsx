@@ -13,6 +13,8 @@ import {
   type UpdateUserProfileRequest,
 } from "@workspace/api-client-react";
 import { ArrowLeft, Mail, Phone, Clock, Calendar, Briefcase, FileText, KeyRound, Building2 } from "lucide-react";
+import Avatar from "@/components/user-profile/Avatar";
+import AvatarUploadControl from "@/components/user-profile/AvatarUploadControl";
 
 const INTERNAL_ROLES = new Set(["ADMIN", "UNDERWRITER", "CSA"]);
 
@@ -43,13 +45,6 @@ const STATUS_COLOR: Record<string, string> = {
   invited: "yellow",
   deactivated: "gray",
 };
-
-function initials(first?: string | null, last?: string | null, email?: string): string {
-  const a = (first || "").trim();
-  const b = (last || "").trim();
-  if (a || b) return `${a[0] ?? ""}${b[0] ?? ""}`.toUpperCase() || "?";
-  return (email?.[0] ?? "?").toUpperCase();
-}
 
 function fmtDate(v?: string | null): string {
   if (!v) return "\u2014";
@@ -355,26 +350,17 @@ export default function UserProfile({ self = false }: UserProfileProps) {
       {/* Identity header */}
       <GlassCard padding="24px" style={{ marginBottom: 20 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap" }}>
-          <div
-            style={{
-              width: 72,
-              height: 72,
-              borderRadius: "50%",
-              flexShrink: 0,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 26,
-              fontWeight: 700,
-              background: "var(--accent-primary-soft)",
-              color: "var(--accent-primary)",
-              backgroundImage: profile.avatarUrl ? `url(${profile.avatarUrl})` : undefined,
-              backgroundSize: "cover",
-              backgroundPosition: "center",
-            }}
-          >
-            {!profile.avatarUrl && initials(profile.firstName, profile.lastName, profile.email)}
-          </div>
+          {isSelf ? (
+            <AvatarUploadControl
+              userId={userId}
+              name={name}
+              avatarUrl={profile.avatarUrl}
+              canManage
+              size={72}
+            />
+          ) : (
+            <Avatar name={name} avatarUrl={profile.avatarUrl} size={72} />
+          )}
           <div style={{ flex: 1, minWidth: 200 }}>
             <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: c.textPrimary }}>{name}</h1>
             {profile.title && (

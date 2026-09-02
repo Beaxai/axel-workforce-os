@@ -1,6 +1,7 @@
 import { Mail, Phone, Building2, User, UserCircle, Edit2, Shield } from "lucide-react";
 import { Badge, GhostButton, GlassCard } from "./axel-index";
 import { useThemeStore } from "@/lib/theme-store";
+import Avatar from "@/components/user-profile/Avatar";
 
 export type ContactCardVariant = "agency" | "agent" | "client_contact" | "staff" | "partner_contact";
 
@@ -20,6 +21,7 @@ interface ContactCardProps {
   onDelete?: () => void;
   onTogglePrimary?: () => void;
   onClick?: () => void;
+  avatarUrl?: string | null;
 }
 
 export function ContactCard({
@@ -36,6 +38,7 @@ export function ContactCard({
   footer,
   onEdit,
   onClick,
+  avatarUrl,
 }: ContactCardProps) {
   const { theme } = useThemeStore();
   const isDark = theme === "dark";
@@ -74,13 +77,17 @@ export function ContactCard({
     >
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <div style={{
-            width: "32px", height: "32px", borderRadius: "8px",
-            background: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)",
-            display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0
-          }}>
-            {getIcon()}
-          </div>
+           {avatarUrl || variant === "staff" || variant === "agent" ? (
+             <Avatar name={name} avatarUrl={avatarUrl} size={32} />
+           ) : (
+             <div style={{
+               width: "32px", height: "32px", borderRadius: "8px",
+               background: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)",
+               display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0
+             }}>
+               {getIcon()}
+             </div>
+           )}
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <p style={{ fontSize: "14px", fontWeight: 600, color: textPrimary, margin: 0 }}>{name}</p>

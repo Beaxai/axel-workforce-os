@@ -15,6 +15,7 @@ import { openDealCard } from "@/components/DealCardModal";
 import { displayName as getAgentDisplayName } from "@/lib/agent-display-name";
 import { dealDisplayName } from "@/lib/deal-display-name";
 import { useAuthStore } from "@/lib/auth-store";
+import AvatarUploadControl from "@/components/user-profile/AvatarUploadControl";
 
 const inputStyle: React.CSSProperties = {
   width: "100%", padding: "10px 14px", borderRadius: "8px", border: "1px solid var(--input-border)",
@@ -27,7 +28,8 @@ export default function AgentDetail() {
   const { theme } = useThemeStore();
   const isDark = theme === "dark";
   const qc = useQueryClient();
-  const isAdmin = useAuthStore((state) => state.user?.role === "ADMIN");
+  const authUser = useAuthStore((state) => state.user);
+  const isAdmin = authUser?.role === "ADMIN";
   const [editing, setEditing] = useState(false);
   const [confirmAction, setConfirmAction] = useState<"Suspend" | "Terminate" | null>(null);
   const [form, setForm] = useState<any>({});
@@ -92,27 +94,10 @@ export default function AgentDetail() {
   };
 
   const agentName = getAgentDisplayName(agent);
-  const initials = agentName
-    .split(" ")
-    .filter(Boolean)
-    .map((n: string) => n[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-
-  const avatarStyle = {
-    width: "48px",
-    height: "48px",
-    borderRadius: "50%",
-    background: "rgba(124,58,237,0.18)",
-    color: "#AFA9EC",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: "18px",
-    fontWeight: 600,
-    flexShrink: 0,
-  };
+  const canManageAvatar = Boolean(
+    agent.userId &&
+    (authUser?.role === "ADMIN" || authUser?.role === "CSA"),
+  );
 
   const secondarySegments = [];
   if (agent.title) secondarySegments.push(<span key="title">{agent.title}</span>);
@@ -169,7 +154,13 @@ export default function AgentDetail() {
 
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "32px", flexWrap: "wrap", gap: "16px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-          <div style={avatarStyle}>{initials}</div>
+          <AvatarUploadControl
+            userId={agent.userId || ""}
+            name={agentName}
+            avatarUrl={agent.avatarUrl}
+            canManage={canManageAvatar}
+            size={56}
+          />
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "4px" }}>
               <h1 style={{ fontSize: "20px", fontWeight: 700, color: textPrimary, margin: 0, letterSpacing: "-0.01em" }}>

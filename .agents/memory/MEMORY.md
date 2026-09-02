@@ -20,3 +20,4 @@
 - [Producing-Agent attachment eligibility](producing-agent-attachment-eligibility.md) — registration approval is the compliance checkpoint; new attachments require active Agent and agency status.
 - [Agency standing compliance data](agency-standing-compliance-data.md) — E&O and executed-agreement facts live on agencies; registration approval only enriches empty agency fields.
 - [Partner production buckets](partner-production-buckets.md) — agency/Agent production is split into WC premium, PEO premium, and combined ASO fees through one canonical calculator.
+- [Secure App Storage image transforms](app-storage-image-transforms.md) — sidecar credentials cannot locally sign GCS POST policies; bounded server transforms need strict multipart input.

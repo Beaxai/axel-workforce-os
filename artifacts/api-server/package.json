@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.88.0",
+    "@google-cloud/storage": "^8.0.1",
     "@types/multer": "^2.1.0",
     "@workspace/api-zod": "workspace:*",
     "@workspace/cannabis-application": "workspace:*",
@@ -39,6 +40,7 @@
     "pdf-lib": "^1.17.1",
     "pino": "^9",
     "pino-http": "^10",
+    "sharp": "^0.35.4",
     "socket.io": "^4.8.3",
     "zod": "catalog:"
   },
