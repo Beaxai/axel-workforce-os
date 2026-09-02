@@ -5,7 +5,7 @@ import { api } from "@/lib/api";
 import { GlassCard, SectionHeader, PinkButton, GhostButton, AxelBadge } from "@/components/ui/axel-index";
 import { Plus, X, Building2, Shield, Users, Truck, Search, Edit2, Check } from "lucide-react";
 import { useThemeStore } from "@/lib/theme-store";
-import { AgencyGroupCard, OrgGroupCard } from "@/components/ui/NetworkGroups";
+import { AgencyTile, OrgGroupCard } from "@/components/ui/NetworkGroups";
 import { AddAgentModal } from "@/components/ui/AddAgentModal";
 
 import { useAuthStore } from "@/lib/auth-store";
@@ -85,7 +85,8 @@ export default function Network() {
     // Group agents by agencyId
     const groups: Record<string, any[]> = {};
     filtered.forEach((agent: any) => {
-      const aid = agent.agencyId || "unassigned";
+      const aid = agent.agencyId;
+      if (!aid) return;
       if (!groups[aid]) groups[aid] = [];
       groups[aid].push(agent);
     });
@@ -120,6 +121,21 @@ export default function Network() {
       };
     });
 
+    matchedAgencyIds.forEach(aid => {
+      if (!groups[aid]) {
+        const agency = agencies.find((a: any) => a.id === aid);
+        if (agency) {
+          result.push({
+            agency,
+            agencyId: aid,
+            agencyName: agency.legalName,
+            agencyStatus: agency.status || "Active",
+            agents: []
+          });
+        }
+      }
+    });
+
     // Sort by active deal count
     return result.sort((a, b) => {
       const aDeals = deals.filter((d: any) => a.agents.some((ag: any) => ag.userId && ag.userId === d.producingAgentId) && d.stage !== "Closed Won" && d.stage !== "Closed Lost").length;
@@ -145,7 +161,7 @@ export default function Network() {
             <Plus style={{ width: 16, height: 16 }} /> Add Market
           </PinkButton>
         ) : tab !== "Markets" ? (
-          <PinkButton onClick={() => setShowAdd(true)} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+          <PinkButton onClick={() => setShowAdd(true)} style={{ display: "flex", alignItems: "center", gap: "6px", background: "#E91E8C" }}>
             <Plus style={{ width: 16, height: 16 }} /> Add Partner
           </PinkButton>
         ) : null}
@@ -216,14 +232,13 @@ export default function Network() {
         ) : tab === "Agents" ? (
           <>
             {agencyGroups.map(group => (
-              <AgencyGroupCard
+              <AgencyTile
                 key={group.agencyId}
                 agencyId={group.agencyId}
                 agencyName={group.agencyName}
                 agencyStatus={group.agencyStatus}
                 agency={group.agency}
                 agents={group.agents}
-                deals={deals}
               />
             ))}
             {agencyGroups.length === 0 && (

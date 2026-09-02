@@ -19,3 +19,4 @@
 - [Multi-market routing](multi-market-routing.md) — rank first-class markets per product lane; expose only Primary pricing; ordered top-four sends lock the ranking after first accepted delivery.
 - [Producing-Agent attachment eligibility](producing-agent-attachment-eligibility.md) — registration approval is the compliance checkpoint; new attachments require active Agent and agency status.
 - [Agency standing compliance data](agency-standing-compliance-data.md) — E&O and executed-agreement facts live on agencies; registration approval only enriches empty agency fields.
+- [Partner production buckets](partner-production-buckets.md) — agency/Agent production is split into WC premium, PEO premium, and combined ASO fees through one canonical calculator.

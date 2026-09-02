@@ -10,6 +10,7 @@ import { generateSubjectivitiesForDeal } from "../lib/subjectivities";
 import { startDepositMonitor, resolveDeposit } from "../lib/deposit-monitor";
 import { setBrokerFeePercent, setBrokerFeeStatus, sendBrokerFeeDunning, computeBrokerFee } from "../lib/broker-fee";
 import { validateNewProducingAgentAttachment } from "../lib/agent-assignment-gate";
+import { calculateDealProduction } from "../lib/production-metrics";
 import { requireRoles } from "../middleware/require-auth";
 
 const router: IRouter = Router();
@@ -149,6 +150,8 @@ router.get("/", async (_req, res) => {
           wcFinalPremium: quotesTable.wcFinalPremium,
           pepm: quotesTable.pepm,
           peoPepm: quotesTable.peoPepm,
+          monthlyWfsFee: quotesTable.monthlyWfsFee,
+          peoAnnualTotal: quotesTable.peoAnnualTotal,
         })
         .from(quotesTable)
         .where(inArray(quotesTable.dealId, ids))
@@ -157,8 +160,10 @@ router.get("/", async (_req, res) => {
   const latestProfile = new Map<string, WorkforceProfileLite>();
   const latestWcPremium = new Map<string, string>();
   const latestPepm = new Map<string, string>();
+  const latestProductionQuote = new Map<string, (typeof quoteRows)[number]>();
   for (const q of quoteRows) {
     if (!q.dealId) continue;
+    if (!latestProductionQuote.has(q.dealId)) latestProductionQuote.set(q.dealId, q);
     if (q.workforceProfile && !latestProfile.has(q.dealId)) {
       latestProfile.set(q.dealId, q.workforceProfile as WorkforceProfileLite);
     }
@@ -185,11 +190,26 @@ router.get("/", async (_req, res) => {
         : null;
     const dealWc = r.wcPremium != null && parseFloat(r.wcPremium) > 0 ? r.wcPremium : null;
     const dealPepm = r.wfsPepmRate != null && parseFloat(r.wfsPepmRate) > 0 ? r.wfsPepmRate : null;
+    const production = calculateDealProduction(r, latestProductionQuote.get(r.id));
+    const productionBucket =
+      r.productType === "PEO"
+        ? "PEO"
+        : r.productType === "ASO" || r.productType === "ASO_CAPTIVE"
+          ? "ASO"
+          : "WC";
+    const productionValue =
+      productionBucket === "PEO"
+        ? production.peoPremium
+        : productionBucket === "ASO"
+          ? production.asoFees
+          : production.wcPremium;
     return {
       ...r,
       // Premium fallbacks: deal-level columns win; otherwise the latest quote's.
       wcPremium: dealWc ?? latestWcPremium.get(r.id) ?? r.wcPremium,
       wfsPepmRate: dealPepm ?? latestPepm.get(r.id) ?? r.wfsPepmRate,
+      productionBucket,
+      productionValue,
       kpiLocations: r.numberOfLocations ?? (wp?.locations?.length || null),
       kpiEmployees: dealEmployees ?? (wpEmployees > 0 ? wpEmployees : null),
       kpiPayroll: r.annualPayroll ?? (wpPayroll > 0 ? String(wpPayroll) : null),

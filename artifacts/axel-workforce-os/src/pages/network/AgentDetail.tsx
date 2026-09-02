@@ -35,6 +35,10 @@ export default function AgentDetail() {
     queryKey: ["partner", id],
     queryFn: () => api.get<any>(`/partners/${id}`),
   });
+  const { data: allDeals = [] } = useQuery({
+    queryKey: ["deals"],
+    queryFn: () => api.get<any[]>("/deals"),
+  });
 
   const updateMut = useMutation({
     mutationFn: (data: any) =>
@@ -136,14 +140,14 @@ export default function AgentDetail() {
   const phoneMobile = agent.phoneMobile;
   const hasContact = email || phoneDirect || phoneMobile;
 
-  const associatedDeals = agent.associatedDeals || [];
+  const associatedDeals = allDeals.filter((deal: any) => deal.producingAgentId === agent.userId);
   const backAgencyName = agent.agencyLegalName || agent.agencyName;
   const backLabel = backAgencyName ? `Back to ${backAgencyName}` : "Back to Network";
 
   return (
     <div style={{ maxWidth: "960px", margin: "0 auto", paddingBottom: "60px" }}>
       <button
-        onClick={() => navigate(backAgencyName && agent.agencyId ? `/network#agency-${agent.agencyId}` : "/network")}
+        onClick={() => navigate(backAgencyName && agent.agencyId ? `/network/agencies/${agent.agencyId}` : "/network")}
         style={{
           background: "none",
           border: "none",
@@ -222,15 +226,20 @@ export default function AgentDetail() {
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "16px", marginBottom: "32px" }}>
-        <GlassCard padding="20px">
-          <p style={{ fontSize: "12px", color: textMuted, marginBottom: "8px", fontWeight: 500 }}>Deals Referred</p>
-          <p style={{ fontSize: "24px", color: textPrimary, margin: 0, fontWeight: 600 }}>{agent.dealCount || 0}</p>
-        </GlassCard>
-        <GlassCard padding="20px">
-          <p style={{ fontSize: "12px", color: textMuted, marginBottom: "8px", fontWeight: 500 }}>WC Premium</p>
-          <p style={{ fontSize: "24px", color: textPrimary, margin: 0, fontWeight: 600 }}>${(agent.wcPremiumTotal || 0).toLocaleString()}</p>
-        </GlassCard>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: "12px", marginBottom: "32px" }}>
+        {[
+          { label: "WC deals", val: (agent.productionMetrics?.wcDeals || 0) },
+          { label: "WC premium", val: `$${((agent.productionMetrics?.wcPremium || 0)).toLocaleString()}` },
+          { label: "PEO deals", val: (agent.productionMetrics?.peoDeals || 0) },
+          { label: "PEO premium", val: `$${((agent.productionMetrics?.peoPremium || 0)).toLocaleString()}` },
+          { label: "ASO deals", val: (agent.productionMetrics?.asoDeals || 0) },
+          { label: "ASO fees", val: `$${((agent.productionMetrics?.asoFees || 0)).toLocaleString()}` },
+        ].map(stat => (
+          <GlassCard key={stat.label} padding="16px">
+            <p style={{ fontSize: "11px", color: textMuted, marginBottom: "8px", fontWeight: 500 }}>{stat.label}</p>
+            <p style={{ fontSize: "20px", color: textPrimary, margin: 0, fontWeight: 600 }}>{stat.val}</p>
+          </GlassCard>
+        ))}
       </div>
 
       <div style={{ marginBottom: "32px" }}>
@@ -272,8 +281,9 @@ export default function AgentDetail() {
           <div style={{ display: "flex", flexDirection: "column" }}>
             {associatedDeals.map((d: any, i: number) => {
               const dealSummary = [
+                d.productionBucket,
                 d.stage ? d.stage.replace(/_/g, " ") : null,
-                typeof d.premium === "number" ? `$${d.premium.toLocaleString()}` : null,
+                typeof d.productionValue === "number" ? `$${d.productionValue.toLocaleString()}` : null,
               ].filter(Boolean).join(" · ");
               return (
                 <div

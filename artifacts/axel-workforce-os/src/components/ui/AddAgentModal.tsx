@@ -7,7 +7,7 @@ import { useContactRoles } from "@/hooks/use-contact-roles";
 const US_STATES = ["AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY"];
 const roleLabel = (role: string) => role === "csr" ? "CSR" : role.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 
-export function AddAgentModal({ onClose }: { onClose: () => void }) {
+export function AddAgentModal({ onClose, initialAgencyId = "" }: { onClose: () => void; initialAgencyId?: string }) {
   const { theme } = useThemeStore();
   const isDark = theme === "dark";
   const textMuted = isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.58)";
@@ -17,11 +17,11 @@ export function AddAgentModal({ onClose }: { onClose: () => void }) {
   const createAgent = useCreateAgent();
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [selectedAgencyId, setSelectedAgencyId] = useState<string>("");
+  const [selectedAgencyId, setSelectedAgencyId] = useState<string>(initialAgencyId);
   const [isCreatingAgency, setIsCreatingAgency] = useState(false);
   const [agencyForm, setAgencyForm] = useState({
     legalName: "", dba: "", status: "active", mainPhone: "", website: "",
-    address: "", agencyNpn: "", statesLicensed: [] as string[], linesOfAuthority: [] as string[],
+    address: "", agencyNpn: "", licenseNumber: "", statesLicensed: [] as string[], linesOfAuthority: [] as string[],
   });
 
   const [agentForm, setAgentForm] = useState({ firstName: "", lastName: "", email: "", title: "", phoneDirect: "", phoneMobile: "", individualNpn: "", licenseStates: [] as string[] });
@@ -157,14 +157,18 @@ export function AddAgentModal({ onClose }: { onClose: () => void }) {
                   <input value={agencyForm.agencyNpn} onChange={e => setAgencyForm({ ...agencyForm, agencyNpn: e.target.value })} style={inputStyle} />
                 </div>
                 <div>
-                  <label style={labelStyle}>Lines of Authority</label>
-                  <input
-                    value={agencyForm.linesOfAuthority.join(", ")}
-                    onChange={e => setAgencyForm({ ...agencyForm, linesOfAuthority: e.target.value.split(",").map(v => v.trim()).filter(Boolean) })}
-                    style={inputStyle}
-                    placeholder="P&C, Life"
-                  />
+                  <label style={labelStyle}>License Number</label>
+                  <input value={agencyForm.licenseNumber} onChange={e => setAgencyForm({ ...agencyForm, licenseNumber: e.target.value })} style={inputStyle} />
                 </div>
+              </div>
+              <div>
+                <label style={labelStyle}>Lines of Authority</label>
+                <input
+                  value={agencyForm.linesOfAuthority.join(", ")}
+                  onChange={e => setAgencyForm({ ...agencyForm, linesOfAuthority: e.target.value.split(",").map(v => v.trim()).filter(Boolean) })}
+                  style={inputStyle}
+                  placeholder="P&C, Life"
+                />
               </div>
               <div>
                 <label style={labelStyle}>States Licensed</label>

@@ -24,6 +24,7 @@ export const agenciesTable = pgTable(
     website: text("website"),
     address: text("address"),
     agencyNpn: text("agency_npn"),
+    licenseNumber: text("license_number"),
     statesLicensed: jsonb("states_licensed"),
     linesOfAuthority: jsonb("lines_of_authority"),
     eoCarrier: text("eo_carrier"),

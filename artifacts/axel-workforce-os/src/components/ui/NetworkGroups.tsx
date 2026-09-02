@@ -1,288 +1,117 @@
-import { useState, useMemo } from "react";
-import { GlassCard, ContactCard, ContactModal, Modal } from "./axel-index";
-import { ChevronDown, ChevronRight, Plus, Edit2, ExternalLink, Phone, MapPin } from "lucide-react";
+import { useState } from "react";
+import { GlassCard, ContactCard, ContactModal } from "./axel-index";
+import { ChevronDown, ChevronRight, Plus, Mail } from "lucide-react";
 import { useThemeStore } from "@/lib/theme-store";
-import { useContacts, useCreateContact, useUpdateContact, useDeleteContact, useUpdateAgency } from "@/hooks/use-contacts";
+import { useContacts, useCreateContact, useUpdateContact, useDeleteContact } from "@/hooks/use-contacts";
 import { useContactRoles } from "@/hooks/use-contact-roles";
+import { FileCheck, FileMinus, ShieldAlert, ShieldCheck } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { displayName } from "@/lib/agent-display-name";
-import { useAuthStore } from "@/lib/auth-store";
-import { agencyAgreementStatus, agencyEoStatus } from "@/lib/agency-registration-status";
 
-const US_STATES = ["AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY"];
+export function formatK(num: number): string {
+  if (!num) return "$0K";
+  if (num < 1000) return `$${num.toLocaleString()}`;
+  return `$${(num / 1000).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 1 })}K`;
+}
 
-export function AgencyGroupCard({ agency, agencyId, agencyName, agencyStatus, agents, deals }: { agency?: any, agencyId: string, agencyName: string, agencyStatus: string, agents: any[], deals: any[] }) {
-  const [expanded, setExpanded] = useState(false);
-  const [showAllStates, setShowAllStates] = useState(false);
-  const { theme } = useThemeStore();
-  const isDark = theme === "dark";
-  const textPrimary = isDark ? "#fff" : "#111";
-  const textMuted = isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.58)";
-  const navigate = useNavigate();
-  const { data: agencyContacts = [] } = useContacts("agency", agencyId, expanded);
-  const { data: roleVocabulary } = useContactRoles();
-  const createContact = useCreateContact();
-  const updateContact = useUpdateContact();
-  const deleteContact = useDeleteContact();
-  const [showContactModal, setShowContactModal] = useState(false);
-  const [editingContact, setEditingContact] = useState<any>(null);
-  const [showAgencyModal, setShowAgencyModal] = useState(false);
-  const [agencyForm, setAgencyForm] = useState<any>(null);
-  const updateAgency = useUpdateAgency();
-  const { user } = useAuthStore();
-  const canEditAgency = agency && (user?.role === "ADMIN" || user?.role === "CSA");
-
-  // Calculate deals for this agency (sum of deals for all its agents)
-  const activeDeals = deals.filter(d => agents.some(a => a.userId && a.userId === d.producingAgentId) && d.stage !== "Closed Won" && d.stage !== "Closed Lost");
-  const wcPremium = deals
-    .filter((deal) => agents.some((agent) => agent.userId && agent.userId === deal.producingAgentId))
-    .reduce((sum, deal) => sum + Number(deal.wcPremium || deal.estimatedPremium || 0), 0);
-  const states = Array.isArray(agency?.statesLicensed) ? agency.statesLicensed : [];
-  const agencyIsActive = agencyStatus?.toLowerCase() === "active";
-  const agreementStatus = agencyAgreementStatus(agency, agency?.registration);
-  const eoStatus = agencyEoStatus(agency);
-  const legalName = agency?.legalName || agencyName || "Unassigned Agency";
-  const initials = legalName
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part: string) => part[0]?.toUpperCase())
-    .join("") || "A";
-  const visibleStates = showAllStates ? states : states.slice(0, 8);
-  const hiddenStateCount = Math.max(states.length - 8, 0);
-  const hasAgencyInfo = Boolean(
-    agency?.mainPhone ||
-    agency?.website ||
-    agency?.address ||
-    agency?.agencyNpn ||
-    states.length ||
-    activeDeals.length ||
-    wcPremium ||
-    agency?.registration ||
-    agency?.agreementSignedAt ||
-    agency?.eoCarrier ||
-    agency?.eoPolicyNumber ||
-    agency?.eoCoverageAmount ||
-    agency?.eoExpirationDate ||
-    agency?.eoCertificateUrl ||
-    agency?.agreementUrl
-  );
-  const hasRollup = hasAgencyInfo;
+export function SplitProductionLine({ metrics }: { metrics: any }) {
+  if (!metrics || (metrics.wcDeals === 0 && metrics.peoDeals === 0 && metrics.asoDeals === 0)) {
+    return <span style={{ color: "var(--text-muted)", fontSize: "12px", opacity: 0.7 }}>No production yet</span>;
+  }
+  const parts = [];
+  if (metrics.wcDeals > 0) parts.push(`WC ${metrics.wcDeals} · ${formatK(metrics.wcPremium)}`);
+  if (metrics.peoDeals > 0) parts.push(`PEO ${metrics.peoDeals} · ${formatK(metrics.peoPremium)}`);
+  if (metrics.asoDeals > 0) parts.push(`ASO ${metrics.asoDeals} · ${formatK(metrics.asoFees)}`);
 
   return (
-    <GlassCard padding="0" style={{ alignSelf: "start" }}>
-      <div id={`agency-${agencyId}`} style={{ padding: "18px" }} data-testid={`card-agency-${agencyId}`}>
-        <div
-          onClick={() => setExpanded(!expanded)}
-          style={{ cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "18px", minHeight: "42px" }}
-          data-testid={`header-agency-${agencyId}`}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "12px", minWidth: 0 }}>
-            <div
-              style={{ width: "42px", height: "42px", flex: "0 0 42px", borderRadius: "10px", display: "grid", placeItems: "center", background: "rgba(233,30,140,0.15)", color: "#E91E8C", fontSize: "14px", fontWeight: 600 }}
-              data-testid={`avatar-agency-${agencyId}`}
-            >
-              {initials}
-            </div>
-            <div style={{ minWidth: 0 }}>
-              <p style={{ margin: 0, color: textPrimary, fontSize: "15px", fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} data-testid={`text-agency-name-${agencyId}`}>{legalName}</p>
-              <p style={{ margin: "2px 0 0", fontSize: "13px", color: isDark ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.52)" }}>
-                {agency?.dba ? `DBA ${agency.dba} · ` : ""}{agents.length} agent{agents.length !== 1 && "s"}
-              </p>
-            </div>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }} data-testid={`actions-agency-${agencyId}`}>
-            <div style={{ padding: "2px 8px", borderRadius: "999px", background: agencyIsActive ? "rgba(30,233,123,0.15)" : "rgba(233,195,30,0.15)", color: agencyIsActive ? "#1EE97B" : "#E9C31E", fontSize: "12px", fontWeight: 600 }} data-testid={`status-agency-${agencyId}`}>
-              {agencyStatus || "Active"}
-            </div>
-            {canEditAgency && <button
-              data-testid={`button-edit-agency-${agencyId}`}
-              onClick={(event) => {
-                event.stopPropagation();
-                setAgencyForm({
-                  legalName: agency.legalName || "", dba: agency.dba || "", status: agency.status || "pending",
-                  mainPhone: agency.mainPhone || "", website: agency.website || "", address: agency.address || "",
-                  agencyNpn: agency.agencyNpn || "", statesLicensed: Array.isArray(agency.statesLicensed) ? agency.statesLicensed : [],
-                  linesOfAuthority: Array.isArray(agency.linesOfAuthority) ? agency.linesOfAuthority : [],
-                  eoCarrier: agency.eoCarrier || "", eoPolicyNumber: agency.eoPolicyNumber || "",
-                  eoCoverageAmount: agency.eoCoverageAmount || "", eoExpirationDate: agency.eoExpirationDate || "",
-                  eoCertificateUrl: agency.eoCertificateUrl || "",
-                  agreementSignedAt: agency.agreementSignedAt ? String(agency.agreementSignedAt).slice(0, 10) : "",
-                  agreementUrl: agency.agreementUrl || "",
-                });
-                setShowAgencyModal(true);
-              }}
-              style={{ border: "none", background: "transparent", color: "#E91E8C", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "4px", padding: "2px 0", fontSize: "12px", fontWeight: 600 }}
-            ><Edit2 style={{ width: 14 }} /> Edit</button>}
-            <span style={{ display: "inline-flex", color: textMuted }}>
-              {expanded ? <ChevronDown style={{ width: 18 }} /> : <ChevronRight style={{ width: 18 }} />}
-            </span>
-          </div>
-        </div>
-
-        {hasAgencyInfo && (
-          <div
-            style={{ borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`, paddingTop: "12px", marginTop: "12px", display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px 14px", minWidth: 0, color: textMuted, fontSize: "12px" }}
-            data-testid={`info-strip-agency-${agencyId}`}
-          >
-            {agency?.mainPhone && <a data-testid={`link-phone-agency-${agencyId}`} href={`tel:${agency.mainPhone}`} onClick={event => event.stopPropagation()} style={{ color: "inherit", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: "5px", whiteSpace: "nowrap" }}><Phone style={{ width: 13 }} />{agency.mainPhone}</a>}
-            {agency?.website && <a data-testid={`link-website-agency-${agencyId}`} href={/^https?:\/\//i.test(agency.website) ? agency.website : `https://${agency.website}`} target="_blank" rel="noreferrer" onClick={event => event.stopPropagation()} style={{ color: "#E91E8C", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: "5px", whiteSpace: "nowrap" }}>{agency.website}<ExternalLink style={{ width: 12 }} /></a>}
-            {agency?.address && (
-              <span title={agency.address} style={{ display: "inline-flex", alignItems: "center", gap: "5px", minWidth: 0, maxWidth: "240px" }} data-testid={`text-address-agency-${agencyId}`}>
-                <MapPin style={{ width: 13, flex: "0 0 13px" }} />
-                <span style={{ display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{agency.address}</span>
-              </span>
-            )}
-            {agency?.agencyNpn && <span style={{ whiteSpace: "nowrap" }} data-testid={`text-npn-agency-${agencyId}`}>NPN {agency.agencyNpn}</span>}
-            {visibleStates.map((state: string) => <span key={state} style={{ padding: "2px 8px", borderRadius: "999px", fontSize: "12px", color: textPrimary, background: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.07)" }} data-testid={`pill-state-${agencyId}-${state}`}>{state}</span>)}
-            {hiddenStateCount > 0 && (
-              <button
-                data-testid={`button-toggle-states-${agencyId}`}
-                type="button"
-                onClick={(event) => { event.stopPropagation(); setShowAllStates(current => !current); }}
-                style={{ padding: "2px 8px", border: "none", borderRadius: "999px", cursor: "pointer", fontSize: "12px", color: "#E91E8C", background: "rgba(233,30,140,0.12)" }}
-              >
-                {showAllStates ? "Show less" : `+${hiddenStateCount} more`}
-              </button>
-            )}
-            <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "8px 12px", marginLeft: "auto" }}>
-              {hasRollup && <span style={{ whiteSpace: "nowrap" }} data-testid={`text-rollup-agency-${agencyId}`}>{activeDeals.length} deals · ${wcPremium.toLocaleString()} WC premium</span>}
-              <span style={{
-                padding: "2px 8px", borderRadius: "999px", fontSize: "12px", fontWeight: 600,
-                color: agreementStatus.color === "green" ? "#1EE97B" : agreementStatus.color === "yellow" ? "#E9C31E" : textMuted,
-                background: agreementStatus.color === "green" ? "rgba(30,233,123,0.12)" : agreementStatus.color === "yellow" ? "rgba(233,195,30,0.12)" : "rgba(128,128,128,0.12)",
-              }} data-testid={`status-registration-agency-${agencyId}`}>
-                {agreementStatus.label}
-              </span>
-              {eoStatus && <span style={{ fontSize: "12px", color: eoStatus.color, fontWeight: 600, whiteSpace: "nowrap" }} data-testid={`status-eo-agency-${agencyId}`}>{eoStatus.label}</span>}
-            </div>
-          </div>
-        )}
-
-        {expanded && (
-        <div style={{ paddingLeft: "28px", marginTop: "12px", display: "flex", flexDirection: "column", gap: "12px" }}>
-          {agents.map(agent => {
-            const agentDeals = deals.filter((deal) => agent.userId && deal.producingAgentId === agent.userId);
-            const agentPremium = agentDeals.reduce((sum, deal) => sum + Number(deal.wcPremium || deal.estimatedPremium || 0), 0);
-            return (
-            <ContactCard
-              key={agent.id}
-              variant="agent"
-              name={displayName(agent)}
-              subtitle={
-                <>
-                  {agent.title ? `${agent.title} · ` : ""}
-                  <a href={`#agency-${agencyId}`} onClick={(event) => event.stopPropagation()} style={{ color: "#E91E8C", textDecoration: "none" }}>{agencyName}</a>
-                </>
-              }
-              email={agent.email || agent.contactEmail}
-              phoneDirect={agent.phoneDirect || agent.contactPhone}
-              phoneMobile={agent.phoneMobile}
-              status={agent.status}
-              footer={<span style={{ fontSize: "11px", color: textMuted }}>{agentDeals.length} deals referred · ${agentPremium.toLocaleString()} WC premium</span>}
-              onClick={() => navigate(`/network/agents/${agent.id}`)}
-            />
-          )})}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "4px" }}>
-            <span style={{ fontSize: "12px", fontWeight: 600, color: textMuted, textTransform: "uppercase", letterSpacing: "0.05em" }}>Agency contacts</span>
-            <button
-              onClick={() => { setEditingContact(null); setShowContactModal(true); }}
-              style={{ background: "var(--accent-primary)", color: "#fff", border: "none", padding: "4px 10px", borderRadius: "6px", fontSize: "12px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}
-            >
-              <Plus style={{ width: 14, height: 14 }} /> Add Contact
-            </button>
-          </div>
-          {agencyContacts.length === 0 ? (
-            <p style={{ fontSize: "13px", color: textMuted, margin: 0 }}>No agency contacts yet.</p>
-          ) : (
-            [...agencyContacts].sort((a, b) => {
-              const roles = roleVocabulary?.agency || [];
-              return roles.indexOf(a.role || "") - roles.indexOf(b.role || "") || a.lastName.localeCompare(b.lastName);
-            }).map((contact) => (
-              <ContactCard
-                key={contact.id}
-                variant="partner_contact"
-                name={`${contact.firstName} ${contact.lastName}`}
-                role={contact.role}
-                email={contact.email}
-                phoneDirect={contact.phone}
-                phoneMobile={contact.mobile}
-                isPrimary={contact.isPrimary}
-                onEdit={() => { setEditingContact(contact); setShowContactModal(true); }}
-              />
-            ))
-          )}
-        </div>
-        )}
-      </div>
-      {showContactModal && (
-        <ContactModal
-          isOpen
-          onClose={() => setShowContactModal(false)}
-          entityType="agency"
-          initialData={editingContact}
-          onSubmit={(data) => {
-            if (editingContact) updateContact.mutate({ id: editingContact.id, data });
-            else createContact.mutate({ ...data, entityType: "agency", entityId: agencyId });
-            setShowContactModal(false);
-          }}
-          onDelete={() => {
-            if (editingContact) deleteContact.mutate(editingContact.id);
-            setShowContactModal(false);
-          }}
-        />
-      )}
-      {showAgencyModal && agencyForm && (
-        <Modal isOpen onClose={() => setShowAgencyModal(false)} title="Edit Agency">
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            <AgencyField label="Legal Name *"><input value={agencyForm.legalName} onChange={event => setAgencyForm({ ...agencyForm, legalName: event.target.value })} style={agencyInputStyle} /></AgencyField>
-            <AgencyField label="DBA"><input value={agencyForm.dba} onChange={event => setAgencyForm({ ...agencyForm, dba: event.target.value })} style={agencyInputStyle} /></AgencyField>
-            <AgencyField label="Status"><select value={agencyForm.status} onChange={event => setAgencyForm({ ...agencyForm, status: event.target.value })} style={agencyInputStyle}><option value="pending">Pending</option><option value="active">Active</option><option value="suspended">Suspended</option><option value="terminated">Terminated</option></select></AgencyField>
-            <AgencyField label="Main Phone"><input value={agencyForm.mainPhone} onChange={event => setAgencyForm({ ...agencyForm, mainPhone: event.target.value })} style={agencyInputStyle} /></AgencyField>
-            <AgencyField label="Website"><input value={agencyForm.website} onChange={event => setAgencyForm({ ...agencyForm, website: event.target.value })} style={agencyInputStyle} /></AgencyField>
-            <AgencyField label="Address"><input value={agencyForm.address} onChange={event => setAgencyForm({ ...agencyForm, address: event.target.value })} style={agencyInputStyle} /></AgencyField>
-            <AgencyField label="Agency NPN"><input value={agencyForm.agencyNpn} onChange={event => setAgencyForm({ ...agencyForm, agencyNpn: event.target.value })} style={agencyInputStyle} /></AgencyField>
-            <AgencyField label="States Licensed">
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", maxHeight: "110px", overflowY: "auto", padding: "8px", border: "1px solid var(--input-border)", borderRadius: "8px" }}>
-                {US_STATES.map(state => {
-                  const selected = agencyForm.statesLicensed.includes(state);
-                  return <button type="button" key={state} onClick={() => setAgencyForm({ ...agencyForm, statesLicensed: selected ? agencyForm.statesLicensed.filter((value: string) => value !== state) : [...agencyForm.statesLicensed, state] })} style={{ padding: "4px 8px", borderRadius: "4px", border: "none", cursor: "pointer", background: selected ? "var(--accent-primary)" : "rgba(128,128,128,0.12)", color: selected ? "#fff" : "var(--input-text)" }}>{state}</button>;
-                })}
-              </div>
-            </AgencyField>
-            <AgencyField label="Lines of Authority"><input value={agencyForm.linesOfAuthority.join(", ")} onChange={event => setAgencyForm({ ...agencyForm, linesOfAuthority: event.target.value.split(",").map(value => value.trim()).filter(Boolean) })} style={agencyInputStyle} placeholder="P&C, Life" /></AgencyField>
-             <div style={{ borderTop: "1px solid var(--input-border)", paddingTop: "12px", marginTop: "4px" }}>
-               <p style={{ margin: "0 0 12px", color: "var(--input-text)", fontSize: "14px", fontWeight: 600 }}>E&amp;O and agreement</p>
-               <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                 <AgencyField label="E&O Carrier"><input value={agencyForm.eoCarrier} onChange={event => setAgencyForm({ ...agencyForm, eoCarrier: event.target.value })} style={agencyInputStyle} /></AgencyField>
-                 <AgencyField label="E&O Policy Number"><input value={agencyForm.eoPolicyNumber} onChange={event => setAgencyForm({ ...agencyForm, eoPolicyNumber: event.target.value })} style={agencyInputStyle} /></AgencyField>
-                 <AgencyField label="E&O Coverage Amount"><input type="number" min="0" step="0.01" value={agencyForm.eoCoverageAmount} onChange={event => setAgencyForm({ ...agencyForm, eoCoverageAmount: event.target.value })} style={agencyInputStyle} /></AgencyField>
-                 <AgencyField label="E&O Expiration Date"><input type="date" value={agencyForm.eoExpirationDate} onChange={event => setAgencyForm({ ...agencyForm, eoExpirationDate: event.target.value })} style={agencyInputStyle} /></AgencyField>
-                 <AgencyField label="E&O Certificate URL"><input value={agencyForm.eoCertificateUrl} onChange={event => setAgencyForm({ ...agencyForm, eoCertificateUrl: event.target.value })} style={agencyInputStyle} /></AgencyField>
-                 <AgencyField label="Agreement Signed Date"><input type="date" value={agencyForm.agreementSignedAt} onChange={event => setAgencyForm({ ...agencyForm, agreementSignedAt: event.target.value })} style={agencyInputStyle} /></AgencyField>
-                 <AgencyField label="Agreement URL"><input value={agencyForm.agreementUrl} onChange={event => setAgencyForm({ ...agencyForm, agreementUrl: event.target.value })} style={agencyInputStyle} /></AgencyField>
-               </div>
-             </div>
-            <button
-              disabled={!agencyForm.legalName.trim() || updateAgency.isPending}
-              onClick={() => updateAgency.mutate({ id: agencyId, data: agencyForm }, { onSuccess: () => setShowAgencyModal(false) })}
-              style={{ marginTop: "8px", border: "none", borderRadius: "8px", padding: "10px 16px", background: "#E91E8C", color: "#fff", cursor: "pointer", fontWeight: 600, opacity: !agencyForm.legalName.trim() || updateAgency.isPending ? 0.55 : 1 }}
-            >{updateAgency.isPending ? "Saving..." : "Save Agency"}</button>
-          </div>
-        </Modal>
-      )}
-    </GlassCard>
+    <span style={{ fontSize: "12px", color: "var(--text-primary)", fontWeight: 500, whiteSpace: "nowrap" }}>
+      {parts.map((part, i) => (
+        <span key={i}>
+          {part}
+          {i < parts.length - 1 && <span style={{ opacity: 0.25, margin: "0 6px" }}>|</span>}
+        </span>
+      ))}
+    </span>
   );
 }
 
-const agencyInputStyle: React.CSSProperties = {
-  width: "100%", boxSizing: "border-box", padding: "10px 14px", borderRadius: "8px",
-  border: "1px solid var(--input-border)", background: "var(--input-bg)", color: "var(--input-text)",
-  fontSize: "14px", outline: "none",
-};
+function parseCityState(address?: string) {
+  if (!address) return null;
+  const match = address.match(/(?:^|,\s*)([^,]+?)\s+([A-Z]{2})\s+\d{5}(?:-\d{4})?$/i);
+  return match ? `${match[1].trim()}, ${match[2].toUpperCase()}` : null;
+}
 
-function AgencyField({ label, children }: { label: string; children: React.ReactNode }) {
-  return <div><label style={{ display: "block", marginBottom: "4px", fontSize: "13px", color: "var(--text-secondary)" }}>{label}</label>{children}</div>;
+export function AgencyTile({ agency, agencyId, agencyName, agencyStatus, agents }: { agency?: any, agencyId: string, agencyName: string, agencyStatus: string, agents: any[] }) {
+  const { theme } = useThemeStore();
+  const isDark = theme === "dark";
+  const navigate = useNavigate();
+  const textPrimary = isDark ? "#fff" : "#111";
+  const textMuted = isDark ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.52)";
+
+  const legalName = agency?.legalName || agencyName || "Unassigned Agency";
+  const initials = legalName.split(/\s+/).filter(Boolean).slice(0, 2).map((part: string) => part[0]?.toUpperCase()).join("") || "A";
+  const cityState = parseCityState(agency?.address);
+  const agencyIsActive = agencyStatus?.toLowerCase() === "active";
+  const hasAgreement = Boolean(agency?.agreementSignedAt);
+  const eoExpiration = agency?.eoExpirationDate ? new Date(agency.eoExpirationDate) : null;
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const eoKey = eoExpiration && !Number.isNaN(eoExpiration.getTime()) ? (
+    typeof agency.eoExpirationDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(agency.eoExpirationDate)
+      ? agency.eoExpirationDate
+      : eoExpiration.toISOString().slice(0, 10)
+  ) : null;
+  const isEoExpired = eoKey ? eoKey < todayKey : false;
+  const hasEo = Boolean(eoKey);
+
+  return (
+    <GlassCard
+      padding="0"
+      className="hover-elevate"
+      style={{ cursor: "pointer", display: "flex", flexDirection: "column" }}
+      onClick={() => navigate(`/network/agencies/${agencyId}`)}
+    >
+      <div style={{ padding: "16px", display: "flex", alignItems: "flex-start", gap: "12px", flex: 1 }}>
+        <div style={{ width: "40px", height: "40px", borderRadius: "10px", background: "rgba(233,30,140,0.15)", color: "#E91E8C", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px", fontWeight: 600, flexShrink: 0 }}>
+          {initials}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ margin: "0 0 2px", color: textPrimary, fontSize: "14px", fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{legalName}</p>
+          <p style={{ margin: 0, fontSize: "12px", color: textMuted }}>
+            {agents.length} agent{agents.length !== 1 && "s"}{cityState ? ` · ${cityState}` : ""}
+          </p>
+        </div>
+        <div style={{ padding: "2px 6px", borderRadius: "999px", background: agencyIsActive ? "rgba(30,233,123,0.15)" : "rgba(233,195,30,0.15)", color: agencyIsActive ? "#1EE97B" : "#E9C31E", fontSize: "11px", fontWeight: 600, flexShrink: 0 }}>
+          {agencyStatus || "Active"}
+        </div>
+      </div>
+      <div style={{ padding: "12px 16px", borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`, display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          {hasAgreement ? (
+            <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "11px", fontWeight: 600, color: "#1EE97B" }}>
+              <FileCheck style={{ width: 13, height: 13 }} /> Agreement
+            </span>
+          ) : (
+            <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "11px", fontWeight: 600, color: textMuted }}>
+              <FileMinus style={{ width: 13, height: 13 }} /> No agreement
+            </span>
+          )}
+          {hasEo && (
+            isEoExpired ? (
+              <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "11px", fontWeight: 600, color: "#E91E1E" }}>
+                <ShieldAlert style={{ width: 13, height: 13 }} /> E&O expired
+              </span>
+            ) : (
+              <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "11px", fontWeight: 600, color: "#1EE97B" }}>
+                <ShieldCheck style={{ width: 13, height: 13 }} /> E&O
+              </span>
+            )
+          )}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", flex: 1, minWidth: 0, overflow: "hidden" }}>
+          <SplitProductionLine metrics={agency?.productionMetrics} />
+        </div>
+      </div>
+    </GlassCard>
+  );
 }
 
 export function OrgGroupCard({ org, type }: { org: any, type: string }) {

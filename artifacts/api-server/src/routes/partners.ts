@@ -16,6 +16,10 @@ import {
 import { eq, desc, and, sql } from "drizzle-orm";
 import { z } from "zod/v4";
 import { requireRoles } from "../middleware/require-auth";
+import {
+  EMPTY_PRODUCTION_METRICS,
+  getProductionMetricsByAgentIds,
+} from "../lib/production-metrics";
 
 const router: IRouter = Router();
 
@@ -82,6 +86,9 @@ router.get("/", async (req, res) => {
       .leftJoin(agenciesTable, eq(agenciesTable.id, partnersTable.agencyId))
       .where(eq(partnersTable.partnerType, "Agent"))
       .orderBy(desc(partnersTable.createdAt));
+    const metricsByAgent = await getProductionMetricsByAgentIds(
+      rows.flatMap(({ profile }) => (profile?.userId ? [profile.userId] : [])),
+    );
     res.json(
       rows.map(({ partner, profile, agency }) => ({
         ...partner,
@@ -96,6 +103,11 @@ router.get("/", async (req, res) => {
         userId: profile?.userId ?? null,
         agencyLegalName: agency?.legalName ?? null,
         agencyStatus: agency?.status ?? null,
+        productionMetrics: profile?.userId
+          ? metricsByAgent.get(profile.userId) ?? {
+              ...EMPTY_PRODUCTION_METRICS,
+            }
+          : { ...EMPTY_PRODUCTION_METRICS },
       })),
     );
     return;
@@ -162,6 +174,11 @@ router.get("/:id", async (req, res) => {
     stage: deal.stage,
     premium: Number(deal.wcPremium || deal.estimatedPremium || 0),
   }));
+  const productionMetrics = row.profile?.userId
+    ? (
+        await getProductionMetricsByAgentIds([row.profile.userId])
+      ).get(row.profile.userId) ?? { ...EMPTY_PRODUCTION_METRICS }
+    : { ...EMPTY_PRODUCTION_METRICS };
 
   return res.json({
     ...row.partner,
@@ -198,6 +215,7 @@ router.get("/:id", async (req, res) => {
     dealCount: dealRows.length,
     wcPremiumTotal: dealRows.reduce((sum, deal) => sum + deal.premium, 0),
     associatedDeals: dealRows,
+    productionMetrics,
   });
 });
 

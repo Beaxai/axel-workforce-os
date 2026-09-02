@@ -12,6 +12,7 @@ export type AgencyMatchInput = Pick<
   | "website"
   | "address"
   | "agencyNpn"
+  | "licenseNumber"
   | "eoCarrier"
   | "eoPolicyNumber"
   | "eoCoverageAmount"
@@ -96,6 +97,7 @@ export async function createOrMatchAgency(
       website: fillAgencyFieldIfEmpty(agency.website, input.website),
       address: fillAgencyFieldIfEmpty(agency.address, input.address),
       agencyNpn: fillAgencyFieldIfEmpty(agency.agencyNpn, input.agencyNpn),
+      licenseNumber: fillAgencyFieldIfEmpty(agency.licenseNumber, input.licenseNumber),
       statesLicensed: fillAgencyFieldIfEmpty(agency.statesLicensed, statesLicensed),
       linesOfAuthority: fillAgencyFieldIfEmpty(agency.linesOfAuthority, linesOfAuthority),
       eoCarrier: fillAgencyFieldIfEmpty(agency.eoCarrier, input.eoCarrier),
