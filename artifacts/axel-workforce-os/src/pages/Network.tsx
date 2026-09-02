@@ -5,6 +5,7 @@ import { api } from "@/lib/api";
 import { GlassCard, SectionHeader, PinkButton, GhostButton, AxelBadge } from "@/components/ui/axel-index";
 import { Plus, X, Building2, Shield, Users, Truck, Search, Edit2, Check } from "lucide-react";
 import { useThemeStore } from "@/lib/theme-store";
+import { ADD_PARTNER_CTA_BACKGROUND } from "@/lib/button-styles";
 import { AgencyTile, OrgGroupCard } from "@/components/ui/NetworkGroups";
 import { AddAgentModal } from "@/components/ui/AddAgentModal";
 
@@ -161,7 +162,7 @@ export default function Network() {
             <Plus style={{ width: 16, height: 16 }} /> Add Market
           </PinkButton>
         ) : tab !== "Markets" ? (
-          <PinkButton onClick={() => setShowAdd(true)} style={{ display: "flex", alignItems: "center", gap: "6px", background: "#E91E8C" }}>
+          <PinkButton onClick={() => setShowAdd(true)} style={{ display: "flex", alignItems: "center", gap: "6px", background: ADD_PARTNER_CTA_BACKGROUND, color: "#fff" }}>
             <Plus style={{ width: 16, height: 16 }} /> Add Partner
           </PinkButton>
         ) : null}
