@@ -12,6 +12,13 @@ export type AgencyMatchInput = Pick<
   | "website"
   | "address"
   | "agencyNpn"
+  | "eoCarrier"
+  | "eoPolicyNumber"
+  | "eoCoverageAmount"
+  | "eoExpirationDate"
+  | "eoCertificateUrl"
+  | "agreementSignedAt"
+  | "agreementUrl"
 > & {
   statesLicensed?: unknown;
   linesOfAuthority?: unknown;
@@ -91,6 +98,13 @@ export async function createOrMatchAgency(
       agencyNpn: fillAgencyFieldIfEmpty(agency.agencyNpn, input.agencyNpn),
       statesLicensed: fillAgencyFieldIfEmpty(agency.statesLicensed, statesLicensed),
       linesOfAuthority: fillAgencyFieldIfEmpty(agency.linesOfAuthority, linesOfAuthority),
+      eoCarrier: fillAgencyFieldIfEmpty(agency.eoCarrier, input.eoCarrier),
+      eoPolicyNumber: fillAgencyFieldIfEmpty(agency.eoPolicyNumber, input.eoPolicyNumber),
+      eoCoverageAmount: fillAgencyFieldIfEmpty(agency.eoCoverageAmount, input.eoCoverageAmount),
+      eoExpirationDate: fillAgencyFieldIfEmpty(agency.eoExpirationDate, input.eoExpirationDate),
+      eoCertificateUrl: fillAgencyFieldIfEmpty(agency.eoCertificateUrl, input.eoCertificateUrl),
+      agreementSignedAt: fillAgencyFieldIfEmpty(agency.agreementSignedAt, input.agreementSignedAt),
+      agreementUrl: fillAgencyFieldIfEmpty(agency.agreementUrl, input.agreementUrl),
       updatedAt: new Date(),
     })
     .where(eq(agenciesTable.id, agency.id))

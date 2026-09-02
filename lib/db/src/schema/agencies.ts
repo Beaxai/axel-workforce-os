@@ -1,7 +1,9 @@
 import { sql } from "drizzle-orm";
 import {
   check,
+  date,
   jsonb,
+  numeric,
   pgTable,
   text,
   timestamp,
@@ -24,6 +26,13 @@ export const agenciesTable = pgTable(
     agencyNpn: text("agency_npn"),
     statesLicensed: jsonb("states_licensed"),
     linesOfAuthority: jsonb("lines_of_authority"),
+    eoCarrier: text("eo_carrier"),
+    eoPolicyNumber: text("eo_policy_number"),
+    eoCoverageAmount: numeric("eo_coverage_amount"),
+    eoExpirationDate: date("eo_expiration_date", { mode: "string" }),
+    eoCertificateUrl: text("eo_certificate_url"),
+    agreementSignedAt: timestamp("agreement_signed_at", { withTimezone: true }),
+    agreementUrl: text("agreement_url"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()

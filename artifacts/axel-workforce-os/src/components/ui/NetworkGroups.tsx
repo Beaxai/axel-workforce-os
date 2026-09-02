@@ -7,7 +7,7 @@ import { useContactRoles } from "@/hooks/use-contact-roles";
 import { useNavigate } from "react-router-dom";
 import { displayName } from "@/lib/agent-display-name";
 import { useAuthStore } from "@/lib/auth-store";
-import { agencyEoStatus, agencyRegistrationStatus } from "@/lib/agency-registration-status";
+import { agencyAgreementStatus, agencyEoStatus } from "@/lib/agency-registration-status";
 
 const US_STATES = ["AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY"];
 
@@ -39,8 +39,8 @@ export function AgencyGroupCard({ agency, agencyId, agencyName, agencyStatus, ag
     .reduce((sum, deal) => sum + Number(deal.wcPremium || deal.estimatedPremium || 0), 0);
   const states = Array.isArray(agency?.statesLicensed) ? agency.statesLicensed : [];
   const agencyIsActive = agencyStatus?.toLowerCase() === "active";
-  const registrationStatus = agencyRegistrationStatus(agency?.registration);
-  const eoStatus = agencyEoStatus(agency?.registration);
+  const agreementStatus = agencyAgreementStatus(agency, agency?.registration);
+  const eoStatus = agencyEoStatus(agency);
   const legalName = agency?.legalName || agencyName || "Unassigned Agency";
   const initials = legalName
     .split(/\s+/)
@@ -58,7 +58,14 @@ export function AgencyGroupCard({ agency, agencyId, agencyName, agencyStatus, ag
     states.length ||
     activeDeals.length ||
     wcPremium ||
-    agency?.registration
+    agency?.registration ||
+    agency?.agreementSignedAt ||
+    agency?.eoCarrier ||
+    agency?.eoPolicyNumber ||
+    agency?.eoCoverageAmount ||
+    agency?.eoExpirationDate ||
+    agency?.eoCertificateUrl ||
+    agency?.agreementUrl
   );
   const hasRollup = hasAgencyInfo;
 
@@ -97,6 +104,11 @@ export function AgencyGroupCard({ agency, agencyId, agencyName, agencyStatus, ag
                   mainPhone: agency.mainPhone || "", website: agency.website || "", address: agency.address || "",
                   agencyNpn: agency.agencyNpn || "", statesLicensed: Array.isArray(agency.statesLicensed) ? agency.statesLicensed : [],
                   linesOfAuthority: Array.isArray(agency.linesOfAuthority) ? agency.linesOfAuthority : [],
+                  eoCarrier: agency.eoCarrier || "", eoPolicyNumber: agency.eoPolicyNumber || "",
+                  eoCoverageAmount: agency.eoCoverageAmount || "", eoExpirationDate: agency.eoExpirationDate || "",
+                  eoCertificateUrl: agency.eoCertificateUrl || "",
+                  agreementSignedAt: agency.agreementSignedAt ? String(agency.agreementSignedAt).slice(0, 10) : "",
+                  agreementUrl: agency.agreementUrl || "",
                 });
                 setShowAgencyModal(true);
               }}
@@ -137,10 +149,10 @@ export function AgencyGroupCard({ agency, agencyId, agencyName, agencyStatus, ag
               {hasRollup && <span style={{ whiteSpace: "nowrap" }} data-testid={`text-rollup-agency-${agencyId}`}>{activeDeals.length} deals · ${wcPremium.toLocaleString()} WC premium</span>}
               <span style={{
                 padding: "2px 8px", borderRadius: "999px", fontSize: "12px", fontWeight: 600,
-                color: registrationStatus.color === "green" ? "#1EE97B" : registrationStatus.color === "yellow" ? "#E9C31E" : textMuted,
-                background: registrationStatus.color === "green" ? "rgba(30,233,123,0.12)" : registrationStatus.color === "yellow" ? "rgba(233,195,30,0.12)" : "rgba(128,128,128,0.12)",
+                color: agreementStatus.color === "green" ? "#1EE97B" : agreementStatus.color === "yellow" ? "#E9C31E" : textMuted,
+                background: agreementStatus.color === "green" ? "rgba(30,233,123,0.12)" : agreementStatus.color === "yellow" ? "rgba(233,195,30,0.12)" : "rgba(128,128,128,0.12)",
               }} data-testid={`status-registration-agency-${agencyId}`}>
-                {registrationStatus.label}
+                {agreementStatus.label}
               </span>
               {eoStatus && <span style={{ fontSize: "12px", color: eoStatus.color, fontWeight: 600, whiteSpace: "nowrap" }} data-testid={`status-eo-agency-${agencyId}`}>{eoStatus.label}</span>}
             </div>
@@ -239,6 +251,18 @@ export function AgencyGroupCard({ agency, agencyId, agencyName, agencyStatus, ag
               </div>
             </AgencyField>
             <AgencyField label="Lines of Authority"><input value={agencyForm.linesOfAuthority.join(", ")} onChange={event => setAgencyForm({ ...agencyForm, linesOfAuthority: event.target.value.split(",").map(value => value.trim()).filter(Boolean) })} style={agencyInputStyle} placeholder="P&C, Life" /></AgencyField>
+             <div style={{ borderTop: "1px solid var(--input-border)", paddingTop: "12px", marginTop: "4px" }}>
+               <p style={{ margin: "0 0 12px", color: "var(--input-text)", fontSize: "14px", fontWeight: 600 }}>E&amp;O and agreement</p>
+               <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                 <AgencyField label="E&O Carrier"><input value={agencyForm.eoCarrier} onChange={event => setAgencyForm({ ...agencyForm, eoCarrier: event.target.value })} style={agencyInputStyle} /></AgencyField>
+                 <AgencyField label="E&O Policy Number"><input value={agencyForm.eoPolicyNumber} onChange={event => setAgencyForm({ ...agencyForm, eoPolicyNumber: event.target.value })} style={agencyInputStyle} /></AgencyField>
+                 <AgencyField label="E&O Coverage Amount"><input type="number" min="0" step="0.01" value={agencyForm.eoCoverageAmount} onChange={event => setAgencyForm({ ...agencyForm, eoCoverageAmount: event.target.value })} style={agencyInputStyle} /></AgencyField>
+                 <AgencyField label="E&O Expiration Date"><input type="date" value={agencyForm.eoExpirationDate} onChange={event => setAgencyForm({ ...agencyForm, eoExpirationDate: event.target.value })} style={agencyInputStyle} /></AgencyField>
+                 <AgencyField label="E&O Certificate URL"><input value={agencyForm.eoCertificateUrl} onChange={event => setAgencyForm({ ...agencyForm, eoCertificateUrl: event.target.value })} style={agencyInputStyle} /></AgencyField>
+                 <AgencyField label="Agreement Signed Date"><input type="date" value={agencyForm.agreementSignedAt} onChange={event => setAgencyForm({ ...agencyForm, agreementSignedAt: event.target.value })} style={agencyInputStyle} /></AgencyField>
+                 <AgencyField label="Agreement URL"><input value={agencyForm.agreementUrl} onChange={event => setAgencyForm({ ...agencyForm, agreementUrl: event.target.value })} style={agencyInputStyle} /></AgencyField>
+               </div>
+             </div>
             <button
               disabled={!agencyForm.legalName.trim() || updateAgency.isPending}
               onClick={() => updateAgency.mutate({ id: agencyId, data: agencyForm }, { onSuccess: () => setShowAgencyModal(false) })}

@@ -29,6 +29,19 @@ const updateAgencySchema = z.object({
   agencyNpn: z.string().trim(),
   statesLicensed: z.array(z.string().trim().min(2).max(2)),
   linesOfAuthority: z.array(z.string().trim().min(1)),
+  eoCarrier: z.string().trim(),
+  eoPolicyNumber: z.string().trim(),
+  eoCoverageAmount: z.preprocess(
+    (value) => typeof value === "number" ? String(value) : value,
+    z.string().trim().refine(
+      (value) => value === "" || (Number.isFinite(Number(value)) && Number(value) >= 0),
+      "E&O coverage amount must be a non-negative number",
+    ),
+  ),
+  eoExpirationDate: z.union([z.iso.date(), z.literal("")]),
+  eoCertificateUrl: z.string().trim(),
+  agreementSignedAt: z.union([z.iso.date(), z.literal("")]),
+  agreementUrl: z.string().trim(),
 }).partial().strict();
 
 router.get("/", async (_req, res) => {
@@ -95,8 +108,25 @@ router.patch("/:id", requireRoles("ADMIN", "CSA"), async (req, res) => {
     return res.status(400).json({ error: "No agency fields to update" });
   }
   const data: Record<string, unknown> = { ...parsed.data, updatedAt: new Date() };
-  for (const field of ["dba", "mainPhone", "website", "address", "agencyNpn"] as const) {
+  for (const field of [
+    "dba",
+    "mainPhone",
+    "website",
+    "address",
+    "agencyNpn",
+    "eoCarrier",
+    "eoPolicyNumber",
+    "eoCoverageAmount",
+    "eoExpirationDate",
+    "eoCertificateUrl",
+    "agreementUrl",
+  ] as const) {
     if (field in parsed.data) data[field] = parsed.data[field] || null;
+  }
+  if ("agreementSignedAt" in parsed.data) {
+    data.agreementSignedAt = parsed.data.agreementSignedAt
+      ? new Date(`${parsed.data.agreementSignedAt}T12:00:00.000Z`)
+      : null;
   }
   for (const field of ["statesLicensed", "linesOfAuthority"] as const) {
     if (field in parsed.data) data[field] = parsed.data[field]?.length ? parsed.data[field] : null;

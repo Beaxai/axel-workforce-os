@@ -182,6 +182,13 @@ router.post("/:id/approve", async (req: Request<{ id: string }>, res: Response) 
       agencyNpn: reg.agencyNpn,
       statesLicensed: reg.statesLicensed,
       linesOfAuthority: reg.linesOfAuthority,
+      eoCarrier: reg.eoCarrier,
+      eoPolicyNumber: reg.eoPolicyNumber,
+      eoCoverageAmount: reg.eoCoverageAmount,
+      eoExpirationDate: reg.eoExpirationDate,
+      eoCertificateUrl: reg.eoCertificateUrl,
+      agreementSignedAt: reg.agreementSignedAt,
+      agreementUrl: reg.agreementUrl,
     });
     let partnerId = reg.partnerId;
     if (partnerId) {
