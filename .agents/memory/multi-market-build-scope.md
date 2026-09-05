@@ -1,0 +1,14 @@
+---
+name: Multi-market build scope
+description: Product-owner scope boundary and confirmed proposal-distribution trigger for the multi-market work.
+---
+
+Keep the multi-market build directly tied to the supplied Markdown specification. Do not add speculative workflow gates, redesigns, or future rated-era behavior ahead of the requested launch scope.
+
+The working application journey is: onboard agencies and individual Agents; let Agents complete Part 1 and receive the proper indication; let them complete Part 2 and request a proposal; that proposal request immediately triggers Resend delivery to the configured markets; inbound email responses return to the correct per-market thread on the deal card.
+
+U/W Review is not an additional manual approval gate before sending unless the specification is explicitly revised to require one.
+
+**Why:** The product owner explicitly prioritized a working end-to-end application and rejected extras beyond the supplied build document. They clarified that proposal request itself triggers outbound email distribution.
+
+**How to apply:** Evaluate every multi-market change against the supplied spec and this end-to-end journey. Defer unrelated improvements and later rated-era automation. Preserve the completed agency/Agent onboarding foundation.
