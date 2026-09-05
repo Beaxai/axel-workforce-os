@@ -7,6 +7,8 @@ Keep the multi-market build directly tied to the supplied Markdown specification
 
 The working application journey is: onboard agencies and individual Agents; let Agents complete Part 1 and receive the proper indication; let them complete Part 2 and request a proposal; that proposal request immediately triggers Resend delivery to the configured markets; inbound email responses return to the correct per-market thread on the deal card.
 
+Each engaged market must have its own tab on the deal card inside the Overview dialog. A market tab contains only that market's outbound submission, inbound replies, quote activity, and status; correspondence must never bleed across tabs.
+
 U/W Review is not an additional manual approval gate before sending unless the specification is explicitly revised to require one.
 
 **Why:** The product owner explicitly prioritized a working end-to-end application and rejected extras beyond the supplied build document. They clarified that proposal request itself triggers outbound email distribution.
