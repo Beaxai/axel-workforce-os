@@ -12,12 +12,15 @@
     "seed:peo-tracker": "tsx src/scripts/seed-peo-tracker.ts",
     "seed:subjectivities": "tsx src/scripts/seed-subjectivity-template.ts",
     "normalize:user-status": "tsx src/scripts/normalize-user-status.ts",
+    "backfill:agencies": "tsx src/scripts/backfill-agencies.ts",
+    "backfill:agent-profiles": "tsx src/scripts/backfill-agent-profiles.ts",
     "migrate:pipeline-stages": "tsx src/scripts/migrate-pipeline-stages.ts",
     "revert:pipeline-stages": "tsx src/scripts/revert-pipeline-stages.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.88.0",
+    "@google-cloud/storage": "^8.0.1",
     "@types/multer": "^2.1.0",
     "@workspace/api-zod": "workspace:*",
     "@workspace/cannabis-application": "workspace:*",
@@ -37,6 +40,7 @@
     "pdf-lib": "^1.17.1",
     "pino": "^9",
     "pino-http": "^10",
+    "sharp": "^0.35.4",
     "socket.io": "^4.8.3",
     "zod": "catalog:"
   },

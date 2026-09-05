@@ -6,6 +6,7 @@ import { Search, X } from "lucide-react";
 import { useThemeStore } from "@/lib/theme-store";
 import { openDealCard } from "@/components/DealCardModal";
 import UserMiniProfile from "@/components/user-profile/UserMiniProfile";
+import { dealDisplayName } from "@/lib/deal-display-name";
 
 interface SearchResults {
   deals: any[];
@@ -105,7 +106,7 @@ export default function GlobalSearch({ onClose }: { onClose: () => void }) {
               {results.deals.map((d) => (
                 <ResultRow
                   key={d.id}
-                  title={d.businessName || d.referenceCode}
+                  title={dealDisplayName(d)}
                   subtitle={`${d.referenceCode} · ${d.state || "—"}`}
                   badge={d.stage?.replace(/_/g, " ")}
                   badgeColor="blue"

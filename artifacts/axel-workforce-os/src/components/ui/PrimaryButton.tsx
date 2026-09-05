@@ -1,12 +1,9 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { SOLID_PRIMARY_BUTTON_BACKGROUND } from "@/lib/button-styles";
 
 interface PrimaryButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   children: ReactNode;
-  /**
-   * All action buttons render the purple→pink brand gradient
-   * (var(--gradient-cta)). The two variants are kept for API compatibility
-   * and now style identically.
-   */
+  /** The two variants are kept for API compatibility and style identically. */
   variant?: "primary" | "cta";
 }
 
@@ -23,7 +20,7 @@ export default function PrimaryButton({
       {...props}
       disabled={disabled}
       style={{
-        background: "var(--gradient-cta)",
+        background: SOLID_PRIMARY_BUTTON_BACKGROUND,
         color: "#fff",
         border: "none",
         borderRadius: "10px",

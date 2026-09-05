@@ -12,7 +12,9 @@ import {
   getGetUserActivityQueryKey,
   type UpdateUserProfileRequest,
 } from "@workspace/api-client-react";
-import { ArrowLeft, Mail, Phone, Clock, Calendar, Briefcase, FileText, KeyRound } from "lucide-react";
+import { ArrowLeft, Mail, Phone, Clock, Calendar, Briefcase, FileText, KeyRound, Building2 } from "lucide-react";
+import Avatar from "@/components/user-profile/Avatar";
+import AvatarUploadControl from "@/components/user-profile/AvatarUploadControl";
 
 const INTERNAL_ROLES = new Set(["ADMIN", "UNDERWRITER", "CSA"]);
 
@@ -43,13 +45,6 @@ const STATUS_COLOR: Record<string, string> = {
   invited: "yellow",
   deactivated: "gray",
 };
-
-function initials(first?: string | null, last?: string | null, email?: string): string {
-  const a = (first || "").trim();
-  const b = (last || "").trim();
-  if (a || b) return `${a[0] ?? ""}${b[0] ?? ""}`.toUpperCase() || "?";
-  return (email?.[0] ?? "?").toUpperCase();
-}
 
 function fmtDate(v?: string | null): string {
   if (!v) return "\u2014";
@@ -136,6 +131,18 @@ interface UserProfileProps {
   self?: boolean;
 }
 
+type EditableProfileForm = UpdateUserProfileRequest & {
+  phoneDirect?: string | null;
+  phoneMobile?: string | null;
+  department?: string | null;
+};
+
+type StaffProfileFields = {
+  phoneDirect?: string | null;
+  phoneMobile?: string | null;
+  department?: string | null;
+};
+
 export default function UserProfile({ self = false }: UserProfileProps) {
   const params = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -157,7 +164,7 @@ export default function UserProfile({ self = false }: UserProfileProps) {
   const changePassword = useChangeUserPassword();
 
   const [editMode, setEditMode] = useState(false);
-  const [form, setForm] = useState<UpdateUserProfileRequest>({});
+  const [form, setForm] = useState<EditableProfileForm>({});
   const [pwForm, setPwForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
   const [pwError, setPwError] = useState<string | null>(null);
   const [pwSuccess, setPwSuccess] = useState(false);
@@ -166,9 +173,13 @@ export default function UserProfile({ self = false }: UserProfileProps) {
 
   useEffect(() => {
     if (profile) {
+      const staffFields = profile as typeof profile & StaffProfileFields;
       setForm({
         phone: profile.phone ?? "",
         mobile: profile.mobile ?? "",
+        phoneDirect: staffFields.phoneDirect ?? "",
+        phoneMobile: staffFields.phoneMobile ?? "",
+        department: staffFields.department ?? "",
         timezone: profile.timezone ?? "",
         title: profile.title ?? "",
         bio: profile.bio ?? "",
@@ -233,7 +244,7 @@ export default function UserProfile({ self = false }: UserProfileProps) {
 
   async function handleSave() {
     if (!userId) return;
-    const payload: UpdateUserProfileRequest = isSelf && !isAdmin
+    const payload: EditableProfileForm = isSelf && !isAdmin
       ? { phone: form.phone, mobile: form.mobile, timezone: form.timezone }
       : { ...form, roleMetadata: buildRoleMetadata() };
     await updateProfile.mutateAsync({ id: userId, data: payload });
@@ -339,26 +350,17 @@ export default function UserProfile({ self = false }: UserProfileProps) {
       {/* Identity header */}
       <GlassCard padding="24px" style={{ marginBottom: 20 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap" }}>
-          <div
-            style={{
-              width: 72,
-              height: 72,
-              borderRadius: "50%",
-              flexShrink: 0,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 26,
-              fontWeight: 700,
-              background: "var(--accent-primary-soft)",
-              color: "var(--accent-primary)",
-              backgroundImage: profile.avatarUrl ? `url(${profile.avatarUrl})` : undefined,
-              backgroundSize: "cover",
-              backgroundPosition: "center",
-            }}
-          >
-            {!profile.avatarUrl && initials(profile.firstName, profile.lastName, profile.email)}
-          </div>
+          {isSelf ? (
+            <AvatarUploadControl
+              userId={userId}
+              name={name}
+              avatarUrl={profile.avatarUrl}
+              canManage
+              size={72}
+            />
+          ) : (
+            <Avatar name={name} avatarUrl={profile.avatarUrl} size={72} />
+          )}
           <div style={{ flex: 1, minWidth: 200 }}>
             <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: c.textPrimary }}>{name}</h1>
             {profile.title && (
@@ -418,14 +420,40 @@ export default function UserProfile({ self = false }: UserProfileProps) {
                   />
                 </div>
                 {canEditAdminFields && (
-                  <div>
-                    <label style={labelStyle}>Title</label>
-                    <input
-                      style={inputStyle}
-                      value={form.title ?? ""}
-                      onChange={(e) => setForm({ ...form, title: e.target.value })}
-                    />
-                  </div>
+                  <>
+                    <div>
+                      <label style={labelStyle}>Title</label>
+                      <input
+                        style={inputStyle}
+                        value={form.title ?? ""}
+                        onChange={(e) => setForm({ ...form, title: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Department</label>
+                      <input
+                        style={inputStyle}
+                        value={form.department ?? ""}
+                        onChange={(e) => setForm({ ...form, department: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Directory Direct Phone</label>
+                      <input
+                        style={inputStyle}
+                        value={form.phoneDirect ?? ""}
+                        onChange={(e) => setForm({ ...form, phoneDirect: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Directory Mobile Phone</label>
+                      <input
+                        style={inputStyle}
+                        value={form.phoneMobile ?? ""}
+                        onChange={(e) => setForm({ ...form, phoneMobile: e.target.value })}
+                      />
+                    </div>
+                  </>
                 )}
               </div>
             ) : (
@@ -433,6 +461,9 @@ export default function UserProfile({ self = false }: UserProfileProps) {
                 <DetailRow icon={Mail} label="Email" value={profile.email} c={c} />
                 <DetailRow icon={Phone} label="Phone" value={profile.phone || "\u2014"} c={c} />
                 <DetailRow icon={Phone} label="Mobile" value={profile.mobile || "\u2014"} c={c} />
+                <DetailRow icon={Phone} label="Directory Direct" value={(profile as typeof profile & StaffProfileFields).phoneDirect || "\u2014"} c={c} />
+                <DetailRow icon={Phone} label="Directory Mobile" value={(profile as typeof profile & StaffProfileFields).phoneMobile || "\u2014"} c={c} />
+                <DetailRow icon={Building2} label="Department" value={(profile as typeof profile & StaffProfileFields).department || "\u2014"} c={c} />
                 <DetailRow icon={Clock} label="Timezone" value={profile.timezone || "\u2014"} c={c} />
                 <DetailRow icon={Calendar} label="Date Joined" value={fmtDate(profile.dateJoined)} c={c} />
                 <DetailRow icon={Clock} label="Last Login" value={fmtDate(profile.lastLoginAt)} c={c} />
@@ -440,8 +471,8 @@ export default function UserProfile({ self = false }: UserProfileProps) {
             )}
           </GlassCard>
 
-          {/* Bio (internal viewers only) */}
-          {isInternalViewer && (
+          {/* Private narrative profile fields are administrator-only. */}
+          {isAdmin && (
             <GlassCard padding="24px">
               <h2 className="font-heading" style={{ margin: "0 0 16px", fontSize: 13, color: c.sectionHeading }}>
                 BIO
@@ -525,7 +556,7 @@ export default function UserProfile({ self = false }: UserProfileProps) {
           )}
 
           {/* Internal notes (internal viewers only) */}
-          {isInternalViewer && (
+          {isAdmin && (
             <GlassCard padding="24px">
               <h2 className="font-heading" style={{ margin: "0 0 16px", fontSize: 13, color: c.sectionHeading }}>
                 INTERNAL NOTES

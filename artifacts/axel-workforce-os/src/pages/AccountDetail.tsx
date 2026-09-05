@@ -6,6 +6,8 @@ import {
   GhostButton,
   Badge,
   SectionHeader,
+  ContactCard,
+  ContactModal,
 } from "@/components/ui/axel-index";
 import { openDealCard } from "@/components/DealCardModal";
 import { useThemeStore } from "@/lib/theme-store";
@@ -13,7 +15,9 @@ import { useThemeColors } from "@/lib/use-theme-colors";
 import { useAuthStore } from "@/lib/auth-store";
 import { api } from "@/lib/api";
 import { stageLabel, type PipelineStageKey } from "@workspace/pipeline";
-import { ChevronRight, Clock, User } from "lucide-react";
+import { dealDisplayName } from "@/lib/deal-display-name";
+import { ChevronRight, Clock, User, Plus, AlertTriangle } from "lucide-react";
+import { useContacts, useCreateContact, useUpdateContact, useDeleteContact, type Contact } from "@/hooks/use-contacts";
 
 const CLIENT_STAGES = ["Prospect", "Active Prospect", "New Client", "Active Client"] as const;
 
@@ -105,6 +109,13 @@ export default function AccountDetail() {
     outline: "none",
     boxSizing: "border-box",
   };
+
+  const { data: contacts = [] } = useContacts("client", id || "");
+  const createContact = useCreateContact();
+  const updateContact = useUpdateContact();
+  const deleteContact = useDeleteContact();
+  const [showContactModal, setShowContactModal] = useState(false);
+  const [editingContact, setEditingContact] = useState<Contact | null>(null);
 
   const fetchAccount = useCallback(async () => {
     if (!id) return;
@@ -287,7 +298,7 @@ export default function AccountDetail() {
                   onMouseLeave={(e) => { e.currentTarget.style.borderColor = inputBorder; }}
                 >
                   <div>
-                    <p style={{ fontSize: "13px", fontWeight: 500, color: textPrimary, margin: 0 }}>{d.businessName || d.referenceCode}</p>
+                    <p style={{ fontSize: "13px", fontWeight: 500, color: textPrimary, margin: 0 }}>{dealDisplayName(d)}</p>
                     <span style={{ fontSize: "11px", color: textMuted }}>{stageLabel(d.stage as PipelineStageKey) || d.stage}</span>
                   </div>
                   <Badge label={d.productType === "PEO" ? "PEO" : "WC"} color={d.productType === "PEO" ? "purple" : "blue"} />
@@ -316,18 +327,46 @@ export default function AccountDetail() {
         {/* RIGHT COLUMN */}
         <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
           <GlassCard padding="20px">
-            <h3 style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, margin: "0 0 14px" }}>Contact Info</h3>
-            {editMode ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                <FieldInput label="Primary Contact" value={editForm.primaryContact} onChange={(v) => setEditForm(p => ({ ...p, primaryContact: v }))} inputStyle={inputStyle} isDark={isDark} />
-                <FieldInput label="Email" value={editForm.contactEmail} onChange={(v) => setEditForm(p => ({ ...p, contactEmail: v }))} inputStyle={inputStyle} isDark={isDark} />
-                <FieldInput label="Phone" value={editForm.contactPhone} onChange={(v) => setEditForm(p => ({ ...p, contactPhone: v }))} inputStyle={inputStyle} isDark={isDark} />
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
+              <h3 style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, margin: 0 }}>Contacts</h3>
+              {!isReadOnly && (
+                <button
+                  onClick={() => { setEditingContact(null); setShowContactModal(true); }}
+                  style={{
+                    background: "#E91E8C", color: "#fff", border: "none", padding: "6px 12px",
+                    borderRadius: "6px", fontSize: "12px", fontWeight: 600, cursor: "pointer",
+                    display: "flex", alignItems: "center", gap: "4px"
+                  }}
+                >
+                  <Plus style={{ width: 14, height: 14 }} /> Add Contact
+                </button>
+              )}
+            </div>
+
+            {!contacts.some((contact) => contact.isPrimary) && (
+              <div style={{ padding: "12px", background: "rgba(233, 195, 30, 0.1)", border: "1px solid rgba(233, 195, 30, 0.2)", borderRadius: "8px", display: "flex", gap: "10px", alignItems: "flex-start" }}>
+                <AlertTriangle style={{ width: 16, height: 16, color: "#E9C31E", marginTop: "2px" }} />
+                <div>
+                  <p style={{ fontSize: "13px", fontWeight: 600, color: textPrimary, margin: 0 }}>No primary contact on file</p>
+                  <p style={{ fontSize: "12px", color: textMuted, margin: "2px 0 0" }}>Add a primary contact to route client communications correctly.</p>
+                </div>
               </div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                <DetailRow label="Primary Contact" value={account.primaryContact} isDark={isDark} />
-                <DetailRow label="Email" value={account.contactEmail} isDark={isDark} />
-                <DetailRow label="Phone" value={account.contactPhone} isDark={isDark} />
+            )}
+            {contacts.length > 0 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                {contacts.map((c: Contact) => (
+                  <ContactCard
+                    key={c.id}
+                    variant="client_contact"
+                    name={`${c.firstName} ${c.lastName}`}
+                    role={c.role}
+                    email={c.email}
+                    phoneDirect={c.phone}
+                    phoneMobile={c.mobile}
+                    isPrimary={c.isPrimary}
+                    onEdit={!isReadOnly ? () => { setEditingContact(c); setShowContactModal(true); } : undefined}
+                  />
+                ))}
               </div>
             )}
           </GlassCard>
@@ -394,6 +433,26 @@ export default function AccountDetail() {
         </div>
       </div>
 
+      <ContactModal
+        isOpen={showContactModal}
+        onClose={() => setShowContactModal(false)}
+        entityType="client"
+        initialData={editingContact}
+        onSubmit={(data) => {
+          if (editingContact) {
+            updateContact.mutate({ id: editingContact.id, data });
+          } else {
+            createContact.mutate({ ...data, entityType: "client", entityId: id! });
+          }
+          setShowContactModal(false);
+        }}
+        onDelete={() => {
+          if (editingContact) {
+            deleteContact.mutate(editingContact.id);
+          }
+          setShowContactModal(false);
+        }}
+      />
     </div>
   );
 }

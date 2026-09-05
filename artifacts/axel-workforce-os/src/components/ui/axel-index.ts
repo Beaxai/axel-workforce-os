@@ -11,3 +11,5 @@ export { AxelDropdown } from "./AxelDropdown";
 export { default as Modal } from "./AxelModal";
 export { default as AxelTooltip } from "./AxelTooltip";
 export { default as Tooltip } from "./AxelTooltip";
+export { ContactCard } from "./ContactCard";
+export { ContactModal } from "./ContactModal";

@@ -211,6 +211,9 @@ export interface ProfilePayload {
   orgId: string | null;
   orgName: string | null;
   title: string | null;
+  phoneDirect: string | null;
+  phoneMobile: string | null;
+  department: string | null;
   timezone: string | null;
   dateJoined: string | null;
   lastLoginAt: string | null;
@@ -249,7 +252,10 @@ export async function assembleProfile(
     .select()
     .from(userProfilesTable)
     .where(eq(userProfilesTable.userId, targetId));
-  const meta = asMeta(profile?.roleMetadata);
+  // role_metadata is an administrator-only source. Non-admin projections may
+  // still include canonical role data from first-class tables, but never
+  // inherit values from this private JSON bag.
+  const meta = includeInternal ? asMeta(profile?.roleMetadata) : {};
   const roleSection = await buildRoleSection(targetId, role, meta, orgName);
 
   const payload: ProfilePayload = {
@@ -265,6 +271,9 @@ export async function assembleProfile(
     orgId,
     orgName,
     title: profile?.title ?? null,
+    phoneDirect: profile?.phoneDirect ?? null,
+    phoneMobile: profile?.phoneMobile ?? null,
+    department: profile?.department ?? null,
     timezone: profile?.timezone ?? null,
     dateJoined: profile?.dateJoined ? new Date(profile.dateJoined).toISOString() : null,
     lastLoginAt: profile?.lastLoginAt ? new Date(profile.lastLoginAt).toISOString() : null,

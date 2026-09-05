@@ -5,10 +5,12 @@ import { sql } from "drizzle-orm";
 import { usersTable } from "./users";
 import { organizationsTable } from "./organizations";
 import { partnersTable } from "./partners";
+import { agenciesTable } from "./agencies";
 
 export const agentRegistrationsTable = pgTable("agent_registrations", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   agencyName: text("agency_name").notNull(),
+  agencyId: uuid("agency_id").references(() => agenciesTable.id),
   agencyDba: text("agency_dba"),
   agencyAddress: text("agency_address").notNull(),
   agencyPhone: text("agency_phone").notNull(),
@@ -41,7 +43,7 @@ export const agentRegistrationsTable = pgTable("agent_registrations", {
   onboardingAdminId: uuid("onboarding_admin_id").references(() => usersTable.id),
   referralSource: text("referral_source"),
   partnerId: uuid("partner_id").references(() => partnersTable.id),
-  userId: uuid("user_id"),
+  userId: uuid("user_id").references(() => usersTable.id),
   createdAt: timestamp("created_at", { withTimezone: true }).default(sql`now()`),
 });
 
@@ -58,6 +60,10 @@ export const agentComplianceTable = pgTable("agent_compliance", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).default(sql`now()`),
 });
 
-export const insertAgentRegistrationSchema = createInsertSchema(agentRegistrationsTable).omit({ id: true, createdAt: true });
+export const insertAgentRegistrationSchema = createInsertSchema(
+  agentRegistrationsTable,
+)
+  .omit({ id: true, createdAt: true })
+  .extend({ email: z.email() });
 export type InsertAgentRegistration = z.infer<typeof insertAgentRegistrationSchema>;
 export type AgentRegistration = typeof agentRegistrationsTable.$inferSelect;

@@ -16,6 +16,7 @@ import { useAuthStore, ROLE_LABELS, ROLE_PATHS, type PartyRole } from "@/lib/aut
 import { useThemeStore } from "@/lib/theme-store";
 import { ROLE_NAV, type NavItem } from "@/lib/role-config";
 import GlobalSearch from "@/components/GlobalSearch";
+import Avatar from "@/components/user-profile/Avatar";
 
 const ALL_ROLES: PartyRole[] = [
   "ADMIN", "UNDERWRITER", "CSA", "AGENT",
@@ -520,23 +521,11 @@ export default function AppShell() {
                 onMouseEnter={(e) => (e.currentTarget.style.background = hoverBg)}
                 onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
               >
-                <div
-                  style={{
-                    width: "28px",
-                    height: "28px",
-                    borderRadius: "50%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: "11px",
-                    fontWeight: 700,
-                    background: "var(--accent-primary-soft)",
-                    color: "var(--accent-primary)",
-                  }}
-                >
-                  {user.firstName[0]}
-                  {user.lastName[0]}
-                </div>
+                <Avatar
+                  name={`${user.firstName} ${user.lastName}`.trim() || user.email}
+                  avatarUrl={user.avatarUrl}
+                  size={28}
+                />
                 <div style={{ textAlign: "left" }}>
                   <p
                     style={{

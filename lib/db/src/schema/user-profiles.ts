@@ -8,8 +8,10 @@ import { usersTable } from "./users";
  * 1:1 extension of `users` carrying profile/presentation fields that do not
  * belong on the thin auth `users` row. Keyed by a unique `user_id`.
  *
- * `bio` and `internal_notes` are INTERNAL-ONLY and must be stripped server-side
- * for non-internal viewers. `role_metadata` is a single jsonb bag for
+ * `bio`, `internal_notes`, and `role_metadata` are INTERNAL-ONLY and must be
+ * stripped server-side for non-admin viewers. First-class staff directory
+ * fields stay separate so safe projections never need to expose the metadata bag.
+ * `role_metadata` is a single jsonb bag for
  * role-specific fields that have no first-class home yet (e.g. UNDERWRITER
  * lines/states/verticals, CSA department/territory) — deliberately avoiding
  * sparse per-role columns on `users`.
@@ -21,6 +23,9 @@ export const userProfilesTable = pgTable("user_profiles", {
     .unique()
     .notNull(),
   title: text("title"),
+  phoneDirect: text("phone_direct"),
+  phoneMobile: text("phone_mobile"),
+  department: text("department"),
   timezone: text("timezone"),
   bio: text("bio"),
   internalNotes: text("internal_notes"),

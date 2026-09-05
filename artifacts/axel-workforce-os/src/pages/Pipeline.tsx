@@ -21,6 +21,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import Avatar from "@/components/user-profile/Avatar";
 
 interface QuoteDraft {
   id: string;
@@ -910,37 +911,23 @@ export default function Pipeline() {
                               const member = faceMembers[i];
                               if (!member) return null;
                               
-                              const photo = member.photoUrl;
-                              const initials = member.name ? member.name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase() : "?";
-                              
                               return (
-                                <div
+                                 <Avatar
                                   key={i}
+                                   name={member.name}
+                                   avatarUrl={member.photoUrl}
+                                   size={32}
                                   style={{
-                                    width: "32px",
-                                    height: "32px",
-                                    borderRadius: "50%",
                                     background: isDark ? "rgba(255,255,255,0.13)" : "rgba(0,0,0,0.08)",
                                     border: `2px solid hsl(var(--background))`,
                                     marginLeft: i > 0 ? "-9px" : 0,
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
                                     fontSize: "12px",
-                                    fontWeight: 600,
                                     color: isDark ? "rgba(255,255,255,0.72)" : "rgba(0,0,0,0.6)",
-                                    overflow: "hidden",
                                     position: "relative",
                                     zIndex: 3 - i
                                   }}
                                   title={member.name}
-                                >
-                                  {photo ? (
-                                    <img src={photo} alt={member.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                                  ) : (
-                                    initials
-                                  )}
-                                </div>
+                                 />
                               );
                             })}
                           </div>

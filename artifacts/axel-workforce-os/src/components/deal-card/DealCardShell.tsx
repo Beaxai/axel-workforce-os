@@ -20,10 +20,11 @@ import { api } from "@/lib/api";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import { useAuthStore } from "@/lib/auth-store";
 import type { SectionView, SubmissionPayload, ActivityRow, SectionPatchResponse, RfiRow, RfiListResponse, QuoteVariation, QuoteVariationsResponse, ApplyVariationResponse, PreviewVariationResponse, VariationLevers, DealTeamMember, DealDirectoryEntry, MarketRoutingSummary } from "./types";
-import UserMiniProfile from "@/components/user-profile/UserMiniProfile";
+import { displayName } from "@/lib/agent-display-name";
 import type { CreateRfiInput } from "./OverviewTab";
 import { PHASES, phaseIndex } from "./stage-map";
 import DealHeaderMap, { type MarkerClickInfo } from "./DealHeaderMap";
+import AssignedTeamPopover from "./AssignedTeamPopover";
 import { type GeoMarker, type GeoMarkerClassCode, stateCentroid, zipToLngLat, spreadDuplicates } from "@/lib/geo";
 import LocationPopup from "./LocationPopup";
 import OverviewTab from "./OverviewTab";
@@ -34,6 +35,7 @@ import DepositCard from "./DepositCard";
 import BrokerFeeCard from "./BrokerFeeCard";
 import ReRateBanner from "./ReRateBanner";
 import { DocumentsTab, QuoteTab, PolicyTab, TasksTab } from "./SupportingTabs";
+import Avatar from "@/components/user-profile/Avatar";
 
 import type { IndicationMetric } from "./IndicationDetailView";
 
@@ -101,12 +103,6 @@ function fmtMoneyShort(v: unknown): string {
   return `$${n.toLocaleString()}`;
 }
 
-function teamInitials(name: string): string {
-  const parts = name.trim().split(/\s+/);
-  if (parts.length >= 2) return `${parts[0][0] ?? ""}${parts[1][0] ?? ""}`.toUpperCase();
-  return (parts[0]?.[0] ?? "?").toUpperCase();
-}
-
 const AVATAR_SIZE = 38;
 
 /**
@@ -124,45 +120,39 @@ function DealTeamAvatars({ team, directory }: { team?: DealTeamMember[]; directo
   const grey = c.isDark ? "rgba(255,255,255,0.13)" : "rgba(0,0,0,0.08)";
   const greyText = c.isDark ? "rgba(255,255,255,0.72)" : "rgba(0,0,0,0.6)";
   const ring = c.bg;
-  const base: CSSProperties = {
-    width: AVATAR_SIZE, height: AVATAR_SIZE, borderRadius: "50%",
-    border: `2px solid ${ring}`, display: "flex", alignItems: "center", justifyContent: "center",
-    flexShrink: 0, overflow: "hidden",
-  };
   // Same people as the Pipeline card face: real team when present, otherwise
   // the first three directory members (matching the card-face avatar row).
   const people: Array<{ userId: string; name: string; relation?: string; photo: string | null }> =
     team && team.length > 0
-      ? team.map((m) => ({ userId: m.userId, name: m.name, relation: m.relation, photo: m.avatarUrl ?? null }))
-      : (directory ?? []).slice(0, 3).map((m) => ({ userId: m.id, name: m.name, photo: m.avatarUrl }));
+      ? team.map((m) => ({ userId: m.userId, name: displayName(m), relation: m.relation, photo: m.avatarUrl ?? null }))
+      : (directory ?? []).slice(0, 3).map((m) => ({ userId: m.id, name: displayName(m), photo: m.avatarUrl }));
   if (people.length === 0) return null;
   return (
     <div style={{ display: "flex", alignItems: "center" }}>
       {people.map((m, i) => (
-        <UserMiniProfile key={m.userId} userId={m.userId} align="start">
-          <button
-            type="button"
-            title={m.relation ? `${m.name} · ${m.relation}` : m.name}
-            style={{
-              ...base,
-              background: grey,
-              marginLeft: i === 0 ? 0 : -10,
-              cursor: "pointer", padding: 0,
-              fontSize: 13, fontWeight: 600, color: greyText,
-              position: "relative", zIndex: people.length - i,
-            }}
-          >
-            {m.photo ? (
-              <img
-                src={m.photo}
-                alt={m.name}
-                style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-              />
-            ) : (
-              teamInitials(m.name)
-            )}
-          </button>
-        </UserMiniProfile>
+        <button
+          key={m.userId}
+          type="button"
+          title={m.relation ? `${m.name} · ${m.relation}` : m.name}
+          style={{
+            background: grey,
+            width: AVATAR_SIZE,
+            height: AVATAR_SIZE,
+            borderRadius: "50%",
+            border: `2px solid ${ring}`,
+            marginLeft: i === 0 ? 0 : -10,
+            cursor: "pointer", padding: 0,
+            fontSize: 13, fontWeight: 600, color: greyText,
+            position: "relative", zIndex: people.length - i,
+          }}
+        >
+          <Avatar
+            name={m.name}
+            avatarUrl={m.photo}
+            size={AVATAR_SIZE - 4}
+            style={{ background: grey, color: greyText }}
+          />
+        </button>
       ))}
     </div>
   );
@@ -1078,7 +1068,13 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
                 <Star style={{ width: 18, height: 18, color: c.textMuted, flexShrink: 0 }} />
                 <div style={{ fontSize: 18, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{deal?.businessName || "Deal"}</div>
                 <div style={{ pointerEvents: "auto", flexShrink: 0 }}>
-                  <DealTeamAvatars team={payload?.team} directory={payload?.directory} />
+                  <AssignedTeamPopover
+                    dealId={dealId}
+                    team={payload?.team}
+                    onUpdated={fetchSubmission}
+                  >
+                    <DealTeamAvatars team={payload?.team} directory={payload?.directory} />
+                  </AssignedTeamPopover>
                 </div>
               </div>
               {(badges.length > 0 || effectiveDate) && (

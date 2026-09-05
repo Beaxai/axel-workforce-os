@@ -9,6 +9,9 @@ import { instantiateJourneysForDeal } from "../lib/journey-instantiate";
 import { generateSubjectivitiesForDeal } from "../lib/subjectivities";
 import { startDepositMonitor, resolveDeposit } from "../lib/deposit-monitor";
 import { setBrokerFeePercent, setBrokerFeeStatus, sendBrokerFeeDunning, computeBrokerFee } from "../lib/broker-fee";
+import { validateNewProducingAgentAttachment } from "../lib/agent-assignment-gate";
+import { calculateDealProduction } from "../lib/production-metrics";
+import { requireRoles } from "../middleware/require-auth";
 
 const router: IRouter = Router();
 
@@ -147,6 +150,8 @@ router.get("/", async (_req, res) => {
           wcFinalPremium: quotesTable.wcFinalPremium,
           pepm: quotesTable.pepm,
           peoPepm: quotesTable.peoPepm,
+          monthlyWfsFee: quotesTable.monthlyWfsFee,
+          peoAnnualTotal: quotesTable.peoAnnualTotal,
         })
         .from(quotesTable)
         .where(inArray(quotesTable.dealId, ids))
@@ -155,8 +160,10 @@ router.get("/", async (_req, res) => {
   const latestProfile = new Map<string, WorkforceProfileLite>();
   const latestWcPremium = new Map<string, string>();
   const latestPepm = new Map<string, string>();
+  const latestProductionQuote = new Map<string, (typeof quoteRows)[number]>();
   for (const q of quoteRows) {
     if (!q.dealId) continue;
+    if (!latestProductionQuote.has(q.dealId)) latestProductionQuote.set(q.dealId, q);
     if (q.workforceProfile && !latestProfile.has(q.dealId)) {
       latestProfile.set(q.dealId, q.workforceProfile as WorkforceProfileLite);
     }
@@ -183,11 +190,26 @@ router.get("/", async (_req, res) => {
         : null;
     const dealWc = r.wcPremium != null && parseFloat(r.wcPremium) > 0 ? r.wcPremium : null;
     const dealPepm = r.wfsPepmRate != null && parseFloat(r.wfsPepmRate) > 0 ? r.wfsPepmRate : null;
+    const production = calculateDealProduction(r, latestProductionQuote.get(r.id));
+    const productionBucket =
+      r.productType === "PEO"
+        ? "PEO"
+        : r.productType === "ASO" || r.productType === "ASO_CAPTIVE"
+          ? "ASO"
+          : "WC";
+    const productionValue =
+      productionBucket === "PEO"
+        ? production.peoPremium
+        : productionBucket === "ASO"
+          ? production.asoFees
+          : production.wcPremium;
     return {
       ...r,
       // Premium fallbacks: deal-level columns win; otherwise the latest quote's.
       wcPremium: dealWc ?? latestWcPremium.get(r.id) ?? r.wcPremium,
       wfsPepmRate: dealPepm ?? latestPepm.get(r.id) ?? r.wfsPepmRate,
+      productionBucket,
+      productionValue,
       kpiLocations: r.numberOfLocations ?? (wp?.locations?.length || null),
       kpiEmployees: dealEmployees ?? (wpEmployees > 0 ? wpEmployees : null),
       kpiPayroll: r.annualPayroll ?? (wpPayroll > 0 ? String(wpPayroll) : null),
@@ -210,6 +232,16 @@ router.post("/", async (req, res) => {
   if (invalid) return res.status(400).json({ error: invalid });
   const invalidProduct = validateProductType(parsed.data.productType);
   if (invalidProduct) return res.status(400).json({ error: invalidProduct });
+  if (
+    parsed.data.producingAgentId !== undefined &&
+    !["ADMIN", "CSA", "UNDERWRITER"].includes(req.user?.role ?? "")
+  ) {
+    return res.status(403).json({ error: "Insufficient permissions" });
+  }
+  const attachmentGate = await validateNewProducingAgentAttachment({
+    agentUserId: parsed.data.producingAgentId,
+  });
+  if (!attachmentGate.allowed) return res.status(409).json(attachmentGate);
   let accountId = parsed.data.accountId;
   if (!accountId) {
     const { account } = await findOrCreateAccount({
@@ -252,6 +284,46 @@ function stripBrokerFeeFields<T extends Record<string, unknown>>(
   return safe;
 }
 
+const producingAgentSchema = z.object({
+  producingAgentId: z.string().uuid().nullable(),
+});
+
+router.patch(
+  "/:id/producing-agent",
+  requireRoles("ADMIN", "CSA", "UNDERWRITER"),
+  async (req, res) => {
+    const parsed = producingAgentSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: parsed.error.issues });
+    const dealId = req.params.id as string;
+
+    const result = await db.transaction(async (tx) => {
+      const [existing] = await tx
+        .select()
+        .from(dealsTable)
+        .where(eq(dealsTable.id, dealId))
+        .for("update")
+        .limit(1);
+      if (!existing) return { status: 404, body: { error: "Not found" } };
+
+      const gate = await validateNewProducingAgentAttachment({
+        dbc: tx,
+        agentUserId: parsed.data.producingAgentId,
+        existingAgentUserId: existing.producingAgentId,
+      });
+      if (!gate.allowed) return { status: 409, body: gate };
+
+      const [deal] = await tx
+        .update(dealsTable)
+        .set({ producingAgentId: parsed.data.producingAgentId })
+        .where(eq(dealsTable.id, existing.id))
+        .returning();
+      return { status: 200, body: deal };
+    });
+
+    return res.status(result.status).json(result.body);
+  },
+);
+
 router.patch("/:id", async (req, res) => {
   const parsedRaw = insertDealSchema.partial().safeParse(req.body);
   if (!parsedRaw.success) return res.status(400).json({ error: parsedRaw.error.issues });
@@ -288,6 +360,25 @@ router.patch("/:id", async (req, res) => {
 
     const nextStage = parsed.data.stage ?? undefined;
     const stageChanging = nextStage !== undefined && nextStage !== existing.stage;
+    if (
+      parsed.data.producingAgentId !== undefined &&
+      !["ADMIN", "CSA", "UNDERWRITER"].includes(req.user?.role ?? "")
+    ) {
+      return { status: 403, body: { error: "Insufficient permissions" } };
+    }
+    if (
+      parsed.data.producingAgentId !== undefined &&
+      parsed.data.producingAgentId !== existing.producingAgentId
+    ) {
+      const attachmentGate = await validateNewProducingAgentAttachment({
+        dbc: tx,
+        agentUserId: parsed.data.producingAgentId,
+        existingAgentUserId: existing.producingAgentId,
+      });
+      if (!attachmentGate.allowed) {
+        return { status: 409, body: attachmentGate };
+      }
+    }
 
     // Bind gate (canonical stage 9): entering BOUND requires bind-readiness.
     if (stageChanging && nextStage === "BOUND") {

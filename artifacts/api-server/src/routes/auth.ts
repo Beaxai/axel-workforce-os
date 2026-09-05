@@ -148,7 +148,11 @@ router.post("/forgot-password", async (req, res) => {
   // Always return success to avoid account enumeration.
   if (parsed.success) {
     const user = await findUserByEmail(parsed.data.email);
-    if (user) {
+    const credential =
+      user?.status === "active"
+        ? await getCredentialByUserId(user.id)
+        : null;
+    if (user?.status === "active" && credential) {
       const { token, tokenHash } = generateToken();
       await db.insert(passwordResetTokensTable).values({
         userId: user.id,
@@ -182,41 +186,41 @@ router.post("/reset-password", async (req, res) => {
     return;
   }
   const tokenHash = hashToken(parsed.data.token);
-  const [row] = await db
-    .select()
-    .from(passwordResetTokensTable)
-    .where(
-      and(
-        eq(passwordResetTokensTable.tokenHash, tokenHash),
-        gt(passwordResetTokensTable.expiresAt, new Date()),
-        isNull(passwordResetTokensTable.usedAt),
-      ),
-    );
-  if (!row) {
+  const reset = await db.transaction(async (tx) => {
+    const [row] = await tx
+      .select()
+      .from(passwordResetTokensTable)
+      .where(
+        and(
+          eq(passwordResetTokensTable.tokenHash, tokenHash),
+          gt(passwordResetTokensTable.expiresAt, new Date()),
+          isNull(passwordResetTokensTable.usedAt),
+        ),
+      )
+      .for("update");
+    if (!row) return false;
+
+    const [credential] = await tx
+      .select({ id: userCredentialsTable.id })
+      .from(userCredentialsTable)
+      .where(eq(userCredentialsTable.userId, row.userId));
+    if (!credential) return false;
+
+    const passwordHash = await hashPassword(parsed.data.password);
+    await tx
+      .update(userCredentialsTable)
+      .set({ passwordHash, updatedAt: new Date() })
+      .where(eq(userCredentialsTable.id, credential.id));
+    await tx
+      .update(passwordResetTokensTable)
+      .set({ usedAt: new Date() })
+      .where(eq(passwordResetTokensTable.id, row.id));
+    return true;
+  });
+  if (!reset) {
     res.status(400).json({ error: "Invalid or expired reset token" });
     return;
   }
-  const passwordHash = await hashPassword(parsed.data.password);
-  const existingCred = await getCredentialByUserId(row.userId);
-  if (existingCred) {
-    await db
-      .update(userCredentialsTable)
-      .set({ passwordHash, updatedAt: new Date() })
-      .where(eq(userCredentialsTable.userId, row.userId));
-  } else {
-    await db.insert(userCredentialsTable).values({ userId: row.userId, passwordHash });
-  }
-  await db
-    .update(passwordResetTokensTable)
-    .set({ usedAt: new Date() })
-    .where(eq(passwordResetTokensTable.id, row.id));
-  // Completing a reset is the documented way an `invited` account becomes
-  // login-eligible. Promote invited → active (never override `deactivated`,
-  // which must stay blocked until an admin reactivates).
-  await db
-    .update(usersTable)
-    .set({ status: "active" })
-    .where(and(eq(usersTable.id, row.userId), eq(usersTable.status, "invited")));
   res.json({ ok: true });
 });
 

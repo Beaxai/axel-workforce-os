@@ -1,4 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
+import multer from "multer";
 import {
   db,
   usersTable,
@@ -7,6 +8,7 @@ import {
   organizationsTable,
   activityLogTable,
   userCredentialsTable,
+  agentProfilesTable,
   insertUserSchema,
 } from "@workspace/db";
 import { and, desc, eq, inArray } from "drizzle-orm";
@@ -23,14 +25,209 @@ import {
 import {
   assembleProfile,
   canViewProfile,
-  isInternalRole,
 } from "../lib/user-profiles";
+import {
+  canManageTargetAvatar,
+} from "../lib/avatar-auth";
+import {
+  InvalidAvatarImageError,
+  MAX_AVATAR_SOURCE_BYTES,
+  processAvatarImage,
+} from "../lib/avatar-images";
+import {
+  attachAvatarUploadRelease,
+  avatarUploadErrorMessage,
+  avatarUploadLimiter,
+} from "../lib/avatar-upload";
+import {
+  deleteAvatarFile,
+  managedAvatarFile,
+  servedAvatarFile,
+  writeFinalAvatar,
+} from "../lib/avatar-storage";
 
 const router: IRouter = Router();
 
 // Internal staff who may browse the raw user directory + manage users.
 const requireInternalSales = requireRoles("ADMIN", "CSA", "AGENT", "UNDERWRITER");
+const requireInternalDirectory = requireRoles("ADMIN", "CSA", "UNDERWRITER");
 const requireAdmin = requireRoles("ADMIN");
+
+async function getAvatarTarget(targetUserId: string) {
+  const [target] = await db
+    .select({
+      id: usersTable.id,
+      avatarUrl: usersTable.avatarUrl,
+      agentUserId: agentProfilesTable.userId,
+    })
+    .from(usersTable)
+    .leftJoin(agentProfilesTable, eq(agentProfilesTable.userId, usersTable.id))
+    .where(eq(usersTable.id, targetUserId))
+    .limit(1);
+  return target ?? null;
+}
+
+async function authorizeAvatarChange(
+  viewer: AuthUser,
+  targetUserId: string,
+  res: Response,
+) {
+  const target = await getAvatarTarget(targetUserId);
+  if (!target) {
+    res.status(404).json({ error: "User not found" });
+    return null;
+  }
+  const isAgentLinked = Boolean(target.agentUserId);
+  if (!canManageTargetAvatar(viewer, targetUserId, isAgentLinked)) {
+    res.status(403).json({ error: "Insufficient permissions" });
+    return null;
+  }
+  return target;
+}
+
+/* ------------------------------------------------------------------ *
+ * Narrow, authenticated avatar upload/read/remove API
+ * ------------------------------------------------------------------ */
+router.get("/avatar/:key", async (req: Request<{ key: string }>, res: Response) => {
+  const file = servedAvatarFile(req.params.key);
+  if (!file) return res.status(404).json({ error: "Avatar not found" });
+  try {
+    const [metadata] = await file.getMetadata();
+    res.set({
+      "Content-Type": "image/webp",
+      "Cache-Control": "private, max-age=86400",
+      "X-Content-Type-Options": "nosniff",
+    });
+    if (metadata.size) res.set("Content-Length", String(metadata.size));
+    file.createReadStream().on("error", (error) => {
+      req.log.error({ err: error }, "avatar stream failed");
+      if (!res.headersSent) res.status(500).end();
+      else res.destroy(error);
+    }).pipe(res);
+    return;
+  } catch (error) {
+    const status = (error as { code?: number }).code;
+    if (status === 404) return res.status(404).json({ error: "Avatar not found" });
+    req.log.error({ err: error }, "avatar read failed");
+    return res.status(500).json({ error: "Unable to read avatar" });
+  }
+});
+
+const avatarUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: MAX_AVATAR_SOURCE_BYTES,
+    files: 1,
+    fields: 0,
+    // Busboy emits partsLimit at the configured boundary; 2 permits the one
+    // legitimate file part while files: 1 and fields: 0 reject any second part.
+    parts: 2,
+    fieldSize: 0,
+    headerPairs: 16,
+  },
+});
+type AvatarUploadRequest = Request<{ id: string }> & {
+  avatarTarget?: Awaited<ReturnType<typeof getAvatarTarget>>;
+  releaseAvatarUploadSlot?: () => void;
+};
+
+async function authorizeAvatarUpload(
+  req: AvatarUploadRequest,
+  res: Response,
+  next: () => void,
+) {
+  const target = await authorizeAvatarChange(req.user as AuthUser, req.params.id, res);
+  if (!target) return;
+  const release = avatarUploadLimiter.tryAcquire((req.user as AuthUser).id);
+  if (!release) {
+    res.status(429).json({ error: "Avatar upload capacity is temporarily unavailable; try again later" });
+    return;
+  }
+  req.avatarTarget = target;
+  req.releaseAvatarUploadSlot = release;
+  // Covers parser errors, normal responses, and client disconnects.
+  attachAvatarUploadRelease(req, res, release);
+  next();
+}
+
+function parseAvatarMultipart(req: Request, res: Response, next: () => void) {
+  avatarUpload.single("file")(req, res, (error: unknown) => {
+    const message = avatarUploadErrorMessage(error);
+    if (message) {
+      res.status(400).json({ error: message });
+      return;
+    }
+    if (error) {
+      req.log.error({ err: error }, "avatar multipart parsing failed");
+      res.status(400).json({ error: "Invalid avatar upload" });
+      return;
+    }
+    next();
+  });
+}
+
+router.post("/:id/avatar", authorizeAvatarUpload, parseAvatarMultipart, async (
+  req: AvatarUploadRequest,
+  res: Response,
+) => {
+  const target = req.avatarTarget;
+  if (!target) return res.status(500).json({ error: "Avatar authorization context missing" });
+  if (!req.file) return res.status(400).json({ error: "Upload exactly one avatar file" });
+  let newFinalFile: Awaited<ReturnType<typeof writeFinalAvatar>>["file"] | null = null;
+  try {
+    const normalized = await processAvatarImage(req.file.buffer);
+    const finalAvatar = await writeFinalAvatar(normalized);
+    newFinalFile = finalAvatar.file;
+
+    const [updated] = await db
+      .update(usersTable)
+      .set({ avatarUrl: finalAvatar.avatarUrl })
+      .where(eq(usersTable.id, target.id))
+      .returning({ avatarUrl: usersTable.avatarUrl });
+    if (!updated) throw new Error("Avatar target disappeared during update");
+
+    // The new URL is durable before the previous managed object is removed.
+    await deleteAvatarFile(managedAvatarFile(target.avatarUrl)).catch((error) => {
+      req.log.warn({ err: error }, "old avatar cleanup failed");
+    });
+    return res.json({ avatarUrl: finalAvatar.avatarUrl });
+  } catch (error) {
+    if (newFinalFile) {
+      await deleteAvatarFile(newFinalFile).catch((cleanupError) => {
+        req.log.warn({ err: cleanupError }, "unpersisted avatar cleanup failed");
+      });
+    }
+    if (error instanceof InvalidAvatarImageError) {
+      return res.status(400).json({ error: (error as Error).message });
+    }
+    req.log.error({ err: error }, "avatar finalization failed");
+    return res.status(500).json({ error: "Unable to process avatar" });
+  } finally {
+    // Idempotent with the response-finish fallback used for multer errors.
+    req.releaseAvatarUploadSlot?.();
+  }
+});
+
+router.delete("/:id/avatar", async (req: Request<{ id: string }>, res: Response) => {
+  const viewer = req.user as AuthUser;
+  const target = await authorizeAvatarChange(viewer, req.params.id, res);
+  if (!target) return;
+  try {
+    const [updated] = await db
+      .update(usersTable)
+      .set({ avatarUrl: null })
+      .where(eq(usersTable.id, target.id))
+      .returning({ id: usersTable.id });
+    if (!updated) return res.status(404).json({ error: "User not found" });
+    await deleteAvatarFile(managedAvatarFile(target.avatarUrl)).catch((error) => {
+      req.log.warn({ err: error }, "removed avatar cleanup failed");
+    });
+    return res.json({ avatarUrl: null });
+  } catch (error) {
+    req.log.error({ err: error }, "avatar removal failed");
+    return res.status(500).json({ error: "Unable to remove avatar" });
+  }
+});
 
 /* ------------------------------------------------------------------ *
  * Directory + admin CRUD (internal / ADMIN only)
@@ -72,6 +269,48 @@ router.get("/", requireInternalSales, async (_req, res) => {
       orgName: orgByUser.get(r.id) ?? null,
       lastLoginAt: lastLoginByUser.get(r.id) ?? null,
     })),
+  );
+});
+
+router.get("/team", requireInternalDirectory, async (_req, res) => {
+  const rows = await db
+    .select({
+      firstName: usersTable.firstName,
+      lastName: usersTable.lastName,
+      email: usersTable.email,
+      avatarUrl: usersTable.avatarUrl,
+      title: userProfilesTable.title,
+      phoneDirect: userProfilesTable.phoneDirect,
+      phoneMobile: userProfilesTable.phoneMobile,
+      department: userProfilesTable.department,
+      role: orgMembersTable.role,
+    })
+    .from(usersTable)
+    .innerJoin(orgMembersTable, eq(orgMembersTable.userId, usersTable.id))
+    .leftJoin(userProfilesTable, eq(userProfilesTable.userId, usersTable.id));
+
+  const seen = new Set<string>();
+  return res.json(
+    rows
+      .filter((row) => {
+        if (!["ADMIN", "CSA", "UNDERWRITER"].includes(row.role?.toUpperCase() ?? "")) {
+          return false;
+        }
+        if (seen.has(row.email)) return false;
+        seen.add(row.email);
+        return true;
+      })
+      .map((row) => ({
+        name:
+          `${row.firstName ?? ""} ${row.lastName ?? ""}`.replace(/\s+/g, " ").trim() ||
+          row.email,
+        title: row.title ?? null,
+        email: row.email,
+        avatarUrl: row.avatarUrl ?? null,
+        phoneDirect: row.phoneDirect ?? null,
+        phoneMobile: row.phoneMobile ?? null,
+        department: row.department ?? null,
+      })),
   );
 });
 
@@ -137,7 +376,7 @@ router.get("/:id/profile", async (req: Request<{ id: string }>, res: Response) =
   if (!(await canViewProfile(viewer, req.params.id))) {
     return res.status(403).json({ error: "Insufficient permissions" });
   }
-  const includeInternal = isInternalRole(viewer.role);
+  const includeInternal = viewer.role === "ADMIN";
   const payload = await assembleProfile(req.params.id, includeInternal);
   if (!payload) return res.status(404).json({ error: "Not found" });
   return res.json(payload);
@@ -178,6 +417,9 @@ const profilePatchSchema = z
     phone: z.string().nullable().optional(),
     mobile: z.string().nullable().optional(),
     title: z.string().nullable().optional(),
+    phoneDirect: z.string().nullable().optional(),
+    phoneMobile: z.string().nullable().optional(),
+    department: z.string().nullable().optional(),
     timezone: z.string().nullable().optional(),
     bio: z.string().nullable().optional(),
     internalNotes: z.string().nullable().optional(),
@@ -215,6 +457,9 @@ router.patch("/:id/profile", async (req: Request<{ id: string }>, res: Response)
   if (data.timezone !== undefined) profileUpdate.timezone = data.timezone;
   if (isAdmin) {
     if (data.title !== undefined) profileUpdate.title = data.title;
+    if (data.phoneDirect !== undefined) profileUpdate.phoneDirect = data.phoneDirect;
+    if (data.phoneMobile !== undefined) profileUpdate.phoneMobile = data.phoneMobile;
+    if (data.department !== undefined) profileUpdate.department = data.department;
     if (data.bio !== undefined) profileUpdate.bio = data.bio;
     if (data.internalNotes !== undefined) profileUpdate.internalNotes = data.internalNotes;
     if (data.roleMetadata !== undefined) profileUpdate.roleMetadata = data.roleMetadata;
@@ -237,7 +482,7 @@ router.patch("/:id/profile", async (req: Request<{ id: string }>, res: Response)
     }
   });
 
-  const includeInternal = isInternalRole(viewer.role);
+  const includeInternal = viewer.role === "ADMIN";
   const payload = await assembleProfile(targetId, includeInternal);
   if (!payload) return res.status(404).json({ error: "Not found" });
   return res.json(payload);

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { displayName } from "@/lib/agent-display-name";
 import { GlassCard, GhostButton } from "@/components/ui/axel-index";
 import { FileSignature, CheckCircle } from "lucide-react";
 
@@ -56,7 +57,7 @@ export default function AgentAgreement() {
               </p>
               {reg && (
                 <p style={{ fontSize: "14px", color: textMuted, marginBottom: "24px" }}>
-                  Applicant: {reg.firstName} {reg.lastName} · {reg.agencyName}
+                  Applicant: {displayName(reg)} · {reg.agencyName}
                 </p>
               )}
               <GhostButton onClick={() => signMut.mutate()} style={{ padding: "12px 24px", fontSize: "15px" }}>

@@ -42,6 +42,7 @@ import Billing from "@/pages/Billing";
 import Network from "@/pages/Network";
 import MarketDetail from "@/pages/network/MarketDetail";
 import AgentDetail from "@/pages/network/AgentDetail";
+import AgencyDetail from "@/pages/network/AgencyDetail";
 import CarrierDetail from "@/pages/network/CarrierDetail";
 import PEODetail from "@/pages/network/PEODetail";
 import AgentRegister from "@/pages/register/AgentRegister";
@@ -61,6 +62,7 @@ import JourneyTemplateDetail from "@/pages/admin/JourneyTemplateDetail";
 import Welcome from "@/pages/Welcome";
 import DealCardLayoutMockup from "@/pages/dev/DealCardLayoutMockup";
 import NotFound from "@/pages/not-found";
+import TeamPage from "@/pages/TeamPage";
 import { useAuthStore } from "@/lib/auth-store";
 import { GlobalDealCardHost } from "@/components/DealCardModal";
 
@@ -265,6 +267,16 @@ function App() {
 
             <Route
               element={
+                <ProtectedRoute allowedRoles={["ADMIN", "CSA", "UNDERWRITER"]}>
+                  <AppShell />
+                </ProtectedRoute>
+              }
+            >
+              <Route path="/team" element={<TeamPage />} />
+            </Route>
+
+            <Route
+              element={
                 <ProtectedRoute
                   allowedRoles={[
                     "ADMIN",
@@ -314,6 +326,7 @@ function App() {
             >
               <Route path="/network" element={<Network />} />
               <Route path="/network/markets/:id" element={<MarketDetail />} />
+              <Route path="/network/agencies/:agencyId" element={<AgencyDetail />} />
               <Route path="/network/agents/:id" element={<AgentDetail />} />
               <Route path="/network/carriers/:id" element={<CarrierDetail />} />
               <Route path="/network/peo/:id" element={<PEODetail />} />
