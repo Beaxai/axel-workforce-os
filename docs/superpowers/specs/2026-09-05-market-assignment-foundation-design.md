@@ -27,15 +27,24 @@ Extend the existing table additively with assignment-grid metadata:
 
 - Stable import key
 - Rated status
+- Products offered
 - State-writing mode and, where applicable, explicit states
+- Rating basis
+- Reference-only `Is Primary?` value
 - Submission email
 - Phone
-- Underwriter
-- Other contacts
+- Spreadsheet underwriter reference
+- Spreadsheet other-contacts reference
 
 Existing `is_active` and `is_appointed` fields continue to represent operational availability. Existing `market_type` and `product_lane` fields remain intact for compatibility with current routing code. The importer maps the specification's `wc_carrier` role to the existing `WC_CARRIER` value and `peo_aso_provider` to `PEO_PROGRAM`.
 
 Benchmark uses a rate-table state mode, Axel uses an all-states mode, and wholesale markets use explicit state lists or an all-states mode according to the workbook. Contact fields may be null when the workbook leaves them blank.
+
+The duplicate Axel spreadsheet rows are collapsed into one market record whose offered products contain both PEO and ASO. The current single `product_lane` remains `PEO` for compatibility; the new offered-products metadata and assignment product are independent of that legacy field.
+
+The workbook's `Is Primary?` value is stored only as source reference metadata. It does not select or route a market. Launch market selection is manual per deal, and future rated-era Primary selection will be computed from rate rather than this column.
+
+`Rating Basis` maps to rated status: `Rated (self-priced)` is rated and `Eligibility-only` is unrated. Spreadsheet underwriter and other-contact values are stored as source references and do not overwrite rows in the existing underwriter or contact structures.
 
 ### New `market_vertical_rank`
 
@@ -56,9 +65,9 @@ The table enforces:
 - Rank membership in `1`, `2`, `3`, or `E`
 - Product membership in the specified product values
 - Nonempty normalized vertical names
-- At most one market at each preferred rank (`1`, `2`, or `3`) for a vertical and product
+- At most one market at each preferred rank (`1`, `2`, or `3`) within a vertical
 
-Multiple `E` markets are permitted for the same vertical and product.
+Rank uniqueness is not global: the same market may be rank `1` in several different verticals. Multiple `E` markets are permitted within the same vertical.
 
 ## Importer
 
@@ -72,10 +81,10 @@ The importer runs in one database transaction:
 2. Reject duplicate or conflicting preferred ranks.
 3. Upsert markets by stable import key.
 4. Upsert nonblank vertical assignments by market, vertical, and product.
-5. Remove obsolete imported assignments for the managed markets so blanked workbook cells are faithfully represented.
+5. Remove only obsolete assignments previously created by this workbook source, so blanked workbook cells are faithfully represented without deleting manual data.
 6. Report inserted, updated, unchanged, and removed totals.
 
-Re-running the same import is a no-op at the data level and cannot create duplicates. Validation failures abort the transaction without partial writes.
+Re-running the same import is a no-op at the data level and cannot create duplicates. Validation failures abort the transaction without partial writes. The importer updates only spreadsheet-owned metadata and workbook-managed assignment rows. It does not overwrite operational status, existing underwriter records, manually added contacts, appetite rules, rates, or manually created assignments.
 
 ## Data Flow and App Impact
 
@@ -101,7 +110,8 @@ Automated validation covers:
 - Accepted and rejected rank values
 - Accepted and rejected products
 - Duplicate market × vertical × product detection
-- Duplicate preferred-rank detection
+- Duplicate preferred-rank detection within one vertical
+- Reuse of the same preferred rank across different verticals
 - Multiple `E` assignments for one vertical
 - Blank-cell removal semantics
 - Idempotent repeated imports
