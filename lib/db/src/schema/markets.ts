@@ -29,6 +29,30 @@ export type MarketProductLane = (typeof MARKET_PRODUCT_LANES)[number];
 export const MARKET_TYPES = ["WC_CARRIER", "PEO_PROGRAM"] as const;
 export type MarketType = (typeof MARKET_TYPES)[number];
 
+export const MARKET_ASSIGNMENT_PRODUCTS = ["PEO", "ASO", "WC", "PEO+WC"] as const;
+export type MarketAssignmentProduct = (typeof MARKET_ASSIGNMENT_PRODUCTS)[number];
+
+export const MARKET_VERTICAL_RANKS = ["1", "2", "3", "E"] as const;
+export type MarketVerticalRank = (typeof MARKET_VERTICAL_RANKS)[number];
+
+export const MARKET_ASSIGNMENT_VERTICAL_KEYS = [
+  "AMBULANCE_EMERGENCY_TRANSPORT",
+  "CANNABIS",
+  "CONSTRUCTION",
+  "GARBAGE_WASTE_MANAGEMENT",
+  "HEALTHCARE",
+  "HIGH_EXPERIENCE_MOD",
+  "HOSPITALITY",
+  "MANUFACTURING",
+  "STAFFING",
+  "TRANSPORTATION",
+  "ALL_OTHER_INDUSTRIES",
+] as const;
+export type MarketAssignmentVerticalKey = (typeof MARKET_ASSIGNMENT_VERTICAL_KEYS)[number];
+
+export const MARKET_STATE_WRITING_MODES = ["RATE_TABLE", "ALL_STATES", "EXPLICIT"] as const;
+export type MarketStateWritingMode = (typeof MARKET_STATE_WRITING_MODES)[number];
+
 export const APPETITE_OUTCOMES = ["MATCHED", "CONDITIONAL", "REFERRAL"] as const;
 export type AppetiteOutcome = (typeof APPETITE_OUTCOMES)[number];
 
@@ -99,14 +123,40 @@ export const marketsTable = pgTable(
     effectiveDate: date("effective_date", { mode: "string" }),
     expirationDate: date("expiration_date", { mode: "string" }),
     notes: text("notes"),
+    // Assignment-grid-owned metadata. Operational fields above are deliberately
+    // separate and are never changed by the assignment importer.
+    assignmentImportKey: text("assignment_import_key"),
+    isRated: boolean("is_rated"),
+    offeredProducts: text("offered_products").array(),
+    stateWritingMode: text("state_writing_mode"),
+    explicitStates: text("explicit_states").array(),
+    ratingBasis: text("rating_basis"),
+    isPrimaryReference: text("is_primary_reference"),
+    submissionEmail: text("submission_email"),
+    phone: text("phone"),
+    sourceUnderwriterReference: text("source_underwriter_reference"),
+    sourceOtherContactsReference: text("source_other_contacts_reference"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().default(sql`now()`),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().default(sql`now()`),
   },
   (t) => [
     uniqueIndex("uq_markets_name_type").on(t.name, t.marketType),
+    uniqueIndex("uq_markets_assignment_import_key").on(t.assignmentImportKey),
     index("idx_markets_active_lane").on(t.isActive, t.productLane),
     check("chk_markets_type", sql`${t.marketType} IN ('WC_CARRIER','PEO_PROGRAM')`),
     check("chk_markets_lane", sql`${t.productLane} IN ('WC','PEO')`),
+    check(
+      "chk_markets_state_writing_mode",
+      sql`${t.stateWritingMode} IS NULL OR ${t.stateWritingMode} IN ('RATE_TABLE','ALL_STATES','EXPLICIT')`,
+    ),
+    check(
+      "chk_markets_offered_products",
+      sql`${t.offeredProducts} IS NULL OR (cardinality(${t.offeredProducts}) > 0 AND ${t.offeredProducts} <@ ARRAY['PEO','ASO','WC','PEO+WC']::text[])`,
+    ),
+    check(
+      "chk_markets_explicit_states_mode",
+      sql`${t.stateWritingMode} IS NULL OR ${t.stateWritingMode} <> 'EXPLICIT' OR cardinality(${t.explicitStates}) > 0`,
+    ),
     check(
       "chk_markets_lane_type_match",
       sql`(${t.marketType} = 'WC_CARRIER' AND ${t.productLane} = 'WC') OR (${t.marketType} = 'PEO_PROGRAM' AND ${t.productLane} = 'PEO')`,
@@ -125,6 +175,72 @@ export const insertMarketSchema = createInsertSchema(marketsTable).omit({
 });
 export type InsertMarket = z.infer<typeof insertMarketSchema>;
 export type Market = typeof marketsTable.$inferSelect;
+
+// ---------------------------------------------------------------------------
+// market_vertical_rank
+// ---------------------------------------------------------------------------
+export const marketVerticalRankTable = pgTable(
+  "market_vertical_rank",
+  {
+    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    marketId: uuid("market_id")
+      .references(() => marketsTable.id, { onDelete: "cascade" })
+      .notNull(),
+    vertical: text("vertical").notNull(),
+    verticalKey: text("vertical_key").notNull(),
+    rank: text("rank").notNull(),
+    product: text("product").notNull(),
+    // Null means manually managed. Importers may replace only rows bearing
+    // their own source marker.
+    importSource: text("import_source"),
+    sourceKey: text("source_key"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().default(sql`now()`),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().default(sql`now()`),
+  },
+  (t) => [
+    uniqueIndex("uq_market_vertical_rank_assignment").on(t.marketId, t.verticalKey, t.product),
+    uniqueIndex("uq_market_vertical_rank_source_key").on(t.sourceKey),
+    uniqueIndex("uq_market_vertical_rank_preferred")
+      .on(t.verticalKey, t.rank)
+      .where(sql`${t.rank} IN ('1','2','3')`),
+    index("idx_market_vertical_rank_market").on(t.marketId),
+    index("idx_market_vertical_rank_source").on(t.importSource),
+    check("chk_market_vertical_rank_rank", sql`${t.rank} IN ('1','2','3','E')`),
+    check("chk_market_vertical_rank_product", sql`${t.product} IN ('PEO','ASO','WC','PEO+WC')`),
+    check(
+      "chk_market_vertical_rank_vertical_key",
+      sql`${t.verticalKey} IN ('AMBULANCE_EMERGENCY_TRANSPORT','CANNABIS','CONSTRUCTION','GARBAGE_WASTE_MANAGEMENT','HEALTHCARE','HIGH_EXPERIENCE_MOD','HOSPITALITY','MANUFACTURING','STAFFING','TRANSPORTATION','ALL_OTHER_INDUSTRIES')`,
+    ),
+    check(
+      "chk_market_vertical_rank_canonical_vertical",
+      sql`${t.vertical} = CASE ${t.verticalKey}
+        WHEN 'AMBULANCE_EMERGENCY_TRANSPORT' THEN 'Ambulance & Emergency Transport'
+        WHEN 'CANNABIS' THEN 'Cannabis'
+        WHEN 'CONSTRUCTION' THEN 'Construction'
+        WHEN 'GARBAGE_WASTE_MANAGEMENT' THEN 'Garbage & Waste Management'
+        WHEN 'HEALTHCARE' THEN 'Healthcare'
+        WHEN 'HIGH_EXPERIENCE_MOD' THEN 'High Experience Mod'
+        WHEN 'HOSPITALITY' THEN 'Hospitality'
+        WHEN 'MANUFACTURING' THEN 'Manufacturing'
+        WHEN 'STAFFING' THEN 'Staffing'
+        WHEN 'TRANSPORTATION' THEN 'Transportation'
+        WHEN 'ALL_OTHER_INDUSTRIES' THEN 'All Other Industries'
+      END`,
+    ),
+    check(
+      "chk_market_vertical_rank_source",
+      sql`(${t.importSource} IS NULL AND ${t.sourceKey} IS NULL) OR (${t.importSource} IS NOT NULL AND ${t.sourceKey} IS NOT NULL)`,
+    ),
+  ],
+);
+
+export const insertMarketVerticalRankSchema = createInsertSchema(marketVerticalRankTable).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertMarketVerticalRank = z.infer<typeof insertMarketVerticalRankSchema>;
+export type MarketVerticalRankRecord = typeof marketVerticalRankTable.$inferSelect;
 
 // ---------------------------------------------------------------------------
 // market_underwriters
