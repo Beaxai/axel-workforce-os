@@ -11,8 +11,8 @@ Each engaged market must have its own tab on the deal card inside the Overview d
 
 U/W Review is not an additional manual approval gate before sending unless the specification is explicitly revised to require one.
 
-Launch assignment blanks are intentional: Axel is never vertically ranked because it is the manual keep/cherry-pick market, and Cannabis has no ranks 1/2/3; Vensure remains `E` for manual submission. A finalized grid replaces any seed transcription.
+Launch assignment blanks are intentional: Axel is never vertically ranked because it is the manual keep/cherry-pick market, and Cannabis has no ranks 1/2/3; Vensure remains `E` for manual submission. The supplied workbook is authoritative.
 
 **Why:** The product owner explicitly prioritized a working end-to-end application and rejected extras beyond the supplied build document. They clarified the distribution trigger and confirmed these assignment exceptions so future work does not treat intentional blanks as missing data.
 
-**How to apply:** Evaluate every multi-market change against the supplied spec and this end-to-end journey. Defer unrelated improvements and later rated-era automation. Preserve the completed agency/Agent onboarding foundation. Do not auto-rank Axel or promote Cannabis markets unless a later finalized grid explicitly changes the assignment.
+**How to apply:** Evaluate every multi-market change against the supplied spec, authoritative workbook, and this end-to-end journey. Defer unrelated improvements and later rated-era automation. Preserve the completed agency/Agent onboarding foundation. Do not auto-rank Axel or promote Cannabis markets unless the owner explicitly revises the assignment.

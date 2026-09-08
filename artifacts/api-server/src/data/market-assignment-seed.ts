@@ -47,9 +47,8 @@ function ranked(rank: "1" | "2" | "3") {
 }
 
 /**
- * Typed transcription of the supplied starting workbook, with the approved
- * Cannabis and Construction corrections. Replace this fixture when the final
- * grid arrives; normalization and persistence do not need to change.
+ * Typed transcription of the authoritative supplied workbook, including the
+ * confirmed intentional Axel, Cannabis, and Construction assignments.
  */
 export const MARKET_ASSIGNMENT_SEED: readonly AssignmentGridRow[] = [
   {
