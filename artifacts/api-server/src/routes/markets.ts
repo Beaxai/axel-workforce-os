@@ -43,7 +43,7 @@
  */
 
 import { Router, type IRouter, type Request, type Response } from "express";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, isNotNull } from "drizzle-orm";
 import { z } from "zod/v4";
 import {
   db,
@@ -226,6 +226,15 @@ router.get("/deals/:dealId", async (req: Request, res: Response): Promise<void> 
 // ---------------------------------------------------------------------------
 router.post("/deals/:dealId/rank", async (req: Request, res: Response): Promise<void> => {
   const dealId = Array.isArray(req.params.dealId) ? req.params.dealId[0] : req.params.dealId;
+  const [launchRow] = await db
+    .select({ id: dealMarketsTable.id })
+    .from(dealMarketsTable)
+    .where(and(eq(dealMarketsTable.dealId, dealId), isNotNull(dealMarketsTable.assignmentProduct)))
+    .limit(1);
+  if (launchRow) {
+    res.status(409).json({ error: "Launch market lineup is immutable; legacy ranking cannot replace it." });
+    return;
+  }
 
   const parsed = SimulateBody.safeParse(req.body);
   if (!parsed.success) {

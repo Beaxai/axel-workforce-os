@@ -7,9 +7,10 @@ interface MarketRoutingPanelProps {
   summary: MarketRoutingSummary | null;
   selectedMarketId: string | null;
   onSelectMarket: (id: string | null) => void;
-  onRetry: () => Promise<void>;
+  onRetry: (batchId: string) => Promise<void>;
   onCancel: (reason: string) => Promise<void>;
   isInternalAdminOrCsa: boolean;
+  onMarketAction: (action: "promote" | "keep-axel" | "select" | "quote-received", dealMarketId: string) => Promise<void>;
 }
 
 export default function MarketRoutingPanel({
@@ -18,13 +19,25 @@ export default function MarketRoutingPanel({
   onSelectMarket,
   onRetry,
   onCancel,
-  isInternalAdminOrCsa
+  isInternalAdminOrCsa,
+  onMarketAction,
 }: MarketRoutingPanelProps) {
   const c = useThemeColors();
   const [cancelConfirm, setCancelConfirm] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [actionError, setActionError] = useState("");
   const [isActing, setIsActing] = useState(false);
+  const runMarketAction = async (action: "promote" | "keep-axel" | "select" | "quote-received", id: string) => {
+    setActionError("");
+    setIsActing(true);
+    try {
+      await onMarketAction(action, id);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Market action failed");
+    } finally {
+      setIsActing(false);
+    }
+  };
 
   if (!summary || !summary.hasMarkets) return null;
 
@@ -49,10 +62,11 @@ export default function MarketRoutingPanel({
   }
 
   const markets = summary.markets || [];
-  const hasFailures =
-    (summary.batchStatus === "FAILED" || summary.batchStatus === "COMPLETE") &&
-    markets.some((m) => m.sendStatus === "FAILED" || m.sendStatus === "DELIVERY_UNKNOWN");
+  const activeMarkets = markets.filter((market) => market.isActive);
+  const availableMarkets = markets.filter((market) => !market.isActive);
+  const retryableBatches = summary.retryableBatches ?? [];
   const canCancel =
+    !summary.isLaunchBatch &&
     markets.length > 0 &&
     summary.batchStatus !== "PROCESSING" &&
     !markets.some((m) => m.sendStatus === "SENT" || m.rankingState === "LOCKED");
@@ -79,11 +93,11 @@ export default function MarketRoutingPanel({
     }
   };
 
-  const handleRetryClick = async () => {
+  const handleRetryClick = async (batchId: string) => {
     setActionError("");
     setIsActing(true);
     try {
-      await onRetry();
+      await onRetry(batchId);
     } catch (e: any) {
       setActionError(e.message || "Failed to retry");
     } finally {
@@ -107,17 +121,17 @@ export default function MarketRoutingPanel({
             </span>
           </div>
           <div style={{ fontSize: 11, color: c.textSecondary }}>
-            Only Ranks 1–4 are routed. The <strong style={{ color: c.textPrimary }}>Primary</strong> market determines external pricing.
+             Preferred markets are sent automatically. Overflow markets and Axel are activated independently.
           </div>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {hasFailures && (
-              <button disabled={isActing} data-testid="retry-routing-btn" onClick={handleRetryClick} style={{ opacity: isActing ? 0.5 : 1, display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600, color: c.textPrimary, background: c.hoverBg, border: `1px solid ${c.borderColor}`, padding: '4px 8px', borderRadius: 6, cursor: isActing ? 'not-allowed' : 'pointer' }}>
-                <RefreshCw size={12} /> Retry Failed
+            {retryableBatches.map((retryBatch) => (
+              <button key={retryBatch.batchId} disabled={isActing} data-testid={`retry-routing-${retryBatch.batchId}`} onClick={() => void handleRetryClick(retryBatch.batchId)} style={{ opacity: isActing ? 0.5 : 1, display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600, color: c.textPrimary, background: c.hoverBg, border: `1px solid ${c.borderColor}`, padding: '4px 8px', borderRadius: 6, cursor: isActing ? 'not-allowed' : 'pointer' }}>
+                <RefreshCw size={12} /> Retry {retryBatch.batchKind.toLowerCase()} ({retryBatch.failedItemCount})
               </button>
-            )}
+            ))}
             {canCancel && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 {cancelConfirm && (
@@ -153,7 +167,7 @@ export default function MarketRoutingPanel({
         <button
           type="button"
           aria-pressed={selectedMarketId === null}
-          aria-label="Show all deal activity"
+          aria-label="Show general deal correspondence"
           onClick={() => onSelectMarket(null)}
           data-testid="market-tab-all"
           style={{
@@ -173,19 +187,26 @@ export default function MarketRoutingPanel({
             fontFamily: "inherit",
           }}
         >
-          <span style={{ fontSize: 13, fontWeight: 600, color: selectedMarketId === null ? c.textPrimary : c.textSecondary }}>All Activity</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: selectedMarketId === null ? c.textPrimary : c.textSecondary }}>General</span>
         </button>
 
-        {markets.map(m => {
+         {activeMarkets.map(m => {
            const isSelected = selectedMarketId === m.dealMarketId;
-           const isRouted = m.isRouted || (m.rank !== null && m.rank <= 4);
+            const isRouted = m.isActive;
            return (
-             <button
-               type="button"
-               aria-pressed={isSelected}
-               aria-label={`Show activity for rank ${m.rank ?? "unranked"} ${m.marketName}`}
+             <div
+               role="tab"
+               tabIndex={0}
+               aria-selected={isSelected}
+               aria-label={`Show ${m.marketName} market thread`}
                key={m.dealMarketId}
                onClick={() => onSelectMarket(m.dealMarketId)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    onSelectMarket(m.dealMarketId);
+                  }
+                }}
                data-testid={`market-tab-${m.dealMarketId}`}
                style={{
                  flexShrink: 0,
@@ -207,17 +228,25 @@ export default function MarketRoutingPanel({
                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 8, flexWrap: 'wrap' }}>
                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                    <span style={{ fontSize: 12, fontWeight: 700, color: c.textPrimary, display: 'flex', alignItems: 'center', gap: 4 }}>
-                     {m.rank ? `#${m.rank}` : '-'} {m.marketName}
+                      {m.verticalRank ? `#${m.verticalRank}` : ''} {m.marketName}
                    </span>
                  </div>
-                 {m.isPrimary && (
-                   <span style={{ fontSize: 9, background: 'var(--accent-primary)', color: '#fff', padding: '2px 4px', borderRadius: 4, fontWeight: 700, letterSpacing: '0.05em' }}>PRIMARY</span>
+                  {m.isSelected && (
+                    <span style={{ fontSize: 9, background: 'var(--accent-primary)', color: '#fff', padding: '2px 4px', borderRadius: 4, fontWeight: 700, letterSpacing: '0.05em' }}>SELECTED</span>
                  )}
                  <div style={{ marginLeft: 'auto' }}>
                     {m.sendStatus !== 'PENDING' && (
                       <span style={{ fontSize: 10, color: c.textMuted }}>{m.sendStatus}</span>
                     )}
                  </div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {m.marketStatus !== "QUOTE_RECEIVED" && m.engagementSource !== "AXEL_KEEP" && (
+                    <button type="button" disabled={isActing} onClick={(event) => { event.stopPropagation(); void runMarketAction("quote-received", m.dealMarketId); }} style={{ fontSize: 10, padding: "3px 6px", borderRadius: 4, border: `1px solid ${c.borderColor}`, background: c.hoverBg, color: c.textPrimary }}>Quote received</button>
+                  )}
+                  {!m.isSelected && (
+                    <button type="button" disabled={isActing} onClick={(event) => { event.stopPropagation(); void runMarketAction("select", m.dealMarketId); }} style={{ fontSize: 10, padding: "3px 6px", borderRadius: 4, border: `1px solid ${c.borderColor}`, background: c.hoverBg, color: c.textPrimary }}>Select market</button>
+                  )}
+                </div>
                </div>
                
                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: c.textSecondary }}>
@@ -243,10 +272,32 @@ export default function MarketRoutingPanel({
                    )}
                  </div>
                )}
-             </button>
+              </div>
            );
         })}
       </div>
+      {availableMarkets.length > 0 && (
+        <div style={{ borderTop: `1px solid ${c.borderColor}`, paddingTop: 10 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: c.textMuted, marginBottom: 6 }}>Available markets</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {availableMarkets.map((market) => (
+              <div key={market.dealMarketId} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                <span style={{ fontSize: 12, color: c.textPrimary }}>
+                  {market.marketName}{market.verticalRank === "E" ? " · E" : ""}
+                </span>
+                <button
+                  type="button"
+                  disabled={isActing}
+                  onClick={() => void runMarketAction(market.engagementSource === "AXEL_KEEP" ? "keep-axel" : "promote", market.dealMarketId)}
+                  style={{ fontSize: 11, fontWeight: 600, padding: "5px 8px", borderRadius: 6, border: `1px solid ${c.borderColor}`, background: c.hoverBg, color: c.textPrimary }}
+                >
+                  {market.engagementSource === "AXEL_KEEP" ? "Keep with Axel" : `Submit to ${market.marketName}`}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

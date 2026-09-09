@@ -61,8 +61,9 @@ interface OverviewTabProps {
   routingSummary: MarketRoutingSummary | null;
   selectedMarketId: string | null;
   onSelectMarket: (id: string | null) => void;
-  onRetryRouting: () => Promise<void>;
+  onRetryRouting: (batchId: string) => Promise<void>;
   onCancelRouting: (reason: string) => Promise<void>;
+  onMarketAction: (action: "promote" | "keep-axel" | "select" | "quote-received", dealMarketId: string) => Promise<void>;
 }
 
 /** Human countdown from now → dueAt. Returns label + urgency color. */
@@ -361,7 +362,7 @@ export default function OverviewTab({
   activity, canPost, posting, onSend, directory, rfis, isInternal, rfiBusy, onCreateRfi, onResolveRfi,
   variations, basePremium, baseLevers, varHasQuote, varUsedAi, varLoading, varApplying,
   onGenerateVariations, onApplyVariation, onPreviewLevers, onApplyLevers,
-  routingSummary, selectedMarketId, onSelectMarket, onRetryRouting, onCancelRouting,
+  routingSummary, selectedMarketId, onSelectMarket, onRetryRouting, onCancelRouting, onMarketAction,
 }: OverviewTabProps) {
   const c = useThemeColors();
   const authUser = useAuthStore((s) => s.user);
@@ -505,7 +506,7 @@ export default function OverviewTab({
     fontSize: 9.5, color: c.textMuted, marginTop: 6, fontStyle: "italic",
   };
 
-  const isInternalAdminOrCsa = isInternal && (authUser?.role === 'ADMIN' || authUser?.role === 'CSA');
+  const isInternalAdminOrCsa = isInternal && (authUser?.role === 'ADMIN' || authUser?.role === 'CSA' || authUser?.role === 'UNDERWRITER');
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -515,13 +516,14 @@ export default function OverviewTab({
         onSelectMarket={onSelectMarket}
         onRetry={onRetryRouting}
         onCancel={onCancelRouting}
+        onMarketAction={onMarketAction}
         isInternalAdminOrCsa={isInternalAdminOrCsa}
       />
 
       {selectedMarketId && (
         <div style={{ padding: "8px 12px", background: c.bg, border: `1px solid ${c.borderColor}`, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span style={{ fontSize: 12, fontWeight: 500, color: c.textPrimary }}>
-            Viewing email thread for {routingSummary?.markets?.find(m => m.dealMarketId === selectedMarketId)?.marketName || 'selected market'}. Messages send to its assigned underwriter.
+            Viewing isolated thread for {routingSummary?.markets?.find(m => m.dealMarketId === selectedMarketId)?.marketName || 'selected market'}.
           </span>
           <button
             type="button"

@@ -301,7 +301,7 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
     const seq = loadSeqRef.current;
     try {
       const mId = selectedMarketIdRef.current;
-      const url = mId ? `/deal-card/${dealId}/activity?dealMarketId=${mId}` : `/deal-card/${dealId}/activity`;
+      const url = mId ? `/deal-card/${dealId}/activity?dealMarketId=${mId}` : `/deal-card/${dealId}/activity?general=true`;
       const res = await api.get<{ activity: ActivityRow[] }>(url);
       if (seq !== loadSeqRef.current) return;
       setActivity(res.activity || []);
@@ -360,14 +360,27 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
     fetchActivity();
   }, [fetchActivity]);
 
-  const handleRetryRouting = useCallback(async () => {
-    await api.post(`/market-dispatch/${dealId}/retry`, {});
+  const handleRetryRouting = useCallback(async (batchId: string) => {
+    await api.post(`/market-dispatch/${dealId}/retry`, { batchId });
     await fetchRoutingSummary();
     await fetchActivity();
   }, [dealId, fetchRoutingSummary, fetchActivity]);
 
   const handleCancelRouting = useCallback(async (reason: string) => {
     await api.post(`/market-dispatch/${dealId}/cancel`, { reason });
+    await fetchRoutingSummary();
+    await fetchActivity();
+  }, [dealId, fetchRoutingSummary, fetchActivity]);
+
+  const handleMarketAction = useCallback(async (
+    action: "promote" | "keep-axel" | "select" | "quote-received",
+    dealMarketId: string,
+  ) => {
+    if (action === "quote-received") {
+      await api.patch(`/deal-card/${dealId}/markets/${dealMarketId}/status`, { status: "QUOTE_RECEIVED" });
+    } else {
+      await api.post(`/deal-card/${dealId}/markets/${dealMarketId}/${action}`, {});
+    }
     await fetchRoutingSummary();
     await fetchActivity();
   }, [dealId, fetchRoutingSummary, fetchActivity]);
@@ -1380,6 +1393,7 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
                     onSelectMarket={handleMarketSelected}
                     onRetryRouting={handleRetryRouting}
                     onCancelRouting={handleCancelRouting}
+                    onMarketAction={handleMarketAction}
                   />
                 )}
                 {tab === "submission" && <SubmissionTab key={dealId} sections={sections} aggregateComplete={payload.aggregateComplete} total={payload.total} access={payload.access} savingSection={savingSection} onSaveSection={handleSaveSection} canRequestProposal={isInternal} proposalStatus={(deal?.proposalStatus as string | null) ?? null} onRequestProposal={handleRequestProposal} focusRequest={submissionFocus} />}

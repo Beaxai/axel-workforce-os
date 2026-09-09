@@ -25,6 +25,7 @@ import {
   userProfilesTable,
   partnersTable,
   dispatchBatchesTable,
+  dispatchItemsTable,
   type Deal,
   type Account,
   type DealRfi,
@@ -52,11 +53,14 @@ import {
   type SectionKey,
 } from "../lib/deal-sections";
 import { sendDealEmail } from "../services/emailService";
+import { promoteOverflowMarket } from "../lib/market-dispatch";
+import { canCorrespond, canManageMarket, canSelect, canTransition, isCurrentSelection } from "../lib/market-engagement";
 
 const router: IRouter = Router();
 
 const INTERNAL_ROLES = new Set(["ADMIN", "CSA", "AGENT", "UNDERWRITER"]);
 const APPROVE_DECLINE_ROLES = new Set(["ADMIN", "UNDERWRITER"]);
+const MARKET_MANAGEMENT_ROLES = new Set(["ADMIN", "CSA", "UNDERWRITER"]);
 
 /** Deal columns kept in sync with the linked account (company-level data). */
 const ACCOUNT_SYNC: Record<string, string> = {
@@ -114,7 +118,7 @@ function canViewDeal(deal: Deal, actor: DealCardActor): boolean {
  * ------------------------------------------------------------------------ */
 router.get("/:id/submission", async (req, res) => {
   const actor = actorFrom(req);
-  const deal = await loadDeal(req.params.id);
+  const deal = await loadDeal(String(req.params.id));
   if (!deal) return res.status(404).json({ error: "Deal not found" });
   if (!canViewDeal(deal, actor)) return res.status(403).json({ error: "Insufficient permissions" });
 
@@ -356,11 +360,12 @@ router.get("/:id/activity", async (req, res) => {
   if (!canViewDeal(deal, actor)) return res.status(403).json({ error: "Insufficient permissions" });
 
   const dealMarketIdFilter = req.query.dealMarketId as string | undefined;
+  const generalOnly = req.query.general === "true";
 
   // If filtering by dealMarketId, only ADMIN/CSA may do so.
-  const isAdminCsa = actor.role === "ADMIN" || actor.role === "CSA";
-  if (dealMarketIdFilter && !isAdminCsa) {
-    return res.status(403).json({ error: "Only ADMIN/CSA may filter activity by market" });
+  const canManageMarkets = MARKET_MANAGEMENT_ROLES.has(actor.role);
+  if (dealMarketIdFilter && !canManageMarkets) {
+    return res.status(403).json({ error: "Only market-management staff may filter activity by market" });
   }
 
   let rows = await db
@@ -371,9 +376,11 @@ router.get("/:id/activity", async (req, res) => {
 
   if (dealMarketIdFilter) {
     rows = rows.filter((r) => r.dealMarketId === dealMarketIdFilter);
+  } else if (generalOnly) {
+    rows = rows.filter((r) => r.dealMarketId == null);
   }
 
-  if (isAdminCsa) {
+  if (canManageMarkets) {
     // ADMIN/CSA see everything (all market-scoped activity, internal notes).
     return res.json({ activity: rows });
   }
@@ -435,8 +442,8 @@ router.post("/:id/messages", async (req, res) => {
   const author = [u.firstName, u.lastName].filter(Boolean).join(" ") || u.email;
 
   if (parsed.data.dealMarketId) {
-    if (actor.role !== "ADMIN" && actor.role !== "CSA") {
-      return res.status(403).json({ error: "Only ADMIN/CSA may send market correspondence" });
+    if (!MARKET_MANAGEMENT_ROLES.has(actor.role)) {
+      return res.status(403).json({ error: "Only market-management staff may send market correspondence" });
     }
     if (internal) {
       return res.status(400).json({ error: "Market correspondence cannot be an internal note" });
@@ -446,6 +453,10 @@ router.post("/:id/messages", async (req, res) => {
       .select({
         marketName: marketsTable.name,
         underwriterEmail: marketUnderwritersTable.email,
+        submissionEmailSnapshot: dealMarketsTable.submissionEmailSnapshot,
+        isActive: dealMarketsTable.isActive,
+        marketStatus: dealMarketsTable.marketStatus,
+        engagementSource: dealMarketsTable.engagementSource,
       })
       .from(dealMarketsTable)
       .innerJoin(marketsTable, eq(dealMarketsTable.marketId, marketsTable.id))
@@ -464,14 +475,38 @@ router.post("/:id/messages", async (req, res) => {
     if (!recipient) {
       return res.status(404).json({ error: "Selected market thread was not found" });
     }
-    if (!recipient.underwriterEmail) {
+    const allowed = canCorrespond(
+      recipient.engagementSource as Parameters<typeof canCorrespond>[0],
+      recipient.isActive,
+      recipient.marketStatus as Parameters<typeof canCorrespond>[2],
+    );
+    if (!allowed) {
+      return res.status(409).json({
+        error: "This market engagement is not active for correspondence yet.",
+      });
+    }
+    if (recipient.engagementSource === "AXEL_KEEP") {
+      const [entry] = await db.insert(activityLogTable).values({
+        dealId: deal.id,
+        dealMarketId: parsed.data.dealMarketId,
+        entityType: "deal_market",
+        entityId: parsed.data.dealMarketId,
+        eventType: "message",
+        description: parsed.data.message,
+        metadata: { author, role: actor.role, internal: true, mentions: parsed.data.mentions ?? [] },
+        createdBy: actor.id,
+      }).returning();
+      return res.json({ success: true, entry, status: "internal" });
+    }
+    const recipientEmail = recipient.underwriterEmail ?? recipient.submissionEmailSnapshot;
+    if (!recipientEmail) {
       return res.status(409).json({ error: "Selected market has no assigned underwriter email" });
     }
 
     const result = await sendDealEmail({
       dealId: deal.id,
       dealMarketId: parsed.data.dealMarketId,
-      to: [recipient.underwriterEmail],
+      to: [recipientEmail],
       subject: `${deal.businessName ?? "Applicant"} submission — ${recipient.marketName}`,
       text: `${parsed.data.message}\n\n— ${author}`,
       sentBy: author,
@@ -517,14 +552,14 @@ router.get("/:id/market-routing-summary", async (req, res) => {
   if (!deal) return res.status(404).json({ error: "Deal not found" });
   if (!canViewDeal(deal, actor)) return res.status(403).json({ error: "Insufficient permissions" });
 
-  const isAdminCsa = actor.role === "ADMIN" || actor.role === "CSA";
+  const isAdminCsa = MARKET_MANAGEMENT_ROLES.has(actor.role);
 
   // Load deal_markets for this deal.
   const dealMarkets = await db
     .select()
     .from(dealMarketsTable)
     .where(eq(dealMarketsTable.dealId, deal.id))
-    .orderBy(asc(dealMarketsTable.rank));
+    .orderBy(asc(dealMarketsTable.rank), asc(dealMarketsTable.createdAt));
 
   if (dealMarkets.length === 0) {
     return res.json({ hasMarkets: false, markets: [], primaryPricing: null });
@@ -536,6 +571,32 @@ router.get("/:id/market-routing-summary", async (req, res) => {
     .from(dispatchBatchesTable)
     .where(eq(dispatchBatchesTable.dealId, deal.id))
     .orderBy(desc(dispatchBatchesTable.createdAt));
+  const candidateRetryBatches = await db.select().from(dispatchBatchesTable).where(and(
+    eq(dispatchBatchesTable.dealId, deal.id),
+    inArray(dispatchBatchesTable.status, ["FAILED", "COMPLETE"]),
+  )).orderBy(desc(dispatchBatchesTable.createdAt));
+  const candidateBatchIds = candidateRetryBatches.map((row) => row.id);
+  const failedItems = candidateBatchIds.length
+    ? await db.select().from(dispatchItemsTable).where(and(
+        inArray(dispatchItemsTable.batchId, candidateBatchIds),
+        eq(dispatchItemsTable.status, "FAILED"),
+      ))
+    : [];
+  const failedCountByBatch = new Map<string, number>();
+  for (const item of failedItems) {
+    failedCountByBatch.set(item.batchId, (failedCountByBatch.get(item.batchId) ?? 0) + 1);
+  }
+  const retryableBatches = candidateRetryBatches
+    .filter((row) => (failedCountByBatch.get(row.id) ?? 0) > 0)
+    .map((row) => ({
+      batchId: row.id,
+      batchStatus: row.status,
+      batchKind: row.batchKind,
+      isLaunchBatch: row.isLaunchBatch,
+      promotedDealMarketId: row.promotedDealMarketId,
+      failedItemCount: failedCountByBatch.get(row.id) ?? 0,
+      createdAt: row.createdAt,
+    }));
 
   // Load markets + underwriters for display.
   const marketIds = [...new Set(dealMarkets.map((dm) => dm.marketId))];
@@ -567,7 +628,7 @@ router.get("/:id/market-routing-summary", async (req, res) => {
     return res.json({
       hasMarkets: true,
       primaryPricing: {
-        annualAmount: Number(primaryDm.generatedRate),
+        annualAmount: primaryDm.generatedRate == null ? null : Number(primaryDm.generatedRate),
         productLane: primaryDm.marketType === "WC_CARRIER" ? "WC" : "PEO",
         rankingState: primaryDm.rankingState,
         sendStatus: primaryDm.sendStatus,
@@ -582,12 +643,17 @@ router.get("/:id/market-routing-summary", async (req, res) => {
     return {
       dealMarketId: dm.id,
       rank: dm.rank,
+      verticalRank: dm.verticalRank,
       isPrimary: dm.isPrimary,
       isRouted: dm.isRouted,
+      isActive: dm.isActive,
+      marketStatus: dm.marketStatus,
+      isSelected: dm.isSelected,
+      engagementSource: dm.engagementSource,
       marketId: dm.marketId,
       marketName: market?.name ?? null,
       marketType: dm.marketType,
-      generatedRate: Number(dm.generatedRate),
+      generatedRate: dm.generatedRate == null ? null : Number(dm.generatedRate),
       appetiteOutcome: dm.appetiteOutcome,
       rankingState: dm.rankingState,
       sendStatus: dm.sendStatus,
@@ -603,16 +669,161 @@ router.get("/:id/market-routing-summary", async (req, res) => {
     hasMarkets: true,
     batchId: batch?.id ?? null,
     batchStatus: batch?.status ?? null,
+    batchKind: batch?.batchKind ?? null,
+    isLaunchBatch: batch?.isLaunchBatch ?? false,
+    retryableBatches,
     markets: fullSummary,
     primaryPricing: primaryDm
       ? {
-          annualAmount: Number(primaryDm.generatedRate),
+          annualAmount: primaryDm.generatedRate == null ? null : Number(primaryDm.generatedRate),
           productLane: primaryDm.marketType === "WC_CARRIER" ? "WC" : "PEO",
           rankingState: primaryDm.rankingState,
           sendStatus: primaryDm.sendStatus,
         }
       : null,
   });
+});
+
+async function requireMarketManagement(req: Request, res: any) {
+  const actor = actorFrom(req);
+  if (!canManageMarket(actor.role)) {
+    res.status(403).json({ error: "ADMIN, UNDERWRITER, or CSA role required" });
+    return null;
+  }
+  const deal = await loadDeal(String(req.params.id));
+  if (!deal) {
+    res.status(404).json({ error: "Deal not found" });
+    return null;
+  }
+  if (!canViewDeal(deal, actor)) {
+    res.status(403).json({ error: "Insufficient permissions" });
+    return null;
+  }
+  return { actor, deal };
+}
+
+router.post("/:id/markets/:dealMarketId/promote", async (req, res) => {
+  const context = await requireMarketManagement(req, res);
+  if (!context) return;
+  try {
+    const result = await promoteOverflowMarket(req.params.id, req.params.dealMarketId, context.actor.id);
+    return res.json({ success: true, ...result });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return res.status(message.includes("not found") ? 404 : 409).json({ error: message });
+  }
+});
+
+router.post("/:id/markets/:dealMarketId/keep-axel", async (req, res) => {
+  const context = await requireMarketManagement(req, res);
+  if (!context) return;
+  const result = await db.transaction(async (tx) => {
+    const [row] = await tx.select().from(dealMarketsTable).where(and(
+      eq(dealMarketsTable.id, req.params.dealMarketId),
+      eq(dealMarketsTable.dealId, req.params.id),
+      eq(dealMarketsTable.engagementSource, "AXEL_KEEP"),
+    )).for("update");
+    if (!row) return null;
+    if (row.isActive) return row;
+    const [updated] = await tx.update(dealMarketsTable).set({
+      isActive: true,
+      marketStatus: "ACTIVE",
+      updatedAt: new Date(),
+    }).where(eq(dealMarketsTable.id, row.id)).returning();
+    await tx.insert(activityLogTable).values({
+      dealId: req.params.id,
+      dealMarketId: row.id,
+      entityType: "deal_market",
+      entityId: row.id,
+      eventType: "market_axel_kept",
+      description: "Account kept with Axel as an active internal engagement.",
+      metadata: { kept_by: context.actor.id, internal: true },
+      createdBy: context.actor.id,
+    });
+    return updated;
+  });
+  if (!result) return res.status(404).json({ error: "Axel keep option not found" });
+  return res.json({ success: true, market: result });
+});
+
+const marketStatusSchema = z.object({
+  status: z.enum(["QUOTE_RECEIVED", "DECLINED", "NO_RESPONSE"]),
+});
+
+router.patch("/:id/markets/:dealMarketId/status", async (req, res) => {
+  const context = await requireMarketManagement(req, res);
+  if (!context) return;
+  const parsed = marketStatusSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid market status" });
+  const [current] = await db.select({
+    status: dealMarketsTable.marketStatus,
+    engagementSource: dealMarketsTable.engagementSource,
+  })
+    .from(dealMarketsTable)
+    .where(and(eq(dealMarketsTable.id, req.params.dealMarketId), eq(dealMarketsTable.dealId, req.params.id)));
+  if (!current || !canTransition(
+    current.engagementSource as Parameters<typeof canTransition>[0],
+    current.status as Parameters<typeof canTransition>[1],
+    parsed.data.status,
+  )) {
+    return res.status(409).json({ error: "Invalid market status transition" });
+  }
+  const [updated] = await db.update(dealMarketsTable).set({
+    marketStatus: parsed.data.status,
+    updatedAt: new Date(),
+  }).where(and(
+    eq(dealMarketsTable.id, req.params.dealMarketId),
+    eq(dealMarketsTable.dealId, req.params.id),
+    eq(dealMarketsTable.isActive, true),
+    eq(dealMarketsTable.marketStatus, current.status),
+  )).returning();
+  if (!updated) return res.status(409).json({ error: "Market is not active" });
+  return res.json({ success: true, market: updated });
+});
+
+router.post("/:id/markets/:dealMarketId/select", async (req, res) => {
+  const context = await requireMarketManagement(req, res);
+  if (!context) return;
+  const selected = await db.transaction(async (tx) => {
+    await tx.select({ id: dealsTable.id }).from(dealsTable)
+      .where(eq(dealsTable.id, req.params.id)).for("update");
+    const [target] = await tx.select().from(dealMarketsTable).where(and(
+      eq(dealMarketsTable.id, req.params.dealMarketId),
+      eq(dealMarketsTable.dealId, req.params.id),
+      eq(dealMarketsTable.isActive, true),
+      inArray(dealMarketsTable.marketStatus, ["ACTIVE", "SENT", "QUOTE_RECEIVED", "SELECTED"]),
+    )).for("update");
+    if (!target) return null;
+    if (isCurrentSelection(
+      target.isSelected,
+      target.marketStatus as Parameters<typeof isCurrentSelection>[1],
+    )) return target;
+    if (!canSelect(
+      target.engagementSource as Parameters<typeof canSelect>[0],
+      target.isActive,
+      target.marketStatus as Parameters<typeof canSelect>[2],
+    )) return null;
+    await tx.update(dealMarketsTable).set({
+      isSelected: false,
+      isPrimary: false,
+      marketStatus: sql`CASE
+        WHEN ${dealMarketsTable.isSelected} AND ${dealMarketsTable.engagementSource} = 'AXEL_KEEP' THEN 'ACTIVE'
+        WHEN ${dealMarketsTable.isSelected} THEN 'QUOTE_RECEIVED'
+        ELSE ${dealMarketsTable.marketStatus}
+      END`,
+      updatedAt: new Date(),
+    })
+      .where(eq(dealMarketsTable.dealId, req.params.id));
+    const [updated] = await tx.update(dealMarketsTable).set({
+      isSelected: true,
+      isPrimary: true,
+      marketStatus: "SELECTED",
+      updatedAt: new Date(),
+    }).where(eq(dealMarketsTable.id, target.id)).returning();
+    return updated;
+  });
+  if (!selected) return res.status(409).json({ error: "Only an active market can be selected" });
+  return res.json({ success: true, market: selected });
 });
 
 /* --------------------------------------------------------------------------

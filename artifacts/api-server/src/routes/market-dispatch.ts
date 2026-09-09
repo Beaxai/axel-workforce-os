@@ -18,10 +18,12 @@ import {
   activityLogTable,
 } from "@workspace/db";
 import { and, eq, inArray, desc } from "drizzle-orm";
+import { z } from "zod/v4";
 import {
   cancelMarketDispatch,
   getDispatchStatus,
   isManualDispatchRetryEligible,
+  retryBatchMetadata,
 } from "../lib/market-dispatch";
 
 const router: IRouter = Router();
@@ -59,90 +61,61 @@ router.post("/:dealId/retry", async (req, res) => {
   const { dealId } = req.params;
   const actor = req.user!;
   const actorName = [actor.firstName, actor.lastName].filter(Boolean).join(" ") || actor.email;
+  const parsed = z.object({ batchId: z.string().uuid() }).safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: "A valid batchId is required; retry cannot infer a batch." });
+  }
 
   try {
-    // Find the active batch for this deal.
-    const [batch] = await db
-      .select()
-      .from(dispatchBatchesTable)
-      .where(
-        and(
-          eq(dispatchBatchesTable.dealId, dealId),
-          inArray(dispatchBatchesTable.status, ["FAILED", "COMPLETE"]),
-        ),
-      )
-      .orderBy(desc(dispatchBatchesTable.createdAt));
-
-    if (!batch) {
-      return res.status(404).json({ error: "No dispatch batch found for this deal" });
-    }
-    if (
-      !batch.applicationSnapshot ||
-      !batch.applicationSnapshotHash ||
-      !batch.routingInputSnapshot
-    ) {
-      return res.status(409).json({
-        error:
-          "This dispatch predates immutable package snapshots and cannot be retried automatically.",
-      });
-    }
-
-    const terminalItems = await db
-      .select()
-      .from(dispatchItemsTable)
-      .where(
-        and(
-          eq(dispatchItemsTable.batchId, batch.id),
-          inArray(dispatchItemsTable.status, ["FAILED", "DELIVERY_UNKNOWN"]),
-        ),
-      );
-
-    // DELIVERY_UNKNOWN is terminal. Provider acceptance may have happened, so
-    // requeueing it could duplicate a carrier submission.
-    const items = terminalItems.filter((item) =>
-      isManualDispatchRetryEligible(item.status),
-    );
-    if (items.length === 0) {
-      return res.status(409).json({
-        error:
-          "No confirmed failed items are eligible for retry. Delivery-unknown items require manual provider review and cannot be requeued.",
-      });
-    }
-
-    const dealMarketIds = items.map((i) => i.dealMarketId);
-
-    let retryBatchId!: string;
-    await db.transaction(async (tx) => {
+    const result = await db.transaction(async (tx) => {
+      const [batch] = await tx.select().from(dispatchBatchesTable).where(and(
+        eq(dispatchBatchesTable.id, parsed.data.batchId),
+        eq(dispatchBatchesTable.dealId, dealId),
+        inArray(dispatchBatchesTable.status, ["FAILED", "COMPLETE"]),
+      )).for("update");
+      if (!batch) return { error: "Retryable dispatch batch not found for this deal", status: 404 as const };
+      if (!batch.applicationSnapshot || !batch.applicationSnapshotHash || !batch.routingInputSnapshot) {
+        return { error: "This dispatch predates immutable package snapshots and cannot be retried automatically.", status: 409 as const };
+      }
+      const terminalItems = await tx.select().from(dispatchItemsTable).where(and(
+        eq(dispatchItemsTable.batchId, batch.id),
+        inArray(dispatchItemsTable.status, ["FAILED", "DELIVERY_UNKNOWN"]),
+      )).for("update");
+      const items = terminalItems.filter((item) => isManualDispatchRetryEligible(item.status));
+      if (items.length === 0) {
+        return { error: "No confirmed failed items are eligible for retry.", status: 409 as const };
+      }
+      const dealMarketIds = items.map((item) => item.dealMarketId);
       // Preserve the complete attempt history on the prior batch and create
       // fresh dispatch items with a new retry budget.
-      if (batch.status === "FAILED") {
-        await tx
-          .update(dispatchBatchesTable)
-          .set({
-            status: "CANCELLED",
-            cancelledAt: new Date(),
-            cancelledBy: actor.id,
-            cancelReason: "Superseded by manual retry",
-            updatedAt: new Date(),
-          })
-          .where(eq(dispatchBatchesTable.id, batch.id));
-      }
+      await tx
+        .update(dispatchBatchesTable)
+        .set({
+          status: "CANCELLED",
+          cancelledAt: new Date(),
+          cancelledBy: actor.id,
+          cancelReason: "Superseded by manual retry",
+          updatedAt: new Date(),
+        })
+        .where(and(
+          eq(dispatchBatchesTable.id, batch.id),
+          inArray(dispatchBatchesTable.status, ["FAILED", "COMPLETE"]),
+        ));
 
       const [retryBatch] = await tx
         .insert(dispatchBatchesTable)
         .values({
           dealId,
+          ...retryBatchMetadata(batch),
           status: "QUEUED",
           applicationSnapshot: batch.applicationSnapshot,
           applicationSnapshotHash: batch.applicationSnapshotHash,
           routingInputSnapshot: batch.routingInputSnapshot,
         })
         .returning({ id: dispatchBatchesTable.id });
-      retryBatchId = retryBatch.id;
-
       for (const item of items) {
         await tx.insert(dispatchItemsTable).values({
-          batchId: retryBatchId,
+          batchId: retryBatch.id,
           dealMarketId: item.dealMarketId,
           rank: item.rank,
           status: "PENDING",
@@ -167,17 +140,18 @@ router.post("/:dealId/retry", async (req, res) => {
         description: `${actorName} manually retried ${items.length} failed market dispatch item(s).`,
         metadata: {
           prior_batch_id: batch.id,
-          batch_id: retryBatchId,
+          batch_id: retryBatch.id,
           deal_market_ids: dealMarketIds,
           retried_by: actor.id,
           internal: true,
         },
         createdBy: actor.id,
       });
+      return { retryBatchId: retryBatch.id, itemCount: items.length };
     });
-
-    req.log.info({ dealId, batchId: retryBatchId, itemCount: items.length }, "market-dispatch: retry initiated");
-    return res.json({ success: true, batchId: retryBatchId, retriedCount: items.length });
+    if ("error" in result) return res.status(result.status!).json({ error: result.error });
+    req.log.info({ dealId, batchId: result.retryBatchId, itemCount: result.itemCount }, "market-dispatch: retry initiated");
+    return res.json({ success: true, batchId: result.retryBatchId, retriedCount: result.itemCount });
   } catch (err: unknown) {
     req.log.error({ err, dealId }, "market-dispatch: POST /:dealId/retry failed");
     return res.status(500).json({ error: "Failed to retry dispatch" });

@@ -79,6 +79,23 @@ export const DEAL_MARKET_SEND_STATUSES = [
 ] as const;
 export type DealMarketSendStatus = (typeof DEAL_MARKET_SEND_STATUSES)[number];
 
+export const DEAL_MARKET_ENGAGEMENT_SOURCES = [
+  "AUTO_PREFERRED",
+  "MANUAL_OVERFLOW",
+  "AXEL_KEEP",
+  "RATED",
+] as const;
+
+export const DEAL_MARKET_STATUSES = [
+  "AVAILABLE",
+  "ACTIVE",
+  "SENT",
+  "QUOTE_RECEIVED",
+  "DECLINED",
+  "NO_RESPONSE",
+  "SELECTED",
+] as const;
+
 export const DISPATCH_BATCH_STATUSES = [
   "QUEUED",
   "PROCESSING",
@@ -201,7 +218,7 @@ export const marketVerticalRankTable = pgTable(
     uniqueIndex("uq_market_vertical_rank_assignment").on(t.marketId, t.verticalKey, t.product),
     uniqueIndex("uq_market_vertical_rank_source_key").on(t.sourceKey),
     uniqueIndex("uq_market_vertical_rank_preferred")
-      .on(t.verticalKey, t.rank)
+      .on(t.verticalKey, t.product, t.rank)
       .where(sql`${t.rank} IN ('1','2','3')`),
     index("idx_market_vertical_rank_market").on(t.marketId),
     index("idx_market_vertical_rank_source").on(t.importSource),
@@ -466,11 +483,20 @@ export const dealMarketsTable = pgTable(
     // Rate source identity preserved for audit/snapshot.
     rateSetId: uuid("rate_set_id").references(() => marketRateSetsTable.id),
     rateSetVersion: integer("rate_set_version"),
-    // Generated rate: comparable annual amount used for ranking.
-    generatedRate: numeric("generated_rate", { precision: 18, scale: 2 }).notNull(),
+    // Launch snapshots. Rated rows continue to use the fields below.
+    verticalSnapshot: text("vertical_snapshot"),
+    assignmentProduct: text("assignment_product"),
+    verticalRank: text("vertical_rank"),
+    engagementSource: text("engagement_source").notNull().default("RATED"),
+    isActive: boolean("is_active").notNull().default(false),
+    marketStatus: text("market_status").notNull().default("AVAILABLE"),
+    isSelected: boolean("is_selected").notNull().default(false),
+    submissionEmailSnapshot: text("submission_email_snapshot"),
+    // Generated rate is null for eligibility-only launch markets.
+    generatedRate: numeric("generated_rate", { precision: 18, scale: 2 }),
     // Immutable full breakdown snapshot stored at ranking time.
     rateBreakdownSnapshot: jsonb("rate_breakdown_snapshot"),
-    rank: integer("rank").notNull(),
+    rank: integer("rank"),
     isPrimary: boolean("is_primary").notNull().default(false),
     isRouted: boolean("is_routed").notNull().default(false),
     appetiteOutcome: text("appetite_outcome").notNull().default("MATCHED"),
@@ -486,15 +512,16 @@ export const dealMarketsTable = pgTable(
   },
   (t) => [
     uniqueIndex("uq_deal_markets_deal_market").on(t.dealId, t.marketId),
-    uniqueIndex("uq_deal_markets_deal_rank").on(t.dealId, t.rank),
+    uniqueIndex("uq_deal_markets_deal_rank").on(t.dealId, t.rank).where(sql`${t.rank} IS NOT NULL`),
+    uniqueIndex("uq_deal_markets_selected").on(t.dealId).where(sql`${t.isSelected} = true`),
     index("idx_deal_markets_deal_state").on(t.dealId, t.rankingState),
     index("idx_deal_markets_market").on(t.marketId),
-    check("chk_dm_rank_positive", sql`${t.rank} > 0`),
-    // rank<=4 ↔ isRouted: routed iff rank<=4, and rank<=4 implies routed.
-    check("chk_dm_rank_routed_equiv", sql`(${t.rank} <= 4) = (${t.isRouted} = true)`),
-    // rank=1 ↔ isPrimary: primary iff rank=1, and rank=1 implies primary.
-    check("chk_dm_primary_rank1_equiv", sql`(${t.rank} = 1) = (${t.isPrimary} = true)`),
-    check("chk_dm_rate_nonneg", sql`${t.generatedRate} >= 0`),
+    check("chk_dm_rank_positive", sql`${t.rank} IS NULL OR ${t.rank} > 0`),
+    check("chk_dm_vertical_rank", sql`${t.verticalRank} IS NULL OR ${t.verticalRank} IN ('1','2','3','E')`),
+    check("chk_dm_rate_nonneg", sql`${t.generatedRate} IS NULL OR ${t.generatedRate} >= 0`),
+    check("chk_dm_assignment_product", sql`${t.assignmentProduct} IS NULL OR ${t.assignmentProduct} IN ('PEO','ASO','WC','PEO+WC')`),
+    check("chk_dm_engagement_source", sql`${t.engagementSource} IN ('AUTO_PREFERRED','MANUAL_OVERFLOW','AXEL_KEEP','RATED')`),
+    check("chk_dm_market_status", sql`${t.marketStatus} IN ('AVAILABLE','ACTIVE','SENT','QUOTE_RECEIVED','DECLINED','NO_RESPONSE','SELECTED')`),
     check(
       "chk_dm_outcome",
       sql`${t.appetiteOutcome} IN ('MATCHED','CONDITIONAL','REFERRAL')`,
@@ -529,6 +556,9 @@ export const dispatchBatchesTable = pgTable(
     dealId: uuid("deal_id")
       .references(() => dealsTable.id, { onDelete: "cascade" })
       .notNull(),
+    batchKind: text("batch_kind").notNull().default("INITIAL"),
+    isLaunchBatch: boolean("is_launch_batch").notNull().default(false),
+    promotedDealMarketId: uuid("promoted_deal_market_id").references(() => dealMarketsTable.id),
     status: text("status").notNull().default("QUEUED"),
     // Soft cancel: set by ADMIN/CSA for failed batches before a re-rate.
     cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
@@ -547,15 +577,19 @@ export const dispatchBatchesTable = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().default(sql`now()`),
   },
   (t) => [
-    // One live (non-CANCELLED, non-COMPLETE) batch per deal: partial unique index.
-    uniqueIndex("uq_dispatch_batches_deal_live").on(t.dealId).where(
-      sql`${t.status} NOT IN ('CANCELLED','COMPLETE')`,
+    uniqueIndex("uq_dispatch_batches_initial").on(t.dealId).where(
+      sql`${t.batchKind} = 'INITIAL' AND ${t.status} NOT IN ('CANCELLED','COMPLETE')`,
+    ),
+    uniqueIndex("uq_dispatch_batches_promotion_market").on(t.promotedDealMarketId).where(
+      sql`${t.promotedDealMarketId} IS NOT NULL AND ${t.status} <> 'CANCELLED'`,
     ),
     index("idx_dispatch_batches_deal_status").on(t.dealId, t.status),
     check(
       "chk_db_status",
       sql`${t.status} IN ('QUEUED','PROCESSING','COMPLETE','FAILED','CANCELLED')`,
     ),
+    check("chk_db_kind", sql`${t.batchKind} IN ('INITIAL','OVERFLOW')`),
+    check("chk_db_promotion_kind", sql`(${t.batchKind} = 'OVERFLOW') = (${t.promotedDealMarketId} IS NOT NULL)`),
   ],
 );
 

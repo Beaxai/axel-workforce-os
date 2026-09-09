@@ -236,7 +236,7 @@ export function normalizeAssignmentGrid(
         }
         assignmentKeys.add(assignmentKey);
         if (rank !== "E") {
-          const preferredKey = `${verticalKey}:${rank}`;
+          const preferredKey = `${verticalKey}:${product}:${rank}`;
           if (preferredRanks.has(preferredKey)) {
             throw new Error(`Duplicate preferred rank '${rank}' in vertical '${vertical}'`);
           }

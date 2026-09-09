@@ -23,6 +23,7 @@ import { buildIndicationSummaryPdf } from "../services/indicationPdfService";
 import { findOrCreateAccount } from "../lib/accounts";
 import { rankAndPersistProvisional, type RatingInput } from "../lib/market-routing";
 import { queueMarketDispatch } from "../lib/market-dispatch";
+import { snapshotLaunchMarkets, type LaunchProduct } from "../lib/launch-market-routing";
 import {
   buildCanonicalRatingInput,
   deriveCanonicalRoutingFacts,
@@ -204,9 +205,9 @@ router.post("/submit-for-approval", async (req, res) => {
 
   const isPeoSubmission = !!(workforceProfile?.isPEO) || coverageType === "PEO";
   const isAso = !!(workforceProfile?.isASO) || coverageType === "ASO";
+  const launchProduct: LaunchProduct | null = isAso ? "ASO" : isPeoSubmission ? "PEO" : null;
   const shouldRouteMarkets =
-    !isAso &&
-    (coverageType === "WC" || coverageType === "PEO" || !coverageType);
+    launchProduct != null || coverageType === "WC" || !coverageType;
   const hasIndication = !!(wcRatingBreakdown && workforceProfile);
   let normalizedExperienceMod =
     experienceMod == null || experienceMod === "" ? 1 : Number(experienceMod);
@@ -420,6 +421,7 @@ router.post("/submit-for-approval", async (req, res) => {
   let primaryMarketRate: number | null = null;
   let primaryMarketBreakdown: Record<string, unknown> | null = null;
   let routedRatingInput: RatingInput | null = null;
+  let launchRoutingResolved = false;
 
   // Resolve routing before writing quotes, generated documents, or successful
   // submission activity. A failed routing record keeps its deal ID for review,
@@ -450,7 +452,7 @@ router.post("/submit-for-approval", async (req, res) => {
     });
   };
 
-  if (shouldRouteMarkets && !hasIndication) {
+  if (shouldRouteMarkets && !hasIndication && !launchProduct) {
     const error = "A completed market indication is required before final submission.";
     await failRouting(error, { market_routing_required: true });
     return res.status(422).json({
@@ -460,7 +462,55 @@ router.post("/submit-for-approval", async (req, res) => {
     });
   }
 
-  if (hasIndication && shouldRouteMarkets) {
+  if (launchProduct) {
+    const ratingInput = buildCanonicalRatingInput(
+      parsedCannabisAnswers!,
+      {
+        productLane: "PEO",
+        effectiveDate:
+          normalizedEffectiveDate ?? new Date().toISOString().slice(0, 10),
+        vertical: vertical ?? null,
+        scheduleRating: normalizedScheduleRating,
+        applicationSnapshotHash: applicationSnapshotHash!,
+      },
+    );
+    routedRatingInput = ratingInput;
+    let launchResult;
+    try {
+      launchResult = await snapshotLaunchMarkets(
+        deal.id,
+        launchProduct,
+        vertical || "All Other Industries",
+        ratingInput,
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      await failRouting(
+        `Launch market routing could not be completed: ${message}`,
+        { product_lane: launchProduct, recoverable: true },
+      );
+      return res.status(422).json({
+        error: "Launch market routing could not be completed. Correct the configuration and retry the final submission.",
+        dealId: deal.id,
+        marketRoutingRequired: true,
+        routingFailed: true,
+      });
+    }
+    launchRoutingResolved = true;
+    await db.insert(activityLogTable).values({
+      dealId: deal.id,
+      entityType: "deal",
+      entityId: deal.id,
+      eventType: "launch_market_routing_resolved",
+      description: `Launch routing resolved ${launchResult.activeCount} active and ${launchResult.availableCount} available wholesale market(s).`,
+      metadata: {
+        product: launchProduct,
+        exclusions: launchResult.exclusions,
+        internal: true,
+      },
+      createdBy: actorUser?.id,
+    });
+  } else if (hasIndication && shouldRouteMarkets) {
     const productLane: "WC" | "PEO" = isPeoSubmission ? "PEO" : "WC";
     const ratingInput = buildCanonicalRatingInput(
       parsedCannabisAnswers!,
@@ -666,10 +716,24 @@ router.post("/submit-for-approval", async (req, res) => {
     metadata: { deal_id: deal.id, reference_code: referenceCode },
   });
 
-  if (routedProductLane) {
+  if (routedProductLane || launchRoutingResolved) {
     // Queue only after submission answers and generated document records exist,
     // so the asynchronous worker cannot race an incomplete attachment package.
-    await queueMarketDispatch(deal.id, actorUser?.id);
+    try {
+      await queueMarketDispatch(deal.id, actorUser?.id);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      await failRouting(
+        `Proposal market dispatch could not be queued: ${message}`,
+        { product_lane: routedProductLane ?? launchProduct, recoverable: true },
+      );
+      return res.status(422).json({
+        error: "Proposal market dispatch could not be queued. Correct the package/configuration and retry.",
+        dealId: deal.id,
+        marketRoutingRequired: true,
+        routingFailed: true,
+      });
+    }
     routingQueued = true;
   }
 

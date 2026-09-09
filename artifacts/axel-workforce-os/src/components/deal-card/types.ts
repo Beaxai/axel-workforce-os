@@ -189,8 +189,13 @@ export interface SectionPatchResponse {
 export interface MarketRoutingMarket {
   dealMarketId: string;
   rank: number | null;
+  verticalRank: "1" | "2" | "3" | "E" | null;
   isPrimary: boolean;
   isRouted: boolean;
+  isActive: boolean;
+  isSelected: boolean;
+  marketStatus: string;
+  engagementSource: string;
   marketName: string;
   marketType: string;
   generatedRate: number | null;
@@ -219,6 +224,17 @@ export interface MarketRoutingSummary {
   hasMarkets: boolean;
   batchId?: string | null;
   batchStatus?: string | null;
+  batchKind?: string | null;
+  isLaunchBatch?: boolean;
+  retryableBatches?: Array<{
+    batchId: string;
+    batchStatus: string;
+    batchKind: string;
+    isLaunchBatch: boolean;
+    promotedDealMarketId: string | null;
+    failedItemCount: number;
+    createdAt: string;
+  }>;
   markets?: MarketRoutingMarket[];
   primaryPricing?: PrimaryPricing | null;
 }

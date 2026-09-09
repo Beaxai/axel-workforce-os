@@ -95,6 +95,7 @@ export async function queueMarketDispatch(
       .where(
         and(
           eq(dispatchBatchesTable.dealId, dealId),
+          eq(dispatchBatchesTable.batchKind, "INITIAL"),
           inArray(dispatchBatchesTable.status, ["QUEUED", "PROCESSING", "FAILED", "COMPLETE"]),
         ),
       )
@@ -141,11 +142,13 @@ export async function queueMarketDispatch(
       )
       .orderBy(asc(dealMarketsTable.rank))
       .for("update");
-    const routedMarkets = rankedMarkets.filter((market) => market.isRouted);
-    if (routedMarkets.length === 0) {
+    const routedMarkets = rankedMarkets.filter((market) => market.isRouted && market.isActive);
+    const isLaunchSnapshot = rankedMarkets.some((market) => market.assignmentProduct != null);
+    if (routedMarkets.length === 0 && !isLaunchSnapshot) {
       throw new Error(`No routed PROVISIONAL deal_markets found for deal ${dealId}`);
     }
-    const routingSnapshots = rankedMarkets.map((market) =>
+    const snapshotMarkets = routedMarkets.length > 0 ? routedMarkets : rankedMarkets;
+    const routingSnapshots = snapshotMarkets.map((market) =>
       readPersistedRoutingPackageSnapshot(market.rateBreakdownSnapshot),
     );
     if (routingSnapshots.some((snapshot) => !snapshot)) {
@@ -208,23 +211,26 @@ export async function queueMarketDispatch(
       .insert(dispatchBatchesTable)
       .values({
         dealId,
-        status: "QUEUED",
+        isLaunchBatch: isLaunchSnapshot,
+        status: routedMarkets.length > 0 ? "QUEUED" : "COMPLETE",
         applicationSnapshot: packageParse.data,
         applicationSnapshotHash: currentApplicationHash,
         routingInputSnapshot,
       })
       .returning({ id: dispatchBatchesTable.id });
 
-    await tx
-      .update(dealMarketsTable)
-      .set({ rankingState: "QUEUED", updatedAt: new Date() })
-      .where(inArray(dealMarketsTable.id, rankedMarkets.map((market) => market.id)));
+    if (routedMarkets.length > 0) {
+      await tx
+        .update(dealMarketsTable)
+        .set({ rankingState: "QUEUED", updatedAt: new Date() })
+        .where(inArray(dealMarketsTable.id, routedMarkets.map((market) => market.id)));
+    }
 
     for (const market of routedMarkets) {
       await tx.insert(dispatchItemsTable).values({
         batchId: batch.id,
         dealMarketId: market.id,
-        rank: market.rank,
+        rank: market.rank!,
         status: "PENDING",
       });
     }
@@ -248,6 +254,82 @@ export async function queueMarketDispatch(
 
   logger.info({ dealId, ...result }, "market-dispatch: queue resolved");
   return result;
+}
+
+/**
+ * Atomically promotes one snapshotted E market into its own immutable batch.
+ * The unique promoted_deal_market_id index makes concurrent/repeated requests
+ * idempotent without touching the initial batch.
+ */
+export async function promoteOverflowMarket(
+  dealId: string,
+  dealMarketId: string,
+  actorId?: string,
+): Promise<{ batchId: string; alreadyPromoted: boolean }> {
+  return db.transaction(async (tx) => {
+    await tx.select({ id: dealsTable.id }).from(dealsTable).where(eq(dealsTable.id, dealId)).for("update");
+    const [market] = await tx
+      .select()
+      .from(dealMarketsTable)
+      .where(and(eq(dealMarketsTable.id, dealMarketId), eq(dealMarketsTable.dealId, dealId)))
+      .for("update");
+    if (!market) throw new Error("Available market not found");
+    const [existing] = await tx
+      .select({ id: dispatchBatchesTable.id })
+      .from(dispatchBatchesTable)
+      .where(and(
+        eq(dispatchBatchesTable.promotedDealMarketId, dealMarketId),
+        drizzleSql`${dispatchBatchesTable.status} <> 'CANCELLED'`,
+      ));
+    if (existing) return { batchId: existing.id, alreadyPromoted: true };
+    if (market.verticalRank !== "E" || market.isActive || market.sentAt || market.sendStatus !== "PENDING") {
+      throw new Error("Market is not an available unsent E assignment");
+    }
+    const [initial] = await tx
+      .select()
+      .from(dispatchBatchesTable)
+      .where(and(eq(dispatchBatchesTable.dealId, dealId), eq(dispatchBatchesTable.batchKind, "INITIAL")))
+      .orderBy(desc(dispatchBatchesTable.createdAt))
+      .limit(1);
+    if (!initial?.applicationSnapshot || !initial.applicationSnapshotHash || !initial.routingInputSnapshot) {
+      throw new Error("Initial proposal-request snapshot is unavailable");
+    }
+    const [batch] = await tx.insert(dispatchBatchesTable).values({
+      dealId,
+      batchKind: "OVERFLOW",
+      isLaunchBatch: true,
+      promotedDealMarketId: dealMarketId,
+      status: "QUEUED",
+      applicationSnapshot: initial.applicationSnapshot,
+      applicationSnapshotHash: initial.applicationSnapshotHash,
+      routingInputSnapshot: initial.routingInputSnapshot,
+    }).returning({ id: dispatchBatchesTable.id });
+    await tx.insert(dispatchItemsTable).values({
+      batchId: batch.id,
+      dealMarketId,
+      rank: 1,
+      status: "PENDING",
+    });
+    await tx.update(dealMarketsTable).set({
+      isActive: true,
+      isRouted: true,
+      marketStatus: "ACTIVE",
+      engagementSource: "MANUAL_OVERFLOW",
+      rankingState: "QUEUED",
+      updatedAt: new Date(),
+    }).where(eq(dealMarketsTable.id, dealMarketId));
+    await tx.insert(activityLogTable).values({
+      dealId,
+      dealMarketId,
+      entityType: "deal_market",
+      entityId: dealMarketId,
+      eventType: "market_overflow_promoted",
+      description: "Available overflow market submitted in a separate market thread.",
+      metadata: { batch_id: batch.id, promoted_by: actorId ?? null, internal: true },
+      createdBy: actorId ?? null,
+    });
+    return { batchId: batch.id, alreadyPromoted: false };
+  });
 }
 
 export async function cancelMarketDispatch(
@@ -285,6 +367,13 @@ export async function cancelMarketDispatch(
         error: "No active dispatch batch found for this deal",
       };
     }
+    if (!canCancelDispatchBatch(batch.isLaunchBatch)) {
+      return {
+        ok: false as const,
+        status: 409 as const,
+        error: "Launch market batches cannot be cancelled; use per-market lifecycle controls instead.",
+      };
+    }
     if (batch.status === "PROCESSING" || batch.workerClaimId) {
       return {
         ok: false as const,
@@ -312,7 +401,7 @@ export async function cancelMarketDispatch(
       .from(dealMarketsTable)
       .where(
         and(
-          eq(dealMarketsTable.dealId, dealId),
+          inArray(dealMarketsTable.id, items.map((item) => item.dealMarketId)),
           eq(dealMarketsTable.rankingState, "LOCKED"),
         ),
       )
@@ -347,7 +436,7 @@ export async function cancelMarketDispatch(
         lastSendError: null,
         updatedAt: new Date(),
       })
-      .where(eq(dealMarketsTable.dealId, dealId));
+        .where(inArray(dealMarketsTable.id, items.map((item) => item.dealMarketId)));
     await tx.insert(activityLogTable).values({
       dealId,
       entityType: "deal",
@@ -365,6 +454,28 @@ export async function cancelMarketDispatch(
     });
     return { ok: true as const, batchId: batch.id };
   });
+}
+
+export function canCancelDispatchBatch(isLaunchBatch: boolean): boolean {
+  return !isLaunchBatch;
+}
+
+export function batchMarketIds(
+  items: Array<{ dealMarketId: string }>,
+): string[] {
+  return [...new Set(items.map((item) => item.dealMarketId))];
+}
+
+export function retryBatchMetadata(batch: {
+  batchKind: string;
+  isLaunchBatch: boolean;
+  promotedDealMarketId: string | null;
+}) {
+  return {
+    batchKind: batch.batchKind,
+    isLaunchBatch: batch.isLaunchBatch,
+    promotedDealMarketId: batch.promotedDealMarketId,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -423,7 +534,7 @@ async function processBatch(batchId: string, dealId: string): Promise<void> {
         ),
       ),
     )
-    .returning({ id: dispatchBatchesTable.id });
+    .returning({ id: dispatchBatchesTable.id, batchKind: dispatchBatchesTable.batchKind });
   if (!claimed) return;
 
   // Load items in rank order.
@@ -532,7 +643,7 @@ async function processBatch(batchId: string, dealId: string): Promise<void> {
       if (lastAttempt.outcome === "SUCCESS") {
         const devLogged = lastAttempt.errorCategory === "DEV_LOGGED";
         if (!devLogged && !anyAccepted) {
-          await lockDealMarkets(dealId, batchId);
+          if (claimed.batchKind === "INITIAL") await lockDealMarkets(dealId, batchId);
           anyAccepted = true;
         }
         await db.transaction(async (tx) => {
@@ -544,6 +655,9 @@ async function processBatch(batchId: string, dealId: string): Promise<void> {
             .update(dealMarketsTable)
             .set({
               sendStatus: devLogged ? "PENDING" : "SENT",
+              marketStatus: devLogged
+                ? "ACTIVE"
+                : drizzleSql`CASE WHEN ${dealMarketsTable.isSelected} THEN 'SELECTED' ELSE 'SENT' END`,
               sentAt: devLogged ? null : lastAttempt.completedAt,
               lastSendError: devLogged ? "Development mode: recorded without provider delivery" : null,
               updatedAt: new Date(),
@@ -585,7 +699,7 @@ async function processBatch(batchId: string, dealId: string): Promise<void> {
     if (result.outcome === "SUCCESS") {
       // Atomically lock all deal_markets for this deal on the first accepted send.
       if (result.providerAccepted && !anyAccepted) {
-        await lockDealMarkets(dealId, batchId);
+        if (claimed.batchKind === "INITIAL") await lockDealMarkets(dealId, batchId);
         anyAccepted = true;
       }
 
@@ -604,6 +718,9 @@ async function processBatch(batchId: string, dealId: string): Promise<void> {
           .update(dealMarketsTable)
           .set({
             sendStatus: result.providerAccepted ? "SENT" : "PENDING",
+              marketStatus: result.providerAccepted
+                ? drizzleSql`CASE WHEN ${dealMarketsTable.isSelected} THEN 'SELECTED' ELSE 'SENT' END`
+                : "ACTIVE",
             sentAt: result.providerAccepted ? new Date() : null,
             sendAttemptCount: drizzleSql`${dealMarketsTable.sendAttemptCount} + 1`,
             lastSendError: result.providerAccepted
@@ -740,13 +857,15 @@ async function processBatch(batchId: string, dealId: string): Promise<void> {
         metadata: { batch_id: batchId, internal: true },
       });
 
-      // Update all non-SENT deal_markets rankingState to FAILED.
+      // Fail only engagements owned by this batch. Other initial/overflow
+      // batches for the same deal may still be running or already complete.
+      const failedBatchMarketIds = batchMarketIds(finalItems);
       await db
         .update(dealMarketsTable)
         .set({ rankingState: "FAILED", updatedAt: new Date() })
         .where(
           and(
-            eq(dealMarketsTable.dealId, dealId),
+            inArray(dealMarketsTable.id, failedBatchMarketIds),
             inArray(dealMarketsTable.rankingState, ["QUEUED", "DISPATCHING"]),
           ),
         );
@@ -1079,7 +1198,9 @@ async function attemptSend(
 
   // Load the underwriter email.
   let toEmail: string;
-  if (dmRow.assignedUnderwriterId) {
+  if (dmRow.submissionEmailSnapshot) {
+    toEmail = dmRow.submissionEmailSnapshot;
+  } else if (dmRow.assignedUnderwriterId) {
     const [uw] = await db
       .select({ email: marketUnderwritersTable.email })
       .from(marketUnderwritersTable)
@@ -1189,6 +1310,8 @@ async function finalizeAttempt(
 export type DispatchStatusSummary = {
   batchId: string | null;
   batchStatus: string | null;
+  batchKind?: string | null;
+  isLaunchBatch?: boolean;
   items: Array<{
     dealMarketId: string;
     rank: number;
@@ -1206,7 +1329,7 @@ export async function getDispatchStatus(dealId: string): Promise<DispatchStatusS
     .where(eq(dispatchBatchesTable.dealId, dealId))
     .orderBy(desc(dispatchBatchesTable.createdAt));
 
-  if (!batch) return { batchId: null, batchStatus: null, items: [] };
+  if (!batch) return { batchId: null, batchStatus: null, batchKind: null, isLaunchBatch: false, items: [] };
 
   const items = await db
     .select()
@@ -1233,6 +1356,8 @@ export async function getDispatchStatus(dealId: string): Promise<DispatchStatusS
   return {
     batchId: batch.id,
     batchStatus: batch.status,
+    batchKind: batch.batchKind,
+    isLaunchBatch: batch.isLaunchBatch,
     items: items.map((i) => {
       const dm = dmMap.get(i.dealMarketId);
       return {

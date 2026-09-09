@@ -16,7 +16,34 @@ import assert from "node:assert/strict";
 import {
   executeDispatchSendStages,
   isManualDispatchRetryEligible,
+  batchMarketIds,
+  retryBatchMetadata,
 } from "../lib/market-dispatch.js";
+
+describe("multi-batch isolation", () => {
+  it("targets failure updates only to items in the failed batch", () => {
+    const failedBatchItems = [
+      { dealMarketId: "failed-a" },
+      { dealMarketId: "failed-b" },
+      { dealMarketId: "failed-a" },
+    ];
+    assert.deepEqual(batchMarketIds(failedBatchItems), ["failed-a", "failed-b"]);
+    assert.equal(batchMarketIds(failedBatchItems).includes("running-overflow"), false);
+    assert.equal(batchMarketIds(failedBatchItems).includes("successful-initial"), false);
+  });
+
+  it("preserves exact retry batch identity metadata", () => {
+    assert.deepEqual(retryBatchMetadata({
+      batchKind: "OVERFLOW",
+      isLaunchBatch: true,
+      promotedDealMarketId: "promoted-market",
+    }), {
+      batchKind: "OVERFLOW",
+      isLaunchBatch: true,
+      promotedDealMarketId: "promoted-market",
+    });
+  });
+});
 
 // ---------------------------------------------------------------------------
 // Tests: inbound resolver route method constants
