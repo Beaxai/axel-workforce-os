@@ -13,6 +13,10 @@ U/W Review is not an additional manual approval gate before sending unless the s
 
 Launch assignment blanks are intentional: Axel is never vertically ranked because it is the manual keep/cherry-pick market, and Cannabis has no ranks 1/2/3; Vensure remains `E` for manual submission. The supplied workbook is authoritative.
 
-**Why:** The product owner explicitly prioritized a working end-to-end application and rejected extras beyond the supplied build document. They clarified the distribution trigger and confirmed these assignment exceptions so future work does not treat intentional blanks as missing data.
+Completing Part 2 is the proposal request and immediately distributes to eligible ranks 1/2/3. An `E` market can be added later as a separate send/thread without changing the initial batch. Axel keep is available to Admin, Underwriter, and CSA and may coexist with wholesale threads until final selection. ASO is Axel-only unless the assignment grid explicitly adds a wholesale ASO partner.
 
-**How to apply:** Evaluate every multi-market change against the supplied spec, authoritative workbook, and this end-to-end journey. Defer unrelated improvements and later rated-era automation. Preserve the completed agency/Agent onboarding foundation. Do not auto-rank Axel or promote Cannabis markets unless the owner explicitly revises the assignment.
+Launch and rated-era routing share one `deal_markets` lifecycle. Rated-era work may automate Primary selection from price, but must not replace the launch engagement, dispatch, status, selection, or thread model.
+
+**Why:** The product owner explicitly prioritized a working end-to-end application and rejected extras beyond the supplied build document. They clarified the distribution trigger, overflow recovery, Axel permissions, ASO scope, and shared lifecycle so future work preserves intentional launch behavior.
+
+**How to apply:** Evaluate every multi-market change against the supplied spec, authoritative workbook, and this end-to-end journey. Defer unrelated improvements and later rated-era automation. Preserve the completed agency/Agent onboarding foundation. Do not auto-rank Axel, auto-send Vensure for Cannabis, fold a later `E` send into the initial batch, or distribute ASO wholesale unless the owner explicitly revises the assignment.
