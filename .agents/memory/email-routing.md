@@ -2,6 +2,12 @@
 name: Inbound email routing
 description: How deal email reply-routing works and the webhook/raw-body pitfalls
 ---
+Development reply tests need a separate Resend webhook targeting Development, with its own signing secret; keep the published endpoint and its secret unchanged.
+
+**Why:** Replies to Development fixtures reached the published endpoint but could not resolve its market identities. Adding a Development endpoint then produced 401s until its separate signing secret was configured.
+
+**How to apply:** Match webhook destination, signing secret, and fixture database before testing replies. A provider delivery success alone does not prove market routing.
+
 Three routing layers, in order: (1) recipient = deal listener address, (2) `[AXL-{fileId}]` subject token, (3) In-Reply-To/References vs stored outbound rfc_message_id (best-effort — provider may rewrite Message-ID; layers 1–2 are the reliable ones).
 
 **Why/gotchas:**

@@ -15,6 +15,7 @@ import { retrieveAndStoreSignedDocuments } from "../services/helloSignService";
 import { getSignwellDocument } from "../services/signwellService";
 import { stripeGet, stripeConfigured } from "../services/stripeService";
 import { setBrokerFeeStatus } from "../lib/broker-fee";
+import { selectResendWebhookSecret } from "../lib/resend-webhook-secret";
 
 /**
  * Auto-transition the linked account from a Prospect stage to "New Client" on
@@ -70,7 +71,7 @@ const router = Router();
 // payloads can be tested before the domain/webhook exists).
 // ---------------------------------------------------------------------------
 function verifySvixSignature(req: Request, rawBody: string): boolean {
-  const secret = process.env.RESEND_WEBHOOK_SECRET;
+  const secret = selectResendWebhookSecret(process.env);
   if (!secret) return true; // dev mode — no secret configured yet
 
   const id = req.header("svix-id");
