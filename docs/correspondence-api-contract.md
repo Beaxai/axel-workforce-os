@@ -140,6 +140,10 @@ type MarketSendRequest = {
 * `502` — provider failure. A `DELIVERY_UNKNOWN` thread row must be reviewed
   before any further send and is never automatically resent. A known `failed`
   row may be retried only as a new compose action with a new `requestId`.
+  When an outbound row was durably created, the response is
+  `{ error, outboundId, deliveryState }`; `deliveryState` is the raw
+  `PENDING` or `DELIVERY_UNKNOWN` value and clients must retain the current
+  compose `requestId` rather than automatically creating a new send.
 
 ## `GET /api/deal-card/:dealId/correspondence/broker`
 
@@ -178,6 +182,8 @@ type BrokerSendRequest = {
 * `422` — recipient/channel policy rejection
 * `502` — provider failure; `DELIVERY_UNKNOWN` is manual-review only, while a
   known `failed` row requires a new compose `requestId` for an explicit retry
+  (durable outbound failures return `{ error, outboundId, deliveryState }`
+  with the raw state).
 
 ## `POST /api/deal-card/:dealId/correspondence/broker/reply`
 

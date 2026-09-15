@@ -422,6 +422,7 @@ router.post("/submit-for-approval", async (req, res) => {
   let primaryMarketBreakdown: Record<string, unknown> | null = null;
   let routedRatingInput: RatingInput | null = null;
   let launchRoutingResolved = false;
+  let launchSnapshotCount = 0;
 
   // Resolve routing before writing quotes, generated documents, or successful
   // submission activity. A failed routing record keeps its deal ID for review,
@@ -497,6 +498,7 @@ router.post("/submit-for-approval", async (req, res) => {
       });
     }
     launchRoutingResolved = true;
+    launchSnapshotCount = launchResult.activeCount + launchResult.availableCount;
     await db.insert(activityLogTable).values({
       dealId: deal.id,
       entityType: "deal",
@@ -716,7 +718,10 @@ router.post("/submit-for-approval", async (req, res) => {
     metadata: { deal_id: deal.id, reference_code: referenceCode },
   });
 
-  if (routedProductLane || launchRoutingResolved) {
+  // A resolved launch product with no eligible market is still a valid
+  // submission for internal follow-up. Do not manufacture an empty dispatch
+  // batch (which queueMarketDispatch correctly rejects as unsafe).
+  if (routedProductLane || (launchRoutingResolved && launchSnapshotCount > 0)) {
     // Queue only after submission answers and generated document records exist,
     // so the asynchronous worker cannot race an incomplete attachment package.
     try {

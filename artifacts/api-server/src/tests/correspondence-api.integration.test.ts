@@ -284,6 +284,29 @@ describe("Axel-controlled correspondence API (isolated fictional fixture)", () =
       // Before this explicit action the message is HELD and unavailable to
       // broker/market feeds; release is an audited staff classification.
       assert.equal(stored.channel, "HELD");
+       const held = await api("GET", "/deal-card/correspondence/held", adminCookie);
+       assert.equal(held.status, 200);
+       const heldBody = held.body as {
+         messages: Array<{
+           id: string;
+           isReleasable: boolean;
+           releasableTarget: {
+             channel: string;
+             threadId: string;
+             listenerEmail: string;
+             senderEmail: string;
+           } | null;
+         }>;
+       };
+       const heldMessage = heldBody.messages.find((message) => message.id === stored.id);
+       assert.ok(heldMessage);
+       assert.equal(heldMessage.isReleasable, true);
+       assert.deepEqual(heldMessage.releasableTarget, {
+         channel: "MARKET",
+         threadId: thread.id,
+         listenerEmail: thread.listenerEmail,
+         senderEmail: `market-${suffix}@example.test`,
+       });
       const released = await api("POST", `/deal-card/correspondence/held/${stored.id}/release`, adminCookie, {
         channel: "MARKET", senderConfirmed: true,
       });
@@ -314,5 +337,119 @@ describe("Axel-controlled correspondence API (isolated fictional fixture)", () =
     const held = await api("GET", "/deal-card/correspondence/held", adminCookie);
     assert.equal(held.status, 200);
     assert.equal((held.body as any).messages.some((m: any) => m.id === stored.id && m.heldReason === "AMBIGUOUS_RECIPIENT_IDENTITIES"), true);
+  });
+
+  it("serializes fresh manual compose UUIDs while the first private-thread send is pending", async () => {
+    const originalFetch = globalThis.fetch;
+    const originalApiKey = process.env.RESEND_API_KEY;
+    let releaseProvider!: () => void;
+    const providerStarted = new Promise<void>((resolve) => {
+      releaseProvider = resolve;
+    });
+    let providerCalls = 0;
+    const baseInput = {
+      channel: "MARKET" as const,
+      dealId,
+      dealMarketId,
+      to: [`market-${suffix}@example.test`],
+      subject: "Serialized manual compose fixture",
+      text: "Only one provider call is permitted.",
+    };
+    try {
+      process.env.RESEND_API_KEY = "fixture-key";
+      globalThis.fetch = (async (url, init) => {
+        if (!String(url).startsWith("https://api.resend.com/")) return originalFetch(url, init);
+        providerCalls += 1;
+        await providerStarted;
+        return new Response(JSON.stringify({ id: `provider-${randomUUID()}` }), { status: 200 });
+      }) as typeof fetch;
+
+      const firstPromise = sendDealEmail({
+        ...baseInput,
+        idempotencyKey: `manual-${randomUUID()}`,
+      });
+      // fetch only starts after the first PENDING row commits.
+      await new Promise<void>((resolve) => {
+        const wait = () => providerCalls === 1 ? resolve() : setTimeout(wait, 1);
+        wait();
+      });
+      const freshWhilePending = await sendDealEmail({
+        ...baseInput,
+        idempotencyKey: `manual-${randomUUID()}`,
+      });
+      assert.equal(freshWhilePending.ok, false);
+      assert.equal(freshWhilePending.failureKind, "DELIVERY_UNKNOWN");
+      assert.equal(freshWhilePending.deliveryState, "PENDING");
+      assert.equal(providerCalls, 1);
+
+      releaseProvider();
+      assert.equal((await firstPromise).ok, true);
+      assert.equal(providerCalls, 1);
+    } finally {
+      globalThis.fetch = originalFetch;
+      if (originalApiKey === undefined) delete process.env.RESEND_API_KEY;
+      else process.env.RESEND_API_KEY = originalApiKey;
+    }
+  });
+
+  it("returns the durable pending row after terminal persistence fails and denies a fresh compose ID", async () => {
+    const originalFetch = globalThis.fetch;
+    const originalApiKey = process.env.RESEND_API_KEY;
+    const originalTransaction = db.transaction.bind(db);
+    const requestId = randomUUID();
+    const input = {
+      channel: "MARKET" as const,
+      dealId,
+      dealMarketId,
+      to: [`market-${suffix}@example.test`],
+      subject: "Post-provider persistence fixture",
+      text: "This fixture must never send twice.",
+      idempotencyKey: `manual-${requestId}`,
+    };
+    let providerCalls = 0;
+    let transactionCalls = 0;
+    try {
+      process.env.RESEND_API_KEY = "fixture-key";
+      globalThis.fetch = (async (url, init) => {
+        if (!String(url).startsWith("https://api.resend.com/")) return originalFetch(url, init);
+        providerCalls += 1;
+        return new Response(JSON.stringify({ id: `provider-${requestId}` }), { status: 200 });
+      }) as typeof fetch;
+      (db as any).transaction = async (...args: any[]) => {
+        transactionCalls += 1;
+        // The first transaction persists PENDING. Fail only the terminal
+        // update/audit transaction after mocked provider acceptance.
+        if (transactionCalls === 2) throw new Error("injected terminal persistence failure");
+        return (originalTransaction as any)(...args);
+      };
+
+      const first = await sendDealEmail(input);
+      assert.equal(first.ok, false);
+      assert.equal(first.failureKind, "DELIVERY_UNKNOWN");
+      assert.equal(first.deliveryState, "PENDING");
+      assert.ok(first.outboundId);
+      assert.equal(providerCalls, 1);
+
+      (db as any).transaction = originalTransaction;
+      const sameRequest = await sendDealEmail(input);
+      assert.equal(sameRequest.outboundId, first.outboundId);
+      assert.equal(sameRequest.failureKind, "DELIVERY_UNKNOWN");
+      assert.equal(sameRequest.deliveryState, "PENDING");
+      assert.equal(providerCalls, 1);
+
+      const freshRequest = await sendDealEmail({
+        ...input,
+        idempotencyKey: `manual-${randomUUID()}`,
+      });
+      assert.equal(freshRequest.ok, false);
+      assert.equal(freshRequest.failureKind, "DELIVERY_UNKNOWN");
+      assert.equal(freshRequest.outboundId, first.outboundId);
+      assert.equal(providerCalls, 1);
+    } finally {
+      (db as any).transaction = originalTransaction;
+      globalThis.fetch = originalFetch;
+      if (originalApiKey === undefined) delete process.env.RESEND_API_KEY;
+      else process.env.RESEND_API_KEY = originalApiKey;
+    }
   });
 });

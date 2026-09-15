@@ -23,6 +23,12 @@ Private external-market correspondence is limited to Axel's own internal Admins 
 
 **How to apply (correspondence boundary):** Use an authoritative internal organization identity, current user/membership eligibility, and explicit organization context for multi-org users; never infer internal staff from an organization display name or a role string. Include denial tests for external CSA and external Admin memberships.
 
+Development trust authorization does not authorize production provisioning or assignment of legacy unowned deals.
+
+**Why:** On 2026-09-15 the owner explicitly confirmed the existing Axel Workforce Solutions organization as internal for Development only, with production and unowned deals excluded from the confirmation.
+
+**How to apply:** Preserve those boundaries during publishing and data cleanup; obtain separate authorization before trusting a production organization or assigning legacy ownership.
+
 **Why:** The product owner explicitly prioritized a working end-to-end application and rejected extras beyond the supplied build document. They clarified the distribution trigger, overflow recovery, Axel permissions, ASO scope, and shared lifecycle so future work preserves intentional launch behavior.
 
 **How to apply:** Evaluate every multi-market change against the supplied spec, authoritative workbook, and this end-to-end journey. Defer unrelated improvements and later rated-era automation. Preserve the completed agency/Agent onboarding foundation. Do not auto-rank Axel, auto-send Vensure for Cannabis, fold a later `E` send into the initial batch, or distribute ASO wholesale unless the owner explicitly revises the assignment.

@@ -541,47 +541,92 @@ export async function sendDealEmail(input: SendDealEmailInput): Promise<SendDeal
     status: string;
     error: string | null;
   };
-  const existingQuery = await db.execute(sql`
-    SELECT id, provider_message_id AS "providerMessageId", status, error
-    FROM deal_outbound_emails
-    WHERE idempotency_key = ${idempotencyKey}
-    LIMIT 1
-  `);
-  const existing = (existingQuery as unknown as { rows: ExistingOutbound[] }).rows[0];
-  if (existing) return resultForExistingOutbound(existing);
+  const isManualControlledCompose =
+    isControlled && (!input.idempotencyKey || input.idempotencyKey.startsWith("manual-"));
+  type PendingInsert = { id: string };
+  type PendingResult =
+    | { kind: "existing"; row: ExistingOutbound }
+    | { kind: "blocked"; row: ExistingOutbound }
+    | { kind: "inserted"; row: PendingInsert };
 
-  // This insert is the durable pre-provider record. Raw SQL is used for the
-  // rollout-only idempotency columns so this safety boundary remains correct
-  // while the shared DB schema package is updated independently.
-  const pendingQuery = await db.execute(sql`
-    INSERT INTO deal_outbound_emails (
-      deal_id, deal_market_id, provider_message_id, rfc_message_id,
-      to_emails, cc_emails, from_email, reply_to, subject, body_html, body_text,
-      channel, correspondence_thread_id, recipient_user_id, idempotency_key, status, error
-    ) VALUES (
-      ${input.dealId}, ${input.dealMarketId ?? null}, ${null}, ${rfcMessageId},
-      ${JSON.stringify(recipients)}::jsonb, ${JSON.stringify(input.cc ?? [])}::jsonb,
-      ${DEFAULT_FROM}, ${replyTo}, ${subject}, ${input.html ?? null}, ${input.text ?? null},
-      ${outboundStatus}, ${correspondenceThread?.id ?? null}, ${input.recipientUserId ?? null},
-      ${idempotencyKey}, ${"PENDING"}, ${null}
-    )
-    ON CONFLICT (idempotency_key) WHERE idempotency_key IS NOT NULL DO NOTHING
-    RETURNING id
-  `);
-  const pending = (pendingQuery as unknown as { rows: Array<{ id: string }> }).rows[0];
-  if (!pending) {
-    // A concurrent caller won the durable key race. Do not issue a second
-    // provider call; its PENDING state is deliberately surfaced as unknown.
-    const concurrentQuery = await db.execute(sql`
+  // The check for an uncertain predecessor and creation of this PENDING row
+  // share a transaction-scoped advisory lock. Without it, two fresh browser
+  // UUIDs can both observe an empty thread and create simultaneous sends.
+  const pendingResult = await db.transaction(async (tx): Promise<PendingResult> => {
+    if (isManualControlledCompose && correspondenceThread) {
+      await tx.execute(sql`
+        SELECT pg_advisory_xact_lock(hashtext(${`manual-correspondence:${correspondenceThread.id}`}))
+      `);
+    }
+
+    const existingQuery = await tx.execute(sql`
+      SELECT id, provider_message_id AS "providerMessageId", status, error
+      FROM deal_outbound_emails
+      WHERE idempotency_key = ${idempotencyKey}
+      LIMIT 1
+    `);
+    const existing = (existingQuery as unknown as { rows: ExistingOutbound[] }).rows[0];
+    // Exact-key lookup precedes the thread state gate: a browser retry of the
+    // original compose receives its known durable state, never a new send.
+    if (existing) return { kind: "existing", row: existing };
+
+    if (isManualControlledCompose && correspondenceThread) {
+      const uncertainQuery = await tx.execute(sql`
+        SELECT id, provider_message_id AS "providerMessageId", status, error
+        FROM deal_outbound_emails
+        WHERE correspondence_thread_id = ${correspondenceThread.id}
+          AND status IN (${"PENDING"}, ${"DELIVERY_UNKNOWN"})
+        ORDER BY created_at DESC
+        LIMIT 1
+        FOR UPDATE
+      `);
+      const uncertain = (uncertainQuery as unknown as { rows: ExistingOutbound[] }).rows[0];
+      if (uncertain) return { kind: "blocked", row: uncertain };
+    }
+
+    // This insert is the durable pre-provider record. Raw SQL is used for the
+    // rollout-only idempotency columns so this safety boundary remains correct
+    // while the shared DB schema package is updated independently.
+    const pendingQuery = await tx.execute(sql`
+      INSERT INTO deal_outbound_emails (
+        deal_id, deal_market_id, provider_message_id, rfc_message_id,
+        to_emails, cc_emails, from_email, reply_to, subject, body_html, body_text,
+        channel, correspondence_thread_id, recipient_user_id, idempotency_key, status, error
+      ) VALUES (
+        ${input.dealId}, ${input.dealMarketId ?? null}, ${null}, ${rfcMessageId},
+        ${JSON.stringify(recipients)}::jsonb, ${JSON.stringify(input.cc ?? [])}::jsonb,
+        ${DEFAULT_FROM}, ${replyTo}, ${subject}, ${input.html ?? null}, ${input.text ?? null},
+        ${outboundStatus}, ${correspondenceThread?.id ?? null}, ${input.recipientUserId ?? null},
+        ${idempotencyKey}, ${"PENDING"}, ${null}
+      )
+      ON CONFLICT (idempotency_key) WHERE idempotency_key IS NOT NULL DO NOTHING
+      RETURNING id
+    `);
+    const pending = (pendingQuery as unknown as { rows: PendingInsert[] }).rows[0];
+    if (pending) return { kind: "inserted", row: pending };
+
+    // This can occur only for a caller not covered by the advisory lock (for
+    // example a dispatch worker); it still must never issue another send.
+    const concurrentQuery = await tx.execute(sql`
       SELECT id, provider_message_id AS "providerMessageId", status, error
       FROM deal_outbound_emails
       WHERE idempotency_key = ${idempotencyKey}
       LIMIT 1
     `);
     const concurrent = (concurrentQuery as unknown as { rows: ExistingOutbound[] }).rows[0];
-    if (concurrent) return resultForExistingOutbound(concurrent);
+    if (concurrent) return { kind: "existing", row: concurrent };
     throw new Error("OUTBOUND_IDEMPOTENCY_PERSISTENCE_FAILED");
+  });
+  if (pendingResult.kind === "existing") return resultForExistingOutbound(pendingResult.row);
+  if (pendingResult.kind === "blocked") {
+    const result = resultForExistingOutbound(pendingResult.row);
+    return {
+      ...result,
+      error: "A prior message in this private thread has an unresolved delivery state. Review it before creating a new compose request.",
+      failureKind: "DELIVERY_UNKNOWN",
+    };
   }
+  const pending = pendingResult.row;
 
   const apiKey = process.env.RESEND_API_KEY;
   let status: SendDealEmailResult["status"] = "dev_logged";
@@ -649,45 +694,65 @@ export async function sendDealEmail(input: SendDealEmailInput): Promise<SendDeal
   // transaction cannot commit after provider I/O, the durable PENDING row is
   // intentionally conservative and must be manually reviewed rather than
   // retried as a fresh send.
-  await db.transaction(async (tx) => {
-    await tx
-      .update(dealOutboundEmailsTable)
-      .set({
-        providerMessageId,
-        status: persistedStatus,
-        error: error ?? null,
-      })
-      .where(eq(dealOutboundEmailsTable.id, pending.id));
+  try {
+    await db.transaction(async (tx) => {
+      await tx
+        .update(dealOutboundEmailsTable)
+        .set({
+          providerMessageId,
+          status: persistedStatus,
+          error: error ?? null,
+        })
+        .where(eq(dealOutboundEmailsTable.id, pending.id));
 
-    await tx.insert(activityLogTable).values({
-      dealId: input.dealId,
-      dealMarketId: input.dealMarketId ?? null,
-      entityType: "deal",
-      entityId: input.dealId,
-      eventType: failureKind === "DELIVERY_UNKNOWN" ? "email_delivery_unknown" : "email_sent",
-      description:
-        status === "sent"
-          ? `Email sent to ${recipients.join(", ")}: "${subject}"`
-          : status === "dev_logged"
-            ? `Email recorded (dev mode, not delivered) to ${recipients.join(", ")}: "${subject}"`
-            : failureKind === "DELIVERY_UNKNOWN"
-              ? `Email delivery status UNKNOWN for ${recipients.join(", ")}: "${subject}". Manual review required; do not retry automatically.`
-              : `Email FAILED to ${recipients.join(", ")}: "${subject}"`,
-      metadata: {
-        outbound_email_id: pending.id,
-        idempotency_key: idempotencyKey,
-        status: persistedStatus,
-        reply_to: replyTo,
-        provider_message_id: providerMessageId,
-        error: error ?? null,
-        sent_by: input.sentBy ?? null,
-        deal_market_id: input.dealMarketId ?? null,
-        correspondence_channel: outboundStatus,
-        correspondence_private: isControlled,
-        system_notice: systemNoticeScope(input),
-      },
+      await tx.insert(activityLogTable).values({
+        dealId: input.dealId,
+        dealMarketId: input.dealMarketId ?? null,
+        entityType: "deal",
+        entityId: input.dealId,
+        eventType: failureKind === "DELIVERY_UNKNOWN" ? "email_delivery_unknown" : "email_sent",
+        description:
+          status === "sent"
+            ? `Email sent to ${recipients.join(", ")}: "${subject}"`
+            : status === "dev_logged"
+              ? `Email recorded (dev mode, not delivered) to ${recipients.join(", ")}: "${subject}"`
+              : failureKind === "DELIVERY_UNKNOWN"
+                ? `Email delivery status UNKNOWN for ${recipients.join(", ")}: "${subject}". Manual review required; do not retry automatically.`
+                : `Email FAILED to ${recipients.join(", ")}: "${subject}"`,
+        metadata: {
+          outbound_email_id: pending.id,
+          idempotency_key: idempotencyKey,
+          status: persistedStatus,
+          reply_to: replyTo,
+          provider_message_id: providerMessageId,
+          error: error ?? null,
+          sent_by: input.sentBy ?? null,
+          deal_market_id: input.dealMarketId ?? null,
+          correspondence_channel: outboundStatus,
+          correspondence_private: isControlled,
+          system_notice: systemNoticeScope(input),
+        },
+      });
     });
-  });
+  } catch (persistenceError) {
+    // Provider I/O already occurred. Never throw this into an HTTP handler:
+    // generic route error mapping would invite the UI to rotate its UUID and
+    // send again. The original PENDING row is durable and becomes the manual
+    // review record if the terminal update/audit transaction could not commit.
+    logger.error(
+      { outboundId: pending.id, persistenceError },
+      "[emailService] terminal outbound persistence failed after provider I/O; delivery is unknown",
+    );
+    return {
+      ok: false,
+      status: "failed",
+      deliveryState: "PENDING",
+      outboundId: pending.id,
+      providerMessageId,
+      error: "Provider delivery completed but local status persistence failed. Review the existing pending message; do not retry automatically.",
+      failureKind: "DELIVERY_UNKNOWN",
+    };
+  }
 
   return {
     ok: status !== "failed",
