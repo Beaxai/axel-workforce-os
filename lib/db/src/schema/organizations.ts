@@ -14,6 +14,19 @@ export const organizationsTable = pgTable("organizations", {
   metadata: jsonb("metadata"),
 });
 
+/**
+ * Explicit, fail-closed trust anchor for Axel-owned organizations.  This is
+ * deliberately not inferred from an organization name, type, seed ID, or a
+ * user's role.  There is no application CRUD route for this table: changes
+ * require an audited privileged database migration/operation.
+ */
+export const trustedAxelOrganizationsTable = pgTable("trusted_axel_organizations", {
+  orgId: uuid("org_id").primaryKey().references(() => organizationsTable.id, { onDelete: "restrict" }),
+  configuredByUserId: uuid("configured_by_user_id"),
+  configuredAt: timestamp("configured_at", { withTimezone: true }).notNull().default(sql`now()`),
+  note: text("note"),
+});
+
 export const insertOrganizationSchema = createInsertSchema(organizationsTable).omit({ id: true, createdAt: true });
 export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
 export type Organization = typeof organizationsTable.$inferSelect;

@@ -10,13 +10,18 @@ const router = Router();
 
 router.post("/signed-url", async (req: Request, res: Response) => {
   const { storage_path, deal_id } = req.body;
-  if (!storage_path) return res.status(400).json({ error: "storage_path is required." });
+  if (typeof storage_path !== "string" || typeof deal_id !== "string") {
+    return res.status(400).json({ error: "storage_path and deal_id are required." });
+  }
 
   if (deal_id && !storage_path.includes(deal_id)) {
     return res.status(403).json({ error: "Document does not belong to this deal." });
   }
 
-  return res.json({ signedUrl: null, storagePath: storage_path, message: "File storage not configured — path reference only." });
+  // Never reflect an arbitrary storage path (or turn it into a bearer-style
+  // link). Controlled correspondence attachments are not served by this
+  // generic endpoint.
+  return res.status(409).json({ error: "Generic storage-path signing is unavailable. Request a document through its authorized resource." });
 });
 
 router.post("/log-view", async (req: Request, res: Response) => {

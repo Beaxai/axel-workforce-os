@@ -43,7 +43,7 @@ import {
   journeyTemplatePhasesRouter,
   journeyTemplateTasksRouter,
 } from "./journey-templates";
-import { requireAuth, requireRoles } from "../middleware/require-auth";
+import { requireAuth, requireRoles, requireTrustedAxelCorrespondenceStaff } from "../middleware/require-auth";
 
 const router: IRouter = Router();
 
@@ -120,7 +120,7 @@ router.use("/appetite", requireRoles("ADMIN", "CSA", "UNDERWRITER"), appetiteRou
 // Markets: ADMIN/CSA reads + simulation; ADMIN-only mutations enforced inside router.
 router.use("/markets", requireRoles("ADMIN", "CSA"), marketsRouter);
 // Market dispatch management: ADMIN/CSA only; role gate also enforced inside router.
-router.use("/market-dispatch", requireRoles("ADMIN", "CSA"), marketDispatchRouter);
+router.use("/market-dispatch", requireRoles("ADMIN", "CSA"), requireTrustedAxelCorrespondenceStaff, marketDispatchRouter);
 router.use("/ai", requireRoles(...INTERNAL_SALES), aiRouter);
 // Deal Card hub (Phase 4C): broad role gate; §8 access matrix enforced inside.
 router.use(

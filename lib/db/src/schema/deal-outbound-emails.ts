@@ -24,6 +24,10 @@ export const dealOutboundEmailsTable = pgTable("deal_outbound_emails", {
   subject: text("subject").notNull(),
   bodyHtml: text("body_html"),
   bodyText: text("body_text"),
+  // LEGACY is retained for unrelated pre-existing mail; new controlled mail
+  // must be MARKET or BROKER and is enforced by emailService.
+  channel: text("channel").notNull().default("LEGACY"),
+  correspondenceThreadId: uuid("correspondence_thread_id"),
   // sent | dev_logged | failed
   status: text("status").notNull().default("sent"),
   error: text("error"),

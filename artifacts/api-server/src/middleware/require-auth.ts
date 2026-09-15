@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction, RequestHandler } from "express";
 import { SESSION_COOKIE, getSessionUser, type AuthUser, type PartyRole } from "../lib/auth";
+import { isTrustedCorrespondenceStaff } from "../lib/correspondence-policy";
 
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -60,3 +61,24 @@ export function requireRoles(...roles: PartyRole[]): RequestHandler {
     next();
   };
 }
+
+/** For routes that expose market contacts/routing identities. Role labels alone
+ * are insufficient because an external organization can legitimately have an
+ * ADMIN or CSA role. */
+export const requireTrustedAxelCorrespondenceStaff: RequestHandler = async (req, res, next) => {
+  if (!(await isTrustedCorrespondenceStaff(req.user))) {
+    res.status(403).json({ error: "Trusted active Axel ADMIN or CSA membership required" });
+    return;
+  }
+  next();
+};
+
+/** Trust-anchor and membership administration may only be initiated by an
+ * already trusted Axel ADMIN. The trusted-org table itself has no HTTP CRUD. */
+export const requireTrustedAxelAdmin: RequestHandler = async (req, res, next) => {
+  if (req.user?.role !== "ADMIN" || !(await isTrustedCorrespondenceStaff(req.user))) {
+    res.status(403).json({ error: "Trusted active Axel ADMIN membership required" });
+    return;
+  }
+  next();
+};

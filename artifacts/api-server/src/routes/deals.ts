@@ -12,6 +12,7 @@ import { setBrokerFeePercent, setBrokerFeeStatus, sendBrokerFeeDunning, computeB
 import { validateNewProducingAgentAttachment } from "../lib/agent-assignment-gate";
 import { calculateDealProduction } from "../lib/production-metrics";
 import { requireRoles } from "../middleware/require-auth";
+import { trustedActorMayAccessDeal } from "../lib/correspondence-policy";
 
 const router: IRouter = Router();
 
@@ -498,7 +499,15 @@ router.get("/:id/tasks", async (req, res) => {
 
 router.get("/:id/activity", async (req, res) => {
   const rows = await db.select().from(activityLogTable).where(eq(activityLogTable.dealId, req.params.id)).orderBy(desc(activityLogTable.createdAt));
-  res.json(rows);
+  const trusted = await trustedActorMayAccessDeal(req.user, req.params.id);
+  // Market/private correspondence must not surface through the legacy
+  // general feed, including a primary-market fallback.
+  res.json(trusted
+    ? rows
+    : rows.filter((row) => {
+        const metadata = row.metadata as { correspondence_private?: boolean } | null;
+        return row.dealMarketId == null && !metadata?.correspondence_private;
+      }));
 });
 
 // §6E deposit monitor actions (WC-3b Task 3) — internal staff only (ADMIN/CSA).
@@ -528,12 +537,19 @@ router.post("/:id/activity", async (req, res) => {
 });
 
 router.get("/:id/email", async (req, res) => {
+  if (!(await trustedActorMayAccessDeal(req.user, req.params.id))) {
+    res.status(403).json({ error: "Trusted Axel correspondence staff required" });
+    return;
+  }
   const [row] = await db.select().from(dealEmailAddressesTable).where(eq(dealEmailAddressesTable.dealId, req.params.id));
   res.json(row || null);
 });
 
 router.post("/:id/email", async (req, res) => {
   const dealId = req.params.id;
+  if (!(await trustedActorMayAccessDeal(req.user, dealId))) {
+    return res.status(403).json({ error: "Trusted Axel correspondence staff required" });
+  }
   const { companySlug } = req.body;
   if (!companySlug) return res.status(400).json({ error: "companySlug required" });
 
@@ -608,26 +624,12 @@ router.patch("/:id/broker-fee", async (req, res) => {
 // the deal's unique listener address; subject gets an [AXL-xxxx] token; the
 // Message-ID is stored so replies route back to this deal card.
 router.post("/:id/send-email", async (req, res) => {
-  const { to, cc, subject, html, text } = req.body ?? {};
-  const toList = Array.isArray(to) ? to.filter((t: any) => typeof t === "string" && t.includes("@")) : [];
-  if (toList.length === 0) return res.status(400).json({ error: "to must be a non-empty array of email addresses" });
-  if (!subject || typeof subject !== "string") return res.status(400).json({ error: "subject required" });
-  if (!html && !text) return res.status(400).json({ error: "html or text body required" });
-
-  const [deal] = await db.select({ id: dealsTable.id }).from(dealsTable).where(eq(dealsTable.id, req.params.id));
-  if (!deal) return res.status(404).json({ error: "Deal not found" });
-
-  const actorName = (req as any).user?.name ?? null;
-  const result = await sendDealEmail({
-    dealId: req.params.id,
-    to: toList,
-    cc: Array.isArray(cc) ? cc : undefined,
-    subject,
-    html,
-    text,
-    sentBy: actorName,
+  // This legacy free-form carrier endpoint bypassed final recipient
+  // resolution. It must not remain a channel-less escape hatch: use the
+  // selected-market or selected-broker correspondence routes instead.
+  return res.status(410).json({
+    error: "Free-form deal email is retired. Use an Axel-controlled market or broker correspondence endpoint.",
   });
-  return res.status(result.ok ? 200 : 502).json(result);
 });
 
 export default router;

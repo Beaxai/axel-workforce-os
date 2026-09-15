@@ -1367,6 +1367,7 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
                 {tab === "submission" && <ReRateBanner show={!!deal?.ratingStale} onReRate={handleReRate} />}
                 {tab === "overview" && (
                   <OverviewTab
+                    dealId={dealId}
                     activity={filteredActivity}
                     canPost={canPost}
                     posting={posting}

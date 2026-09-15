@@ -182,6 +182,45 @@ export interface SectionPatchResponse {
   deal?: SubmissionDeal;
 }
 
+export type CorrespondenceChannel = "MARKET" | "BROKER";
+export type DeliveryState = "sent" | "dev_logged" | "failed" | "PENDING" | "DELIVERY_UNKNOWN";
+
+export interface CorrespondenceMessage {
+  id: string;
+  channel: CorrespondenceChannel;
+  direction: "INBOUND" | "OUTBOUND";
+  threadId: string;
+  dealId: string;
+  dealMarketId: string | null;
+  subject: string | null;
+  from: { name: string | null; email: string };
+  to: string[];
+  cc: string[];
+  bodyText: string | null;
+  bodyHtml: string | null;
+  receivedAt: string | null;
+  sentAt: string | null;
+  deliveryState: DeliveryState | null;
+  enrichment: "COMPLETE" | "PENDING" | "FAILED" | null;
+  isReleasable?: boolean;
+  candidate?: {
+    channel: CorrespondenceChannel;
+    marketName?: string;
+    contactName?: string;
+    contactEmail?: string;
+  };
+}
+
+export interface CorrespondenceCapabilities {
+  market: { canRead: boolean; canSend: boolean; canReviewHeld: boolean };
+  broker: {
+    canRead: boolean;
+    canSend: boolean;
+    canReply: boolean;
+    eligibleRecipients: Array<{ userId: string; name: string; email: string }>;
+  };
+}
+
 // -------------------------
 // Market Routing Types
 // -------------------------

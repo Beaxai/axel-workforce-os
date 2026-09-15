@@ -7,10 +7,15 @@ import {
   accountsTable,
   dealMarketEmailAddressesTable,
   dealMarketsTable,
+  marketUnderwritersTable,
+  usersTable,
+  orgMembersTable,
+  correspondenceThreadsTable,
 } from "@workspace/db";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import crypto from "crypto";
 import { logger } from "../lib/logger";
+import { hasControlledEnvelopeShape } from "../lib/correspondence-envelope";
 
 // ---------------------------------------------------------------------------
 // Outbound email service (Resend) with per-deal and per-deal-market reply routing.
@@ -147,6 +152,17 @@ export interface SendDealEmailInput {
   dealMarketId?: string | null;
   to: string[];
   cc?: string[];
+  bcc?: string[];
+  /** Explicit channel for controlled correspondence. A dealMarketId is always
+   * MARKET, even when a legacy caller omits this field. */
+  channel?: "MARKET" | "BROKER";
+  /** Required for BROKER channel; recipient is resolved from this user record. */
+  recipientUserId?: string | null;
+  /**
+   * Narrow escape hatch for audited, non-correspondence system notices. This
+   * is deliberately not an arbitrary "legacy" opt-in.
+   */
+  systemNotice?: "BROKER_FEE_DUNNING";
   subject: string;
   html?: string;
   text?: string;
@@ -163,9 +179,265 @@ export interface SendDealEmailInput {
   }>;
 }
 
+function normalizeEmail(value: string): string {
+  const bracket = value.match(/<([^>]+)>/);
+  return (bracket?.[1] ?? value).trim().toLowerCase();
+}
+
+export type OutboundChannel = "MARKET" | "BROKER" | "SYSTEM_NOTICE";
+
+const MARKET_ROUTING_MATERIAL =
+  /\[AX[MLB]-[^\]]+\]|(?:mkt|brk)-[a-z0-9]+@|<axl-[^>]+@|(?:in-reply-to|references|reply-to|message-id)\s*:|---+\s*forwarded message|(?:^|\n)\s*>?\s*(?:from|to|cc|bcc|subject|date)\s*:/i;
+
+function hasCallerSuppliedRoutingField(input: SendDealEmailInput): boolean {
+  const untypedInput = input as SendDealEmailInput & Record<string, unknown>;
+  // These fields are never part of the public service contract. Checking the
+  // actual runtime object closes the JavaScript/direct-service path too, not
+  // only TypeScript callers or strict HTTP schemas.
+  return [
+    "from",
+    "fromEmail",
+    "replyTo",
+    "reply_to",
+    "headers",
+    "threadId",
+    "correspondenceThreadId",
+    "inReplyTo",
+    "references",
+    "messageId",
+    "subjectToken",
+  ].some((field) => Object.hasOwn(untypedInput, field));
+}
+
+function systemNoticeScope(input: SendDealEmailInput): SendDealEmailInput["systemNotice"] | null {
+  if (input.systemNotice === "BROKER_FEE_DUNNING") return input.systemNotice;
+  // Preserve the existing system-only dunning caller while it is migrated to
+  // the typed field above. This exact audited sender is not a general legacy
+  // escape hatch and no request route can supply it.
+  return input.sentBy === "System (broker-fee dunning)" ? "BROKER_FEE_DUNNING" : null;
+}
+
+/**
+ * This is intentionally a final-send-boundary classification, rather than an
+ * optional caller convention. It has no database access so its invariants can
+ * be tested without constructing a provider client.
+ */
+export function classifyOutboundEmail(input: SendDealEmailInput): OutboundChannel {
+  // A market identity is authoritative; a caller cannot downgrade it into a
+  // channel-less or BROKER send.
+  if (input.dealMarketId) {
+    if (input.channel && input.channel !== "MARKET") {
+      throw new Error("MARKET_CHANNEL_REQUIRED");
+    }
+    return "MARKET";
+  }
+  if (input.channel === "MARKET") throw new Error("MARKET_DEAL_MARKET_REQUIRED");
+  if (input.channel === "BROKER") return "BROKER";
+  if (systemNoticeScope(input)) return "SYSTEM_NOTICE";
+  throw new Error("CORRESPONDENCE_CHANNEL_REQUIRED");
+}
+
+function hasBrokerMarketRoutingMaterial(input: SendDealEmailInput): boolean {
+  return [
+    input.subject,
+    input.text,
+    input.html,
+    ...((input.attachments ?? []).flatMap((attachment) => [attachment.filename, attachment.content])),
+  ].some((value) => typeof value === "string" && MARKET_ROUTING_MATERIAL.test(value));
+}
+
+const UUID_V4_OR_V5 = /^[0-9a-f]{8}-[0-9a-f]{4}-[45][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/**
+ * A compose request ID identifies one click/retry cycle, not its content.
+ * Reusing it makes a network retry safe; omitting it deliberately creates a
+ * fresh compose operation so users may send the same wording again later.
+ */
+export function manualComposeIdempotencyKey(requestId?: string | null): string {
+  if (requestId != null && !UUID_V4_OR_V5.test(requestId)) {
+    throw new Error("INVALID_COMPOSE_REQUEST_ID");
+  }
+  return `manual-${requestId ?? crypto.randomUUID()}`;
+}
+
+function assertValidManualIdempotencyKey(idempotencyKey: string): void {
+  if (!idempotencyKey.startsWith("manual-")) return;
+  if (!UUID_V4_OR_V5.test(idempotencyKey.slice("manual-".length))) {
+    throw new Error("INVALID_COMPOSE_REQUEST_ID");
+  }
+}
+
+/** Reject structurally unsafe envelopes before any database or provider I/O. */
+export function validateOutboundEnvelope(input: SendDealEmailInput): OutboundChannel {
+  const channel = classifyOutboundEmail(input);
+  if (input.idempotencyKey) assertValidManualIdempotencyKey(input.idempotencyKey);
+  if (channel === "MARKET" && !hasControlledEnvelopeShape({ ...input, channel: "MARKET" })) {
+    throw new Error("MARKET_RECIPIENT_POLICY_REJECTED");
+  }
+  if (channel === "BROKER") {
+    if (!hasControlledEnvelopeShape({ ...input, channel: "BROKER" })) {
+      throw new Error("BROKER_RECIPIENT_POLICY_REJECTED");
+    }
+    if (
+      (input.attachments?.length ?? 0) > 0 ||
+      hasCallerSuppliedRoutingField(input) ||
+      hasBrokerMarketRoutingMaterial(input)
+    ) {
+      throw new Error("BROKER_ROUTING_POLICY_REJECTED");
+    }
+  }
+  if (
+    channel === "SYSTEM_NOTICE" &&
+    (!input.to.length || input.cc?.length || input.bcc?.length || input.dealMarketId || input.recipientUserId)
+  ) {
+    throw new Error("SYSTEM_NOTICE_RECIPIENT_POLICY_REJECTED");
+  }
+  return channel;
+}
+
+function resultForExistingOutbound(row: {
+  id: string;
+  providerMessageId: string | null;
+  status: string;
+  error: string | null;
+}): SendDealEmailResult {
+  if (row.status === "sent" || row.status === "dev_logged") {
+    return {
+      ok: true,
+      status: row.status,
+      deliveryState: row.status,
+      outboundId: row.id,
+      providerMessageId: row.providerMessageId,
+    };
+  }
+  // A stale pending write may have died immediately before or after provider
+  // I/O. It is therefore just as unsafe to automatically resend as an
+  // explicit network exception.
+  const deliveryUnknown = row.status === "PENDING" || row.status === "DELIVERY_UNKNOWN";
+  return {
+    ok: false,
+    status: "failed",
+    deliveryState: deliveryUnknown
+      ? row.status as "PENDING" | "DELIVERY_UNKNOWN"
+      : "failed",
+    outboundId: row.id,
+    providerMessageId: row.providerMessageId,
+    error: deliveryUnknown
+      ? row.error ?? "Existing outbound delivery state is unknown; manual review is required."
+      : `${row.error ?? "Existing provider failure."} Submit a new compose request ID to create an explicit retry attempt.`,
+    failureKind: deliveryUnknown ? "DELIVERY_UNKNOWN" : "PERMANENT",
+  };
+}
+
+async function approvedMarketRecipient(dealId: string, dealMarketId: string): Promise<string> {
+  const [row] = await db
+    .select({
+      submissionEmailSnapshot: dealMarketsTable.submissionEmailSnapshot,
+      underwriterEmail: marketUnderwritersTable.email,
+    })
+    .from(dealMarketsTable)
+    .leftJoin(marketUnderwritersTable, eq(dealMarketsTable.assignedUnderwriterId, marketUnderwritersTable.id))
+    .where(and(eq(dealMarketsTable.id, dealMarketId), eq(dealMarketsTable.dealId, dealId)))
+    .limit(1);
+  const email = row?.submissionEmailSnapshot ?? row?.underwriterEmail;
+  if (!email) throw new Error("MARKET_RECIPIENT_UNAVAILABLE");
+  return normalizeEmail(email);
+}
+
+async function approvedBrokerRecipient(dealId: string, userId: string): Promise<string> {
+  // Do not infer a broker from an address: only a deal participant with an
+  // AGENT membership may receive broker-channel correspondence.
+  const [actualDeal] = await db
+    .select({
+      ownerId: dealsTable.ownerId,
+      producingAgentId: dealsTable.producingAgentId,
+      referralPartnerId: dealsTable.referralPartnerId,
+    })
+    .from(dealsTable)
+    .where(eq(dealsTable.id, dealId))
+    .limit(1);
+  if (
+    !actualDeal ||
+    ![
+      actualDeal.ownerId,
+      actualDeal.producingAgentId,
+      actualDeal.referralPartnerId,
+    ].includes(userId)
+  ) {
+    throw new Error("BROKER_RECIPIENT_NOT_AUTHORIZED");
+  }
+  const [user] = await db
+    .select({ email: usersTable.email, role: orgMembersTable.role })
+    .from(usersTable)
+    .innerJoin(orgMembersTable, eq(orgMembersTable.userId, usersTable.id))
+    .where(and(eq(usersTable.id, userId), eq(orgMembersTable.isPrimaryOrg, true)))
+    .limit(1);
+  if (user?.role.toUpperCase() !== "AGENT") throw new Error("BROKER_RECIPIENT_NOT_AUTHORIZED");
+  if (!user?.email) throw new Error("BROKER_RECIPIENT_UNAVAILABLE");
+  return normalizeEmail(user.email);
+}
+
+export async function ensureCorrespondenceThread(input: {
+  channel: "MARKET" | "BROKER";
+  dealId: string;
+  dealMarketId?: string | null;
+  participantUserId?: string | null;
+  marketListener?: string | null;
+  marketSubjectToken?: string | null;
+}) {
+  const existingRows = await db
+    .select()
+    .from(correspondenceThreadsTable)
+    .where(
+      input.channel === "MARKET"
+        ? and(
+            eq(correspondenceThreadsTable.channel, "MARKET"),
+            eq(correspondenceThreadsTable.dealMarketId, input.dealMarketId!),
+          )
+        : and(
+            eq(correspondenceThreadsTable.channel, "BROKER"),
+            eq(correspondenceThreadsTable.dealId, input.dealId),
+            eq(correspondenceThreadsTable.participantUserId, input.participantUserId!),
+          ),
+    )
+    .limit(1);
+  if (existingRows[0]) return existingRows[0];
+
+  const opaque = crypto.randomBytes(16).toString("hex");
+  const listenerEmail =
+    input.marketListener ?? `brk-${opaque}@${LISTENER_EMAIL_DOMAIN}`;
+  const token = input.marketSubjectToken ?? crypto.randomBytes(12).toString("hex");
+  const [created] = await db
+    .insert(correspondenceThreadsTable)
+    .values({
+      dealId: input.dealId,
+      dealMarketId: input.dealMarketId ?? null,
+      participantUserId: input.participantUserId ?? null,
+      channel: input.channel,
+      listenerEmail,
+      subjectToken: token,
+    })
+    .onConflictDoNothing()
+    .returning();
+  if (created) return created;
+  const [winner] = await db
+    .select()
+    .from(correspondenceThreadsTable)
+    .where(
+      input.channel === "MARKET"
+        ? and(eq(correspondenceThreadsTable.channel, "MARKET"), eq(correspondenceThreadsTable.dealMarketId, input.dealMarketId!))
+        : and(eq(correspondenceThreadsTable.channel, "BROKER"), eq(correspondenceThreadsTable.dealId, input.dealId), eq(correspondenceThreadsTable.participantUserId, input.participantUserId!)),
+    )
+    .limit(1);
+  if (!winner) throw new Error("Unable to create correspondence thread");
+  return winner;
+}
+
 export interface SendDealEmailResult {
   ok: boolean;
   status: "sent" | "dev_logged" | "failed";
+  /** Durable, un-normalized state for API/UI error serialization. */
+  deliveryState: "PENDING" | "sent" | "dev_logged" | "failed" | "DELIVERY_UNKNOWN";
   outboundId: string;
   providerMessageId?: string | null;
   error?: string;
@@ -173,12 +445,34 @@ export interface SendDealEmailResult {
 }
 
 export async function sendDealEmail(input: SendDealEmailInput): Promise<SendDealEmailResult> {
+  const channel = validateOutboundEnvelope(input);
+  const isControlled = channel === "MARKET" || channel === "BROKER";
   const addr = await ensureDealEmailAddress(input.dealId);
 
   // Determine reply-to and subject token based on whether this is market-scoped.
   let replyTo: string;
   let subjectTokenStr: string;
   let marketEmailAddr: Awaited<ReturnType<typeof ensureDealMarketEmailAddress>> | null = null;
+  let correspondenceThread: Awaited<ReturnType<typeof ensureCorrespondenceThread>> | null = null;
+
+  // This is the final provider-send boundary. A caller cannot use a market
+  // thread to add a broker (or vice versa) through direct service use, retry
+  // workers, CC/BCC, or a forged recipient field.
+  let recipients: string[];
+  if (channel === "MARKET") {
+    const approved = await approvedMarketRecipient(input.dealId, input.dealMarketId!);
+    if (normalizeEmail(input.to[0]) !== approved) throw new Error("MARKET_RECIPIENT_POLICY_REJECTED");
+    // Do not carry the caller's display-name/string form to the provider.
+    recipients = [approved];
+  } else if (channel === "BROKER") {
+    const approved = await approvedBrokerRecipient(input.dealId, input.recipientUserId!);
+    if (normalizeEmail(input.to[0]) !== approved) throw new Error("BROKER_RECIPIENT_POLICY_REJECTED");
+    recipients = [approved];
+  } else {
+    // System notices are allowed only through a named, independently audited
+    // notice scope. They never acquire MARKET or BROKER thread material.
+    recipients = input.to.map(normalizeEmail);
+  }
 
   if (input.dealMarketId) {
     // Load the deal_market and verify it belongs to this deal.
@@ -203,6 +497,23 @@ export async function sendDealEmail(input: SendDealEmailInput): Promise<SendDeal
     );
     replyTo = marketEmailAddr.emailAddress;
     subjectTokenStr = marketSubjectToken(marketEmailAddr.subjectToken);
+    if (channel === "MARKET") {
+      correspondenceThread = await ensureCorrespondenceThread({
+        channel: "MARKET",
+        dealId: input.dealId,
+        dealMarketId: input.dealMarketId,
+        marketListener: replyTo,
+        marketSubjectToken: marketEmailAddr.subjectToken,
+      });
+    }
+  } else if (channel === "BROKER") {
+    correspondenceThread = await ensureCorrespondenceThread({
+      channel: "BROKER",
+      dealId: input.dealId,
+      participantUserId: input.recipientUserId!,
+    });
+    replyTo = correspondenceThread.listenerEmail;
+    subjectTokenStr = `[AXB-${correspondenceThread.subjectToken}]`;
   } else {
     replyTo = addr.emailAddress;
     subjectTokenStr = subjectToken(addr.fileId);
@@ -214,6 +525,63 @@ export async function sendDealEmail(input: SendDealEmailInput): Promise<SendDeal
 
   // RFC Message-ID we ask the provider to use.
   const rfcMessageId = `<axl-${addr.fileId}-${crypto.randomUUID()}@${LISTENER_EMAIL_DOMAIN}>`;
+
+  // Every provider attempt gets a durable stable key before I/O. Explicit
+  // worker keys remain stable across that worker attempt. A client may send
+  // manual-<UUID> for one compose/retry cycle; identical later content without
+  // that same key is intentionally a new send.
+  const idempotencyKey = input.idempotencyKey ??
+    (isControlled
+      ? manualComposeIdempotencyKey()
+      : `system-${crypto.randomUUID()}`);
+  const outboundStatus = channel === "SYSTEM_NOTICE" ? "LEGACY" : channel;
+  type ExistingOutbound = {
+    id: string;
+    providerMessageId: string | null;
+    status: string;
+    error: string | null;
+  };
+  const existingQuery = await db.execute(sql`
+    SELECT id, provider_message_id AS "providerMessageId", status, error
+    FROM deal_outbound_emails
+    WHERE idempotency_key = ${idempotencyKey}
+    LIMIT 1
+  `);
+  const existing = (existingQuery as unknown as { rows: ExistingOutbound[] }).rows[0];
+  if (existing) return resultForExistingOutbound(existing);
+
+  // This insert is the durable pre-provider record. Raw SQL is used for the
+  // rollout-only idempotency columns so this safety boundary remains correct
+  // while the shared DB schema package is updated independently.
+  const pendingQuery = await db.execute(sql`
+    INSERT INTO deal_outbound_emails (
+      deal_id, deal_market_id, provider_message_id, rfc_message_id,
+      to_emails, cc_emails, from_email, reply_to, subject, body_html, body_text,
+      channel, correspondence_thread_id, recipient_user_id, idempotency_key, status, error
+    ) VALUES (
+      ${input.dealId}, ${input.dealMarketId ?? null}, ${null}, ${rfcMessageId},
+      ${JSON.stringify(recipients)}::jsonb, ${JSON.stringify(input.cc ?? [])}::jsonb,
+      ${DEFAULT_FROM}, ${replyTo}, ${subject}, ${input.html ?? null}, ${input.text ?? null},
+      ${outboundStatus}, ${correspondenceThread?.id ?? null}, ${input.recipientUserId ?? null},
+      ${idempotencyKey}, ${"PENDING"}, ${null}
+    )
+    ON CONFLICT (idempotency_key) WHERE idempotency_key IS NOT NULL DO NOTHING
+    RETURNING id
+  `);
+  const pending = (pendingQuery as unknown as { rows: Array<{ id: string }> }).rows[0];
+  if (!pending) {
+    // A concurrent caller won the durable key race. Do not issue a second
+    // provider call; its PENDING state is deliberately surfaced as unknown.
+    const concurrentQuery = await db.execute(sql`
+      SELECT id, provider_message_id AS "providerMessageId", status, error
+      FROM deal_outbound_emails
+      WHERE idempotency_key = ${idempotencyKey}
+      LIMIT 1
+    `);
+    const concurrent = (concurrentQuery as unknown as { rows: ExistingOutbound[] }).rows[0];
+    if (concurrent) return resultForExistingOutbound(concurrent);
+    throw new Error("OUTBOUND_IDEMPOTENCY_PERSISTENCE_FAILED");
+  }
 
   const apiKey = process.env.RESEND_API_KEY;
   let status: SendDealEmailResult["status"] = "dev_logged";
@@ -227,17 +595,16 @@ export async function sendDealEmail(input: SendDealEmailInput): Promise<SendDeal
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       };
-      if (input.idempotencyKey) {
-        headers["Idempotency-Key"] = input.idempotencyKey;
-      }
+        headers["Idempotency-Key"] = idempotencyKey;
 
       const resp = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers,
         body: JSON.stringify({
           from: DEFAULT_FROM,
-          to: input.to,
-          cc: input.cc,
+          to: recipients,
+          cc: channel === "SYSTEM_NOTICE" ? input.cc : undefined,
+          bcc: channel === "SYSTEM_NOTICE" ? input.bcc : undefined,
           subject,
           html: input.html,
           text: input.text,
@@ -268,7 +635,7 @@ export async function sendDealEmail(input: SendDealEmailInput): Promise<SendDeal
   } else {
     logger.info(
       {
-        to: input.to.join(", "),
+        to: recipients.join(", "),
         subject,
         replyTo,
         dealMarketId: input.dealMarketId ?? null,
@@ -277,52 +644,56 @@ export async function sendDealEmail(input: SendDealEmailInput): Promise<SendDeal
     );
   }
 
-  const [outbound] = await db
-    .insert(dealOutboundEmailsTable)
-    .values({
+  const persistedStatus = failureKind === "DELIVERY_UNKNOWN" ? "DELIVERY_UNKNOWN" : status;
+  // The terminal row update and audit event commit together. If this
+  // transaction cannot commit after provider I/O, the durable PENDING row is
+  // intentionally conservative and must be manually reviewed rather than
+  // retried as a fresh send.
+  await db.transaction(async (tx) => {
+    await tx
+      .update(dealOutboundEmailsTable)
+      .set({
+        providerMessageId,
+        status: persistedStatus,
+        error: error ?? null,
+      })
+      .where(eq(dealOutboundEmailsTable.id, pending.id));
+
+    await tx.insert(activityLogTable).values({
       dealId: input.dealId,
       dealMarketId: input.dealMarketId ?? null,
-      providerMessageId,
-      rfcMessageId,
-      toEmails: input.to,
-      ccEmails: input.cc ?? null,
-      fromEmail: DEFAULT_FROM,
-      replyTo,
-      subject,
-      bodyHtml: input.html ?? null,
-      bodyText: input.text ?? null,
-      status,
-      error: error ?? null,
-    })
-    .returning();
-
-  await db.insert(activityLogTable).values({
-    dealId: input.dealId,
-    dealMarketId: input.dealMarketId ?? null,
-    entityType: "deal",
-    entityId: input.dealId,
-    eventType: "email_sent",
-    description:
-      status === "sent"
-        ? `Email sent to ${input.to.join(", ")}: "${subject}"`
-        : status === "dev_logged"
-          ? `Email recorded (dev mode, not delivered) to ${input.to.join(", ")}: "${subject}"`
-          : `Email FAILED to ${input.to.join(", ")}: "${subject}"`,
-    metadata: {
-      outbound_email_id: outbound.id,
-      status,
-      reply_to: replyTo,
-      provider_message_id: providerMessageId,
-      error: error ?? null,
-      sent_by: input.sentBy ?? null,
-      deal_market_id: input.dealMarketId ?? null,
-    },
+      entityType: "deal",
+      entityId: input.dealId,
+      eventType: failureKind === "DELIVERY_UNKNOWN" ? "email_delivery_unknown" : "email_sent",
+      description:
+        status === "sent"
+          ? `Email sent to ${recipients.join(", ")}: "${subject}"`
+          : status === "dev_logged"
+            ? `Email recorded (dev mode, not delivered) to ${recipients.join(", ")}: "${subject}"`
+            : failureKind === "DELIVERY_UNKNOWN"
+              ? `Email delivery status UNKNOWN for ${recipients.join(", ")}: "${subject}". Manual review required; do not retry automatically.`
+              : `Email FAILED to ${recipients.join(", ")}: "${subject}"`,
+      metadata: {
+        outbound_email_id: pending.id,
+        idempotency_key: idempotencyKey,
+        status: persistedStatus,
+        reply_to: replyTo,
+        provider_message_id: providerMessageId,
+        error: error ?? null,
+        sent_by: input.sentBy ?? null,
+        deal_market_id: input.dealMarketId ?? null,
+        correspondence_channel: outboundStatus,
+        correspondence_private: isControlled,
+        system_notice: systemNoticeScope(input),
+      },
+    });
   });
 
   return {
     ok: status !== "failed",
     status,
-    outboundId: outbound.id,
+    deliveryState: persistedStatus,
+    outboundId: pending.id,
     providerMessageId,
     error,
     failureKind,

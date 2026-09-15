@@ -8,6 +8,7 @@
  * boundary; the UI only hides affordances.
  */
 import { Router, type IRouter, type Request } from "express";
+import crypto from "node:crypto";
 import {
   db,
   dealsTable,
@@ -26,6 +27,9 @@ import {
   partnersTable,
   dispatchBatchesTable,
   dispatchItemsTable,
+  dealInboundEmailsTable,
+  dealOutboundEmailsTable,
+  correspondenceThreadsTable,
   type Deal,
   type Account,
   type DealRfi,
@@ -52,7 +56,9 @@ import {
   type DealCardActor,
   type SectionKey,
 } from "../lib/deal-sections";
-import { sendDealEmail } from "../services/emailService";
+import { sendDealEmail, ensureCorrespondenceThread, ensureDealMarketEmailAddress } from "../services/emailService";
+import { enrichInboundEmailBody, sanitizeInboundHtml } from "../lib/inbound-email";
+import { isTrustedCorrespondenceStaff, trustedActorMayAccessDeal } from "../lib/correspondence-policy";
 import { promoteOverflowMarket } from "../lib/market-dispatch";
 import { canCorrespond, canManageMarket, canSelect, canTransition, isCurrentSelection } from "../lib/market-engagement";
 
@@ -363,7 +369,8 @@ router.get("/:id/activity", async (req, res) => {
   const generalOnly = req.query.general === "true";
 
   // If filtering by dealMarketId, only ADMIN/CSA may do so.
-  const canManageMarkets = MARKET_MANAGEMENT_ROLES.has(actor.role);
+  const trustedCorrespondence = await trustedActorMayAccessDeal(req.user, deal.id);
+  const canManageMarkets = Boolean(trustedCorrespondence);
   if (dealMarketIdFilter && !canManageMarkets) {
     return res.status(403).json({ error: "Only market-management staff may filter activity by market" });
   }
@@ -385,18 +392,14 @@ router.get("/:id/activity", async (req, res) => {
     return res.json({ activity: rows });
   }
 
-  // Non-ADMIN/CSA: filter out internal notes AND secondary market activity.
-  // We need to know which dealMarketId (if any) is Primary so we can allow
-  // Primary-scoped activity through.
-  const [primaryDm] = await db
-    .select({ id: dealMarketsTable.id })
-    .from(dealMarketsTable)
-    .where(and(eq(dealMarketsTable.dealId, deal.id), eq(dealMarketsTable.isPrimary, true)))
-    .limit(1);
-
-  const primaryDmId = primaryDm?.id ?? null;
-
+  // Non-trusted callers never receive a market-scoped fallback — even a
+  // primary market activity record may carry a subject, address, or reply
+  // identity. Market lifecycle remains available through its scoped controls.
   const filtered = rows.filter((r) => {
+    const privateChannel = (r.metadata as { correspondence_private?: boolean } | null)?.correspondence_private;
+    // Correspondence activity is never a primary-market fallback. It has its
+    // own channel endpoints and is hidden from every non-trusted response.
+    if (privateChannel) return false;
     // Strip internal activity.
     if (
       !INTERNAL_ROLES.has(actor.role) &&
@@ -404,11 +407,469 @@ router.get("/:id/activity", async (req, res) => {
     ) return false;
     // Allow general deal activity (no market scope).
     if (r.dealMarketId == null) return true;
-    // Allow primary market activity; strip secondary market activity.
-    return r.dealMarketId === primaryDmId;
+    return false;
   });
 
   return res.json({ activity: filtered });
+});
+
+/* --------------------------------------------------------------------------
+ * Axel-controlled correspondence. Market threads are intentionally absent
+ * from the generic activity feed and can only be read here by trusted staff.
+ * ------------------------------------------------------------------------ */
+function correspondenceMessage(row: any, direction: "INBOUND" | "OUTBOUND") {
+  return direction === "INBOUND"
+    ? {
+        id: row.id,
+        channel: row.channel,
+        direction,
+        threadId: row.correspondenceThreadId ?? row.dealMarketId ?? "held",
+        dealId: row.dealId,
+        dealMarketId: row.dealMarketId,
+        subject: row.subject,
+        from: { name: row.fromName ?? null, email: row.fromEmail },
+        to: Array.isArray(row.toEmails) ? row.toEmails : [],
+        cc: Array.isArray(row.ccEmails) ? row.ccEmails : [],
+        bodyText: row.bodyText,
+        bodyHtml: null,
+        receivedAt: row.receivedAt?.toISOString?.() ?? row.receivedAt,
+        sentAt: null,
+        deliveryState: null,
+        enrichment: row.bodyEnrichmentStatus,
+        heldReason: row.heldReason ?? null,
+      }
+    : {
+        id: row.id,
+        channel: row.channel,
+        direction,
+        threadId: row.correspondenceThreadId ?? row.dealMarketId ?? "legacy",
+        dealId: row.dealId,
+        dealMarketId: row.dealMarketId,
+        subject: row.subject,
+        from: { name: null, email: row.fromEmail },
+        to: Array.isArray(row.toEmails) ? row.toEmails : [],
+        cc: Array.isArray(row.ccEmails) ? row.ccEmails : [],
+        bodyText: row.bodyText,
+        bodyHtml: row.bodyHtml,
+        receivedAt: null,
+        sentAt: row.createdAt?.toISOString?.() ?? row.createdAt,
+        deliveryState: row.status,
+        enrichment: null,
+      };
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+// Global held queue is deliberately separate from deal/market feeds. It also
+// includes unmatched mail with no deal/org, so only explicitly trusted Axel
+// staff (never an external role) can review it.
+router.get("/correspondence/held", async (req, res) => {
+  if (!(await isTrustedCorrespondenceStaff(req.user))) return res.status(403).json({ error: "Trusted Axel correspondence staff required" });
+  const allRows = await db.select()
+    .from(dealInboundEmailsTable)
+    .where(eq(dealInboundEmailsTable.channel, "HELD"))
+    .orderBy(desc(dealInboundEmailsTable.receivedAt))
+    .limit(Math.min(Number(req.query.limit) || 100, 250));
+  const heldDealIds = [...new Set(allRows.map((row) => row.dealId).filter((id): id is string => !!id))];
+  const heldDeals = heldDealIds.length ? await db.select({ id: dealsTable.id, orgId: dealsTable.orgId })
+    .from(dealsTable).where(inArray(dealsTable.id, heldDealIds)) : [];
+  const heldOrgByDeal = new Map(heldDeals.map((deal) => [deal.id, deal.orgId]));
+  // Null-deal mail has no tenant and remains in the trusted global queue;
+  // associated mail is scoped to the reviewing staff member's current org.
+  const rows = allRows.filter((row) => row.dealId == null || heldOrgByDeal.get(row.dealId) === req.user!.orgId);
+  const marketIds = [...new Set(rows.map((row) => row.dealMarketId).filter((id): id is string => !!id))];
+  const candidates = marketIds.length ? await db.select({
+    dealMarketId: dealMarketsTable.id, marketName: marketsTable.name,
+    contactName: marketUnderwritersTable.name, contactEmail: marketUnderwritersTable.email,
+  }).from(dealMarketsTable).innerJoin(marketsTable, eq(marketsTable.id, dealMarketsTable.marketId))
+    .leftJoin(marketUnderwritersTable, eq(marketUnderwritersTable.id, dealMarketsTable.assignedUnderwriterId))
+    .where(inArray(dealMarketsTable.id, marketIds)) : [];
+  const candidateByMarket = new Map(candidates.map((candidate) => [candidate.dealMarketId, candidate]));
+  return res.json({ messages: rows.map((row) => ({
+    ...correspondenceMessage(row, "INBOUND"),
+    candidate: row.dealMarketId
+      ? { channel: "MARKET", ...(candidateByMarket.get(row.dealMarketId) ?? {}) }
+      : row.correspondenceThreadId ? { channel: "BROKER" } : null,
+    senderAuthEvidence: row.senderAuthEvidence ?? null,
+  })) });
+});
+
+const heldReleaseSchema = z.object({
+  channel: z.enum(["MARKET", "BROKER"]),
+  senderConfirmed: z.literal(true),
+}).strict();
+
+// Releasing held inbound mail is a staff classification action, not forwarding
+// or auto-routing. The candidate must already have one server-issued listener,
+// no CC, a matching persisted participant/contact, and no ambiguity/cross-ID.
+router.post("/correspondence/held/:messageId/release", async (req, res) => {
+  if (!UUID_RE.test(req.params.messageId)) return res.status(400).json({ error: "Invalid inbound message identifier" });
+  if (!(await isTrustedCorrespondenceStaff(req.user))) return res.status(403).json({ error: "Trusted Axel correspondence staff required" });
+  const parsed = heldReleaseSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid release confirmation", issues: parsed.error.issues });
+  const [row] = await db.select().from(dealInboundEmailsTable).where(eq(dealInboundEmailsTable.id, req.params.messageId)).limit(1);
+  if (!row || row.channel !== "HELD" || !row.dealId || row.heldReason === "AMBIGUOUS_RECIPIENT_IDENTITIES" || row.heldReason === "HEADER_IDENTITY_CONTRADICTION") {
+    return res.status(409).json({ error: "This held message has no releasable candidate identity" });
+  }
+  const [heldDeal] = await db.select({ orgId: dealsTable.orgId }).from(dealsTable).where(eq(dealsTable.id, row.dealId)).limit(1);
+  if (!heldDeal || heldDeal.orgId !== req.user!.orgId) return res.status(403).json({ error: "Held message belongs to another organization" });
+  const to = Array.isArray(row.toEmails) ? row.toEmails : [];
+  const cc = Array.isArray(row.ccEmails) ? row.ccEmails : [];
+  if (to.length !== 1 || cc.length) return res.status(409).json({ error: "Held recipient identity is ambiguous" });
+
+  let candidateChannel: "MARKET" | "BROKER";
+  let threadId: string;
+  let expectedSender: string | null = null;
+  if (row.dealMarketId) {
+    candidateChannel = "MARKET";
+    const [market] = await db.select({
+      threadId: correspondenceThreadsTable.id, listener: correspondenceThreadsTable.listenerEmail,
+      snapshot: dealMarketsTable.submissionEmailSnapshot, underwriter: marketUnderwritersTable.email,
+    }).from(dealMarketsTable)
+      .innerJoin(correspondenceThreadsTable, and(eq(correspondenceThreadsTable.dealMarketId, dealMarketsTable.id), eq(correspondenceThreadsTable.channel, "MARKET")))
+      .leftJoin(marketUnderwritersTable, eq(marketUnderwritersTable.id, dealMarketsTable.assignedUnderwriterId))
+      .where(and(eq(dealMarketsTable.id, row.dealMarketId), eq(dealMarketsTable.dealId, row.dealId))).limit(1);
+    if (!market || market.listener.toLowerCase() !== to[0].toLowerCase()) return res.status(409).json({ error: "Held market listener no longer matches candidate" });
+    threadId = market.threadId;
+    expectedSender = market.snapshot ?? market.underwriter;
+  } else if (row.correspondenceThreadId) {
+    candidateChannel = "BROKER";
+    const [thread] = await db.select({
+      id: correspondenceThreadsTable.id, listener: correspondenceThreadsTable.listenerEmail, email: usersTable.email,
+    }).from(correspondenceThreadsTable)
+      .innerJoin(usersTable, eq(usersTable.id, correspondenceThreadsTable.participantUserId))
+      .where(and(eq(correspondenceThreadsTable.id, row.correspondenceThreadId), eq(correspondenceThreadsTable.channel, "BROKER"), eq(correspondenceThreadsTable.dealId, row.dealId))).limit(1);
+    if (!thread || thread.listener.toLowerCase() !== to[0].toLowerCase()) return res.status(409).json({ error: "Held broker listener no longer matches candidate" });
+    threadId = thread.id;
+    expectedSender = thread.email;
+  } else return res.status(409).json({ error: "Held message has no controlled channel candidate" });
+
+  if (candidateChannel !== parsed.data.channel || !expectedSender || expectedSender.toLowerCase() !== row.fromEmail.replace(/^.*<([^>]+)>.*$/, "$1").trim().toLowerCase()) {
+    return res.status(409).json({ error: "Confirmed sender does not match the persisted candidate" });
+  }
+  const released = await db.transaction(async (tx) => {
+    const [updated] = await tx.update(dealInboundEmailsTable).set({
+      channel: candidateChannel, correspondenceThreadId: threadId, heldReason: null,
+    }).where(and(eq(dealInboundEmailsTable.id, row.id), eq(dealInboundEmailsTable.channel, "HELD"))).returning({ id: dealInboundEmailsTable.id });
+    if (!updated) return false;
+    await tx.insert(activityLogTable).values({
+      dealId: row.dealId!, dealMarketId: row.dealMarketId, entityType: "deal",
+      entityId: row.dealId!, eventType: "inbound_email_released",
+      description: `Held ${candidateChannel.toLowerCase()} email released after staff sender confirmation`,
+      metadata: { correspondence_private: true, inbound_email_id: row.id, released_by: req.user!.id, sender_auth_evidence: row.senderAuthEvidence ?? null },
+    });
+    return true;
+  });
+  if (!released) return res.status(409).json({ error: "Held message was already released or reclassified" });
+  return res.json({ released: true, channel: candidateChannel, messageId: row.id });
+});
+
+async function trustedDealContext(req: Request, dealId: string, res: any) {
+  if (!UUID_RE.test(dealId)) {
+    res.status(400).json({ error: "Invalid deal identifier" });
+    return null;
+  }
+  const deal = await loadDeal(dealId);
+  if (!deal) {
+    res.status(404).json({ error: "Deal not found" });
+    return null;
+  }
+  const context = await trustedActorMayAccessDeal(req.user, dealId);
+  if (!context) {
+    res.status(403).json({ error: "Trusted active Axel ADMIN or CSA membership for this deal organization is required" });
+    return null;
+  }
+  return context;
+}
+
+router.get("/:id/correspondence/market/:dealMarketId", async (req, res) => {
+  const context = await trustedDealContext(req, req.params.id, res);
+  if (!context) return;
+  if (!UUID_RE.test(req.params.dealMarketId)) return res.status(400).json({ error: "Invalid market identifier" });
+  const [market] = await db
+    .select({
+      dealMarketId: dealMarketsTable.id,
+      marketId: dealMarketsTable.marketId,
+      marketName: marketsTable.name,
+      contactName: marketUnderwritersTable.name,
+      contactEmail: marketUnderwritersTable.email,
+      snapshotEmail: dealMarketsTable.submissionEmailSnapshot,
+    })
+    .from(dealMarketsTable)
+    .innerJoin(marketsTable, eq(marketsTable.id, dealMarketsTable.marketId))
+    .leftJoin(marketUnderwritersTable, eq(marketUnderwritersTable.id, dealMarketsTable.assignedUnderwriterId))
+    .where(and(eq(dealMarketsTable.id, req.params.dealMarketId), eq(dealMarketsTable.dealId, context.deal.id)))
+    .limit(1);
+  if (!market) return res.status(404).json({ error: "Selected market thread was not found" });
+  let [thread] = await db.select().from(correspondenceThreadsTable).where(and(
+    eq(correspondenceThreadsTable.channel, "MARKET"),
+    eq(correspondenceThreadsTable.dealMarketId, market.dealMarketId),
+  )).limit(1);
+  if (!thread) {
+    const address = await ensureDealMarketEmailAddress(market.dealMarketId, context.deal.id, market.marketId);
+    thread = await ensureCorrespondenceThread({
+      channel: "MARKET",
+      dealId: context.deal.id,
+      dealMarketId: market.dealMarketId,
+      marketListener: address.emailAddress,
+      marketSubjectToken: address.subjectToken,
+    });
+  }
+  const [inbound, outbound] = await Promise.all([
+    db.select().from(dealInboundEmailsTable).where(and(
+      eq(dealInboundEmailsTable.dealId, context.deal.id),
+      eq(dealInboundEmailsTable.dealMarketId, market.dealMarketId),
+      eq(dealInboundEmailsTable.channel, "MARKET"),
+    )),
+    db.select().from(dealOutboundEmailsTable).where(and(
+      eq(dealOutboundEmailsTable.dealId, context.deal.id),
+      eq(dealOutboundEmailsTable.dealMarketId, market.dealMarketId),
+      eq(dealOutboundEmailsTable.channel, "MARKET"),
+    )),
+  ]);
+  const messages = [
+    ...inbound.map((row) => correspondenceMessage(row, "INBOUND")),
+    ...outbound.map((row) => correspondenceMessage(row, "OUTBOUND")),
+  ].sort((a, b) => String(a.receivedAt ?? a.sentAt).localeCompare(String(b.receivedAt ?? b.sentAt)));
+  return res.json({
+    market: {
+      dealMarketId: market.dealMarketId,
+      marketName: market.marketName,
+      contact: { name: market.contactName ?? null, email: market.snapshotEmail ?? market.contactEmail ?? null },
+      threadId: thread?.id ?? null,
+    },
+    messages,
+  });
+});
+
+const controlledMessageSchema = z.object({
+  subject: z.string().trim().min(1).max(300),
+  text: z.string().trim().min(1).max(50_000),
+  html: z.string().trim().max(100_000).optional(),
+  requestId: z.string().uuid().optional(),
+}).strict();
+
+router.post("/:id/correspondence/market/:dealMarketId", async (req, res) => {
+  const context = await trustedDealContext(req, req.params.id, res);
+  if (!context) return;
+  if (!UUID_RE.test(req.params.dealMarketId)) return res.status(400).json({ error: "Invalid market identifier" });
+  const parsed = controlledMessageSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid message", issues: parsed.error.issues });
+  const [recipient] = await db
+    .select({
+      snapshot: dealMarketsTable.submissionEmailSnapshot,
+      underwriterEmail: marketUnderwritersTable.email,
+      isActive: dealMarketsTable.isActive,
+      marketStatus: dealMarketsTable.marketStatus,
+      engagementSource: dealMarketsTable.engagementSource,
+    })
+    .from(dealMarketsTable)
+    .leftJoin(marketUnderwritersTable, eq(dealMarketsTable.assignedUnderwriterId, marketUnderwritersTable.id))
+    .where(and(eq(dealMarketsTable.id, req.params.dealMarketId), eq(dealMarketsTable.dealId, context.deal.id)))
+    .limit(1);
+  if (!recipient) return res.status(404).json({ error: "Selected market thread was not found" });
+  if (!canCorrespond(recipient.engagementSource as any, recipient.isActive, recipient.marketStatus as any) || !(recipient.snapshot ?? recipient.underwriterEmail)) {
+    return res.status(409).json({ error: "This market is not active for correspondence or has no approved contact" });
+  }
+  try {
+    const result = await sendDealEmail({
+      channel: "MARKET",
+      dealId: context.deal.id,
+      dealMarketId: req.params.dealMarketId,
+      to: [recipient.snapshot ?? recipient.underwriterEmail!],
+      subject: parsed.data.subject,
+      text: parsed.data.text,
+      html: parsed.data.html,
+      idempotencyKey: parsed.data.requestId ? `manual-${parsed.data.requestId}` : undefined,
+      sentBy: [context.actor.firstName, context.actor.lastName].filter(Boolean).join(" ") || context.actor.email,
+    });
+    if (!result.ok) return res.status(502).json({ error: result.error ?? "Market email failed", deliveryState: result.deliveryState, outboundId: result.outboundId });
+    const [outbound] = await db.select().from(dealOutboundEmailsTable).where(eq(dealOutboundEmailsTable.id, result.outboundId)).limit(1);
+    return res.status(201).json({ message: correspondenceMessage(outbound, "OUTBOUND") });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return res.status(message.includes("POLICY") ? 422 : 409).json({ error: message });
+  }
+});
+
+router.post("/:id/correspondence/inbound/:messageId/retry-body", async (req, res) => {
+  const context = await trustedDealContext(req, req.params.id, res);
+  if (!context) return;
+  if (!UUID_RE.test(req.params.messageId)) return res.status(400).json({ error: "Invalid inbound message identifier" });
+  const [inbound] = await db.select().from(dealInboundEmailsTable).where(and(
+    eq(dealInboundEmailsTable.id, req.params.messageId),
+    eq(dealInboundEmailsTable.dealId, context.deal.id),
+  )).limit(1);
+  if (!inbound) return res.status(404).json({ error: "Inbound message not found" });
+  try {
+    const result = await enrichInboundEmailBody(inbound.id);
+    return res.json({ message: correspondenceMessage(result.row, "INBOUND"), enriched: result.enriched });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return res.status(message === "RESEND_RETRIEVAL_UNAVAILABLE" ? 409 : 502).json({ error: message });
+  }
+});
+
+async function brokerParticipantThread(deal: Deal, userId: string) {
+  if (![deal.ownerId, deal.producingAgentId, deal.referralPartnerId].includes(userId)) return null;
+  const [participant] = await db
+    .select({ id: usersTable.id, email: usersTable.email, role: orgMembersTable.role })
+    .from(usersTable)
+    .innerJoin(orgMembersTable, and(eq(orgMembersTable.userId, usersTable.id), eq(orgMembersTable.isPrimaryOrg, true)))
+    .where(eq(usersTable.id, userId))
+    .limit(1);
+  if (!participant || participant.role.toUpperCase() !== "AGENT") return null;
+  const [thread] = await db.select().from(correspondenceThreadsTable).where(and(
+    eq(correspondenceThreadsTable.channel, "BROKER"),
+    eq(correspondenceThreadsTable.dealId, deal.id),
+    eq(correspondenceThreadsTable.participantUserId, userId),
+  )).limit(1);
+  return { participant, thread };
+}
+
+async function brokerParticipants(deal: Deal) {
+  const ids = [...new Set([deal.ownerId, deal.producingAgentId, deal.referralPartnerId].filter((id): id is string => !!id))];
+  if (!ids.length) return [];
+  const rows = await db
+    .select({
+      userId: usersTable.id,
+      email: usersTable.email,
+      firstName: usersTable.firstName,
+      lastName: usersTable.lastName,
+      role: orgMembersTable.role,
+    })
+    .from(usersTable)
+    .innerJoin(orgMembersTable, and(eq(orgMembersTable.userId, usersTable.id), eq(orgMembersTable.isPrimaryOrg, true)))
+    .where(inArray(usersTable.id, ids));
+  return rows
+    .filter((row) => row.role.toUpperCase() === "AGENT")
+    .map((row) => ({
+      userId: row.userId,
+      email: row.email,
+      name: [row.firstName, row.lastName].filter(Boolean).join(" ") || row.email,
+    }));
+}
+
+router.get("/:id/correspondence", async (req, res) => {
+  if (!UUID_RE.test(req.params.id)) return res.status(400).json({ error: "Invalid deal identifier" });
+  const deal = await loadDeal(req.params.id);
+  if (!deal) return res.status(404).json({ error: "Deal not found" });
+  const trusted = await trustedActorMayAccessDeal(req.user, deal.id);
+  const participant = trusted ? null : await brokerParticipantThread(deal, req.user!.id);
+  if (!trusted && !participant) return res.status(403).json({ error: "Insufficient permissions" });
+  return res.json({
+    market: { canRead: Boolean(trusted), canSend: Boolean(trusted), canReviewHeld: Boolean(trusted) },
+    broker: {
+      canRead: Boolean(trusted || participant),
+      canSend: Boolean(trusted),
+      canReply: Boolean(participant),
+      // An external participant does not receive a directory of other brokers.
+      eligibleRecipients: trusted ? await brokerParticipants(deal) : [],
+    },
+  });
+});
+
+router.get("/:id/correspondence/broker", async (req, res) => {
+  if (!UUID_RE.test(req.params.id)) return res.status(400).json({ error: "Invalid deal identifier" });
+  const deal = await loadDeal(req.params.id);
+  if (!deal) return res.status(404).json({ error: "Deal not found" });
+  const trusted = await trustedActorMayAccessDeal(req.user, deal.id);
+  const participant = trusted ? null : await brokerParticipantThread(deal, req.user!.id);
+  if (!trusted && !participant) return res.status(403).json({ error: "Insufficient permissions" });
+  // A participant without a persisted thread must see no rows; treating null
+  // as an unscoped filter would disclose every broker thread on the deal.
+  if (participant && !participant.thread) return res.json({ messages: [] });
+  const allowedThreadId = participant?.thread?.id ?? null;
+  const [inbound, outbound] = await Promise.all([
+    db.select().from(dealInboundEmailsTable).where(and(
+      eq(dealInboundEmailsTable.dealId, deal.id),
+      eq(dealInboundEmailsTable.channel, "BROKER"),
+    )),
+    db.select().from(dealOutboundEmailsTable).where(and(
+      eq(dealOutboundEmailsTable.dealId, deal.id),
+      eq(dealOutboundEmailsTable.channel, "BROKER"),
+    )),
+  ]);
+  const messages = [
+    ...inbound.filter((r) => !allowedThreadId || r.correspondenceThreadId === allowedThreadId).map((r) => correspondenceMessage(r, "INBOUND")),
+    ...outbound.filter((r) => !allowedThreadId || r.correspondenceThreadId === allowedThreadId).map((r) => correspondenceMessage(r, "OUTBOUND")),
+  ].sort((a, b) => String(a.receivedAt ?? a.sentAt).localeCompare(String(b.receivedAt ?? b.sentAt)));
+  return res.json({ messages });
+});
+
+const brokerMessageSchema = controlledMessageSchema.extend({ recipientUserId: z.string().uuid() });
+router.post("/:id/correspondence/broker", async (req, res) => {
+  const context = await trustedDealContext(req, req.params.id, res);
+  if (!context) return;
+  const parsed = brokerMessageSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid message", issues: parsed.error.issues });
+  const participant = await brokerParticipantThread(context.deal, parsed.data.recipientUserId);
+  if (!participant) return res.status(403).json({ error: "Recipient is not an authorized deal-associated broker or agent" });
+  try {
+    const result = await sendDealEmail({
+      channel: "BROKER",
+      dealId: context.deal.id,
+      recipientUserId: participant.participant.id,
+      to: [participant.participant.email],
+      subject: parsed.data.subject,
+      text: parsed.data.text,
+      html: parsed.data.html,
+      idempotencyKey: parsed.data.requestId ? `manual-${parsed.data.requestId}` : undefined,
+      sentBy: [context.actor.firstName, context.actor.lastName].filter(Boolean).join(" ") || context.actor.email,
+    });
+    if (!result.ok) return res.status(502).json({ error: result.error ?? "Broker email failed", deliveryState: result.deliveryState, outboundId: result.outboundId });
+    const [outbound] = await db.select().from(dealOutboundEmailsTable).where(eq(dealOutboundEmailsTable.id, result.outboundId)).limit(1);
+    return res.status(201).json({ message: correspondenceMessage(outbound, "OUTBOUND") });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return res.status(message.includes("POLICY") ? 422 : 409).json({ error: message });
+  }
+});
+
+router.post("/:id/correspondence/broker/reply", async (req, res) => {
+  if (!UUID_RE.test(req.params.id)) return res.status(400).json({ error: "Invalid deal identifier" });
+  const deal = await loadDeal(req.params.id);
+  if (!deal) return res.status(404).json({ error: "Deal not found" });
+  // Trusted staff use the dedicated composer endpoint; this endpoint has no
+  // recipient field and is intentionally restricted to the participant.
+  if (await trustedActorMayAccessDeal(req.user, deal.id)) {
+    return res.status(403).json({ error: "Use the broker composer to select an authorized recipient" });
+  }
+  const participant = await brokerParticipantThread(deal, req.user!.id);
+  if (!participant) return res.status(403).json({ error: "Only an authorized deal-associated broker or agent may reply" });
+  const parsed = controlledMessageSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid message", issues: parsed.error.issues });
+  const thread = participant.thread ?? await ensureCorrespondenceThread({
+    channel: "BROKER",
+    dealId: deal.id,
+    participantUserId: req.user!.id,
+  });
+  const [row] = await db.insert(dealInboundEmailsTable).values({
+    dealId: deal.id,
+    dealMarketId: null,
+    messageId: `portal-broker-${crypto.randomUUID()}`,
+    fromEmail: participant.participant.email,
+    fromName: [req.user!.firstName, req.user!.lastName].filter(Boolean).join(" ") || null,
+    subject: parsed.data.subject,
+    bodyText: parsed.data.text,
+    bodyHtml: null,
+    channel: "BROKER",
+    correspondenceThreadId: thread.id,
+    bodyEnrichmentStatus: "COMPLETE",
+    receivedAt: new Date(),
+    processedAt: new Date(),
+  }).returning();
+  return res.status(201).json({ message: correspondenceMessage(row, "INBOUND") });
+});
+
+router.get("/:id/correspondence/held", async (req, res) => {
+  const context = await trustedDealContext(req, req.params.id, res);
+  if (!context) return;
+  const rows = await db.select().from(dealInboundEmailsTable).where(and(
+    eq(dealInboundEmailsTable.dealId, context.deal.id),
+    eq(dealInboundEmailsTable.channel, "HELD"),
+  )).orderBy(desc(dealInboundEmailsTable.receivedAt));
+  return res.json({ messages: rows.map((row) => correspondenceMessage(row, "INBOUND")) });
 });
 
 /* --------------------------------------------------------------------------
@@ -442,8 +903,9 @@ router.post("/:id/messages", async (req, res) => {
   const author = [u.firstName, u.lastName].filter(Boolean).join(" ") || u.email;
 
   if (parsed.data.dealMarketId) {
-    if (!MARKET_MANAGEMENT_ROLES.has(actor.role)) {
-      return res.status(403).json({ error: "Only market-management staff may send market correspondence" });
+    const trusted = await trustedActorMayAccessDeal(req.user, deal.id);
+    if (!trusted) {
+      return res.status(403).json({ error: "Only trusted active Axel ADMIN or CSA staff may send market correspondence" });
     }
     if (internal) {
       return res.status(400).json({ error: "Market correspondence cannot be an internal note" });
@@ -504,6 +966,7 @@ router.post("/:id/messages", async (req, res) => {
     }
 
     const result = await sendDealEmail({
+      channel: "MARKET",
       dealId: deal.id,
       dealMarketId: parsed.data.dealMarketId,
       to: [recipientEmail],
@@ -552,7 +1015,7 @@ router.get("/:id/market-routing-summary", async (req, res) => {
   if (!deal) return res.status(404).json({ error: "Deal not found" });
   if (!canViewDeal(deal, actor)) return res.status(403).json({ error: "Insufficient permissions" });
 
-  const isAdminCsa = MARKET_MANAGEMENT_ROLES.has(actor.role);
+  const isAdminCsa = Boolean(await trustedActorMayAccessDeal(req.user, deal.id));
 
   // Load deal_markets for this deal.
   const dealMarkets = await db
@@ -703,7 +1166,7 @@ async function requireMarketManagement(req: Request, res: any) {
 }
 
 router.post("/:id/markets/:dealMarketId/promote", async (req, res) => {
-  const context = await requireMarketManagement(req, res);
+  const context = await trustedDealContext(req, req.params.id, res);
   if (!context) return;
   try {
     const result = await promoteOverflowMarket(req.params.id, req.params.dealMarketId, context.actor.id);

@@ -25,6 +25,7 @@ import {
   isManualDispatchRetryEligible,
   retryBatchMetadata,
 } from "../lib/market-dispatch";
+import { trustedActorMayAccessDeal } from "../lib/correspondence-policy";
 
 const router: IRouter = Router();
 
@@ -40,11 +41,21 @@ function requireAdminCsa(req: Parameters<typeof router.get>[1] extends (req: inf
 // Apply the role gate to all routes in this module.
 router.use(requireAdminCsa as any);
 
+async function requireTrustedDeal(req: any, res: any) {
+  const context = await trustedActorMayAccessDeal(req.user, req.params.dealId);
+  if (!context) {
+    res.status(403).json({ error: "Trusted Axel staff may only access dispatch for a deal in their current organization" });
+    return null;
+  }
+  return context;
+}
+
 // ---------------------------------------------------------------------------
 // GET /:dealId — dispatch state
 // ---------------------------------------------------------------------------
 router.get("/:dealId", async (req, res) => {
   const { dealId } = req.params;
+  if (!(await requireTrustedDeal(req, res))) return;
   try {
     const status = await getDispatchStatus(dealId);
     return res.json(status);
@@ -59,6 +70,7 @@ router.get("/:dealId", async (req, res) => {
 // ---------------------------------------------------------------------------
 router.post("/:dealId/retry", async (req, res) => {
   const { dealId } = req.params;
+  if (!(await requireTrustedDeal(req, res))) return;
   const actor = req.user!;
   const actorName = [actor.firstName, actor.lastName].filter(Boolean).join(" ") || actor.email;
   const parsed = z.object({ batchId: z.string().uuid() }).safeParse(req.body);
@@ -163,6 +175,7 @@ router.post("/:dealId/retry", async (req, res) => {
 // ---------------------------------------------------------------------------
 router.post("/:dealId/cancel", async (req, res) => {
   const { dealId } = req.params;
+  if (!(await requireTrustedDeal(req, res))) return;
   const { reason } = req.body as { reason?: string };
   const actor = req.user!;
   const actorName = [actor.firstName, actor.lastName].filter(Boolean).join(" ") || actor.email;

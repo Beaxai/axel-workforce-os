@@ -45,6 +45,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { eq, and, desc, isNotNull } from "drizzle-orm";
 import { z } from "zod/v4";
+import { isTrustedCorrespondenceStaff } from "../lib/correspondence-policy";
 import {
   db,
   marketsTable,
@@ -267,6 +268,10 @@ router.post("/deals/:dealId/rank", async (req: Request, res: Response): Promise<
 // GET /markets/:marketId  — single market with nested data (ADMIN/CSA)
 // ---------------------------------------------------------------------------
 router.get("/:marketId", async (req: Request, res: Response): Promise<void> => {
+  if (!(await isTrustedCorrespondenceStaff(req.user))) {
+    res.status(403).json({ error: "Trusted Axel correspondence staff required for market contacts" });
+    return;
+  }
   const marketId = Array.isArray(req.params.marketId) ? req.params.marketId[0] : req.params.marketId;
 
   const [market] = await db
@@ -443,6 +448,10 @@ router.delete("/:marketId", async (req: Request, res: Response): Promise<void> =
 // GET /markets/:marketId/underwriters
 // ---------------------------------------------------------------------------
 router.get("/:marketId/underwriters", async (req: Request, res: Response): Promise<void> => {
+  if (!(await isTrustedCorrespondenceStaff(req.user))) {
+    res.status(403).json({ error: "Trusted Axel correspondence staff required for market contacts" });
+    return;
+  }
   const marketId = Array.isArray(req.params.marketId) ? req.params.marketId[0] : req.params.marketId;
 
   const rows = await db

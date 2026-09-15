@@ -11,7 +11,7 @@
 - [Dev DB schema drift](dev-db-schema-drift.md) — drizzle push data-loss prompt aborts silently (exit 0) on closed stdin; declare drifted columns in schema instead of dropping unmerged-branch data.
 - [Mockup sandbox setup](mockup-sandbox-setup.md) — sandbox wasn't pre-installed; /__mockup 404s meant no scaffold — createArtifact type "mockup-sandbox" into an empty dir fixes it.
 - [Deposit monitor invariants](deposit-monitor-invariants.md) — §6E monitor is non-gating, columns are system-managed (stripped from generic routes), startup runs after the bind tx commits.
-- [Inbound email routing](email-routing.md) — 3-layer reply routing (listener addr → subject token → Message-ID); webhooks only reachable via /api/webhooks; HMAC needs req.rawBody, not re-serialized JSON.
+- [Inbound email routing](email-routing.md) — provider transport is not sender proof; verify held replies explicitly; Development webhooks and signatures must match Development data.
 - [Broker fee invariants](broker-fee-invariants.md) — non-blocking; server computes amount from latest quote (client never recalculates); PAID/WAIVED exit only via reinstate-unpaid; dunning claims once post-bind.
 - [SignWell integration](signwell-integration.md) — webhooks are hints only (re-fetch live doc; completed = live status); signed is terminal; 401 "verify your email" until SignWell account email verified.
 - [PEO implementation tracker](peo-tracker.md) — WC sub-items reuse WC task keys; CSA-PEO anchors payroll from satisfiedAt; go-live 409-gated on phases 3+4; pre-bind signing caught up at instantiation.

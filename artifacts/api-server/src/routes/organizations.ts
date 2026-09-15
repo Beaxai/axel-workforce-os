@@ -1,8 +1,14 @@
 import { Router, type IRouter } from "express";
 import { db, organizationsTable, insertOrganizationSchema } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import { requireTrustedAxelAdmin } from "../middleware/require-auth";
 
 const router: IRouter = Router();
+
+// Organizations influence membership routing. An external user merely labelled
+// ADMIN must not be able to create or reshape an organization and then use it
+// as a trust look-alike.
+router.use(requireTrustedAxelAdmin);
 
 router.get("/", async (_req, res) => {
   const rows = await db.select().from(organizationsTable);

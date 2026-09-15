@@ -10,8 +10,8 @@
  * a STATIC placeholder deferred to P6 iteration 2.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Sparkles, AlertTriangle, ArrowUp, Plus, Check, CircleSlash, X, ArrowRight, SlidersHorizontal, FileUp, RefreshCw, Zap, Link2, FilePlus2 } from "lucide-react";
-import type { ActivityRow, RfiRow, QuoteVariation, VariationLevers, PreviewVariationResponse, DealDirectoryEntry, MarketRoutingSummary } from "./types";
+import { Sparkles, AlertTriangle, ArrowUp, Plus, Check, CircleSlash, X, ArrowRight, SlidersHorizontal, FileUp, RefreshCw, Zap, Link2, FilePlus2, MessageSquare, AlertCircle } from "lucide-react";
+import type { ActivityRow, RfiRow, QuoteVariation, VariationLevers, PreviewVariationResponse, DealDirectoryEntry, MarketRoutingSummary, CorrespondenceCapabilities } from "./types";
 import { STATUS_COLORS } from "./icons";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import UserMiniProfile from "@/components/user-profile/UserMiniProfile";
@@ -19,6 +19,10 @@ import Avatar from "@/components/user-profile/Avatar";
 import { useAuthStore } from "@/lib/auth-store";
 import MarketRoutingPanel from "./MarketRoutingPanel";
 import { displayName } from "@/lib/agent-display-name";
+import MarketCorrespondenceView from "./MarketCorrespondenceView";
+import BrokerCorrespondenceDialog from "./BrokerCorrespondenceDialog";
+import HeldCorrespondenceDialog from "./HeldCorrespondenceDialog";
+import { api } from "@/lib/api";
 
 /**
  * Feature flag: AI Quote Variations row on the deal card Overview tab.
@@ -36,6 +40,7 @@ export interface CreateRfiInput {
 }
 
 interface OverviewTabProps {
+  dealId: string;
   activity: ActivityRow[];
   canPost: boolean;
   posting: boolean;
@@ -359,7 +364,7 @@ function WhatIfPanel({
 }
 
 export default function OverviewTab({
-  activity, canPost, posting, onSend, directory, rfis, isInternal, rfiBusy, onCreateRfi, onResolveRfi,
+  dealId, activity, canPost, posting, onSend, directory, rfis, isInternal, rfiBusy, onCreateRfi, onResolveRfi,
   variations, basePremium, baseLevers, varHasQuote, varUsedAi, varLoading, varApplying,
   onGenerateVariations, onApplyVariation, onPreviewLevers, onApplyLevers,
   routingSummary, selectedMarketId, onSelectMarket, onRetryRouting, onCancelRouting, onMarketAction,
@@ -375,6 +380,22 @@ export default function OverviewTab({
   const [feedFilter, setFeedFilter] = useState<"all" | "comm" | "history">("all");
   const [compare, setCompare] = useState<QuoteVariation | null>(null);
   const [generated, setGenerated] = useState(false);
+  const [brokerDialogOpen, setBrokerDialogOpen] = useState(false);
+  const [heldDialogOpen, setHeldDialogOpen] = useState(false);
+  const [capabilities, setCapabilities] = useState<CorrespondenceCapabilities | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    setCapabilities(null);
+    api.get<CorrespondenceCapabilities>(`/deal-card/${dealId}/correspondence`)
+      .then(res => {
+        if (active) setCapabilities(res);
+      })
+      .catch(() => {
+        if (active) setCapabilities(null);
+      });
+    return () => { active = false; };
+  }, [dealId, authUser?.id]);
 
   const runGenerate = () => {
     setGenerated(true);
@@ -520,42 +541,110 @@ export default function OverviewTab({
         isInternalAdminOrCsa={isInternalAdminOrCsa}
       />
 
-      {selectedMarketId && (
-        <div style={{ padding: "8px 12px", background: c.bg, border: `1px solid ${c.borderColor}`, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontSize: 12, fontWeight: 500, color: c.textPrimary }}>
-            Viewing isolated thread for {routingSummary?.markets?.find(m => m.dealMarketId === selectedMarketId)?.marketName || 'selected market'}.
-          </span>
-          <button
-            type="button"
-            onClick={() => onSelectMarket(null)}
-            style={{ fontSize: 11, fontWeight: 600, color: 'var(--accent-primary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-          >
-            Return to All Activity
-          </button>
-        </div>
-      )}
-
-      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        {/* Feed filter — small, subtle text tabs. */}
-        <div style={{ display: "flex", gap: 14, paddingLeft: AVATAR_W + ROW_GAP }}>
-          {([["all", "All"], ["comm", "Communication"], ["history", "History"]] as const).map(([key, label]) => (
+      {selectedMarketId ? (
+        <>
+          <div style={{ padding: "8px 12px", background: c.bg, border: `1px solid ${c.borderColor}`, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: 12, fontWeight: 500, color: c.textPrimary }}>
+              Viewing isolated thread for {routingSummary?.markets?.find(m => m.dealMarketId === selectedMarketId)?.marketName || 'selected market'}.
+            </span>
             <button
-              key={key}
               type="button"
-              data-testid={`tab-feed-${key}`}
-              onClick={() => setFeedFilter(key)}
-              style={{
-                background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit",
-                fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 600,
-                color: feedFilter === key ? "var(--accent-primary)" : c.textMuted,
-                borderBottom: feedFilter === key ? "1px solid var(--accent-primary)" : "1px solid transparent",
-                paddingBottom: 1,
-              }}
+              onClick={() => onSelectMarket(null)}
+              style={{ fontSize: 11, fontWeight: 600, color: 'var(--accent-primary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
             >
-              {label}
+              Return to All Activity
             </button>
-          ))}
-        </div>
+          </div>
+          {capabilities?.market.canRead ? (
+            <MarketCorrespondenceView 
+              key={`${dealId}-${authUser?.id}-${selectedMarketId}`}
+              dealId={dealId} 
+              dealMarketId={selectedMarketId} 
+              marketName={routingSummary?.markets?.find(m => m.dealMarketId === selectedMarketId)?.marketName || 'Unknown Market'} 
+              capabilities={capabilities}
+            />
+          ) : (
+            <div style={{ padding: 40, textAlign: "center", background: c.hoverBg, borderRadius: 8, border: `1px solid ${c.borderColor}` }}>
+              <AlertTriangle style={{ width: 32, height: 32, color: c.textMuted, margin: "0 auto 12px" }} />
+              <div style={{ fontSize: 14, fontWeight: 600, color: c.textPrimary, marginBottom: 8 }}>Access Restricted</div>
+              <div style={{ fontSize: 12, color: c.textSecondary, maxWidth: 300, margin: "0 auto" }}>
+                Market correspondence is private and visible only to Axel administrators and CSAs.
+              </div>
+            </div>
+          )}
+        </>
+      ) : (
+        <>
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            {/* Feed filter — small, subtle text tabs. */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingLeft: AVATAR_W + ROW_GAP }}>
+            <div style={{ display: "flex", gap: 14 }}>
+              {(
+                [
+                  ["all", "All"],
+                  ["comm", "Communication"],
+                  ["history", "History"],
+                ] as const
+              ).map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  data-testid={`tab-feed-${key}`}
+                  onClick={() => setFeedFilter(key)}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    padding: 0,
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                    fontSize: 10,
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase",
+                    fontWeight: 600,
+                    color: feedFilter === key ? "var(--accent-primary)" : c.textMuted,
+                    borderBottom: feedFilter === key ? "1px solid var(--accent-primary)" : "1px solid transparent",
+                    paddingBottom: 1,
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            
+            {/* Broker & Held Correspondence Buttons */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              {capabilities?.market.canReviewHeld && (
+                <button
+                  type="button"
+                  onClick={() => setHeldDialogOpen(true)}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 6,
+                    background: c.bg, border: `1px solid ${c.borderColor}`, borderRadius: 6,
+                    padding: "6px 12px", fontSize: 11, fontWeight: 600, color: c.textSecondary,
+                    cursor: "pointer"
+                  }}
+                >
+                  <AlertCircle style={{ width: 14, height: 14 }} />
+                  Held Mail
+                </button>
+              )}
+              {capabilities?.broker.canRead && (
+                <button
+                  type="button"
+                  onClick={() => setBrokerDialogOpen(true)}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 6,
+                    background: c.bg, border: `1px solid ${c.borderColor}`, borderRadius: 6,
+                    padding: "6px 12px", fontSize: 11, fontWeight: 600, color: c.textPrimary,
+                    cursor: "pointer"
+                  }}
+                >
+                  <MessageSquare style={{ width: 14, height: 14, color: "var(--accent-primary)" }} />
+                  Broker Thread
+                </button>
+              )}
+            </div>
+          </div>
         {/* Real activity feed grouped by day */}
         {groups.length === 0 && (
           <div style={{ fontSize: 12, color: c.textMuted }}>
@@ -997,6 +1086,24 @@ export default function OverviewTab({
           </div>
         </div>
       )}
+        </>
+      )}
+
+      <BrokerCorrespondenceDialog
+        key={`broker-${dealId}-${authUser?.id}`}
+        isOpen={brokerDialogOpen}
+        onClose={() => setBrokerDialogOpen(false)}
+        dealId={dealId}
+        capabilities={capabilities}
+      />
+
+      <HeldCorrespondenceDialog
+        key={`held-${dealId}-${authUser?.id}`}
+        isOpen={heldDialogOpen}
+        onClose={() => setHeldDialogOpen(false)}
+        dealId={dealId}
+        capabilities={capabilities}
+      />
 
       {/* Compare overlay — current quote vs. selected variation */}
       {compare && (

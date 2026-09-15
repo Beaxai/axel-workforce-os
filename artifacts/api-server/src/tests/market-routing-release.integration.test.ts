@@ -402,7 +402,7 @@ describe("market routing release invariants (database integration)", () => {
       .values({
         itemId: item.id,
         attemptNumber: 1,
-        idempotencyKey: `dm-${dealMarket.id}-attempt-1`,
+        idempotencyKey: `dispatch-${batch.id}-${item.id}-${dealMarket.id}-attempt-1`,
         startedAt: new Date(Date.now() - 11 * 60 * 1000),
       })
       .returning({ id: dispatchAttemptsTable.id });

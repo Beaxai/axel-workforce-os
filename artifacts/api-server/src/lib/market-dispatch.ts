@@ -1137,6 +1137,18 @@ export async function buildSubmissionAttachments(
   return attachments;
 }
 
+export function dispatchAttemptIdempotencyKey(
+  batchId: string,
+  itemId: string,
+  dealMarketId: string,
+  attemptNumber: number,
+): string {
+  // An attempt number is scoped to a dispatch item, not globally to a market.
+  // Include both batch and item so a manual retry batch cannot accidentally
+  // reuse a completed/failed provider key from an earlier batch.
+  return `dispatch-${batchId}-${itemId}-${dealMarketId}-attempt-${attemptNumber}`;
+}
+
 async function attemptSend(
   batchId: string,
   itemId: string,
@@ -1144,8 +1156,13 @@ async function attemptSend(
   dealId: string,
   attemptNumber: number,
 ): Promise<AttemptResult> {
-  // Build a stable idempotency key for this attempt.
-  const idempotencyKey = `dm-${dealMarketId}-attempt-${attemptNumber}`;
+  // Build a stable idempotency key for this exact batch/item attempt.
+  const idempotencyKey = dispatchAttemptIdempotencyKey(
+    batchId,
+    itemId,
+    dealMarketId,
+    attemptNumber,
+  );
 
   const startedAt = new Date();
   let attemptId!: string;
@@ -1227,6 +1244,7 @@ async function attemptSend(
     () => buildSubmissionAttachments(batchId, dealId),
     async (attachments) => {
       const sendResult = await sendDealEmail({
+        channel: "MARKET",
         dealId,
         dealMarketId,
         to: [toEmail],

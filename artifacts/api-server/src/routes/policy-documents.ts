@@ -7,6 +7,7 @@ import {
   policyDocumentsTable,
   activityLogTable,
   usersTable,
+  dealsTable,
 } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import { applyWcDocumentUpload } from "../lib/wc-tracker";
@@ -39,7 +40,20 @@ const upload = multer({
 
 const router: IRouter = Router();
 
+async function mayAccessPolicyDeal(req: Request, dealId: string | null): Promise<boolean> {
+  if (!dealId || !req.user) return false;
+  const [deal] = await db.select({ orgId: dealsTable.orgId }).from(dealsTable).where(eq(dealsTable.id, dealId)).limit(1);
+  if (!deal) return false;
+  // Preserve legacy null-org operational behavior, but prevent a current-org
+  // user from downloading a known cross-organization document by its doc ID.
+  return deal.orgId == null || (req.user.orgId != null && deal.orgId === req.user.orgId);
+}
+
 router.get("/:dealId", async (req, res) => {
+  if (!(await mayAccessPolicyDeal(req, req.params.dealId))) {
+    res.status(403).json({ error: "Insufficient permissions" });
+    return;
+  }
   const rows = await db
     .select({
       doc: policyDocumentsTable,
@@ -60,6 +74,10 @@ router.get("/:dealId", async (req, res) => {
 
 router.post("/:dealId/upload", upload.single("file"), async (req: Request<{ dealId: string }>, res: Response) => {
   const { dealId } = req.params;
+  if (!(await mayAccessPolicyDeal(req, dealId))) {
+    if (req.file) fs.unlink(req.file.path, () => {});
+    return res.status(403).json({ error: "Insufficient permissions" });
+  }
   const { documentType } = req.body;
 
   if (!req.file) {
@@ -143,6 +161,9 @@ router.get("/:docId/file", async (req, res) => {
     .where(eq(policyDocumentsTable.id, req.params.docId));
 
   if (!doc) return res.status(404).json({ error: "Document not found." });
+  if (!(await mayAccessPolicyDeal(req, doc.dealId))) {
+    return res.status(403).json({ error: "Insufficient permissions" });
+  }
 
   const uploadsRoot = path.join(process.cwd(), "uploads");
   const filePath = path.resolve(uploadsRoot, doc.fileUrl);

@@ -25,7 +25,7 @@ import {
   hashToken,
   type AuthUser,
 } from "../lib/auth";
-import { requireAuth, requireRoles } from "../middleware/require-auth";
+import { requireAuth, requireRoles, requireTrustedAxelAdmin } from "../middleware/require-auth";
 
 const router: IRouter = Router();
 
@@ -114,13 +114,17 @@ router.get("/me", requireAuth, (req, res) => {
 });
 
 // POST /api/auth/register (ADMIN-only invite)
-router.post("/register", requireAuth, requireRoles("ADMIN"), async (req, res) => {
+router.post("/register", requireAuth, requireRoles("ADMIN"), requireTrustedAxelAdmin, async (req, res) => {
   const parsed = registerSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.issues });
     return;
   }
   const { email, password, firstName, lastName, role, orgId } = parsed.data;
+  if ((role === "ADMIN" || role === "CSA") && orgId !== req.user!.orgId) {
+    res.status(403).json({ error: "ADMIN/CSA memberships may only be created in the current trusted Axel organization" });
+    return;
+  }
   const existing = await findUserByEmail(email);
   if (existing) {
     res.status(409).json({ error: "A user with that email already exists" });

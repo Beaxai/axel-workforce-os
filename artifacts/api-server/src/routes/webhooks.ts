@@ -140,7 +140,8 @@ router.post("/resend-inbound", express.text({ type: "*/*", limit: "10mb" }), asy
 
     const email: InboundEmail = {
       messageId: String(d.email_id ?? headers["message-id"] ?? crypto.randomUUID()),
-      to: [...parseAddressList(d.to), ...parseAddressList(d.cc)],
+      to: parseAddressList(d.to),
+      cc: parseAddressList(d.cc),
       from: String(d.from ?? "unknown"),
       fromName: null,
       subject: d.subject ?? null,
@@ -149,6 +150,11 @@ router.post("/resend-inbound", express.text({ type: "*/*", limit: "10mb" }), asy
       inReplyTo: headers["in-reply-to"] || null,
       references: (headers["references"] || "").match(/<[^>]+>/g) ?? [],
       receivedAt: d.created_at ? new Date(d.created_at) : new Date(),
+      providerReceivedEmailId: d.email_id ? String(d.email_id) : null,
+      // The Svix signature authenticates Resend's webhook, not the SMTP From
+      // identity. Preserve any provider-delivered result for review only;
+      // processInboundEmail still requires a persisted approved sender.
+      senderAuthEvidence: headers["authentication-results"] ?? null,
     };
 
     const result = await processInboundEmail(email);

@@ -13,7 +13,7 @@ import {
 } from "@workspace/db";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
-import { requireRoles } from "../middleware/require-auth";
+import { requireRoles, requireTrustedAxelAdmin } from "../middleware/require-auth";
 import {
   PARTY_ROLES,
   getAuthUserById,
@@ -29,6 +29,7 @@ import {
 import {
   canManageTargetAvatar,
 } from "../lib/avatar-auth";
+import { isTrustedCorrespondenceStaff } from "../lib/correspondence-policy";
 import {
   InvalidAvatarImageError,
   MAX_AVATAR_SOURCE_BYTES,
@@ -342,10 +343,13 @@ const inviteSchema = z.object({
   title: z.string().optional(),
 });
 
-router.post("/invite", requireAdmin, async (req, res) => {
+router.post("/invite", requireAdmin, requireTrustedAxelAdmin, async (req, res) => {
   const parsed = inviteSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues });
   const { email, firstName, lastName, role, orgId, title } = parsed.data;
+  if ((role === "ADMIN" || role === "CSA") && orgId !== req.user!.orgId) {
+    return res.status(403).json({ error: "ADMIN/CSA memberships may only be created in the current trusted Axel organization" });
+  }
   const existing = await findUserByEmail(email);
   if (existing) return res.status(409).json({ error: "A user with that email already exists" });
 
@@ -396,9 +400,11 @@ router.get("/:id/activity", async (req: Request<{ id: string }>, res: Response) 
     .select({
       id: activityLogTable.id,
       dealId: activityLogTable.dealId,
+      dealMarketId: activityLogTable.dealMarketId,
       entityType: activityLogTable.entityType,
       eventType: activityLogTable.eventType,
       description: activityLogTable.description,
+      metadata: activityLogTable.metadata,
       createdAt: activityLogTable.createdAt,
     })
     .from(activityLogTable)
@@ -406,7 +412,11 @@ router.get("/:id/activity", async (req: Request<{ id: string }>, res: Response) 
     .orderBy(desc(activityLogTable.createdAt))
     .limit(limit)
     .offset(offset);
-  return res.json({ items: rows, limit, offset });
+  const trusted = await isTrustedCorrespondenceStaff(req.user);
+  const safeRows = trusted
+    ? rows
+    : rows.filter((row) => row.dealMarketId == null && !(row.metadata as { correspondence_private?: boolean } | null)?.correspondence_private);
+  return res.json({ items: safeRows.map(({ metadata: _metadata, dealMarketId: _dealMarketId, ...row }) => row), limit, offset });
 });
 
 /* ------------------------------------------------------------------ *
@@ -433,7 +443,7 @@ const PROTECTED_SELF_FIELDS = ["role", "org", "orgId", "status", "password", "cr
 router.patch("/:id/profile", async (req: Request<{ id: string }>, res: Response) => {
   const viewer = req.user as AuthUser;
   const targetId = req.params.id;
-  const isAdmin = viewer.role === "ADMIN";
+  const isAdmin = viewer.role === "ADMIN" && await isTrustedCorrespondenceStaff(viewer);
   const isSelf = viewer.id === targetId;
   if (!isAdmin && !isSelf) {
     return res.status(403).json({ error: "Insufficient permissions" });
@@ -491,7 +501,7 @@ router.patch("/:id/profile", async (req: Request<{ id: string }>, res: Response)
 // PATCH /api/users/:id/status — ADMIN deactivate / reactivate (no hard delete).
 const statusSchema = z.object({ status: z.enum(["active", "deactivated"]) });
 
-router.patch("/:id/status", requireAdmin, async (req: Request<{ id: string }>, res: Response) => {
+router.patch("/:id/status", requireAdmin, requireTrustedAxelAdmin, async (req: Request<{ id: string }>, res: Response) => {
   const parsed = statusSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues });
   const [row] = await db
@@ -516,7 +526,7 @@ const passwordSchema = z
 router.patch("/:id/password", async (req: Request<{ id: string }>, res: Response) => {
   const viewer = req.user as AuthUser;
   const targetId = req.params.id;
-  const isAdmin = viewer.role === "ADMIN";
+  const isAdmin = viewer.role === "ADMIN" && await isTrustedCorrespondenceStaff(viewer);
   const isSelf = viewer.id === targetId;
   if (!isAdmin && !isSelf) {
     return res.status(403).json({ error: "Insufficient permissions" });
@@ -563,7 +573,7 @@ router.get("/:id", requireInternalSales, async (req: Request<{ id: string }>, re
   return res.json(row);
 });
 
-router.patch("/:id", requireAdmin, async (req: Request<{ id: string }>, res: Response) => {
+router.patch("/:id", requireAdmin, requireTrustedAxelAdmin, async (req: Request<{ id: string }>, res: Response) => {
   const parsed = insertUserSchema.partial().safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues });
   if (parsed.data.status !== undefined && !canonicalStatusSchema.safeParse(parsed.data.status).success) {
@@ -574,7 +584,7 @@ router.patch("/:id", requireAdmin, async (req: Request<{ id: string }>, res: Res
   return res.json(row);
 });
 
-router.delete("/:id", requireAdmin, async (req: Request<{ id: string }>, res: Response) => {
+router.delete("/:id", requireAdmin, requireTrustedAxelAdmin, async (req: Request<{ id: string }>, res: Response) => {
   const [row] = await db.delete(usersTable).where(eq(usersTable.id, req.params.id)).returning();
   if (!row) return res.status(404).json({ error: "Not found" });
   return res.json({ deleted: true });
