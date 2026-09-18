@@ -34,7 +34,7 @@ import {
   type Account,
   type DealRfi,
 } from "@workspace/db";
-import { eq, desc, and, sql, inArray, isNull, asc } from "drizzle-orm";
+import { eq, desc, and, or, sql, inArray, isNull, isNotNull, asc, type SQL } from "drizzle-orm";
 import {
   generateQuoteVariations,
   type VariationBaseInputs,
@@ -475,6 +475,20 @@ type HeldReleaseTarget = {
 
 type CorrespondenceQueryExecutor = Pick<typeof db, "select">;
 
+const heldQueueQuerySchema = z.object({
+  filter: z.enum(["all", "matched", "unmatched"]).default("all"),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+  offset: z.coerce.number().int().min(0).default(0),
+});
+
+type HeldQueueQuery = z.infer<typeof heldQueueQuerySchema>;
+
+function heldFilterCondition(filter: HeldQueueQuery["filter"]): SQL | undefined {
+  if (filter === "matched") return isNotNull(dealInboundEmailsTable.dealId);
+  if (filter === "unmatched") return isNull(dealInboundEmailsTable.dealId);
+  return undefined;
+}
+
 // This is deliberately shared by the queue and release action. A queue entry
 // is releasable only when re-running every server-side identity check succeeds;
 // it is not enough that the row merely has a historical candidate reference.
@@ -520,39 +534,78 @@ async function resolveHeldReleaseTarget(
   return { channel: "BROKER", threadId: thread.id, listenerEmail: thread.listener, senderEmail: thread.email };
 }
 
-// Global held queue is deliberately separate from deal/market feeds. It also
-// includes unmatched mail with no deal/org, so only explicitly trusted Axel
-// staff (never an external role) can review it.
-router.get("/correspondence/held", async (req, res) => {
-  if (!(await isTrustedCorrespondenceStaff(req.user))) return res.status(403).json({ error: "Trusted Axel correspondence staff required" });
-  const limit = Math.min(Number(req.query.limit) || 100, 250);
-  const allRows = await db.select()
-    .from(dealInboundEmailsTable)
-    .where(eq(dealInboundEmailsTable.channel, "HELD"))
-    .orderBy(desc(dealInboundEmailsTable.receivedAt));
-  const heldDealIds = [...new Set(allRows.map((row) => row.dealId).filter((id): id is string => !!id))];
-  const heldDeals = heldDealIds.length ? await db.select({ id: dealsTable.id, orgId: dealsTable.orgId })
-    .from(dealsTable).where(inArray(dealsTable.id, heldDealIds)) : [];
-  const heldOrgByDeal = new Map(heldDeals.map((deal) => [deal.id, deal.orgId]));
-  // Null-deal mail has no tenant and remains in the trusted global queue;
-  // associated mail is scoped to the reviewing staff member's current org.
-  const rows = allRows
-    .filter((row) => row.dealId == null || heldOrgByDeal.get(row.dealId) === req.user!.orgId)
-    .slice(0, limit);
+async function serializeHeldMessages(rows: Array<typeof dealInboundEmailsTable.$inferSelect>) {
+  const dealIds = [...new Set(rows.map((row) => row.dealId).filter((id): id is string => !!id))];
   const marketIds = [...new Set(rows.map((row) => row.dealMarketId).filter((id): id is string => !!id))];
-  const candidates = marketIds.length ? await db.select({
-    dealMarketId: dealMarketsTable.id, marketName: marketsTable.name,
-    contactName: marketUnderwritersTable.name, contactEmail: marketUnderwritersTable.email,
-  }).from(dealMarketsTable).innerJoin(marketsTable, eq(marketsTable.id, dealMarketsTable.marketId))
-    .leftJoin(marketUnderwritersTable, eq(marketUnderwritersTable.id, dealMarketsTable.assignedUnderwriterId))
-    .where(inArray(dealMarketsTable.id, marketIds)) : [];
-  const candidateByMarket = new Map(candidates.map((candidate) => [candidate.dealMarketId, candidate]));
-  const messages = await Promise.all(rows.map(async (row) => {
+  const threadIds = [...new Set(rows.map((row) => row.correspondenceThreadId).filter((id): id is string => !!id))];
+  const [deals, candidates, brokerThreads] = await Promise.all([
+    dealIds.length
+      ? db.select({ id: dealsTable.id, name: dealsTable.businessName }).from(dealsTable).where(inArray(dealsTable.id, dealIds))
+      : Promise.resolve([]),
+    marketIds.length
+      ? db.select({
+          dealMarketId: dealMarketsTable.id,
+          dealId: dealMarketsTable.dealId,
+          marketName: marketsTable.name,
+          contactName: marketUnderwritersTable.name,
+          contactEmail: marketUnderwritersTable.email,
+        }).from(dealMarketsTable)
+          .innerJoin(marketsTable, eq(marketsTable.id, dealMarketsTable.marketId))
+          .leftJoin(marketUnderwritersTable, eq(marketUnderwritersTable.id, dealMarketsTable.assignedUnderwriterId))
+          .where(inArray(dealMarketsTable.id, marketIds))
+      : Promise.resolve([]),
+    threadIds.length
+      ? db.select({
+          id: correspondenceThreadsTable.id,
+          dealId: correspondenceThreadsTable.dealId,
+          firstName: usersTable.firstName,
+          lastName: usersTable.lastName,
+          email: usersTable.email,
+        }).from(correspondenceThreadsTable)
+          .leftJoin(usersTable, eq(usersTable.id, correspondenceThreadsTable.participantUserId))
+          .where(and(
+            inArray(correspondenceThreadsTable.id, threadIds),
+            eq(correspondenceThreadsTable.channel, "BROKER"),
+          ))
+      : Promise.resolve([]),
+  ]);
+  const dealNameById = new Map(deals.map((deal) => [deal.id, deal.name]));
+  // Pair candidate/thread context with its deal as well as its row identifier.
+  // This fails closed if historical or malformed data points across deals.
+  const candidateByMarket = new Map(candidates.map((candidate) => [
+    `${candidate.dealMarketId}:${candidate.dealId}`,
+    candidate,
+  ]));
+  const brokerLabelByThread = new Map(brokerThreads.map((thread) => {
+    const name = [thread.firstName, thread.lastName].filter(Boolean).join(" ");
+    return [`${thread.id}:${thread.dealId}`, name || thread.email || null] as const;
+  }));
+
+  return Promise.all(rows.map(async (row) => {
     const target = await resolveHeldReleaseTarget(row);
+    const market = row.dealMarketId && row.dealId
+      ? candidateByMarket.get(`${row.dealMarketId}:${row.dealId}`)
+      : undefined;
     return {
       ...correspondenceMessage(row, "INBOUND"),
+      dealId: row.dealId ?? null,
+      dealName: row.dealId ? dealNameById.get(row.dealId) ?? null : null,
+      marketName: market?.marketName ?? null,
+      threadLabel: row.dealMarketId
+        ? market?.marketName ?? null
+        : (row.correspondenceThreadId && row.dealId
+          ? brokerLabelByThread.get(`${row.correspondenceThreadId}:${row.dealId}`) ?? null
+          : null),
       candidate: row.dealMarketId
-        ? { channel: "MARKET", ...(candidateByMarket.get(row.dealMarketId) ?? {}) }
+        ? {
+            channel: "MARKET",
+            ...(market ? {
+              dealMarketId: market.dealMarketId,
+              marketName: market.marketName,
+              contactName: market.contactName,
+              contactEmail: market.contactEmail,
+            } : {}),
+          }
         : row.correspondenceThreadId ? { channel: "BROKER" } : null,
       isReleasable: target !== null,
       releasableTarget: target && {
@@ -564,7 +617,55 @@ router.get("/correspondence/held", async (req, res) => {
       senderAuthEvidence: row.senderAuthEvidence ?? null,
     };
   }));
-  return res.json({ messages });
+}
+
+async function heldQueueResponse(scope: SQL, query: HeldQueueQuery) {
+  const baseWhere = and(eq(dealInboundEmailsTable.channel, "HELD"), scope);
+  const [summary] = await db.select({
+    all: sql<number>`count(*)`,
+    matched: sql<number>`count(*) filter (where ${dealInboundEmailsTable.dealId} is not null)`,
+    unmatched: sql<number>`count(*) filter (where ${dealInboundEmailsTable.dealId} is null)`,
+  }).from(dealInboundEmailsTable)
+    .leftJoin(dealsTable, eq(dealsTable.id, dealInboundEmailsTable.dealId))
+    .where(baseWhere);
+  const filter = heldFilterCondition(query.filter);
+  const rows = await db.select({ inbound: dealInboundEmailsTable })
+    .from(dealInboundEmailsTable)
+    .leftJoin(dealsTable, eq(dealsTable.id, dealInboundEmailsTable.dealId))
+    .where(and(baseWhere, filter))
+    .orderBy(desc(dealInboundEmailsTable.receivedAt))
+    .limit(query.limit)
+    .offset(query.offset);
+  const counts = {
+    all: Number(summary?.all ?? 0),
+    matched: Number(summary?.matched ?? 0),
+    unmatched: Number(summary?.unmatched ?? 0),
+  };
+  return {
+    messages: await serializeHeldMessages(rows.map(({ inbound }) => inbound)),
+    total: query.filter === "all" ? counts.all : counts[query.filter],
+    counts,
+  };
+}
+
+// Global held queue is deliberately separate from deal/market feeds. It also
+// includes unmatched mail with no deal/org, so only explicitly trusted Axel
+// staff (never an external role) can review it.
+router.get("/correspondence/capabilities", async (req, res) => {
+  return res.json({ canReviewHeld: await isTrustedCorrespondenceStaff(req.user) });
+});
+
+router.get("/correspondence/held", async (req, res) => {
+  if (!(await isTrustedCorrespondenceStaff(req.user))) return res.status(403).json({ error: "Trusted Axel correspondence staff required" });
+  const parsed = heldQueueQuerySchema.safeParse(req.query);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid held queue query", issues: parsed.error.issues });
+  // Apply tenant scope in SQL before filtering and pagination. Null-deal mail is
+  // intentionally reviewable only in this trusted global queue.
+  const scope = or(
+    isNull(dealInboundEmailsTable.dealId),
+    eq(dealsTable.orgId, req.user!.orgId!),
+  );
+  return res.json(await heldQueueResponse(scope!, parsed.data));
 });
 
 const heldReleaseSchema = z.object({
@@ -927,11 +1028,9 @@ router.post("/:id/correspondence/broker/reply", async (req, res) => {
 router.get("/:id/correspondence/held", async (req, res) => {
   const context = await trustedDealContext(req, req.params.id, res);
   if (!context) return;
-  const rows = await db.select().from(dealInboundEmailsTable).where(and(
-    eq(dealInboundEmailsTable.dealId, context.deal.id),
-    eq(dealInboundEmailsTable.channel, "HELD"),
-  )).orderBy(desc(dealInboundEmailsTable.receivedAt));
-  return res.json({ messages: rows.map((row) => correspondenceMessage(row, "INBOUND")) });
+  const parsed = heldQueueQuerySchema.safeParse(req.query);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid held queue query", issues: parsed.error.issues });
+  return res.json(await heldQueueResponse(eq(dealInboundEmailsTable.dealId, context.deal.id), parsed.data));
 });
 
 /* --------------------------------------------------------------------------

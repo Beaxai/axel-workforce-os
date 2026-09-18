@@ -112,6 +112,8 @@ export type RfiStatus = "OPEN" | "RESOLVED" | "WAIVED";
 export interface RfiRow {
   id: string;
   dealId: string;
+  dealName?: string | null;
+  threadLabel?: string | null;
   subject: string;
   detail?: string | null;
   status: RfiStatus;
@@ -192,6 +194,8 @@ export interface CorrespondenceMessage {
   threadId: string;
   dealId: string;
   dealMarketId: string | null;
+  dealName?: string | null;
+  threadLabel?: string | null;
   subject: string | null;
   from: { name: string | null; email: string };
   to: string[];

@@ -14,6 +14,12 @@ Treat provider transport authentication separately from sender authentication. A
 
 **How to apply:** Keep unverified external replies private for explicit staff verification and audited release to a server-derived candidate. Do not restore automatic routing based on a subject token or raw authentication header.
 
+Access to unmatched mail does not authorize assigning it to an arbitrary deal.
+
+**Why:** The owner approved separate deal-specific and staff-wide review queues while explicitly leaving manual matching outside that change. Seeing a message and proving its destination are separate actions.
+
+**How to apply:** Preserve unmatched mail for staff review without adding a deal-picker shortcut. Any future matching workflow needs independent destination evidence, tenant checks, and an audit trail.
+
 **Why/gotchas:**
 - External webhooks are only reachable via `/api/webhooks/*` (port-80 proxy forwards only `/api`); the root `/webhooks` mount works only on :8080 direct. Webhooks router is mounted publicly inside the /api router BEFORE requireAuth.
 - Svix signature verification must use the exact signed bytes; never HMAC a re-serialized body or bypass verification to make a provider test pass.

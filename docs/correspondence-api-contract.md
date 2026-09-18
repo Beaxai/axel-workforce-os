@@ -20,12 +20,25 @@ authorized data migration assigns their organization.
 
 ## Held inbound review
 
-`GET /api/deal-card/correspondence/held?limit=100` is available only to an
+`GET /api/deal-card/correspondence/capabilities` returns
+`{ "canReviewHeld": boolean }` for every authenticated caller. The value is true
+only for an explicitly trusted active Axel ADMIN/CSA; external users (including
+users named ADMIN or CSA in an external organization) receive `false`.
+
+`GET /api/deal-card/correspondence/held?filter=all&limit=50&offset=0` is
+available only to an
 explicitly trusted active Axel ADMIN/CSA. It is a global staff review queue so
 that unmatched messages without a resolvable deal can still be reviewed.
 Inbound messages expose their separately persisted `to`, `cc`, `heldReason`,
 and provider-delivered sender-authentication evidence to this queue only.
 Market and broker thread feeds never include `HELD` messages.
+
+Both the global route and the deal-scoped held route accept `filter` (`all`,
+`matched`, or `unmatched`, default `all`), `limit` (integer 1–100, default 50),
+and `offset` (non-negative integer, default 0). Invalid query values return 400.
+The global query applies current-organization scope in SQL before filtering and
+pagination: it includes held rows for the trusted actor's own-organization
+deals plus null-deal unmatched rows, and never another organization's rows.
 
 `POST /api/deal-card/correspondence/held/:messageId/release` accepts the strict
 body `{ "channel": "MARKET" | "BROKER", "senderConfirmed": true }`. It is an
@@ -66,7 +79,7 @@ type CorrespondenceMessage = {
   channel: CorrespondenceChannel;
   direction: "INBOUND" | "OUTBOUND";
   threadId: string;
-  dealId: string;
+  dealId: string | null;
   dealMarketId: string | null;       // present only for MARKET
   subject: string | null;
   from: { name: string | null; email: string };
@@ -78,6 +91,34 @@ type CorrespondenceMessage = {
   sentAt: string | null;
   deliveryState: DeliveryState | null;
   enrichment: "COMPLETE" | "PENDING" | "FAILED" | null;
+};
+
+type HeldCorrespondenceMessage = CorrespondenceMessage & {
+  dealId: string | null;
+  dealName: string | null;
+  marketName: string | null;
+  threadLabel: string | null;
+  candidate:
+    | { channel: "MARKET"; dealMarketId?: string; marketName?: string; contactName?: string | null; contactEmail?: string | null }
+    | { channel: "BROKER" }
+    | null;
+  isReleasable: boolean;
+  releasableTarget: {
+    channel: CorrespondenceChannel;
+    threadId: string;
+    listenerEmail: string;
+    senderEmail: string;
+  } | null;
+};
+
+type HeldQueueResponse = {
+  messages: HeldCorrespondenceMessage[];
+  total: number; // count after filter, before pagination
+  counts: {
+    all: number;
+    matched: number;
+    unmatched: number;
+  }; // authorized scope before filter and pagination
 };
 
 type CorrespondenceCapabilities = {
@@ -217,5 +258,11 @@ Trusted staff review queue for unauthorized, mixed-audience, ambiguous, or
 otherwise unclassifiable inbound mail. Held messages are not displayed by
 either normal channel or any general activity endpoint.
 
-* `200` — `{ messages: CorrespondenceMessage[] }`
+The query parameters and response shape are the same as the global held queue.
+This route is always constrained to `:dealId`; it never returns null-deal or
+unrelated-deal rows. Therefore `filter=unmatched` returns an empty page and
+zero filtered `total`, while `counts` still describes the authorized deal
+scope.
+
+* `200` — `HeldQueueResponse`
 * `401`, `403`, `404` — as above; only trusted Axel `ADMIN`/`CSA` may read

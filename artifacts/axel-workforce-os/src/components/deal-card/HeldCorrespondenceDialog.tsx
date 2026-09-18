@@ -4,6 +4,7 @@ import { useThemeColors } from "@/lib/use-theme-colors";
 import { CorrespondenceMessage, CorrespondenceCapabilities } from "./types";
 import { AlertCircle, Lock, X, Clock, FileWarning, HelpCircle, ShieldAlert } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { HeldMessageItem } from "./HeldMessageItem";
 
 interface HeldCorrespondenceDialogProps {
   dealId: string;
@@ -17,11 +18,15 @@ export default function HeldCorrespondenceDialog({ dealId, isOpen, onClose, capa
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [messages, setMessages] = useState<CorrespondenceMessage[]>([]);
+  const [counts, setCounts] = useState<{all: number, matched: number, unmatched: number}>({all: 0, matched: 0, unmatched: 0});
+  const [total, setTotal] = useState(0);
+  const offsetRef = useRef(0);
+  const LIMIT = 50;
 
   // To prevent async race overwrites when switching dialogs
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  const fetchMessages = useCallback(async () => {
+  const fetchMessages = useCallback(async (isLoadMore = false) => {
     if (abortControllerRef.current) abortControllerRef.current.abort();
     const ac = new AbortController();
     abortControllerRef.current = ac;
@@ -34,12 +39,30 @@ export default function HeldCorrespondenceDialog({ dealId, isOpen, onClose, capa
     try {
       setLoading(true);
       setError(null);
-      const res = await api.get<{ messages: CorrespondenceMessage[] }>(
-        `/deal-card/correspondence/held`,
+      
+      if (!isLoadMore) offsetRef.current = 0;
+      const currentOffset = offsetRef.current;
+      const currentLimit = LIMIT;
+      
+      const res = await api.get<{ messages: CorrespondenceMessage[], total: number, counts: any }>(
+        `/deal-card/${dealId}/correspondence/held?filter=all&limit=${currentLimit}&offset=${currentOffset}`,
         { signal: ac.signal }
       );
       if (ac.signal.aborted) return;
-      setMessages(res.messages || []);
+      
+      if (isLoadMore) {
+        setMessages(prev => {
+          const newIds = new Set(res.messages.map(m => m.id));
+          const filteredPrev = prev.filter(m => !newIds.has(m.id));
+          return [...filteredPrev, ...res.messages];
+        });
+      } else {
+        setMessages(res.messages || []);
+      }
+      
+      setTotal(res.total || 0);
+      setCounts(res.counts || {all: 0, matched: 0, unmatched: 0});
+      offsetRef.current = currentOffset + res.messages.length;
     } catch (err: any) {
       if (ac.signal.aborted) return;
       if (err.status === 403) {
@@ -52,19 +75,50 @@ export default function HeldCorrespondenceDialog({ dealId, isOpen, onClose, capa
     }
   }, [dealId, isOpen, capabilities]);
 
+  // Clear state on hide or denied to protect private data
   useEffect(() => {
-    fetchMessages();
+    if (!isOpen || !capabilities?.market.canReviewHeld) {
+      setMessages([]);
+      setTotal(0);
+      setCounts({all: 0, matched: 0, unmatched: 0});
+      offsetRef.current = 0;
+      setError(null);
+    }
+  }, [isOpen, capabilities?.market.canReviewHeld, dealId]);
+
+  useEffect(() => {
+    if (isOpen && capabilities?.market.canReviewHeld) {
+      fetchMessages(false);
+    }
+    
+    const handleReleased = (e: any) => {
+      const dealIdDetail = e.detail?.dealId || e.data?.dealId;
+      if (!dealIdDetail || dealIdDetail === dealId) {
+        if (isOpen && capabilities?.market.canReviewHeld) fetchMessages(false);
+      }
+    };
+    
+    const onFocus = () => { if (isOpen && capabilities?.market.canReviewHeld) fetchMessages(false); };
+    
+    window.addEventListener("focus", onFocus);
+    window.addEventListener("held_message_released", handleReleased);
+    const bc = new BroadcastChannel("held_message_released");
+    bc.onmessage = (e) => handleReleased(e);
+    
     return () => {
+      window.removeEventListener("focus", onFocus);
+      window.removeEventListener("held_message_released", handleReleased);
+      bc.close();
       if (abortControllerRef.current) abortControllerRef.current.abort();
     };
-  }, [isOpen, fetchMessages]);
+  }, [isOpen, capabilities?.market.canReviewHeld, fetchMessages, dealId]);
 
   const handleRetryBody = async (messageId: string) => {
     try {
       await api.post(`/deal-card/correspondence/inbound/${messageId}/retry-body`, {});
-      fetchMessages();
+      fetchMessages(false);
     } catch (err) {
-      fetchMessages();
+      fetchMessages(false);
     }
   };
 
@@ -74,7 +128,13 @@ export default function HeldCorrespondenceDialog({ dealId, isOpen, onClose, capa
         channel,
         senderConfirmed: true
       });
-      fetchMessages();
+      fetchMessages(false);
+      // Need a way to refresh OverviewTab activity and correspondence. 
+      // Firing a custom event for "message_released"
+      window.dispatchEvent(new CustomEvent("held_message_released", { detail: { dealId } }));
+      const bc = new BroadcastChannel("held_message_released");
+      bc.postMessage({ dealId });
+      bc.close();
     } catch (err: any) {
       setError(err.message || "Failed to release message.");
     }
@@ -88,10 +148,10 @@ export default function HeldCorrespondenceDialog({ dealId, isOpen, onClose, capa
             <div>
               <DialogTitle style={{ fontSize: 16, fontWeight: 600, color: c.textPrimary, display: "flex", alignItems: "center", gap: 8 }}>
                 <HelpCircle style={{ width: 18, height: 18, color: "var(--accent-primary)" }} />
-                Held Correspondence
+                Held Correspondence ({total})
               </DialogTitle>
               <DialogDescription style={{ fontSize: 13, color: c.textSecondary, marginTop: 4 }}>
-                Review queue for unauthorized, mixed-audience, or ambiguous inbound mail.
+                Review queue for unauthorized, mixed-audience, or ambiguous inbound mail for this deal.
               </DialogDescription>
             </div>
             <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: c.textMuted }}>
@@ -115,112 +175,25 @@ export default function HeldCorrespondenceDialog({ dealId, isOpen, onClose, capa
               <HeldMessageItem key={msg.id} message={msg} onRetry={handleRetryBody} onRelease={handleRelease} c={c} />
             ))
           )}
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
 
-function HeldMessageItem({ message, onRetry, onRelease, c }: { message: CorrespondenceMessage; onRetry: (id: string) => void; onRelease: (id: string, channel: string) => void; c: any }) {
-  const [senderConfirmed, setSenderConfirmed] = useState(false);
-  const date = message.receivedAt || message.sentAt;
-  const timeLabel = date ? new Date(date).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "";
-  
-  return (
-    <div style={{
-      background: c.cardBg,
-      border: `1px solid var(--accent-support)`,
-      borderRadius: 10,
-      padding: 12,
-      display: "flex",
-      flexDirection: "column",
-      gap: 8,
-    }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: c.textPrimary }}>
-            {message.from.name || message.from.email}
-          </div>
-          {message.subject && (
-            <div style={{ fontSize: 12, fontWeight: 500, color: c.textSecondary }}>
-              Subject: {message.subject}
+          {messages.length > 0 && messages.length < total && (
+            <div style={{ display: "flex", justifyContent: "center", marginTop: 16 }}>
+              <button
+                onClick={() => fetchMessages(true)}
+                disabled={loading}
+                style={{
+                  background: c.cardBg, border: `1px solid ${c.borderColor}`, borderRadius: 8,
+                  padding: "8px 24px", fontSize: 13, fontWeight: 600, color: c.textPrimary,
+                  cursor: loading ? "default" : "pointer", opacity: loading ? 0.7 : 1
+                }}
+              >
+                {loading ? "Loading more..." : "Load More"}
+              </button>
             </div>
           )}
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 11, color: c.textMuted }}>{timeLabel}</span>
-        </div>
-      </div>
+      </DialogContent>
+    </Dialog>
 
-      <div style={{ fontSize: 11, color: c.textMuted, display: "flex", flexDirection: "column" }}>
-        <span>From: {message.from.email}</span>
-        <span>To: {message.to.join(", ")}</span>
-        {message.cc && message.cc.length > 0 && <span>CC: {message.cc.join(", ")}</span>}
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
-          <span style={{ color: "var(--accent-support)", fontWeight: 600 }}>Channel: {message.channel || "UNKNOWN"}</span>
-          <span style={{ color: c.textSecondary, fontWeight: 500, paddingLeft: 8, borderLeft: `1px solid ${c.borderColor}` }}>Deal: {message.dealId}</span>
-        </div>
-      </div>
-
-      <div style={{ marginTop: 4 }}>
-        {message.enrichment === "PENDING" ? (
-          <div style={{ fontSize: 12, color: c.textMuted, display: "flex", alignItems: "center", gap: 6, fontStyle: "italic" }}>
-            <Clock style={{ width: 14, height: 14 }} /> Retrieving message body...
-          </div>
-        ) : message.enrichment === "FAILED" ? (
-          <div style={{ fontSize: 12, color: "#ef4444", display: "flex", flexDirection: "column", gap: 8, padding: 12, background: "rgba(239, 68, 68, 0.1)", borderRadius: 6 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <FileWarning style={{ width: 14, height: 14 }} /> Failed to retrieve full message body from provider.
-            </div>
-            <button
-              onClick={() => onRetry(message.id)}
-              style={{
-                alignSelf: "flex-start", background: "#ef4444", color: "#fff", border: "none", borderRadius: 4,
-                padding: "4px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer"
-              }}
-            >
-              Retry Retrieval
-            </button>
-          </div>
-        ) : (
-          <div style={{ fontSize: 13, color: c.textPrimary, lineHeight: 1.5, whiteSpace: "pre-wrap", display: "flex", flexDirection: "column", gap: 8 }}>
-            {message.bodyText || <span style={{ fontStyle: "italic", color: c.textMuted }}>(Empty message)</span>}
-          </div>
-        )}
-      </div>
-
-      {message.isReleasable && message.candidate && (
-        <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px dashed ${c.borderColor}`, display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={{ fontSize: 12, color: "var(--accent-support)", display: "flex", alignItems: "flex-start", gap: 6 }}>
-            <ShieldAlert style={{ width: 14, height: 14, flexShrink: 0, marginTop: 2 }} />
-            <span>
-              <strong>Verify Sender:</strong> This message was matched to {message.candidate.marketName || message.candidate.channel} but could not be cryptographically authenticated. 
-              Please manually verify the sender's address ({message.from.email}) is legitimate before releasing to the thread.
-            </span>
-          </div>
-          
-          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: c.textPrimary, cursor: "pointer" }}>
-            <input 
-              type="checkbox" 
-              checked={senderConfirmed} 
-              onChange={(e) => setSenderConfirmed(e.target.checked)} 
-              style={{ margin: 0, accentColor: "var(--accent-primary)" }}
-            />
-            I have manually verified that this sender ({message.from.email}) is authorized.
-          </label>
-
-          <button
-            onClick={() => onRelease(message.id, message.candidate!.channel)}
-            disabled={!senderConfirmed}
-            style={{
-              alignSelf: "flex-start", background: senderConfirmed ? "var(--gradient-cta)" : c.hoverBg, color: senderConfirmed ? "#fff" : c.textMuted, border: "none", borderRadius: 6,
-              padding: "6px 14px", fontSize: 12, fontWeight: 600, cursor: senderConfirmed ? "pointer" : "not-allowed", display: "flex", alignItems: "center", gap: 6
-            }}
-          >
-            <Lock style={{ width: 14, height: 14 }} /> Release to {message.candidate.marketName || message.candidate.channel}
-          </button>
-        </div>
-      )}
-    </div>
   );
 }

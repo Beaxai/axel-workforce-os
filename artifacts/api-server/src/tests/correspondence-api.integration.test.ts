@@ -41,6 +41,7 @@ let axelOrgId = "";
 let externalOrgId = "";
 let accountId = "";
 let dealId = "";
+let secondDealId = "";
 let foreignDealId = "";
 let marketId = "";
 let dealMarketId = "";
@@ -108,9 +109,13 @@ describe("Axel-controlled correspondence API (isolated fictional fixture)", () =
 
     const [account] = await db.insert(accountsTable).values({ businessName: `Correspondence Fixture ${suffix}` }).returning();
     accountId = account.id;
-    const [deal, foreignDeal] = await db.insert(dealsTable).values([
+    const [deal, secondDeal, foreignDeal] = await db.insert(dealsTable).values([
       {
         referenceCode: `T-CORR-${suffix}`, accountId, businessName: `Correspondence Fixture ${suffix}`,
+        orgId: axelOrgId, producingAgentId: agentId, stage: "UW_REVIEW",
+      },
+      {
+        referenceCode: `T-CORR-2-${suffix}`, accountId, businessName: `Second Correspondence Fixture ${suffix}`,
         orgId: axelOrgId, producingAgentId: agentId, stage: "UW_REVIEW",
       },
       {
@@ -119,6 +124,7 @@ describe("Axel-controlled correspondence API (isolated fictional fixture)", () =
       },
     ]).returning();
     dealId = deal.id;
+    secondDealId = secondDeal.id;
     foreignDealId = foreignDeal.id;
     const [market] = await db.insert(marketsTable).values({
       name: `Fictional Market ${suffix}`, marketType: "WC_CARRIER", productLane: "WC", isActive: true, isAppointed: true,
@@ -138,8 +144,8 @@ describe("Axel-controlled correspondence API (isolated fictional fixture)", () =
   after(async () => {
     if (closeServer) await closeServer();
     const userIds = [adminId, csaId, externalCsaId, externalAdminId, underwriterId, agentId].filter(Boolean);
-    if (dealId || foreignDealId) {
-      const ids = [dealId, foreignDealId].filter(Boolean);
+    if (dealId || secondDealId || foreignDealId) {
+      const ids = [dealId, secondDealId, foreignDealId].filter(Boolean);
       await db.delete(activityLogTable).where(inArray(activityLogTable.dealId, ids));
       await db.delete(dealInboundEmailsTable).where(inArray(dealInboundEmailsTable.dealId, ids));
       await db.delete(dealOutboundEmailsTable).where(inArray(dealOutboundEmailsTable.dealId, ids));
@@ -169,6 +175,112 @@ describe("Axel-controlled correspondence API (isolated fictional fixture)", () =
       assert.equal((await api("GET", `/deal-card/${dealId}/correspondence/market/${dealMarketId}`, cookie)).status, 403);
     }
     assert.equal((await api("GET", `/deal-card/${foreignDealId}/correspondence/market/${dealMarketId}`, adminCookie)).status, 403);
+  });
+
+  it("reports held-review capability without granting external role lookalikes", async () => {
+    for (const cookie of [adminCookie, csaCookie]) {
+      const result = await api("GET", "/deal-card/correspondence/capabilities", cookie);
+      assert.equal(result.status, 200);
+      assert.deepEqual(result.body, { canReviewHeld: true });
+    }
+    for (const cookie of [externalAdminCookie, externalCsaCookie, agentCookie, underwriterCookie]) {
+      const result = await api("GET", "/deal-card/correspondence/capabilities", cookie);
+      assert.equal(result.status, 200);
+      assert.deepEqual(result.body, { canReviewHeld: false });
+      assert.equal((await api("GET", "/deal-card/correspondence/held", cookie)).status, 403);
+      assert.equal((await api("GET", `/deal-card/${dealId}/correspondence/held`, cookie)).status, 403);
+    }
+  });
+
+  it("scopes, filters, counts, enriches, and pages both held queue views", async () => {
+    const baseline = await api("GET", "/deal-card/correspondence/held?filter=all&limit=1", adminCookie);
+    assert.equal(baseline.status, 200);
+    const baselineCounts = (baseline.body as any).counts;
+    const inserted = await db.insert(dealInboundEmailsTable).values([
+      {
+        dealId,
+        messageId: `held-own-a-${suffix}`,
+        fromEmail: `own-a-${suffix}@example.test`,
+        subject: "Own deal A",
+        channel: "HELD",
+        heldReason: "UNVERIFIED_SENDER",
+        bodyEnrichmentStatus: "COMPLETE",
+        receivedAt: new Date("2099-01-03T00:00:00.000Z"),
+      },
+      {
+        dealId: secondDealId,
+        messageId: `held-own-b-${suffix}`,
+        fromEmail: `own-b-${suffix}@example.test`,
+        subject: "Own deal B",
+        channel: "HELD",
+        heldReason: "UNVERIFIED_SENDER",
+        bodyEnrichmentStatus: "COMPLETE",
+        receivedAt: new Date("2099-01-02T00:00:00.000Z"),
+      },
+      {
+        dealId: null,
+        messageId: `held-unmatched-${suffix}`,
+        fromEmail: `unmatched-${suffix}@example.test`,
+        subject: "Unmatched",
+        channel: "HELD",
+        heldReason: "UNKNOWN_RECIPIENT",
+        bodyEnrichmentStatus: "COMPLETE",
+        receivedAt: new Date("2099-01-01T00:00:00.000Z"),
+      },
+      {
+        dealId: foreignDealId,
+        messageId: `held-foreign-${suffix}`,
+        fromEmail: `foreign-${suffix}@example.test`,
+        subject: "Other organization",
+        channel: "HELD",
+        heldReason: "UNVERIFIED_SENDER",
+        bodyEnrichmentStatus: "COMPLETE",
+        receivedAt: new Date("2099-01-04T00:00:00.000Z"),
+      },
+    ]).returning({ id: dealInboundEmailsTable.id });
+    try {
+      const all = await api("GET", "/deal-card/correspondence/held?filter=all&limit=2&offset=0", adminCookie);
+      assert.equal(all.status, 200);
+      const allBody = all.body as any;
+      assert.equal(allBody.counts.all, baselineCounts.all + 3);
+      assert.equal(allBody.counts.matched, baselineCounts.matched + 2);
+      assert.equal(allBody.counts.unmatched, baselineCounts.unmatched + 1);
+      assert.equal(allBody.total, allBody.counts.all);
+      assert.equal(allBody.messages.length, 2);
+      assert.equal(allBody.messages.some((message: any) => message.subject === "Other organization"), false);
+      assert.equal(allBody.messages[0].dealName, `Correspondence Fixture ${suffix}`);
+      assert.equal(allBody.messages[0].dealId, dealId);
+      assert.equal(allBody.messages[0].marketName, null);
+      assert.equal(allBody.messages[0].threadLabel, null);
+      assert.equal(allBody.messages[0].isReleasable, false);
+
+      const matchedPage = await api("GET", "/deal-card/correspondence/held?filter=matched&limit=1&offset=1", adminCookie);
+      assert.equal(matchedPage.status, 200);
+      assert.equal((matchedPage.body as any).total, baselineCounts.matched + 2);
+      assert.equal((matchedPage.body as any).messages.length, 1);
+
+      const unmatched = await api("GET", "/deal-card/correspondence/held?filter=unmatched&limit=100&offset=0", csaCookie);
+      assert.equal(unmatched.status, 200);
+      assert.equal((unmatched.body as any).total, baselineCounts.unmatched + 1);
+      assert.equal((unmatched.body as any).messages.some((message: any) => message.subject === "Unmatched" && message.dealId === null), true);
+
+      const scoped = await api("GET", `/deal-card/${secondDealId}/correspondence/held?filter=all&limit=50&offset=0`, adminCookie);
+      assert.equal(scoped.status, 200);
+      assert.equal((scoped.body as any).total, 1);
+      assert.deepEqual((scoped.body as any).counts, { all: 1, matched: 1, unmatched: 0 });
+      assert.equal((scoped.body as any).messages[0].dealId, secondDealId);
+
+      for (const path of [
+        "/deal-card/correspondence/held?filter=invalid",
+        "/deal-card/correspondence/held?limit=101",
+        "/deal-card/correspondence/held?limit=0",
+        "/deal-card/correspondence/held?offset=-1",
+      ]) {
+        assert.equal((await api("GET", path, adminCookie)).status, 400);
+      }
+    } finally {
+      await db.delete(dealInboundEmailsTable).where(inArray(dealInboundEmailsTable.id, inserted.map((row) => row.id)));
+    }
   });
 
   it("prevents an external ADMIN from mutating trusted identities", async () => {
@@ -307,13 +419,23 @@ describe("Axel-controlled correspondence API (isolated fictional fixture)", () =
          listenerEmail: thread.listenerEmail,
          senderEmail: `market-${suffix}@example.test`,
        });
+       const scopedHeld = await api("GET", `/deal-card/${dealId}/correspondence/held`, csaCookie);
+       assert.equal(scopedHeld.status, 200);
+       const scopedMessage = (scopedHeld.body as any).messages.find((message: any) => message.id === stored.id);
+       assert.ok(scopedMessage);
+       assert.equal(scopedMessage.dealName, `Correspondence Fixture ${suffix}`);
+       assert.equal(scopedMessage.marketName, `Fictional Market ${suffix}`);
+       assert.equal(scopedMessage.threadLabel, `Fictional Market ${suffix}`);
+       assert.equal(scopedMessage.isReleasable, true);
+       assert.deepEqual(scopedMessage.releasableTarget, heldMessage.releasableTarget);
       const released = await api("POST", `/deal-card/correspondence/held/${stored.id}/release`, adminCookie, {
         channel: "MARKET", senderConfirmed: true,
       });
       assert.equal(released.status, 200);
       const [releasedRow] = await db.select().from(dealInboundEmailsTable).where(eq(dealInboundEmailsTable.id, stored.id));
       assert.equal(releasedRow.channel, "MARKET", JSON.stringify({ released: released.body, row: releasedRow }));
-      assert.ok(releasedRow.correspondenceThreadId);
+       assert.equal(releasedRow.dealMarketId, dealMarketId);
+       assert.equal(releasedRow.correspondenceThreadId, thread.id);
     } finally {
       process.env.RESEND_API_KEY = originalKey;
       globalThis.fetch = originalFetch;

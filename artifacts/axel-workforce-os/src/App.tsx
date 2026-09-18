@@ -65,6 +65,7 @@ import NotFound from "@/pages/not-found";
 import TeamPage from "@/pages/TeamPage";
 import { useAuthStore } from "@/lib/auth-store";
 import { GlobalDealCardHost } from "@/components/DealCardModal";
+import HeldMailPage from "@/pages/HeldMailPage";
 
 const queryClient = new QueryClient();
 
@@ -273,6 +274,7 @@ function App() {
               }
             >
               <Route path="/team" element={<TeamPage />} />
+              <Route path="/held-mail" element={<HeldMailPage />} />
             </Route>
 
             <Route

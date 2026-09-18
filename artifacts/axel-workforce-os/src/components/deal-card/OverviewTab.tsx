@@ -383,6 +383,47 @@ export default function OverviewTab({
   const [brokerDialogOpen, setBrokerDialogOpen] = useState(false);
   const [heldDialogOpen, setHeldDialogOpen] = useState(false);
   const [capabilities, setCapabilities] = useState<CorrespondenceCapabilities | null>(null);
+  const [heldCount, setHeldCount] = useState<number | null>(null);
+
+  const countAbortRef = useRef<AbortController | null>(null);
+  
+  const fetchHeldCount = useCallback(() => {
+    if (capabilities?.market.canReviewHeld) {
+      if (countAbortRef.current) countAbortRef.current.abort();
+      const ac = new AbortController();
+      countAbortRef.current = ac;
+
+      api.get<{total: number}>(`/deal-card/${dealId}/correspondence/held?limit=1`, { signal: ac.signal })
+        .then(res => { if (!ac.signal.aborted) setHeldCount(res.total); })
+        .catch(() => { if (!ac.signal.aborted) setHeldCount(null); });
+    } else {
+      setHeldCount(null);
+    }
+  }, [capabilities?.market.canReviewHeld, dealId]);
+
+  useEffect(() => {
+    fetchHeldCount();
+    const onFocus = () => fetchHeldCount();
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [fetchHeldCount]);
+
+  useEffect(() => {
+    const handleReleased = (e: any) => {
+      const dealIdDetail = e.detail?.dealId || e.data?.dealId;
+      if (!dealIdDetail || dealIdDetail === dealId) {
+        fetchHeldCount();
+      }
+    };
+    window.addEventListener("held_message_released", handleReleased);
+    const bc = new BroadcastChannel("held_message_released");
+    bc.onmessage = (e) => handleReleased(e);
+    return () => {
+      window.removeEventListener("held_message_released", handleReleased);
+      bc.close();
+    };
+  }, [dealId, fetchHeldCount]);
+
 
   useEffect(() => {
     let active = true;
@@ -541,6 +582,25 @@ export default function OverviewTab({
         isInternalAdminOrCsa={isInternalAdminOrCsa}
       />
 
+      
+      {capabilities?.market.canReviewHeld && (
+        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: -6 }}>
+          <button
+            type="button"
+            onClick={() => setHeldDialogOpen(true)}
+            style={{
+              display: "flex", alignItems: "center", gap: 6,
+              background: c.bg, border: `1px solid ${c.borderColor}`, borderRadius: 6,
+              padding: "6px 12px", fontSize: 11, fontWeight: 600, color: c.textSecondary,
+              cursor: "pointer"
+            }}
+          >
+            <AlertCircle style={{ width: 14, height: 14 }} />
+            Held Mail for This Deal {heldCount !== null && `(${heldCount})`}
+          </button>
+        </div>
+      )}
+
       {selectedMarketId ? (
         <>
           <div style={{ padding: "8px 12px", background: c.bg, border: `1px solid ${c.borderColor}`, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -613,21 +673,7 @@ export default function OverviewTab({
             
             {/* Broker & Held Correspondence Buttons */}
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              {capabilities?.market.canReviewHeld && (
-                <button
-                  type="button"
-                  onClick={() => setHeldDialogOpen(true)}
-                  style={{
-                    display: "flex", alignItems: "center", gap: 6,
-                    background: c.bg, border: `1px solid ${c.borderColor}`, borderRadius: 6,
-                    padding: "6px 12px", fontSize: 11, fontWeight: 600, color: c.textSecondary,
-                    cursor: "pointer"
-                  }}
-                >
-                  <AlertCircle style={{ width: 14, height: 14 }} />
-                  Held Mail
-                </button>
-              )}
+              
               {capabilities?.broker.canRead && (
                 <button
                   type="button"

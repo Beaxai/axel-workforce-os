@@ -66,10 +66,27 @@ export default function MarketCorrespondenceView({ dealId, dealMarketId, marketN
 
   useEffect(() => {
     fetchMessages();
+    
+    const handleReleased = (e: any) => {
+      const detail = e.detail || e.data;
+      if (detail && detail.dealId === dealId) {
+        fetchMessages();
+      }
+    };
+    const onFocus = () => fetchMessages();
+    
+    window.addEventListener("focus", onFocus);
+    window.addEventListener("held_message_released", handleReleased);
+    const bc = new BroadcastChannel("held_message_released");
+    bc.onmessage = (e) => handleReleased(e);
+    
     return () => {
       if (abortControllerRef.current) abortControllerRef.current.abort();
+      window.removeEventListener("focus", onFocus);
+      window.removeEventListener("held_message_released", handleReleased);
+      bc.close();
     };
-  }, [fetchMessages]);
+  }, [dealId, fetchMessages]);
 
   const handleSend = async () => {
     if (!draftText.trim() || !capabilities?.market.canSend) return;

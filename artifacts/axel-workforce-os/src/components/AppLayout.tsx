@@ -39,13 +39,30 @@ export default function AppLayout() {
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
   const [apiStatus, setApiStatus] = useState<string>("checking...");
+  const [canReviewHeld, setCanReviewHeld] = useState(false);
 
   useEffect(() => {
+    
+    let active = true;
+    import('@/lib/api').then(({ api }) => {
+      api.get<{canReviewHeld: boolean}>("/deal-card/correspondence/capabilities")
+        .then(res => { if (active) setCanReviewHeld(res.canReviewHeld); })
+        .catch(() => { if (active) setCanReviewHeld(false); });
+    });
     fetch(`${import.meta.env.BASE_URL.replace(/\/$/, "")}/api/healthz`)
       .then((res) => res.json())
       .then((data) => setApiStatus(data.status || "connected"))
-      .catch(() => setApiStatus("offline"));
+      .catch(() => { if (active) setApiStatus("offline"); });
+    return () => { active = false; };
   }, []);
+
+  const displayedNavItems = [...navItems];
+  if (canReviewHeld) {
+    // Check if it's not already added
+    if (!displayedNavItems.some(i => i.path === '/held-mail')) {
+      displayedNavItems.push({ label: "Held Mail", path: "/held-mail", icon: ClipboardList });
+    }
+  }
 
   return (
     <div className="min-h-screen flex bg-slate-50">
@@ -70,7 +87,7 @@ export default function AppLayout() {
         </div>
 
         <nav className="flex-1 py-2 px-2 space-y-0.5 overflow-y-auto">
-          {navItems.map((item) => {
+          {displayedNavItems.map((item) => {
             const active = location.pathname === item.path || (item.path !== "/" && location.pathname.startsWith(item.path));
             return (
               <Link

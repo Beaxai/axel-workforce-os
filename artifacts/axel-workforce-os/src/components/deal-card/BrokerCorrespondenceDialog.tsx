@@ -87,10 +87,27 @@ export default function BrokerCorrespondenceDialog({ dealId, isOpen, onClose, ca
         setSelectedAgentId(agents[0].userId);
       }
     }
+    
+    const handleReleased = (e: any) => {
+      const detail = e.detail || e.data;
+      if (detail && detail.dealId === dealId) {
+        fetchMessages();
+      }
+    };
+    const onFocus = () => { if (isOpen) fetchMessages(); };
+    
+    window.addEventListener("focus", onFocus);
+    window.addEventListener("held_message_released", handleReleased);
+    const bc = new BroadcastChannel("held_message_released");
+    bc.onmessage = (e) => handleReleased(e);
+    
     return () => {
       if (abortControllerRef.current) abortControllerRef.current.abort();
+      window.removeEventListener("focus", onFocus);
+      window.removeEventListener("held_message_released", handleReleased);
+      bc.close();
     };
-  }, [isOpen, fetchMessages, agents]);
+  }, [isOpen, fetchMessages, agents, dealId]);
 
   const handleSend = async () => {
     const canSend = capabilities?.broker.canSend;
