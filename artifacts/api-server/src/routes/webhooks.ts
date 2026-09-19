@@ -139,6 +139,9 @@ router.post("/resend-inbound", express.text({ type: "*/*", limit: "10mb" }), asy
     }
 
     const email: InboundEmail = {
+      // Resend's received-email ID is the canonical webhook identity and the
+      // value historically persisted in message_id. Matching independently
+      // verifies it and the provider-returned RFC Message-ID on a fresh GET.
       messageId: String(d.email_id ?? headers["message-id"] ?? crypto.randomUUID()),
       to: parseAddressList(d.to),
       cc: parseAddressList(d.cc),

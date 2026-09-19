@@ -59,9 +59,10 @@ import {
 import { sendDealEmail, ensureCorrespondenceThread, ensureDealMarketEmailAddress } from "../services/emailService";
 import { enrichInboundEmailBody, sanitizeInboundHtml } from "../lib/inbound-email";
 import { resolveHeldMatchCandidate } from "../lib/held-mail-matching";
-import { getTrustedCorrespondenceActor, isTrustedCorrespondenceStaff, trustedActorMayAccessDeal } from "../lib/correspondence-policy";
+import { isTrustedCorrespondenceStaff, trustedActorMayAccessDeal } from "../lib/correspondence-policy";
 import { promoteOverflowMarket } from "../lib/market-dispatch";
 import { canCorrespond, canManageMarket, canSelect, canTransition, isCurrentSelection } from "../lib/market-engagement";
+import heldCorrespondenceMatchRouter from "./held-correspondence-match";
 
 const router: IRouter = Router();
 
@@ -690,98 +691,7 @@ router.get("/correspondence/held", async (req, res) => {
   return res.json(await heldQueueResponse(scope!, parsed.data));
 });
 
-const heldMatchSchema = z.object({
-  dealId: z.string().uuid(),
-  channel: z.enum(["MARKET", "BROKER"]),
-  dealMarketId: z.string().uuid().nullable(),
-  destinationConfirmed: z.literal(true),
-}).strict();
-
-router.get("/correspondence/held/:messageId/match-candidate", async (req, res) => {
-  if (!UUID_RE.test(req.params.messageId)) return res.status(400).json({ error: "Invalid inbound message identifier" });
-  const actor = await getTrustedCorrespondenceActor(req.user);
-  if (!actor) return res.status(403).json({ error: "Trusted Axel correspondence staff required" });
-  const [row] = await db.select().from(dealInboundEmailsTable)
-    .where(eq(dealInboundEmailsTable.id, req.params.messageId)).limit(1);
-  if (!row || row.channel !== "HELD" || row.dealId || hasContradictoryHeldEvidence(row)) {
-    return res.json({ candidate: null, unavailableReason: "MESSAGE_NOT_UNMATCHED" });
-  }
-  const resolution = await resolveHeldMatchCandidate(row.providerReceivedEmailId, db);
-  if (!resolution.candidate) return res.json(resolution);
-  const [deal] = await db.select({ orgId: dealsTable.orgId }).from(dealsTable)
-    .where(eq(dealsTable.id, resolution.candidate.dealId)).limit(1);
-  if (!deal || deal.orgId !== actor.orgId) return res.status(403).json({ error: "Candidate belongs to another organization" });
-  return res.json({ candidate: resolution.candidate, unavailableReason: null });
-});
-
-router.post("/correspondence/held/:messageId/match", async (req, res) => {
-  if (!UUID_RE.test(req.params.messageId)) return res.status(400).json({ error: "Invalid inbound message identifier" });
-  const actor = await getTrustedCorrespondenceActor(req.user);
-  if (!actor) return res.status(403).json({ error: "Trusted Axel correspondence staff required" });
-  const parsed = heldMatchSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: "Invalid match confirmation", issues: parsed.error.issues });
-
-  const outcome = await db.transaction(async (tx) => {
-    await tx.execute(sql`SELECT id FROM deal_inbound_emails WHERE id = ${req.params.messageId} FOR UPDATE`);
-    const [row] = await tx.select().from(dealInboundEmailsTable)
-      .where(eq(dealInboundEmailsTable.id, req.params.messageId)).limit(1);
-    if (!row || row.channel !== "HELD" || row.dealId || hasContradictoryHeldEvidence(row)) return "CONFLICT" as const;
-
-    const resolution = await resolveHeldMatchCandidate(row.providerReceivedEmailId, tx);
-    if (!resolution.candidate) return "CONFLICT" as const;
-    await tx.execute(sql`SELECT id FROM deals WHERE id = ${resolution.candidate.dealId} FOR UPDATE`);
-    await tx.execute(sql`SELECT id FROM correspondence_threads WHERE id = ${resolution.threadId} FOR UPDATE`);
-    if (resolution.candidate.dealMarketId) {
-      await tx.execute(sql`SELECT id FROM deal_markets WHERE id = ${resolution.candidate.dealMarketId} AND deal_id = ${resolution.candidate.dealId} FOR UPDATE`);
-      await tx.execute(sql`SELECT id FROM deal_market_email_addresses WHERE deal_market_id = ${resolution.candidate.dealMarketId} AND email_address = ${resolution.listenerEmail} FOR UPDATE`);
-    }
-    // Recompute after locking routing identities so listener reassignment cannot
-    // race the candidate comparison and update.
-    const locked = await resolveHeldMatchCandidate(row.providerReceivedEmailId, tx);
-    if (!locked.candidate ||
-      locked.candidate.dealId !== resolution.candidate.dealId ||
-      locked.candidate.channel !== resolution.candidate.channel ||
-      locked.candidate.dealMarketId !== resolution.candidate.dealMarketId ||
-      locked.threadId !== resolution.threadId) return "CONFLICT" as const;
-    if (locked.orgId !== actor.orgId) return "FORBIDDEN" as const;
-    const requested = parsed.data;
-    if (requested.dealId !== locked.candidate.dealId ||
-      requested.channel !== locked.candidate.channel ||
-      requested.dealMarketId !== locked.candidate.dealMarketId) return "CONFLICT" as const;
-
-    const [updated] = await tx.update(dealInboundEmailsTable).set({
-      dealId: locked.candidate.dealId,
-      dealMarketId: locked.candidate.dealMarketId,
-      correspondenceThreadId: locked.threadId,
-      // Matching proves destination only. Sender confirmation and release stay
-      // separate, and the message remains private HELD material.
-      heldReason: "DESTINATION_MATCHED_SENDER_UNCONFIRMED",
-    }).where(and(
-      eq(dealInboundEmailsTable.id, row.id),
-      eq(dealInboundEmailsTable.channel, "HELD"),
-      isNull(dealInboundEmailsTable.dealId),
-    )).returning({ id: dealInboundEmailsTable.id });
-    if (!updated) return "CONFLICT" as const;
-    await tx.insert(activityLogTable).values({
-      dealId: locked.candidate.dealId,
-      dealMarketId: locked.candidate.dealMarketId,
-      entityType: "deal",
-      entityId: locked.candidate.dealId,
-      eventType: "held_email_destination_matched",
-      description: `Held email destination matched to ${locked.candidate.channel.toLowerCase()} correspondence`,
-      metadata: {
-        correspondence_private: true,
-        inbound_email_id: row.id,
-        matched_by: actor.id,
-        evidence_model: "provider_received_destination_to_controlled_listener",
-      },
-    });
-    return "MATCHED" as const;
-  });
-  if (outcome === "FORBIDDEN") return res.status(403).json({ error: "Candidate belongs to another organization" });
-  if (outcome !== "MATCHED") return res.status(409).json({ error: "Match candidate is unavailable, ambiguous, or stale" });
-  return res.json({ matched: true });
-});
+router.use(heldCorrespondenceMatchRouter);
 
 const heldReleaseSchema = z.object({
   channel: z.enum(["MARKET", "BROKER"]),

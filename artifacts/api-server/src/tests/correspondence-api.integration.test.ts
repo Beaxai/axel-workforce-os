@@ -232,19 +232,19 @@ describe("Axel-controlled correspondence API (isolated fictional fixture)", () =
     };
     const inserted = await db.insert(dealInboundEmailsTable).values([
       {
-        messageId: `match-success-${suffix}`, providerReceivedEmailId: providerIds.success,
-        fromEmail: `market-${suffix}@example.test`, toEmails: ["untrusted-webhook-value@example.test"],
+        messageId: providerIds.success, providerReceivedEmailId: providerIds.success,
+        fromEmail: `market-${suffix}@example.test`, toEmails: [ownAddress.emailAddress], ccEmails: [],
         channel: "HELD", heldReason: "UNMATCHED_RECIPIENT_OR_HEADER",
         bodyEnrichmentStatus: "COMPLETE", receivedAt: new Date(),
       },
       {
-        messageId: `match-concurrent-${suffix}`, providerReceivedEmailId: providerIds.concurrent,
-        fromEmail: `market-${suffix}@example.test`, channel: "HELD",
+        messageId: providerIds.concurrent, providerReceivedEmailId: providerIds.concurrent,
+        fromEmail: `market-${suffix}@example.test`, toEmails: [ownAddress.emailAddress], ccEmails: [], channel: "HELD",
         heldReason: "UNMATCHED_RECIPIENT_OR_HEADER", bodyEnrichmentStatus: "COMPLETE", receivedAt: new Date(),
       },
       {
-        messageId: `match-ambiguous-${suffix}`, providerReceivedEmailId: providerIds.ambiguous,
-        fromEmail: `market-${suffix}@example.test`, channel: "HELD",
+        messageId: providerIds.ambiguous, providerReceivedEmailId: providerIds.ambiguous,
+        fromEmail: `market-${suffix}@example.test`, toEmails: [ownAddress.emailAddress], ccEmails: [], channel: "HELD",
         heldReason: "UNMATCHED_RECIPIENT_OR_HEADER", bodyEnrichmentStatus: "COMPLETE", receivedAt: new Date(),
       },
       {
@@ -253,30 +253,29 @@ describe("Axel-controlled correspondence API (isolated fictional fixture)", () =
         bodyEnrichmentStatus: "COMPLETE", receivedAt: new Date(),
       },
       {
-        messageId: `match-foreign-${suffix}`, providerReceivedEmailId: providerIds.foreign,
-        fromEmail: `market-${suffix}@example.test`, channel: "HELD",
+        messageId: providerIds.foreign, providerReceivedEmailId: providerIds.foreign,
+        fromEmail: `market-${suffix}@example.test`, toEmails: [foreignAddress.emailAddress], ccEmails: [], channel: "HELD",
         heldReason: "UNMATCHED_RECIPIENT_OR_HEADER", bodyEnrichmentStatus: "COMPLETE", receivedAt: new Date(),
       },
       {
-        messageId: `match-provider-id-mismatch-${suffix}`, providerReceivedEmailId: providerIds.mismatch,
-        fromEmail: `market-${suffix}@example.test`, channel: "HELD",
+        messageId: providerIds.mismatch, providerReceivedEmailId: providerIds.mismatch,
+        fromEmail: `market-${suffix}@example.test`, toEmails: [ownAddress.emailAddress], ccEmails: [], channel: "HELD",
         heldReason: "UNMATCHED_RECIPIENT_OR_HEADER", bodyEnrichmentStatus: "COMPLETE", receivedAt: new Date(),
       },
       {
-        messageId: `match-contradiction-${suffix}`, providerReceivedEmailId: providerIds.contradiction,
-        fromEmail: `market-${suffix}@example.test`, channel: "HELD",
+        messageId: providerIds.contradiction, providerReceivedEmailId: providerIds.contradiction,
+        fromEmail: `market-${suffix}@example.test`, toEmails: ["contradictory-destination@example.test"], ccEmails: [], channel: "HELD",
         heldReason: "HEADER_IDENTITY_CONTRADICTION", bodyEnrichmentStatus: "COMPLETE", receivedAt: new Date(),
       },
       {
-        messageId: `match-broker-${suffix}`, providerReceivedEmailId: providerIds.broker,
-        fromEmail: `broker-agent-${suffix}@example.test`, toEmails: ["untrusted-webhook-value@example.test"],
+        messageId: providerIds.broker, providerReceivedEmailId: providerIds.broker,
+        fromEmail: `broker-agent-${suffix}@example.test`, toEmails: [brokerThread.listenerEmail], ccEmails: [],
         channel: "HELD", heldReason: "UNMATCHED_RECIPIENT_OR_HEADER",
         bodyText: "Fictional broker reply for provider-evidence matching.",
         bodyEnrichmentStatus: "COMPLETE", receivedAt: new Date(),
       },
     ]).returning({ id: dealInboundEmailsTable.id, providerId: dealInboundEmailsTable.providerReceivedEmailId });
     const byProvider = new Map(inserted.map((row) => [row.providerId, row.id]));
-    let refreshedSuccessDestination = ownAddress.emailAddress;
     try {
       process.env.RESEND_API_KEY = "fictional-provider-key";
       globalThis.fetch = (async (url, init) => {
@@ -289,14 +288,19 @@ describe("Axel-controlled correspondence API (isolated fictional fixture)", () =
             ? [brokerThread.listenerEmail]
           : providerId === providerIds.ambiguous
             ? [ownAddress.emailAddress, "second@example.test"]
-            : providerId === providerIds.success
-              ? [refreshedSuccessDestination]
-              : [ownAddress.emailAddress];
+            : [ownAddress.emailAddress];
+        const messageId = `<rfc-${providerId}@example.test>`;
         return new Response(JSON.stringify({
           data: {
             id: providerId === providerIds.mismatch ? "different-provider-record" : providerId,
+            message_id: messageId,
+            from: providerId === providerIds.broker
+              ? `broker-agent-${suffix}@example.test`
+              : `market-${suffix}@example.test`,
             to,
             cc: [],
+            bcc: [],
+            headers: [{ name: "Message-ID", value: messageId }],
           },
         }), {
           status: 200, headers: { "Content-Type": "application/json" },
@@ -304,92 +308,93 @@ describe("Axel-controlled correspondence API (isolated fictional fixture)", () =
       }) as typeof fetch;
 
       const successId = byProvider.get(providerIds.success)!;
-      assert.equal((await api("GET", `/deal-card/correspondence/held/${successId}/match-candidate`, externalAdminCookie)).status, 403);
-      const candidate = await api("GET", `/deal-card/correspondence/held/${successId}/match-candidate`, adminCookie);
+      assert.equal((await api("POST", `/deal-card/correspondence/held/${successId}/match-preview`, externalAdminCookie, {})).status, 403);
+      const candidate = await api("POST", `/deal-card/correspondence/held/${successId}/match-preview`, adminCookie, {});
       assert.equal(candidate.status, 200);
-      assert.deepEqual((candidate.body as any).candidate, {
-        dealId, dealName: `Correspondence Fixture ${suffix}`, channel: "MARKET",
-        dealMarketId, marketName: `Fictional Market ${suffix}`,
-        evidence: [
-          "Provider-confirmed sole destination",
-          "Unique Axel-controlled market listener",
-          "Listener, deal, market, and thread are consistent",
-        ],
-      });
-      assert.equal((candidate.body as any).unavailableReason, null);
+      assert.equal((candidate.body as any).candidate.dealId, dealId);
+      assert.equal((candidate.body as any).candidate.dealName, `Correspondence Fixture ${suffix}`);
+      assert.equal((candidate.body as any).candidate.channel, "MARKET");
+      assert.equal((candidate.body as any).candidate.dealMarketId, dealMarketId);
+      assert.equal((candidate.body as any).candidate.listenerEmail, ownAddress.emailAddress);
+      assert.equal(typeof (candidate.body as any).candidate.confirmationToken, "string");
+      assert.ok((candidate.body as any).candidate.evidenceSummary.length >= 3);
 
-      const confirmation = { dealId, channel: "MARKET", dealMarketId, destinationConfirmed: true };
+      const confirmation = {
+        confirmationToken: (candidate.body as any).candidate.confirmationToken,
+        destinationConfirmed: true,
+      };
       assert.equal((await api("POST", `/deal-card/correspondence/held/${successId}/match`, adminCookie, {
-        ...confirmation, dealId: secondDealId,
+        ...confirmation, confirmationToken: `${confirmation.confirmationToken}invalid`,
       })).status, 409);
       assert.deepEqual((await api("POST", `/deal-card/correspondence/held/${successId}/match`, adminCookie, confirmation)), {
-        status: 200, body: { matched: true },
+        status: 200, body: { associated: true, messageId: successId, dealId, channel: "HELD" },
       });
       const [matched] = await db.select().from(dealInboundEmailsTable).where(eq(dealInboundEmailsTable.id, successId));
       assert.equal(matched.channel, "HELD");
       assert.equal(matched.dealId, dealId);
       assert.equal((await api("POST", `/deal-card/correspondence/held/${successId}/match`, adminCookie, confirmation)).status, 409);
-      refreshedSuccessDestination = foreignAddress.emailAddress;
       assert.equal((await api("POST", `/deal-card/correspondence/held/${successId}/release`, adminCookie, {
-        channel: "MARKET", senderConfirmed: true,
+        channel: "BROKER", senderConfirmed: true,
       })).status, 409);
       const [stillHeld] = await db.select().from(dealInboundEmailsTable).where(eq(dealInboundEmailsTable.id, successId));
       assert.equal(stillHeld.channel, "HELD");
-      assert.equal(stillHeld.heldReason, "DESTINATION_MATCHED_SENDER_UNCONFIRMED");
-      refreshedSuccessDestination = ownAddress.emailAddress;
+      assert.equal(stillHeld.heldReason, "SENDER_NOT_APPROVED_FOR_THREAD");
       assert.equal((await api("POST", `/deal-card/correspondence/held/${successId}/release`, adminCookie, {
         channel: "MARKET", senderConfirmed: true,
       })).status, 200);
 
       const noEvidenceId = inserted.find((row) => row.providerId === null)!.id;
-      const noEvidence = await api("GET", `/deal-card/correspondence/held/${noEvidenceId}/match-candidate`, adminCookie);
-      assert.deepEqual(noEvidence.body, { candidate: null, unavailableReason: "PROVIDER_PROVENANCE_UNAVAILABLE" });
+      const noEvidence = await api("POST", `/deal-card/correspondence/held/${noEvidenceId}/match-preview`, adminCookie, {});
+      assert.equal(noEvidence.status, 503);
+      assert.equal((noEvidence.body as any).code, "PROVIDER_UNAVAILABLE");
       assert.equal((await api("POST", `/deal-card/correspondence/held/${noEvidenceId}/match`, adminCookie, confirmation)).status, 409);
-      const ambiguous = await api("GET", `/deal-card/correspondence/held/${byProvider.get(providerIds.ambiguous)}/match-candidate`, adminCookie);
-      assert.deepEqual(ambiguous.body, { candidate: null, unavailableReason: "AMBIGUOUS_PROVIDER_DESTINATION" });
-      const mismatch = await api("GET", `/deal-card/correspondence/held/${byProvider.get(providerIds.mismatch)}/match-candidate`, adminCookie);
-      assert.deepEqual(mismatch.body, { candidate: null, unavailableReason: "PROVIDER_ID_MISMATCH" });
+      const ambiguous = await api("POST", `/deal-card/correspondence/held/${byProvider.get(providerIds.ambiguous)}/match-preview`, adminCookie, {});
+      assert.equal(ambiguous.status, 409);
+      assert.equal((ambiguous.body as any).code, "EVIDENCE_MISMATCH");
+      const mismatch = await api("POST", `/deal-card/correspondence/held/${byProvider.get(providerIds.mismatch)}/match-preview`, adminCookie, {});
+      assert.equal(mismatch.status, 409);
+      assert.equal((mismatch.body as any).code, "EVIDENCE_MISMATCH");
       const contradictionId = byProvider.get(providerIds.contradiction)!;
-      assert.deepEqual(
-        (await api("GET", `/deal-card/correspondence/held/${contradictionId}/match-candidate`, adminCookie)).body,
-        { candidate: null, unavailableReason: "MESSAGE_NOT_UNMATCHED" },
+      assert.equal(
+        (await api("POST", `/deal-card/correspondence/held/${contradictionId}/match-preview`, adminCookie, {})).status,
+        409,
       );
       assert.equal((await api("POST", `/deal-card/correspondence/held/${contradictionId}/match`, adminCookie, confirmation)).status, 409);
       const [contradiction] = await db.select({ reason: dealInboundEmailsTable.heldReason })
         .from(dealInboundEmailsTable).where(eq(dealInboundEmailsTable.id, contradictionId));
       assert.equal(contradiction.reason, "HEADER_IDENTITY_CONTRADICTION");
       const foreignId = byProvider.get(providerIds.foreign)!;
-      assert.equal((await api("GET", `/deal-card/correspondence/held/${foreignId}/match-candidate`, adminCookie)).status, 403);
-      assert.equal((await api("POST", `/deal-card/correspondence/held/${foreignId}/match`, adminCookie, {
-        dealId: foreignDealId, channel: "MARKET", dealMarketId: foreignMarket.id, destinationConfirmed: true,
-      })).status, 403);
+      assert.equal((await api("POST", `/deal-card/correspondence/held/${foreignId}/match-preview`, adminCookie, {})).status, 403);
 
       const concurrentId = byProvider.get(providerIds.concurrent)!;
+      const [adminPreview, csaPreview] = await Promise.all([
+        api("POST", `/deal-card/correspondence/held/${concurrentId}/match-preview`, adminCookie, {}),
+        api("POST", `/deal-card/correspondence/held/${concurrentId}/match-preview`, csaCookie, {}),
+      ]);
+      assert.equal(adminPreview.status, 200);
+      assert.equal(csaPreview.status, 200);
       const results = await Promise.all([
-        api("POST", `/deal-card/correspondence/held/${concurrentId}/match`, adminCookie, confirmation),
-        api("POST", `/deal-card/correspondence/held/${concurrentId}/match`, csaCookie, confirmation),
+        api("POST", `/deal-card/correspondence/held/${concurrentId}/match`, adminCookie, {
+          confirmationToken: (adminPreview.body as any).candidate.confirmationToken,
+          destinationConfirmed: true,
+        }),
+        api("POST", `/deal-card/correspondence/held/${concurrentId}/match`, csaCookie, {
+          confirmationToken: (csaPreview.body as any).candidate.confirmationToken,
+          destinationConfirmed: true,
+        }),
       ]);
       assert.deepEqual(results.map((result) => result.status).sort(), [200, 409]);
 
       const brokerId = byProvider.get(providerIds.broker)!;
-      const brokerCandidate = await api("GET", `/deal-card/correspondence/held/${brokerId}/match-candidate`, csaCookie);
-      assert.deepEqual(brokerCandidate.body, {
-        candidate: {
-          dealId,
-          dealName: `Correspondence Fixture ${suffix}`,
-          channel: "BROKER",
-          dealMarketId: null,
-          marketName: null,
-          evidence: [
-            "Provider-confirmed sole destination",
-            "Unique Axel-controlled broker listener",
-            "Listener, deal, and thread are consistent",
-          ],
-        },
-        unavailableReason: null,
-      });
+      const brokerCandidate = await api("POST", `/deal-card/correspondence/held/${brokerId}/match-preview`, csaCookie, {});
+      assert.equal(brokerCandidate.status, 200);
+      assert.equal((brokerCandidate.body as any).candidate.dealId, dealId);
+      assert.equal((brokerCandidate.body as any).candidate.channel, "BROKER");
+      assert.equal((brokerCandidate.body as any).candidate.dealMarketId, null);
+      assert.equal((brokerCandidate.body as any).candidate.threadId, brokerThread.id);
       const brokerConfirmation = {
-        dealId, channel: "BROKER", dealMarketId: null, destinationConfirmed: true,
+        confirmationToken: (brokerCandidate.body as any).candidate.confirmationToken,
+        destinationConfirmed: true,
       };
       for (const cookie of [agentCookie, underwriterCookie, externalCsaCookie]) {
         assert.equal(
@@ -399,7 +404,7 @@ describe("Axel-controlled correspondence API (isolated fictional fixture)", () =
       }
       assert.deepEqual(
         await api("POST", `/deal-card/correspondence/held/${brokerId}/match`, csaCookie, brokerConfirmation),
-        { status: 200, body: { matched: true } },
+        { status: 200, body: { associated: true, messageId: brokerId, dealId, channel: "HELD" } },
       );
       const [matchedBroker] = await db.select().from(dealInboundEmailsTable)
         .where(eq(dealInboundEmailsTable.id, brokerId));
@@ -417,7 +422,7 @@ describe("Axel-controlled correspondence API (isolated fictional fixture)", () =
 
       const matchingAudits = await db.select().from(activityLogTable).where(and(
         eq(activityLogTable.dealId, dealId),
-        eq(activityLogTable.eventType, "held_email_destination_matched"),
+        eq(activityLogTable.eventType, "inbound_email_matched"),
       ));
       const brokerAudit = matchingAudits.find((audit) =>
         (audit.metadata as any)?.inbound_email_id === brokerId

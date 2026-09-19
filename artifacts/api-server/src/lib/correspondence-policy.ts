@@ -12,6 +12,7 @@ import type { AuthUser } from "./auth";
 const STAFF_ROLES = new Set(["ADMIN", "CSA"]);
 
 export type TrustedCorrespondenceActor = AuthUser & { orgId: string };
+type CorrespondencePolicyQuery = Pick<typeof db, "select">;
 
 /**
  * A market-correspondence actor is deliberately stricter than ordinary
@@ -21,10 +22,11 @@ export type TrustedCorrespondenceActor = AuthUser & { orgId: string };
  */
 export async function getTrustedCorrespondenceActor(
   user: AuthUser | undefined,
+  query: CorrespondencePolicyQuery = db,
 ): Promise<TrustedCorrespondenceActor | null> {
   if (!user || !user.orgId || !STAFF_ROLES.has(user.role)) return null;
 
-  const memberships = await db
+  const memberships = await query
     .select({
       role: orgMembersTable.role,
       orgId: orgMembersTable.orgId,
@@ -66,10 +68,11 @@ export async function getTrustedCorrespondenceActor(
 export async function trustedActorMayAccessDeal(
   user: AuthUser | undefined,
   dealId: string,
+  query: CorrespondencePolicyQuery = db,
 ): Promise<{ actor: TrustedCorrespondenceActor; deal: typeof dealsTable.$inferSelect } | null> {
-  const actor = await getTrustedCorrespondenceActor(user);
+  const actor = await getTrustedCorrespondenceActor(user, query);
   if (!actor) return null;
-  const [deal] = await db.select().from(dealsTable).where(eq(dealsTable.id, dealId)).limit(1);
+  const [deal] = await query.select().from(dealsTable).where(eq(dealsTable.id, dealId)).limit(1);
   if (!deal || !deal.orgId || deal.orgId !== actor.orgId) return null;
   return { actor, deal };
 }

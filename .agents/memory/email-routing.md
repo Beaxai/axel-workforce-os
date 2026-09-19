@@ -14,11 +14,17 @@ Treat provider transport authentication separately from sender authentication. A
 
 **How to apply:** Keep unverified external replies private for explicit staff verification and audited release to a server-derived candidate. Do not restore automatic routing based on a subject token or raw authentication header.
 
+Provider fixtures must exercise the minimal documented response, not just enriched payloads with duplicate raw headers.
+
+**Why:** Valid provider responses need not repeat canonical fields in raw headers, and recipient envelopes may include hidden BCC audiences. Over-enriched fixtures can conceal both compatibility and privacy failures.
+
+**How to apply:** Test canonical-only payloads, contradictory optional copies, and every recipient field whenever provider evidence is used for authorization or matching. Do not weaken identity checks to compensate for an inaccurate fixture.
+
 Access to unmatched mail does not authorize assigning it to an arbitrary deal.
 
-**Why:** The owner approved evidence-based matching on 2026-09-19, not unrestricted assignment. Seeing a message and proving its destination are separate actions, and proving a destination does not authenticate its sender.
+**Why:** Seeing a message and proving its destination are separate actions. Staff association was approved only as a separate evidence-checked workflow, not unrestricted manual assignment.
 
-**How to apply:** Do not add a deal-picker shortcut or use subject tokens as matching authority. Require independent destination evidence, tenant checks, and an audit trail. Keep destination confirmation separate from sender-confirmed release; unavailable evidence must leave mail held.
+**How to apply:** Keep association separate from release. A provider receipt and persisted listener/thread can establish destination but cannot establish sender legitimacy. Missing independent evidence means no association; do not add a deal-picker shortcut or weaken sender-confirmed release to make historical mail match.
 
 **Why/gotchas:**
 - External webhooks are only reachable via `/api/webhooks/*` (port-80 proxy forwards only `/api`); the root `/webhooks` mount works only on :8080 direct. Webhooks router is mounted publicly inside the /api router BEFORE requireAuth.

@@ -4,9 +4,9 @@ import { useThemeColors } from "@/lib/use-theme-colors";
 import { useAuthStore } from "@/lib/auth-store";
 import { CorrespondenceMessage } from "@/components/deal-card/types";
 import { HeldMessageItem } from "@/components/deal-card/HeldMessageItem";
-import { HeldMatchEvidence } from "@/components/deal-card/HeldMatchEvidence";
 import { AlertTriangle, HelpCircle, LayoutDashboard, Lock, RefreshCw, FolderSearch } from "lucide-react";
 import { openDealCard } from "@/components/DealCardModal";
+import { UnmatchedHeldMatchPanel } from "@/components/deal-card/UnmatchedHeldMatchPanel";
 
 export default function HeldMailPage() {
   const c = useThemeColors();
@@ -170,11 +170,13 @@ export default function HeldMailPage() {
     }
   };
 
-  const handleMatchConnected = (dealId: string) => {
+  const handleAssociated = (result: { messageId: string; dealId: string }) => {
+    if (authorized !== true || !authUserId || authUserIdRef.current !== authUserId) return;
     fetchMessages(false);
-    window.dispatchEvent(new CustomEvent("held_message_released", { detail: { dealId } }));
+    const detail = { messageId: result.messageId, dealId: result.dealId, associated: true };
+    window.dispatchEvent(new CustomEvent("held_message_released", { detail }));
     const bc = new BroadcastChannel("held_message_released");
-    bc.postMessage({ dealId });
+    bc.postMessage(detail);
     bc.close();
   };
 
@@ -267,15 +269,10 @@ export default function HeldMailPage() {
           </div>
         ) : (
           messages.map(msg => (
-            <div key={`${filter}-${msg.id}`} style={{ position: "relative" }}>
+            <div key={`${authUserId}-${msg.id}`} style={{ position: "relative" }}>
               <HeldMessageItem message={msg} onRetry={handleRetryBody} onRelease={(id, ch) => handleRelease(msg, ch)} c={c} />
               {!msg.dealId && (
-                <HeldMatchEvidence
-                  message={msg}
-                  c={c}
-                  onForbidden={() => setAuthorized(false)}
-                  onConnected={handleMatchConnected}
-                />
+                <UnmatchedHeldMatchPanel message={msg} c={c} onAssociated={handleAssociated} />
               )}
               {msg.dealId && (
                 <div style={{ position: "absolute", top: 12, right: 12 }}>
