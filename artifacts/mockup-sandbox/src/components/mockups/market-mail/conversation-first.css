@@ -163,3 +163,100 @@
 .theme-dark .cf-fact { background:#1d302d; color:#b9d8cf; }
 .theme-dark .cf-next { background:#321f2b; color:#f0d9e4; }
 .theme-dark .cf-next strong { color:#f29ac0; }
+
+/* Axel design-system pass:
+   The first exploration intentionally used a softer editorial skin. This
+   override brings the prototype back to the production application's actual
+   semantic tokens: Inter, zinc surfaces, 12px cards, pink primary actions,
+   and purple-to-pink CTA treatment. */
+.axel-cf {
+  --ink: #111111;
+  --muted: rgba(0,0,0,.58);
+  --line: rgba(0,0,0,.10);
+  --paper: rgba(255,255,255,.80);
+  --rose: #E91E8C;
+  --rose-deep: #d1187e;
+  --rose-wash: rgba(233,30,140,.15);
+  --lilac-wash: rgba(124,58,237,.15);
+  --mint-wash: rgba(16,185,129,.12);
+  color: var(--ink);
+  background: #f4f4f5;
+  font-family: Inter, system-ui, sans-serif;
+  letter-spacing: -.005em;
+}
+.axel-cf button:focus-visible,
+.axel-cf textarea:focus-visible,
+.axel-cf input:focus-visible { outline: 2px solid var(--rose); }
+.cf-demo,
+.cf-theme-toggle { border-color: rgba(0,0,0,.10); background: rgba(255,255,255,.80); }
+.cf-theme-toggle:hover { border-color: var(--rose); color: var(--rose-deep); }
+.cf-overview {
+  background: rgba(255,255,255,.80);
+  border-color: rgba(0,0,0,.10);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px -2px rgba(0,0,0,.10);
+}
+.cf-header {
+  border-color: rgba(0,0,0,.10);
+  background: rgba(255,255,255,.80);
+}
+.cf-eyebrow, .cf-label { color: rgba(0,0,0,.65); }
+.cf-private { color: rgba(0,0,0,.58); }
+.cf-markets { background: rgba(255,255,255,.80); }
+.cf-market { color: rgba(0,0,0,.58); }
+.cf-market.is-active {
+  color: var(--rose-deep);
+  background: var(--rose-wash);
+  border-color: rgba(233,30,140,.25);
+}
+.cf-avatar { color: var(--rose-deep); background: var(--rose-wash); }
+.cf-avatar.out { color: #5b43a0; background: rgba(124,58,237,.12); }
+.cf-message-card { background: rgba(255,255,255,.80); border-color: rgba(0,0,0,.10); }
+.cf-message.outbound .cf-message-card { background: rgba(0,0,0,.03); border-color: rgba(0,0,0,.10); }
+.cf-held { background: var(--lilac-wash); border-color: rgba(124,58,237,.28); }
+.cf-held-icon { background: rgba(124,58,237,.18); color: #6d28d9; }
+.cf-held-preview { background: rgba(255,255,255,.80); border-color: rgba(0,0,0,.10); }
+.cf-composer { border-color: rgba(0,0,0,.15); background: rgba(255,255,255,.80); }
+.cf-composer-footer { border-color: rgba(0,0,0,.10); }
+.cf-send { background: linear-gradient(135deg, #7C3AED 0%, #E91E8C 100%); color: #fff; }
+.cf-send:hover { background: linear-gradient(135deg, #6D28D9 0%, #d1187e 100%); }
+.cf-email-panel { background: rgba(255,255,255,.80); border-color: rgba(0,0,0,.10); box-shadow: 0 4px 12px -2px rgba(0,0,0,.10); }
+.cf-email-head { border-color: rgba(0,0,0,.10); }
+.cf-segment { background: rgba(0,0,0,.04); }
+.cf-segment button { color: rgba(0,0,0,.58); }
+.cf-segment button.is-active { color: var(--rose-deep); background: rgba(255,255,255,.80); }
+.cf-fact { background: rgba(16,185,129,.12); color: #166534; }
+.cf-next { background: var(--rose-wash); color: #6b2148; }
+.cf-next strong { color: var(--rose-deep); }
+
+.axel-cf.theme-dark {
+  --ink: rgba(255,255,255,.92);
+  --muted: rgba(255,255,255,.48);
+  --line: rgba(255,255,255,.07);
+  --paper: rgba(255,255,255,.05);
+  --rose: #ff4ba6;
+  --rose-deep: #ff4ba6;
+  --rose-wash: rgba(233,30,140,.15);
+  --lilac-wash: rgba(124,58,237,.15);
+  --mint-wash: rgba(16,185,129,.12);
+  background: #060608;
+}
+.theme-dark .cf-overview,
+.theme-dark .cf-message-card,
+.theme-dark .cf-composer,
+.theme-dark .cf-email-panel { background: rgba(255,255,255,.05); border-color: rgba(255,255,255,.07); }
+.theme-dark .cf-header,
+.theme-dark .cf-markets { background: rgba(255,255,255,.035); border-color: rgba(255,255,255,.07); }
+.theme-dark .cf-demo,
+.theme-dark .cf-theme-toggle { background: rgba(255,255,255,.05); border-color: rgba(255,255,255,.10); color: rgba(255,255,255,.72); }
+.theme-dark .cf-market { color: rgba(255,255,255,.48); }
+.theme-dark .cf-market.is-active { color: #ff4ba6; background: rgba(233,30,140,.15); border-color: rgba(233,30,140,.35); }
+.theme-dark .cf-message.outbound .cf-message-card { background: rgba(255,255,255,.035); border-color: rgba(255,255,255,.07); }
+.theme-dark .cf-avatar { color: #ff9bc6; background: rgba(233,30,140,.15); }
+.theme-dark .cf-avatar.out { color: #c4b5fd; background: rgba(124,58,237,.15); }
+.theme-dark .cf-held { background: rgba(124,58,237,.15); border-color: rgba(124,58,237,.35); }
+.theme-dark .cf-held-icon { background: rgba(124,58,237,.22); color: #c4b5fd; }
+.theme-dark .cf-held-preview { background: rgba(255,255,255,.035); border-color: rgba(255,255,255,.10); }
+.theme-dark .cf-send { background: linear-gradient(135deg, #7C3AED 0%, #E91E8C 100%); }
+.theme-dark .cf-fact { background: rgba(16,185,129,.12); color: #a7f3d0; }
+.theme-dark .cf-next { background: rgba(233,30,140,.15); color: rgba(255,255,255,.85); }
