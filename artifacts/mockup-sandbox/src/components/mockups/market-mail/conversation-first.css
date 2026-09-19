@@ -21,9 +21,12 @@
 .axel-cf button:focus-visible, .axel-cf textarea:focus-visible, .axel-cf input:focus-visible { outline: 3px solid rgba(219,40,124,.32); outline-offset: 2px; }
 .cf-page { width: min(100%, 1120px); margin: 0 auto; }
 .cf-topline { display:flex; align-items:center; justify-content:space-between; gap:16px; margin: 0 4px 17px; font-size:12px; color:var(--muted); }
+.cf-top-actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
 .cf-brand { display:flex; align-items:center; gap:9px; font-weight:700; color:var(--ink); font-size:15px; }
 .cf-mark { width:18px; height:18px; border-radius: 6px 10px 6px 10px; background:var(--rose); transform:rotate(45deg); display:inline-block; }
 .cf-demo { border:1px solid #e8cadb; padding:5px 9px; border-radius:999px; background:#fff7fb; font-size:11px; }
+.cf-theme-toggle { border:1px solid #e8cadb; padding:5px 9px; border-radius:999px; background:#fffafd; color:var(--ink); font-size:11px; }
+.cf-theme-toggle:hover { border-color:var(--rose); color:var(--rose-deep); }
 .cf-overview { min-height:920px; background:rgba(255,250,252,.92); border:1px solid #eadde5; border-radius:24px; box-shadow: 0 18px 40px rgba(74,34,58,.09); overflow:hidden; }
 .cf-header { padding:27px 32px 18px; border-bottom:1px solid var(--line); background:linear-gradient(105deg,#fff9fb 0%,#fff7fb 55%,#f7f1fb 100%); }
 .cf-eyebrow, .cf-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.12em; color:#8b6779; }
@@ -100,3 +103,63 @@
   .cf-email-head { display:block; }
   .cf-segment { margin-top:12px; width:max-content; }
 }
+
+/* Dark-mode exploration: same information architecture, quieter midnight surfaces,
+   and a single warm pink action accent. */
+.axel-cf.theme-dark {
+  --ink: #f4edf4;
+  --muted: #aa9eae;
+  --line: #3a3040;
+  --paper: #17131b;
+  --rose: #f06aa8;
+  --rose-deep: #ff9bc6;
+  --rose-wash: #3a2034;
+  --lilac-wash: #2a2032;
+  --mint-wash: #1d302d;
+  background: #100d14;
+}
+.theme-dark .cf-demo,
+.theme-dark .cf-theme-toggle { border-color:#514053; background:#211923; color:#d9c8d9; }
+.theme-dark .cf-theme-toggle:hover { border-color:var(--rose); color:var(--rose); }
+.theme-dark .cf-overview { background:rgba(24,19,29,.96); border-color:#3a3040; box-shadow:0 20px 50px rgba(0,0,0,.34); }
+.theme-dark .cf-header { border-color:var(--line); background:linear-gradient(105deg,#211923 0%,#1d1722 55%,#241d2d 100%); }
+.theme-dark .cf-eyebrow,
+.theme-dark .cf-label { color:#bf8eac; }
+.theme-dark .cf-deal-note,
+.theme-dark .cf-count,
+.theme-dark .cf-time,
+.theme-dark .cf-email,
+.theme-dark .cf-private { color:var(--muted); }
+.theme-dark .cf-markets { background:#19141d; }
+.theme-dark .cf-market { color:#b5a7b7; }
+.theme-dark .cf-market.is-active { color:#ffc0dc; background:#3a2034; border-color:#693652; }
+.theme-dark .cf-message-card { background:#25202a; border-color:#403546; }
+.theme-dark .cf-message.outbound .cf-message-card { background:#211e2c; border-color:#3c3850; }
+.theme-dark .cf-avatar { color:#ffd0e4; background:#4a2940; }
+.theme-dark .cf-avatar.out { color:#d2d3ef; background:#34344d; }
+.theme-dark .cf-subject { color:#e9a8c6; }
+.theme-dark .cf-body { color:#ddd1de; }
+.theme-dark .cf-held { background:#2a2032; border-color:#5b426b; }
+.theme-dark .cf-held-icon { background:#513b63; color:#f0c8ff; }
+.theme-dark .cf-held-note,
+.theme-dark .cf-verify { color:#c5b8c8; }
+.theme-dark .cf-held-preview { background:#211a26; border-color:#4a3b50; }
+.theme-dark .cf-original { color:#e5a2c2; }
+.theme-dark .cf-original-copy { color:#bcaeba; border-color:#69475d; background:#211923; }
+.theme-dark .cf-composer { border-color:#693652; background:#2a1e2c; }
+.theme-dark .cf-composer-to { color:#bcaeba; }
+.theme-dark .cf-composer-to strong { color:var(--ink); }
+.theme-dark .cf-composer-footer { border-color:#493342; }
+.theme-dark .cf-composer-footer span { color:#aa8da2; }
+.theme-dark .cf-send { background:#f06aa8; color:#241321; }
+.theme-dark .cf-send:hover { background:#ff9bc6; }
+.theme-dark .cf-email-panel { background:#1b161f; border-color:#3a3040; box-shadow:0 12px 28px rgba(0,0,0,.25); }
+.theme-dark .cf-email-head { border-color:var(--line); }
+.theme-dark .cf-segment { background:#2a2230; }
+.theme-dark .cf-segment button { color:#b2a4b4; }
+.theme-dark .cf-segment button.is-active { color:#ffd0e4; background:#423047; box-shadow:0 1px 3px rgba(0,0,0,.25); }
+.theme-dark .cf-email-route span { color:var(--muted); }
+.theme-dark .cf-email-copy { color:#ddd1de; }
+.theme-dark .cf-fact { background:#1d302d; color:#b9d8cf; }
+.theme-dark .cf-next { background:#321f2b; color:#f0d9e4; }
+.theme-dark .cf-next strong { color:#f29ac0; }

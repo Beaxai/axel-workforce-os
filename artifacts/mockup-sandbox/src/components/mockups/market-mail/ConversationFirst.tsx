@@ -24,6 +24,7 @@ function ThreadMessage({ message }: { message: Message }) {
 }
 
 export function ConversationFirst() {
+  const [darkMode, setDarkMode] = useState(true);
   const [selected, setSelected] = useState("cornerstone");
   const [threads, setThreads] = useState(correspondence);
   const [verified, setVerified] = useState(false);
@@ -52,9 +53,17 @@ export function ConversationFirst() {
     ? { subject: "Northstar Fabrication — request for quote", facts: ["Effective Oct 1", "24 employees · $1.8m payroll", "Submission attached"], next: "Please reply with terms or any questions." }
     : { subject: "Northstar Fabrication — follow-up", facts: ["Effective Oct 1", "24 employees · $1.8m payroll", "Submission attached"], next: "Please reply with terms or any questions." };
 
-  return <main className="axel-cf">
+  return <main className={`axel-cf ${darkMode ? "theme-dark" : ""}`}>
     <div className="cf-page">
-      <div className="cf-topline"><div className="cf-brand"><i className="cf-mark" />Axel</div><span className="cf-demo">Prototype · fictional data · no email sent</span></div>
+      <div className="cf-topline">
+        <div className="cf-brand"><i className="cf-mark" />Axel</div>
+        <div className="cf-top-actions">
+          <span className="cf-demo">Prototype · fictional data · no email sent</span>
+          <button type="button" className="cf-theme-toggle" onClick={() => setDarkMode((value) => !value)} aria-pressed={darkMode}>
+            {darkMode ? "Light mode" : "Dark mode"}
+          </button>
+        </div>
+      </div>
       <section className="cf-overview" aria-labelledby="overview-title">
         <header className="cf-header">
           <div className="cf-eyebrow">Overview · market interaction</div>
