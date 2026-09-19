@@ -1,0 +1,18 @@
+// Visual JSX source: axel-workforce-os/src/components/deal-card/MarketRoutingPanel.tsx
+import type { Market } from "./types";
+import { c } from "./types";
+import { markets } from "./mock-data";
+export function MarketRoutingPanel({ selected, onSelect }: { selected: string | null; onSelect: (id: string) => void }) {
+  const routedMarkets: Market[] = markets;
+  return <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 16 }}>
+    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}><div style={{ display: "flex", flexDirection: "column", gap: 4 }}><div style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ fontSize: 13, fontWeight: 600, color: c.textPrimary }}>Market Routing</span><span style={{ fontSize: 10, background: c.hoverBg, padding: "2px 6px", borderRadius: 4, color: c.textMuted, fontFamily: "monospace" }}>Batch nsf-042</span><span style={{ fontSize: 10, border: `1px solid ${c.borderColor}`, padding: "2px 6px", borderRadius: 4, color: c.textSecondary }}>SENT</span></div><div style={{ fontSize: 11, color: c.textSecondary }}>Preferred markets are sent automatically. Overflow markets and Axel are activated independently.</div></div></div>
+    <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4 }}>
+      {routedMarkets.filter(m => m.isActive).map(m => { const isSelected = selected === m.dealMarketId; return <div role="tab" tabIndex={0} aria-selected={isSelected} key={m.dealMarketId} onClick={() => onSelect(m.dealMarketId)} onKeyDown={e => { if (e.key === "Enter") onSelect(m.dealMarketId); }} style={{ flexShrink: 0, minWidth: 200, padding: 12, borderRadius: 8, border: isSelected ? "2px solid var(--accent-primary)" : `1px solid ${m.isPrimary ? "var(--accent-primary)" : c.borderColor}`, background: isSelected ? `${c.borderColor}22` : c.cardBg, cursor: "pointer", display: "flex", flexDirection: "column", gap: 8, textAlign: "left", fontFamily: "inherit" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}><span style={{ fontSize: 12, fontWeight: 700, color: c.textPrimary }}>#{m.verticalRank} {m.marketName}</span>{m.isSelected && <span style={{ fontSize: 9, background: "var(--accent-primary)", color: "#fff", padding: "2px 4px", borderRadius: 4, fontWeight: 700, letterSpacing: ".05em" }}>SELECTED</span>}<span style={{ marginLeft: "auto", fontSize: 10, color: c.textMuted }}>{m.sendStatus}</span></div>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: c.textSecondary }}><span>{m.appetiteOutcome}</span><span style={{ fontWeight: 600, color: c.textPrimary }}>{m.generatedRate ? `$${m.generatedRate.toLocaleString()}` : "—"}</span></div>
+        <div style={{ fontSize: 10, color: c.textMuted, borderTop: `1px solid ${c.borderColor}`, paddingTop: 6 }}>Attempts: {m.sendAttemptCount}<br />UW: {m.assignedUnderwriter?.name}</div>
+      </div>; })}
+    </div>
+    <div style={{ borderTop: `1px solid ${c.borderColor}`, paddingTop: 10 }}><div style={{ fontSize: 11, fontWeight: 600, color: c.textMuted, marginBottom: 6 }}>Available markets</div><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}><span style={{ fontSize: 12, color: c.textPrimary }}>Peoplease</span><button onClick={() => onSelect("peoplease")} style={{ fontSize: 11, fontWeight: 600, padding: "5px 8px", borderRadius: 6, border: `1px solid ${c.borderColor}`, background: c.hoverBg, color: c.textPrimary }}>Submit to Peoplease</button></div></div>
+  </div>;
+}

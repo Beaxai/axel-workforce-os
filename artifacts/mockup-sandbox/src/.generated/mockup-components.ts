@@ -6,5 +6,8 @@ export const modules: ModuleMap = {
   "./components/mockups/submission-cards/DocListStyle.tsx": () => import("../components/mockups/submission-cards/DocListStyle.tsx"),
   "./components/mockups/submission-cards/DossierFactSheet.tsx": () => import("../components/mockups/submission-cards/DossierFactSheet.tsx"),
   "./components/mockups/submission-cards/MetadataStatCards.tsx": () => import("../components/mockups/submission-cards/MetadataStatCards.tsx"),
-  "./components/mockups/submission-cards/TwoColumnCardGrid.tsx": () => import("../components/mockups/submission-cards/TwoColumnCardGrid.tsx")
+  "./components/mockups/submission-cards/TwoColumnCardGrid.tsx": () => import("../components/mockups/submission-cards/TwoColumnCardGrid.tsx"),
+  "./components/mockups/market-mail/ActionFirst.tsx": () => import("../components/mockups/market-mail/ActionFirst.tsx"),
+  "./components/mockups/market-mail/ConversationFirst.tsx": () => import("../components/mockups/market-mail/ConversationFirst.tsx"),
+  "./components/mockups/market-mail/Current.tsx": () => import("../components/mockups/market-mail/Current.tsx")
 };

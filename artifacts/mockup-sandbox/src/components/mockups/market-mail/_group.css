@@ -1,0 +1,32 @@
+/* Extracted visual tokens from axel-workforce-os/src/index.css (light mode). */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Jost:wght@500;600&display=swap");
+
+.market-mail-current {
+  --accent-primary: #E91E8C;
+  --accent-primary-hover: #d1187e;
+  --accent-primary-focus: #ff4ba6;
+  --accent-primary-soft: rgba(233,30,140,0.15);
+  --accent-support: #7C3AED;
+  --accent-support-hover: #6D28D9;
+  --accent-support-soft: rgba(124,58,237,0.15);
+  --gradient-cta: linear-gradient(135deg, #7C3AED 0%, #E91E8C 100%);
+  --app-font-sans: "Inter", system-ui, sans-serif;
+  color: #111;
+  font-family: var(--app-font-sans);
+  letter-spacing: -.005em;
+  min-height: 100dvh;
+  box-sizing: border-box;
+  background: #f4f4f5;
+  padding: 18px;
+}
+.market-mail-current *, .market-mail-current *::before, .market-mail-current *::after { box-sizing: border-box; }
+.market-mail-current button, .market-mail-current input, .market-mail-current textarea { font: inherit; }
+.market-mail-current button:not(:disabled) { cursor: pointer; }
+.market-mail-current button:focus-visible, .market-mail-current input:focus-visible, .market-mail-current textarea:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
+.market-mail-shell { width: min(100%, 980px); margin: 0 auto; padding: 18px; border-radius: 12px; background: rgba(255,255,255,.8); border: 1px solid rgba(0,0,0,.1); box-shadow: 0 4px 12px -2px rgba(0,0,0,.10); }
+.market-mail-current ::-webkit-scrollbar { width: 8px; height: 8px; }
+.market-mail-current ::-webkit-scrollbar-thumb { background: rgba(15,15,20,.22); border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
+@media (max-width: 640px) {
+  .market-mail-current { padding: 8px; }
+  .market-mail-shell { padding: 12px; border-radius: 8px; }
+}
