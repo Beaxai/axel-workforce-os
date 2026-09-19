@@ -1,13 +1,16 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useCallback, useRef } from "react";
 import { api } from "@/lib/api";
 import { useThemeColors } from "@/lib/use-theme-colors";
+import { useAuthStore } from "@/lib/auth-store";
 import { CorrespondenceMessage } from "@/components/deal-card/types";
 import { HeldMessageItem } from "@/components/deal-card/HeldMessageItem";
+import { HeldMatchEvidence } from "@/components/deal-card/HeldMatchEvidence";
 import { AlertTriangle, HelpCircle, LayoutDashboard, Lock, RefreshCw, FolderSearch } from "lucide-react";
 import { openDealCard } from "@/components/DealCardModal";
 
 export default function HeldMailPage() {
   const c = useThemeColors();
+  const authUserId = useAuthStore((state) => state.user?.id ?? null);
   const [authorized, setAuthorized] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -21,24 +24,51 @@ export default function HeldMailPage() {
   const LIMIT = 50;
 
   const abortRef = useRef<AbortController | null>(null);
+  const authUserIdRef = useRef(authUserId);
+  authUserIdRef.current = authUserId;
+
+  useLayoutEffect(() => {
+    abortRef.current?.abort();
+    setAuthorized(authUserId ? null : false);
+    setMessages([]);
+    setTotal(0);
+    setCounts({ all: 0, matched: 0, unmatched: 0 });
+    setError(null);
+    setLoading(Boolean(authUserId));
+    offsetRef.current = 0;
+
+    return () => abortRef.current?.abort();
+  }, [authUserId]);
 
   useEffect(() => {
-    let active = true;
-    api.get<{canReviewHeld: boolean}>("/deal-card/correspondence/capabilities")
+    if (!authUserId) return;
+    const ac = new AbortController();
+    const capabilityUserId = authUserId;
+
+    api.get<{canReviewHeld: boolean}>(
+      "/deal-card/correspondence/capabilities",
+      { signal: ac.signal },
+    )
       .then(res => {
-        if (active) setAuthorized(res.canReviewHeld);
+        if (!ac.signal.aborted && authUserIdRef.current === capabilityUserId) {
+          setAuthorized(res.canReviewHeld);
+        }
       })
       .catch(() => {
-        if (active) setAuthorized(false);
+        if (!ac.signal.aborted && authUserIdRef.current === capabilityUserId) {
+          setAuthorized(false);
+        }
       });
-    return () => { active = false; };
-  }, []);
+
+    return () => ac.abort();
+  }, [authUserId]);
 
   const fetchMessages = useCallback(async (isLoadMore = false) => {
-    if (authorized !== true) return;
+    if (authorized !== true || !authUserId) return;
     
     if (abortRef.current) abortRef.current.abort();
     const ac = new AbortController();
+    const requestUserId = authUserId;
     abortRef.current = ac;
 
     try {
@@ -53,7 +83,7 @@ export default function HeldMailPage() {
         { signal: ac.signal }
       );
       
-      if (ac.signal.aborted) return;
+      if (ac.signal.aborted || authUserIdRef.current !== requestUserId) return;
       
       if (isLoadMore) {
         setMessages(prev => {
@@ -70,16 +100,16 @@ export default function HeldMailPage() {
       offsetRef.current = currentOffset + res.messages.length;
       
     } catch (err: any) {
-      if (ac.signal.aborted) return;
+      if (ac.signal.aborted || authUserIdRef.current !== requestUserId) return;
       if (err.status === 403) {
         setAuthorized(false);
       } else {
         setError("Failed to load held correspondence.");
       }
     } finally {
-      if (!ac.signal.aborted) setLoading(false);
+      if (!ac.signal.aborted && authUserIdRef.current === requestUserId) setLoading(false);
     }
-  }, [authorized, filter]);
+  }, [authorized, authUserId, filter]);
 
   // Reset offset and fetch when filter changes
   useEffect(() => {
@@ -138,6 +168,14 @@ export default function HeldMailPage() {
     } catch (err: any) {
       setError(err.message || "Failed to release message.");
     }
+  };
+
+  const handleMatchConnected = (dealId: string) => {
+    fetchMessages(false);
+    window.dispatchEvent(new CustomEvent("held_message_released", { detail: { dealId } }));
+    const bc = new BroadcastChannel("held_message_released");
+    bc.postMessage({ dealId });
+    bc.close();
   };
 
   if (authorized === null) {
@@ -229,8 +267,16 @@ export default function HeldMailPage() {
           </div>
         ) : (
           messages.map(msg => (
-            <div key={msg.id} style={{ position: "relative" }}>
+            <div key={`${filter}-${msg.id}`} style={{ position: "relative" }}>
               <HeldMessageItem message={msg} onRetry={handleRetryBody} onRelease={(id, ch) => handleRelease(msg, ch)} c={c} />
+              {!msg.dealId && (
+                <HeldMatchEvidence
+                  message={msg}
+                  c={c}
+                  onForbidden={() => setAuthorized(false)}
+                  onConnected={handleMatchConnected}
+                />
+              )}
               {msg.dealId && (
                 <div style={{ position: "absolute", top: 12, right: 12 }}>
                   <button

@@ -16,9 +16,9 @@ Treat provider transport authentication separately from sender authentication. A
 
 Access to unmatched mail does not authorize assigning it to an arbitrary deal.
 
-**Why:** The owner approved separate deal-specific and staff-wide review queues while explicitly leaving manual matching outside that change. Seeing a message and proving its destination are separate actions.
+**Why:** The owner approved evidence-based matching on 2026-09-19, not unrestricted assignment. Seeing a message and proving its destination are separate actions, and proving a destination does not authenticate its sender.
 
-**How to apply:** Preserve unmatched mail for staff review without adding a deal-picker shortcut. Any future matching workflow needs independent destination evidence, tenant checks, and an audit trail.
+**How to apply:** Do not add a deal-picker shortcut or use subject tokens as matching authority. Require independent destination evidence, tenant checks, and an audit trail. Keep destination confirmation separate from sender-confirmed release; unavailable evidence must leave mail held.
 
 **Why/gotchas:**
 - External webhooks are only reachable via `/api/webhooks/*` (port-80 proxy forwards only `/api`); the root `/webhooks` mount works only on :8080 direct. Webhooks router is mounted publicly inside the /api router BEFORE requireAuth.

@@ -32,7 +32,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import app from "../app.js";
 import { createSession } from "../lib/auth.js";
 import { processInboundEmail } from "../lib/inbound-email.js";
-import { sendDealEmail } from "../services/emailService.js";
+import { ensureCorrespondenceThread, ensureDealMarketEmailAddress, sendDealEmail } from "../services/emailService.js";
 
 const suffix = randomUUID().replaceAll("-", "").slice(0, 12);
 let baseUrl = "";
@@ -189,6 +189,254 @@ describe("Axel-controlled correspondence API (isolated fictional fixture)", () =
       assert.deepEqual(result.body, { canReviewHeld: false });
       assert.equal((await api("GET", "/deal-card/correspondence/held", cookie)).status, 403);
       assert.equal((await api("GET", `/deal-card/${dealId}/correspondence/held`, cookie)).status, 403);
+    }
+  });
+
+  it("matches only a provider-proven unique controlled destination, stays held, and releases separately", async () => {
+    const originalFetch = globalThis.fetch;
+    const originalApiKey = process.env.RESEND_API_KEY;
+    const ownAddress = await ensureDealMarketEmailAddress(dealMarketId, dealId, marketId);
+    await ensureCorrespondenceThread({
+      channel: "MARKET",
+      dealId,
+      dealMarketId,
+      marketListener: ownAddress.emailAddress,
+      marketSubjectToken: ownAddress.subjectToken,
+    });
+    const [foreignMarket] = await db.insert(dealMarketsTable).values({
+      dealId: foreignDealId, marketId, marketType: "WC_CARRIER",
+      isActive: true, marketStatus: "ACTIVE", engagementSource: "MANUAL_OVERFLOW",
+      rank: 1, isPrimary: true, sendStatus: "PENDING", appetiteOutcome: "MATCHED", rankingState: "PROVISIONAL",
+    }).returning();
+    const foreignAddress = await ensureDealMarketEmailAddress(foreignMarket.id, foreignDealId, marketId);
+    await ensureCorrespondenceThread({
+      channel: "MARKET",
+      dealId: foreignDealId,
+      dealMarketId: foreignMarket.id,
+      marketListener: foreignAddress.emailAddress,
+      marketSubjectToken: foreignAddress.subjectToken,
+    });
+    const brokerThread = await ensureCorrespondenceThread({
+      channel: "BROKER",
+      dealId,
+      participantUserId: agentId,
+    });
+    const providerIds = {
+      success: `provider-success-${suffix}`,
+      concurrent: `provider-concurrent-${suffix}`,
+      ambiguous: `provider-ambiguous-${suffix}`,
+      foreign: `provider-foreign-${suffix}`,
+      mismatch: `provider-mismatch-${suffix}`,
+      contradiction: `provider-contradiction-${suffix}`,
+      broker: `provider-broker-${suffix}`,
+    };
+    const inserted = await db.insert(dealInboundEmailsTable).values([
+      {
+        messageId: `match-success-${suffix}`, providerReceivedEmailId: providerIds.success,
+        fromEmail: `market-${suffix}@example.test`, toEmails: ["untrusted-webhook-value@example.test"],
+        channel: "HELD", heldReason: "UNMATCHED_RECIPIENT_OR_HEADER",
+        bodyEnrichmentStatus: "COMPLETE", receivedAt: new Date(),
+      },
+      {
+        messageId: `match-concurrent-${suffix}`, providerReceivedEmailId: providerIds.concurrent,
+        fromEmail: `market-${suffix}@example.test`, channel: "HELD",
+        heldReason: "UNMATCHED_RECIPIENT_OR_HEADER", bodyEnrichmentStatus: "COMPLETE", receivedAt: new Date(),
+      },
+      {
+        messageId: `match-ambiguous-${suffix}`, providerReceivedEmailId: providerIds.ambiguous,
+        fromEmail: `market-${suffix}@example.test`, channel: "HELD",
+        heldReason: "UNMATCHED_RECIPIENT_OR_HEADER", bodyEnrichmentStatus: "COMPLETE", receivedAt: new Date(),
+      },
+      {
+        messageId: `match-no-evidence-${suffix}`, fromEmail: `market-${suffix}@example.test`,
+        channel: "HELD", heldReason: "UNMATCHED_RECIPIENT_OR_HEADER",
+        bodyEnrichmentStatus: "COMPLETE", receivedAt: new Date(),
+      },
+      {
+        messageId: `match-foreign-${suffix}`, providerReceivedEmailId: providerIds.foreign,
+        fromEmail: `market-${suffix}@example.test`, channel: "HELD",
+        heldReason: "UNMATCHED_RECIPIENT_OR_HEADER", bodyEnrichmentStatus: "COMPLETE", receivedAt: new Date(),
+      },
+      {
+        messageId: `match-provider-id-mismatch-${suffix}`, providerReceivedEmailId: providerIds.mismatch,
+        fromEmail: `market-${suffix}@example.test`, channel: "HELD",
+        heldReason: "UNMATCHED_RECIPIENT_OR_HEADER", bodyEnrichmentStatus: "COMPLETE", receivedAt: new Date(),
+      },
+      {
+        messageId: `match-contradiction-${suffix}`, providerReceivedEmailId: providerIds.contradiction,
+        fromEmail: `market-${suffix}@example.test`, channel: "HELD",
+        heldReason: "HEADER_IDENTITY_CONTRADICTION", bodyEnrichmentStatus: "COMPLETE", receivedAt: new Date(),
+      },
+      {
+        messageId: `match-broker-${suffix}`, providerReceivedEmailId: providerIds.broker,
+        fromEmail: `broker-agent-${suffix}@example.test`, toEmails: ["untrusted-webhook-value@example.test"],
+        channel: "HELD", heldReason: "UNMATCHED_RECIPIENT_OR_HEADER",
+        bodyText: "Fictional broker reply for provider-evidence matching.",
+        bodyEnrichmentStatus: "COMPLETE", receivedAt: new Date(),
+      },
+    ]).returning({ id: dealInboundEmailsTable.id, providerId: dealInboundEmailsTable.providerReceivedEmailId });
+    const byProvider = new Map(inserted.map((row) => [row.providerId, row.id]));
+    let refreshedSuccessDestination = ownAddress.emailAddress;
+    try {
+      process.env.RESEND_API_KEY = "fictional-provider-key";
+      globalThis.fetch = (async (url, init) => {
+        const value = String(url);
+        if (!value.startsWith("https://api.resend.com/emails/receiving/")) return originalFetch(url, init);
+        const providerId = decodeURIComponent(value.split("/").pop()!);
+        const to = providerId === providerIds.foreign
+          ? [foreignAddress.emailAddress]
+          : providerId === providerIds.broker
+            ? [brokerThread.listenerEmail]
+          : providerId === providerIds.ambiguous
+            ? [ownAddress.emailAddress, "second@example.test"]
+            : providerId === providerIds.success
+              ? [refreshedSuccessDestination]
+              : [ownAddress.emailAddress];
+        return new Response(JSON.stringify({
+          data: {
+            id: providerId === providerIds.mismatch ? "different-provider-record" : providerId,
+            to,
+            cc: [],
+          },
+        }), {
+          status: 200, headers: { "Content-Type": "application/json" },
+        });
+      }) as typeof fetch;
+
+      const successId = byProvider.get(providerIds.success)!;
+      assert.equal((await api("GET", `/deal-card/correspondence/held/${successId}/match-candidate`, externalAdminCookie)).status, 403);
+      const candidate = await api("GET", `/deal-card/correspondence/held/${successId}/match-candidate`, adminCookie);
+      assert.equal(candidate.status, 200);
+      assert.deepEqual((candidate.body as any).candidate, {
+        dealId, dealName: `Correspondence Fixture ${suffix}`, channel: "MARKET",
+        dealMarketId, marketName: `Fictional Market ${suffix}`,
+        evidence: [
+          "Provider-confirmed sole destination",
+          "Unique Axel-controlled market listener",
+          "Listener, deal, market, and thread are consistent",
+        ],
+      });
+      assert.equal((candidate.body as any).unavailableReason, null);
+
+      const confirmation = { dealId, channel: "MARKET", dealMarketId, destinationConfirmed: true };
+      assert.equal((await api("POST", `/deal-card/correspondence/held/${successId}/match`, adminCookie, {
+        ...confirmation, dealId: secondDealId,
+      })).status, 409);
+      assert.deepEqual((await api("POST", `/deal-card/correspondence/held/${successId}/match`, adminCookie, confirmation)), {
+        status: 200, body: { matched: true },
+      });
+      const [matched] = await db.select().from(dealInboundEmailsTable).where(eq(dealInboundEmailsTable.id, successId));
+      assert.equal(matched.channel, "HELD");
+      assert.equal(matched.dealId, dealId);
+      assert.equal((await api("POST", `/deal-card/correspondence/held/${successId}/match`, adminCookie, confirmation)).status, 409);
+      refreshedSuccessDestination = foreignAddress.emailAddress;
+      assert.equal((await api("POST", `/deal-card/correspondence/held/${successId}/release`, adminCookie, {
+        channel: "MARKET", senderConfirmed: true,
+      })).status, 409);
+      const [stillHeld] = await db.select().from(dealInboundEmailsTable).where(eq(dealInboundEmailsTable.id, successId));
+      assert.equal(stillHeld.channel, "HELD");
+      assert.equal(stillHeld.heldReason, "DESTINATION_MATCHED_SENDER_UNCONFIRMED");
+      refreshedSuccessDestination = ownAddress.emailAddress;
+      assert.equal((await api("POST", `/deal-card/correspondence/held/${successId}/release`, adminCookie, {
+        channel: "MARKET", senderConfirmed: true,
+      })).status, 200);
+
+      const noEvidenceId = inserted.find((row) => row.providerId === null)!.id;
+      const noEvidence = await api("GET", `/deal-card/correspondence/held/${noEvidenceId}/match-candidate`, adminCookie);
+      assert.deepEqual(noEvidence.body, { candidate: null, unavailableReason: "PROVIDER_PROVENANCE_UNAVAILABLE" });
+      assert.equal((await api("POST", `/deal-card/correspondence/held/${noEvidenceId}/match`, adminCookie, confirmation)).status, 409);
+      const ambiguous = await api("GET", `/deal-card/correspondence/held/${byProvider.get(providerIds.ambiguous)}/match-candidate`, adminCookie);
+      assert.deepEqual(ambiguous.body, { candidate: null, unavailableReason: "AMBIGUOUS_PROVIDER_DESTINATION" });
+      const mismatch = await api("GET", `/deal-card/correspondence/held/${byProvider.get(providerIds.mismatch)}/match-candidate`, adminCookie);
+      assert.deepEqual(mismatch.body, { candidate: null, unavailableReason: "PROVIDER_ID_MISMATCH" });
+      const contradictionId = byProvider.get(providerIds.contradiction)!;
+      assert.deepEqual(
+        (await api("GET", `/deal-card/correspondence/held/${contradictionId}/match-candidate`, adminCookie)).body,
+        { candidate: null, unavailableReason: "MESSAGE_NOT_UNMATCHED" },
+      );
+      assert.equal((await api("POST", `/deal-card/correspondence/held/${contradictionId}/match`, adminCookie, confirmation)).status, 409);
+      const [contradiction] = await db.select({ reason: dealInboundEmailsTable.heldReason })
+        .from(dealInboundEmailsTable).where(eq(dealInboundEmailsTable.id, contradictionId));
+      assert.equal(contradiction.reason, "HEADER_IDENTITY_CONTRADICTION");
+      const foreignId = byProvider.get(providerIds.foreign)!;
+      assert.equal((await api("GET", `/deal-card/correspondence/held/${foreignId}/match-candidate`, adminCookie)).status, 403);
+      assert.equal((await api("POST", `/deal-card/correspondence/held/${foreignId}/match`, adminCookie, {
+        dealId: foreignDealId, channel: "MARKET", dealMarketId: foreignMarket.id, destinationConfirmed: true,
+      })).status, 403);
+
+      const concurrentId = byProvider.get(providerIds.concurrent)!;
+      const results = await Promise.all([
+        api("POST", `/deal-card/correspondence/held/${concurrentId}/match`, adminCookie, confirmation),
+        api("POST", `/deal-card/correspondence/held/${concurrentId}/match`, csaCookie, confirmation),
+      ]);
+      assert.deepEqual(results.map((result) => result.status).sort(), [200, 409]);
+
+      const brokerId = byProvider.get(providerIds.broker)!;
+      const brokerCandidate = await api("GET", `/deal-card/correspondence/held/${brokerId}/match-candidate`, csaCookie);
+      assert.deepEqual(brokerCandidate.body, {
+        candidate: {
+          dealId,
+          dealName: `Correspondence Fixture ${suffix}`,
+          channel: "BROKER",
+          dealMarketId: null,
+          marketName: null,
+          evidence: [
+            "Provider-confirmed sole destination",
+            "Unique Axel-controlled broker listener",
+            "Listener, deal, and thread are consistent",
+          ],
+        },
+        unavailableReason: null,
+      });
+      const brokerConfirmation = {
+        dealId, channel: "BROKER", dealMarketId: null, destinationConfirmed: true,
+      };
+      for (const cookie of [agentCookie, underwriterCookie, externalCsaCookie]) {
+        assert.equal(
+          (await api("POST", `/deal-card/correspondence/held/${brokerId}/match`, cookie, brokerConfirmation)).status,
+          403,
+        );
+      }
+      assert.deepEqual(
+        await api("POST", `/deal-card/correspondence/held/${brokerId}/match`, csaCookie, brokerConfirmation),
+        { status: 200, body: { matched: true } },
+      );
+      const [matchedBroker] = await db.select().from(dealInboundEmailsTable)
+        .where(eq(dealInboundEmailsTable.id, brokerId));
+      assert.equal(matchedBroker.channel, "HELD");
+      assert.equal(matchedBroker.correspondenceThreadId, brokerThread.id);
+      assert.equal(
+        (await api("POST", `/deal-card/correspondence/held/${brokerId}/release`, csaCookie, {
+          channel: "BROKER", senderConfirmed: true,
+        })).status,
+        200,
+      );
+      const brokerFeed = await api("GET", `/deal-card/${dealId}/correspondence/broker`, agentCookie);
+      assert.equal(brokerFeed.status, 200);
+      assert.equal((brokerFeed.body as any).messages.some((message: any) => message.id === brokerId), true);
+
+      const matchingAudits = await db.select().from(activityLogTable).where(and(
+        eq(activityLogTable.dealId, dealId),
+        eq(activityLogTable.eventType, "held_email_destination_matched"),
+      ));
+      const brokerAudit = matchingAudits.find((audit) =>
+        (audit.metadata as any)?.inbound_email_id === brokerId
+      );
+      assert.ok(brokerAudit);
+      assert.equal((brokerAudit.metadata as any).correspondence_private, true);
+      const generalActivity = await api("GET", `/deal-card/${dealId}/activity`, agentCookie);
+      assert.equal(generalActivity.status, 200);
+      assert.equal((generalActivity.body as any).activity.some((event: any) =>
+        (event.metadata as any)?.inbound_email_id === brokerId
+      ), false);
+    } finally {
+      globalThis.fetch = originalFetch;
+      if (originalApiKey === undefined) delete process.env.RESEND_API_KEY;
+      else process.env.RESEND_API_KEY = originalApiKey;
+      await db.delete(dealInboundEmailsTable).where(inArray(
+        dealInboundEmailsTable.id,
+        inserted.map((row) => row.id),
+      ));
     }
   });
 

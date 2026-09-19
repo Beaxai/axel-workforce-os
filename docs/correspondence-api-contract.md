@@ -40,6 +40,56 @@ The global query applies current-organization scope in SQL before filtering and
 pagination: it includes held rows for the trusted actor's own-organization
 deals plus null-deal unmatched rows, and never another organization's rows.
 
+`GET /api/deal-card/correspondence/held/:messageId/match-candidate` is the only
+candidate-discovery endpoint for unmatched mail. It returns exactly:
+
+```ts
+{
+  candidate: null | {
+    dealId: string;
+    dealName: string;
+    channel: "MARKET" | "BROKER";
+    dealMarketId: string | null;
+    marketName: string | null;
+    evidence: string[];
+  };
+  unavailableReason: string | null;
+}
+```
+
+There is no deal picker. The server retrieves the received-email record from
+Resend using the persisted provider ID and server-held API credential, requires
+an 8-second bounded response, rejects a conflicting returned provider ID,
+requires one structured provider-recorded destination and no CC/BCC
+destination, and then
+requires that destination to resolve uniquely through current controlled
+listener, deal, channel, market, and thread records. Persisted webhook
+recipients, subject tokens, raw `Authentication-Results`, sender identity, and
+quoted headers are not destination proof. Missing provider provenance,
+ambiguous/malformed recipients, no unique controlled listener, or inconsistent
+routing records return `candidate: null` with a non-null `unavailableReason`.
+A candidate in another organization returns 403 rather than exposing it.
+
+`POST /api/deal-card/correspondence/held/:messageId/match` accepts only the
+strict body:
+
+```ts
+{
+  dealId: string;
+  channel: "MARKET" | "BROKER";
+  dealMarketId: string | null;
+  destinationConfirmed: true;
+}
+```
+
+The supplied identity must exactly equal a freshly recomputed candidate.
+Matching runs under row and routing-identity locks, rejects stale,
+reassigned, ambiguous, cross-organization, and duplicate submissions, and
+writes a private audit event. `200` returns `{ "matched": true }`; stale or
+ambiguous evidence returns 409; unauthorized/cross-organization access returns
+403. Matching does **not** release or send the message: its channel remains
+`HELD`. Staff must still perform the separate sender-confirmation release below.
+
 `POST /api/deal-card/correspondence/held/:messageId/release` accepts the strict
 body `{ "channel": "MARKET" | "BROKER", "senderConfirmed": true }`. It is an
 audited ADMIN/CSA classification only; it sends and forwards nothing. Release
@@ -47,6 +97,14 @@ is refused for mixed/unknown recipients, header contradictions, changed
 listeners, cross-channel candidates, or an address that no longer matches the
 persisted contact/participant. Staff confirmation is required because sender
 authentication evidence is informational under the limitation above.
+
+The reusable Development browser fixture
+`src/scripts/browser-correspondence-fixture.ts setup|cleanup` includes a
+fictional unmatched held message with no provider ID. It intentionally
+exercises the real-server `PROVIDER_PROVENANCE_UNAVAILABLE` state without a
+production fixture or trust bypass. Successful matching is covered by the
+isolated API integration test, which mocks only the authenticated provider GET
+and never sends mail.
 
 ### Sender-authentication limitation
 

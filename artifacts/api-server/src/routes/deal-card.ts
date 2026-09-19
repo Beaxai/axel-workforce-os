@@ -58,7 +58,8 @@ import {
 } from "../lib/deal-sections";
 import { sendDealEmail, ensureCorrespondenceThread, ensureDealMarketEmailAddress } from "../services/emailService";
 import { enrichInboundEmailBody, sanitizeInboundHtml } from "../lib/inbound-email";
-import { isTrustedCorrespondenceStaff, trustedActorMayAccessDeal } from "../lib/correspondence-policy";
+import { resolveHeldMatchCandidate } from "../lib/held-mail-matching";
+import { getTrustedCorrespondenceActor, isTrustedCorrespondenceStaff, trustedActorMayAccessDeal } from "../lib/correspondence-policy";
 import { promoteOverflowMarket } from "../lib/market-dispatch";
 import { canCorrespond, canManageMarket, canSelect, canTransition, isCurrentSelection } from "../lib/market-engagement";
 
@@ -475,6 +476,11 @@ type HeldReleaseTarget = {
 
 type CorrespondenceQueryExecutor = Pick<typeof db, "select">;
 
+function hasContradictoryHeldEvidence(row: typeof dealInboundEmailsTable.$inferSelect): boolean {
+  return row.heldReason === "AMBIGUOUS_RECIPIENT_IDENTITIES" ||
+    row.heldReason === "HEADER_IDENTITY_CONTRADICTION";
+}
+
 const heldQueueQuerySchema = z.object({
   filter: z.enum(["all", "matched", "unmatched"]).default("all"),
   limit: z.coerce.number().int().min(1).max(100).default(50),
@@ -495,15 +501,19 @@ function heldFilterCondition(filter: HeldQueueQuery["filter"]): SQL | undefined 
 async function resolveHeldReleaseTarget(
   row: typeof dealInboundEmailsTable.$inferSelect,
   query: CorrespondenceQueryExecutor = db,
+  providerConfirmedDestination?: string,
 ): Promise<HeldReleaseTarget | null> {
   if (
     row.channel !== "HELD" ||
     !row.dealId ||
-    row.heldReason === "AMBIGUOUS_RECIPIENT_IDENTITIES" ||
-    row.heldReason === "HEADER_IDENTITY_CONTRADICTION"
+    hasContradictoryHeldEvidence(row)
   ) return null;
-  const to = Array.isArray(row.toEmails) ? row.toEmails : [];
-  const cc = Array.isArray(row.ccEmails) ? row.ccEmails : [];
+  const to = providerConfirmedDestination
+    ? [providerConfirmedDestination]
+    : (Array.isArray(row.toEmails) ? row.toEmails : []);
+  const cc = providerConfirmedDestination
+    ? []
+    : (Array.isArray(row.ccEmails) ? row.ccEmails : []);
   if (to.length !== 1 || cc.length) return null;
 
   const senderEmail = row.fromEmail.replace(/^.*<([^>]+)>.*$/, "$1").trim().toLowerCase();
@@ -582,7 +592,19 @@ async function serializeHeldMessages(rows: Array<typeof dealInboundEmailsTable.$
   }));
 
   return Promise.all(rows.map(async (row) => {
-    const target = await resolveHeldReleaseTarget(row);
+    const matchedDestination = row.heldReason === "DESTINATION_MATCHED_SENDER_UNCONFIRMED"
+      ? await resolveHeldMatchCandidate(row.providerReceivedEmailId, db)
+      : null;
+    const refreshedDestination =
+      matchedDestination?.candidate &&
+        matchedDestination.candidate.dealId === row.dealId &&
+        matchedDestination.candidate.dealMarketId === row.dealMarketId &&
+        matchedDestination.threadId === row.correspondenceThreadId
+        ? matchedDestination.listenerEmail
+        : null;
+    const target = row.heldReason === "DESTINATION_MATCHED_SENDER_UNCONFIRMED" && !refreshedDestination
+      ? null
+      : await resolveHeldReleaseTarget(row, db, refreshedDestination ?? undefined);
     const market = row.dealMarketId && row.dealId
       ? candidateByMarket.get(`${row.dealMarketId}:${row.dealId}`)
       : undefined;
@@ -668,6 +690,99 @@ router.get("/correspondence/held", async (req, res) => {
   return res.json(await heldQueueResponse(scope!, parsed.data));
 });
 
+const heldMatchSchema = z.object({
+  dealId: z.string().uuid(),
+  channel: z.enum(["MARKET", "BROKER"]),
+  dealMarketId: z.string().uuid().nullable(),
+  destinationConfirmed: z.literal(true),
+}).strict();
+
+router.get("/correspondence/held/:messageId/match-candidate", async (req, res) => {
+  if (!UUID_RE.test(req.params.messageId)) return res.status(400).json({ error: "Invalid inbound message identifier" });
+  const actor = await getTrustedCorrespondenceActor(req.user);
+  if (!actor) return res.status(403).json({ error: "Trusted Axel correspondence staff required" });
+  const [row] = await db.select().from(dealInboundEmailsTable)
+    .where(eq(dealInboundEmailsTable.id, req.params.messageId)).limit(1);
+  if (!row || row.channel !== "HELD" || row.dealId || hasContradictoryHeldEvidence(row)) {
+    return res.json({ candidate: null, unavailableReason: "MESSAGE_NOT_UNMATCHED" });
+  }
+  const resolution = await resolveHeldMatchCandidate(row.providerReceivedEmailId, db);
+  if (!resolution.candidate) return res.json(resolution);
+  const [deal] = await db.select({ orgId: dealsTable.orgId }).from(dealsTable)
+    .where(eq(dealsTable.id, resolution.candidate.dealId)).limit(1);
+  if (!deal || deal.orgId !== actor.orgId) return res.status(403).json({ error: "Candidate belongs to another organization" });
+  return res.json({ candidate: resolution.candidate, unavailableReason: null });
+});
+
+router.post("/correspondence/held/:messageId/match", async (req, res) => {
+  if (!UUID_RE.test(req.params.messageId)) return res.status(400).json({ error: "Invalid inbound message identifier" });
+  const actor = await getTrustedCorrespondenceActor(req.user);
+  if (!actor) return res.status(403).json({ error: "Trusted Axel correspondence staff required" });
+  const parsed = heldMatchSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid match confirmation", issues: parsed.error.issues });
+
+  const outcome = await db.transaction(async (tx) => {
+    await tx.execute(sql`SELECT id FROM deal_inbound_emails WHERE id = ${req.params.messageId} FOR UPDATE`);
+    const [row] = await tx.select().from(dealInboundEmailsTable)
+      .where(eq(dealInboundEmailsTable.id, req.params.messageId)).limit(1);
+    if (!row || row.channel !== "HELD" || row.dealId || hasContradictoryHeldEvidence(row)) return "CONFLICT" as const;
+
+    const resolution = await resolveHeldMatchCandidate(row.providerReceivedEmailId, tx);
+    if (!resolution.candidate) return "CONFLICT" as const;
+    await tx.execute(sql`SELECT id FROM deals WHERE id = ${resolution.candidate.dealId} FOR UPDATE`);
+    await tx.execute(sql`SELECT id FROM correspondence_threads WHERE id = ${resolution.threadId} FOR UPDATE`);
+    if (resolution.candidate.dealMarketId) {
+      await tx.execute(sql`SELECT id FROM deal_markets WHERE id = ${resolution.candidate.dealMarketId} AND deal_id = ${resolution.candidate.dealId} FOR UPDATE`);
+      await tx.execute(sql`SELECT id FROM deal_market_email_addresses WHERE deal_market_id = ${resolution.candidate.dealMarketId} AND email_address = ${resolution.listenerEmail} FOR UPDATE`);
+    }
+    // Recompute after locking routing identities so listener reassignment cannot
+    // race the candidate comparison and update.
+    const locked = await resolveHeldMatchCandidate(row.providerReceivedEmailId, tx);
+    if (!locked.candidate ||
+      locked.candidate.dealId !== resolution.candidate.dealId ||
+      locked.candidate.channel !== resolution.candidate.channel ||
+      locked.candidate.dealMarketId !== resolution.candidate.dealMarketId ||
+      locked.threadId !== resolution.threadId) return "CONFLICT" as const;
+    if (locked.orgId !== actor.orgId) return "FORBIDDEN" as const;
+    const requested = parsed.data;
+    if (requested.dealId !== locked.candidate.dealId ||
+      requested.channel !== locked.candidate.channel ||
+      requested.dealMarketId !== locked.candidate.dealMarketId) return "CONFLICT" as const;
+
+    const [updated] = await tx.update(dealInboundEmailsTable).set({
+      dealId: locked.candidate.dealId,
+      dealMarketId: locked.candidate.dealMarketId,
+      correspondenceThreadId: locked.threadId,
+      // Matching proves destination only. Sender confirmation and release stay
+      // separate, and the message remains private HELD material.
+      heldReason: "DESTINATION_MATCHED_SENDER_UNCONFIRMED",
+    }).where(and(
+      eq(dealInboundEmailsTable.id, row.id),
+      eq(dealInboundEmailsTable.channel, "HELD"),
+      isNull(dealInboundEmailsTable.dealId),
+    )).returning({ id: dealInboundEmailsTable.id });
+    if (!updated) return "CONFLICT" as const;
+    await tx.insert(activityLogTable).values({
+      dealId: locked.candidate.dealId,
+      dealMarketId: locked.candidate.dealMarketId,
+      entityType: "deal",
+      entityId: locked.candidate.dealId,
+      eventType: "held_email_destination_matched",
+      description: `Held email destination matched to ${locked.candidate.channel.toLowerCase()} correspondence`,
+      metadata: {
+        correspondence_private: true,
+        inbound_email_id: row.id,
+        matched_by: actor.id,
+        evidence_model: "provider_received_destination_to_controlled_listener",
+      },
+    });
+    return "MATCHED" as const;
+  });
+  if (outcome === "FORBIDDEN") return res.status(403).json({ error: "Candidate belongs to another organization" });
+  if (outcome !== "MATCHED") return res.status(409).json({ error: "Match candidate is unavailable, ambiguous, or stale" });
+  return res.json({ matched: true });
+});
+
 const heldReleaseSchema = z.object({
   channel: z.enum(["MARKET", "BROKER"]),
   senderConfirmed: z.literal(true),
@@ -708,7 +823,20 @@ router.post("/correspondence/held/:messageId/release", async (req, res) => {
       await tx.execute(sql`SELECT id FROM users WHERE id = (SELECT participant_user_id FROM correspondence_threads WHERE id = ${row.correspondenceThreadId}) FOR UPDATE`);
     }
 
-    const target = await resolveHeldReleaseTarget(row, tx);
+    const matchedDestination = row.heldReason === "DESTINATION_MATCHED_SENDER_UNCONFIRMED"
+      ? await resolveHeldMatchCandidate(row.providerReceivedEmailId, tx)
+      : null;
+    if (row.heldReason === "DESTINATION_MATCHED_SENDER_UNCONFIRMED" && (
+      !matchedDestination?.candidate ||
+      matchedDestination.candidate.dealId !== row.dealId ||
+      matchedDestination.candidate.dealMarketId !== row.dealMarketId ||
+      matchedDestination.threadId !== row.correspondenceThreadId
+    )) return { kind: "CONFLICT" as const };
+    const target = await resolveHeldReleaseTarget(
+      row,
+      tx,
+      matchedDestination?.candidate ? matchedDestination.listenerEmail : undefined,
+    );
     if (!target || target.channel !== parsed.data.channel) return { kind: "CONFLICT" as const };
     const [updated] = await tx.update(dealInboundEmailsTable).set({
       channel: target.channel, correspondenceThreadId: target.threadId, heldReason: null,
