@@ -17,48 +17,56 @@ id = "Zm6XnHzv6n8rFRZy3smwO"
 uri = "file://.local/screenshots/login-dark.jpg"
 type = "image"
 title = "Login — Dark (default)"
+logical_id = "f1dada9c-7f10-4abc-9e34-572c0a3c50e8"
 
 [[outputs]]
 id = "8Lgvaup99jcys2zL31lH0"
 uri = "file://.local/screenshots/login-light.jpg"
 type = "image"
 title = "Login — Light"
+logical_id = "78ea03dd-906c-4815-a14c-0b54ca7d2657"
 
 [[outputs]]
 id = "YK0ttxNPe8ACThq7Vkh6X"
 uri = "file://docs/demo/out/axel-demo.mp4"
 type = "video"
 title = "Axel Workforce OS — P4 demo (MP4)"
+logical_id = "26f92e8e-26b6-43b6-ab4c-b6cd25a840e3"
 
 [[outputs]]
 id = "Oo3X6l6Xo1oToQu5JhF-h"
 uri = "file://docs/demo/out/axel-demo.webm"
 type = "video"
 title = "Axel Workforce OS — P4 demo (WebM)"
+logical_id = "ef55a60f-64b3-4aa4-9b47-9d9bb3a19584"
 
 [[outputs]]
 id = "XNpZJKjExwK0uJHxSz3OV"
 uri = "file://attached_assets/stock_images/team_headshot_1.jpg"
 type = "image"
 title = "professional business person headshot portrait corporate"
+logical_id = "77b6f223-8077-49db-9dab-938943417c1b"
 
 [[outputs]]
 id = "N0yyfCj9ebIWK0ezVWQF7"
 uri = "file://attached_assets/stock_images/team_headshot_2.jpg"
 type = "image"
 title = "professional business person headshot portrait corporate"
+logical_id = "50c4789d-a706-4653-8152-56d2721c70c1"
 
 [[outputs]]
 id = "gLOQCQzdOAYnaP8koV2s-"
 uri = "file://attached_assets/stock_images/team_headshot_3.jpg"
 type = "image"
 title = "professional business person headshot portrait corporate"
+logical_id = "402c9f68-2426-42de-89c2-355b2aa942b8"
 
 [[outputs]]
 id = "2w3TLKSE4BFFfZa2FMTL1"
 uri = "file://attached_assets/stock_images/team_headshot_4.jpg"
 type = "image"
 title = "professional business person headshot portrait corporate"
+logical_id = "0b9d20b5-fa8f-4b10-b112-782f880b4603"
 
 [[outputs]]
 id = "9bMAxYqkj_pFMgwbdwssi"
@@ -66,6 +74,7 @@ uri = "file://docs/MASTER_FLOW_v2.7.svg"
 type = "image"
 title = "Master Flow v2.7 — P5-WC annotated"
 description = "Pink dashed rings mark every node in scope for the P5-WC active build. Five deliverables labelled: listener inbound, subjectivities engine, SignWell flows, WC tracker, dunning + deposit."
+logical_id = "6e54e5e6-7e16-42c6-87a9-35668fae1dee"
 
 [[outputs]]
 id = "5Bxqx8TZ9soO1McMfi2M4"
@@ -73,6 +82,7 @@ uri = "file://screenshots/deal-card-mockup-a.jpg"
 type = "image"
 title = "Mockup A — Classic pricing cards in right rail"
 description = "Tasks return to the left sub-nav as a tab; the existing PricingRail cards (WC premium, WFS pricing, Approve/Decline) move back into the 264px right rail."
+logical_id = "aac41f93-d4d0-4141-aec1-293ae0bc552e"
 
 [[outputs]]
 id = "2595C4jm41_4wdBiUQSnP"
@@ -80,3 +90,18 @@ uri = "file://screenshots/deal-card-mockup-b.jpg"
 type = "image"
 title = "Mockup B — Premium badge rail"
 description = "Same layout, but the rail uses the approved pink-glow premium badge treatment: WC Annual Premium + PEO Admin Fee cards with a single Modify Pricing gradient CTA."
+logical_id = "1f664183-c7d1-40f9-949b-5edeaaa2f0e7"
+
+[[outputs]]
+id = "Nyz_Qa6wX58LjqPcjoGzf"
+uri = "file://docs/producer-registration-appointment-scope.md"
+type = "text"
+title = "Producer Registration & Appointment — Scope of Work"
+description = "Detailed implementation scope covering the existing foundation, required changes, dependencies, acceptance criteria, and go-live verification."
+logical_id = "d009d066-9464-4e64-b6ed-4b555e3c4321"
+content_hash = "sha256:614c8aaebc6476c7fe1aa3a5bfd808d62747ddad601d6f31fdd1de9d1eb1a7a5"
+size = 25278
+mtime_ms = 1789946294016
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:2fa73f29-9874-4644-9eb3-acf2c6a46297/d009d066-9464-4e64-b6ed-4b555e3c4321/7a44d542-e09c-464e-9232-15e96aa1e334"
+storage_version_token = "1789946301798092"
+content_type = "text/markdown"
