@@ -105,3 +105,17 @@ mtime_ms = 1789946294016
 storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:2fa73f29-9874-4644-9eb3-acf2c6a46297/d009d066-9464-4e64-b6ed-4b555e3c4321/7a44d542-e09c-464e-9232-15e96aa1e334"
 storage_version_token = "1789946301798092"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "9lywK1g6055tVmYa8efMv"
+uri = "file://docs/implementation/project-completion-roadmap.md"
+type = "text"
+title = "Axel Workforce OS — Project Completion Roadmap"
+description = "Step-by-step completion plan with 13 branch-based milestones, smaller sprints, dependencies, measurable acceptance gates, and launch criteria."
+logical_id = "af0bcccf-789f-45ba-b368-f4c347ed5602"
+content_hash = "sha256:4fbb390f5bdc41879ad2d92addce5b30e7b99c3837fe66dfbf391f0315a25ad1"
+size = 29698
+mtime_ms = 1789948283033
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:2fa73f29-9874-4644-9eb3-acf2c6a46297/af0bcccf-789f-45ba-b368-f4c347ed5602/79fcc31f-877f-47f6-81ef-6293f5d43d1c"
+storage_version_token = "1789948288549348"
+content_type = "text/markdown"
