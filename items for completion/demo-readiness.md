@@ -1,69 +1,70 @@
-# Appointment demo readiness
+# Appointment demo readiness — real workflow, test data
 
-## Scope
+## Scope correction
 
-The immediate goal is a credible demo, not production launch. Production
-integration and legal-readiness plans remain deferred backlog. Prefer existing
-working behavior and clearly labeled fictional examples over unnecessary live
-provider work. This document defines the target; it does not claim these demo
-substitutes are already built or verified.
+The demo must exercise the actual tools and application workflow. The earlier
+proposal to simulate signatures, bookings, approval, countersigning or activation
+is superseded. “Demo” relaxes final content and production-release requirements,
+not the requirement for functioning integrations.
 
-Actual email delivery to test accounts, including bulk test sends, is authorized
-by the user. Previews are an option, not a mandatory restriction. Verify the
-recipient set consists of test accounts; this does not authorize mailing real
-contacts or indiscriminately releasing historical blocked notifications.
+Fictional data means test agency/applicant names and nonsensitive sample details
+associated with controlled, working test inboxes. Documents not yet supplied may
+be clearly marked mock documents. Use the supplied PDFs rather than replacing
+them with placeholders. Do not fabricate valid bank/tax identities or expose
+real sensitive data.
 
-## Acceptable for the demo
+## What must be real
 
-| Area | Acceptable demo substitute | Deferred until live use |
-|---|---|---|
-| Website intake | Fictional sample application loaded through a demo-only fixture path; label it sample data, not a website submission | Gershom's final contract and real website ingestion |
-| Signing | Supplied blank/sample PDFs and simulated producer/countersigner milestones visibly marked “Simulated — not legally signed” | Final legal wording, CFPB asset, provider field/privacy/hold validation and live signatures |
-| Calendly | Fictional scheduled call and cancellation/reschedule states; display the specified 45-minute Zoom intent without inventing a working meeting | Account/subscription setup and live booking acceptance |
-| Email | Actual sends to test accounts, including bulk tests; previews remain acceptable where delivery is unfinished | Full production worker/retry/reminder hardening and production acceptance |
-| Approval/credentials | Simulated pending approval, countersign and activation on isolated demo records; use an existing authorized demo login if needed | Real identity provisioning, duplicate reconciliation and credential issuance |
-| Tax/bank documents | Blank or unmistakably fictional W-9/ACH samples | Final tax mapping and secure real voided-check collection |
-| Resources | Clearly labeled sample or “Awaiting approved document” | Final compensation/legal content |
+| Area | Required demo behavior |
+|---|---|
+| Intake | Submit test input through the actual validated intake and persistence path. A test client can exercise the API while the website contract is pending, but does not prove the website connection. No direct database seeding counted as intake acceptance. |
+| SignWell | Create an actual test packet, sign through SignWell, verify authoritative provider events/state, enforce owner visibility and approval-held countersigning, and retrieve executed files. |
+| Calendly | Make an actual test booking and cancellation/reschedule; process real signed callbacks and update the application. |
+| Email | Send through Resend to controlled test accounts and observe actual outcomes. Bulk test sends are authorized. A preview or “sent” animation is not delivery evidence. |
+| Approval | Use the real staff action and transaction to create/link test agency and person records, with the real lifecycle/role gates. |
+| Activation/credentials | Activate only after verified countersignature, perform actual test-account credential setup, and verify login/access. Do not manually set completion timestamps. |
+| Documents | Use the actual storage/access path and role restrictions. Clearly labeled mock content is acceptable only for missing source documents; it does not establish legal/content readiness. |
+| Decline | Exercise actual decline/void handling and neutral email delivery, with no resulting activation. |
 
-## Real concerns that remain mandatory
+## Non-negotiable safeguards
 
-- Keep real applicant, bank, tax and credential data out of fixtures, previews,
-  screenshots and logs.
-- Preserve server-side role and organization authorization. Demo mode must not
-  turn an ordinary user into Admin or expose restricted files.
-- Keep demo fixtures isolated from actual accounts and agency records. Do not
-  use broad deletes or shared-database schema pushes to reset a demonstration.
-- Simulated signing/approval must not create real signing or account effects.
-  Explicit email tests may call the provider for test recipients; keep them
-  separate from simulated delivery and unreviewed historical blocked rows.
-- Keep the real lifecycle gates intact. Simulations must be explicit demo-only
-  behavior, not shortcuts added to real webhook/approval endpoints.
-- Do not show success for an operation that failed. Distinguish a working feature,
-  a simulation and an unavailable action.
-- Fix crashes, broken navigation and unusable controls on the selected demo path.
-  Full responsive polish can wait if the demo is desktop-only; privacy and
-  authorization cannot.
+- Identify controlled test recipients before provider sends. This is not authority
+  to send to unrelated real contacts or release all historical blocked mail.
+- Use the correct environment-specific webhook and signing secret. Shared email
+  domains do not make Development and production webhooks interchangeable.
+- Preserve role/organization checks, restricted document access, sensitive-data
+  redaction, real lifecycle gates, replay safety and existing-account protections.
+- Keep test records identifiable and cleanup narrowly scoped. Real test-account
+  creation is intentional; modifying unrelated actual accounts is not.
+- Confirm the provider's test execution approach before signing legal-looking
+  packets. Do not claim that a “demo” label automatically prevents legal effect.
+  Do not silently rewrite the supplied agreements.
+- Missing provider capabilities or application code are genuine blockers.
+  Report them plainly rather than substituting a simulated successful step.
 
-## Step-by-step demo action plan
+## Step-by-step implementation and acceptance plan
 
-1. Select the shortest demonstration: sample application → packet preview →
-   simulated signatures → scheduled/completed call → approval → simulated
-   countersign/activation. Include a separate decline example.
-2. Inventory existing screens and prepare fictional fixtures for the required
-   states. Use isolated demo storage or explicitly scoped fixture records;
-   choose the least invasive approach after inspecting existing fixture support.
-3. Implement only the missing demo transitions/previews. Make simulations
-   conspicuous and prevent unintended provider/account effects. Allow deliberate
-   email tests through the existing setup for test recipients, using the correct
-   environment's webhook.
-4. Exercise the walkthrough and reset. Check role restrictions, sensitive-file
-   denial, lifecycle ordering and understandable blocked states. For email tests,
-   confirm test-recipient targeting and actual outcomes; otherwise verify no
-   unintended sends. Repair only gaps needed for a safe, repeatable demo.
-5. Record which steps are real versus simulated and retain the production plans
-   for later. Before live use, remove or tightly restrict demo entry points and
-   complete the applicable production acceptance gates.
+1. Inventory actual working paths and missing code, using the detailed completion
+   plans. Establish controlled test participants and the provider test approach.
+2. Implement real intake/atomic persistence/private ingestion. Obtain the actual
+   website contract; until then, report API-only tests separately from website
+   acceptance and do not invent its field names.
+3. Map the supplied PDFs and prepare clearly marked mock assets only where source
+   documents are absent. Verify SignWell privacy and approval-hold capabilities,
+   then implement actual dispatch, event processing, release, void and retrieval.
+4. Connect appointment emails to the existing Resend setup and test actual delivery,
+   intentional resend and retry behavior with test recipients.
+5. Configure/verify Calendly and exercise booking, cancellation and rescheduling.
+6. Complete the real approval, test-identity provisioning, countersign-triggered
+   activation, credential setup and login paths.
+7. Run both approval and decline journeys. Record provider IDs, safe application
+   and database outcomes, mailbox receipt, access-denial checks and test cleanup.
+   Do not count synthetic callbacks alone as live provider acceptance.
 
-**Demo done:** a repeatable walkthrough with fictional data, no unintended
-external/account effects, preserved access controls and no misleading claims of
-live signing, delivery or production readiness.
+**Demo done:** the actual workflow succeeds using real tools and controlled test
+data, with any missing-document mocks disclosed and no simulated milestones
+presented as acceptance evidence.
+
+Final legal/content approval, historical backfill and production release checks
+can remain deferred where they are not necessary to safely execute this test.
+Deferral does not establish readiness for real applicants or production launch.

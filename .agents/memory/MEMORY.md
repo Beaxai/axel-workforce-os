@@ -24,3 +24,4 @@
 - [Multi-market build scope](multi-market-build-scope.md) — stay strictly within the supplied spec; proposal request triggers Resend distribution and market-thread replies on the deal card.
 - [Website appointment boundary](website-appointment-boundary.md) — external website already exists; supply a backend connection and handoff, not a replacement form.
 - [Raw SQL timestamps](raw-sql-timestamps.md) — raw SQL returns timestamp strings here; type annotations do not convert them to Dates.
+- [Appointment demo scope](appointment-demo-scope.md) — real tools and workflow required; only test applicant data and missing documents may be fictional.

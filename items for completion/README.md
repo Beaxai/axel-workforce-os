@@ -8,12 +8,15 @@ It is not a launch approval or a claim that the end-to-end flow is complete.
 
 The current user-approved goal is a demo. The production completion records below
 remain accurate backlog, **not a requirement to finish every integration before
-demonstrating the product**. See [demo readiness](demo-readiness.md) for acceptable
-substitutes, non-negotiable safeguards and a short action plan.
-This scope decision does not mean a demo mode has already been implemented.
+demonstrating the product**. The demo must nevertheless use real tools and real
+workflow transitions. Only test business/applicant data and missing documents
+may be fictional; simulated provider events, signing, approval or activation
+are not a substitute for working integration. See
+[demo readiness](demo-readiness.md) for the corrected scope and action plan.
+This scope decision does not mean those integrations are already implemented.
 
 Actual email sends to test accounts, including bulk tests, are authorized.
-Email previews are optional, not required. Keep recipients test-only and use
+Email previews do not replace real delivery acceptance. Keep recipients test-only and use
 each environment's existing webhook; do not automatically release old blocked
 notifications or extend this permission to real contacts.
 
