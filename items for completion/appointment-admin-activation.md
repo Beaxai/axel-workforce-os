@@ -71,6 +71,13 @@ production behavior have not been accepted in this review.
 
 ### 1. Approve the canonical identity mapping and duplicate policy
 
+**Policy confirmed September 21, 2026:** reuse unambiguous existing agency/user
+matches; require manual review for conflicts. Preserve established compliance
+data and access; new identities remain inactive until verified countersigning.
+See the [approval design](../docs/superpowers/specs/2026-09-21-appointment-approval-design.md).
+Exact intake-field mapping and provider lifecycle implementation are still
+required; this policy decision alone does not complete approval or activation.
+
 **Dependencies:** complete intake field contract; data, compliance, and business
 owners.
 
