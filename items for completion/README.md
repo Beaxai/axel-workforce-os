@@ -4,6 +4,14 @@ This folder tracks unavailable inputs, unresolved decisions, and remaining
 integration work for the producer registration and appointment initiative.
 It is not a launch approval or a claim that the end-to-end flow is complete.
 
+## Current priority: demo readiness, not production launch
+
+The current user-approved goal is a demo. The production completion records below
+remain accurate backlog, **not a requirement to finish every integration before
+demonstrating the product**. See [demo readiness](demo-readiness.md) for acceptable
+substitutes, non-negotiable safeguards and a short action plan.
+This scope decision does not mean a demo mode has already been implemented.
+
 ## Review scope and status meanings
 
 This register has been reconciled against the current local implementation,
