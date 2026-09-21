@@ -133,3 +133,17 @@ mtime_ms = 1789952315852
 storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:2fa73f29-9874-4644-9eb3-acf2c6a46297/98c5f21e-12d2-4e70-b2ca-8682a2fd1f94/fca66cd2-20fb-4928-9827-11b7bc971c6b"
 storage_version_token = "1789952382795183"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "RDdZG5ZoVxqFuenq2rNLG"
+uri = "file://items%20for%20completion/appointment-audit-and-test-matrix.md"
+type = "text"
+title = "Appointment audit and test matrix"
+description = "Current passing tests, reproduced defects, incomplete functionality, and blocked tests with required inputs."
+logical_id = "800be8bb-4089-4654-984b-1475512eaf55"
+content_hash = "sha256:d2a40828922a7161435bca6ed730b79556fa448a4666419824dbda3aaa70cb4c"
+size = 15794
+mtime_ms = 1789955566969
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:2fa73f29-9874-4644-9eb3-acf2c6a46297/800be8bb-4089-4654-984b-1475512eaf55/32f30ef4-b674-48b7-b16b-73e4c79d807c"
+storage_version_token = "1789955597563855"
+content_type = "text/markdown"

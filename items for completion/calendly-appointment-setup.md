@@ -6,9 +6,9 @@
 - Create and verify the Calendly webhook subscription for only the configured event type.
 - Confirm whether Calendly reminders are disabled before implementing Axel's 24-hour reminder.
 - Implement and approve the 48-hour scheduling-nudge policy and worker.
-- Mount the raw-body router before the global JSON parser and export the new schema tables.
+- Completed: raw-body router mounted before the global JSON parser; schema tables exported.
 - Wire the durable producer-notification outbox helper and resolve approved staff/applicant recipients. Until then, `staff_needs_review` is the persistent alert for unmatched or ambiguous events.
-- Apply and independently verify migration `20260912_producer_calendly.sql`.
+- Completed in Development: migration applied and independently verified. This is not production migration evidence.
 - Complete live acceptance: booking visibility within one minute, duplicate delivery, cancellation, reschedule, out-of-order delivery, unmatched/ambiguous review, and meeting-link visibility.
 
 `https://calendly.com/axelworkforcesolutions/30min` is a human scheduling link. It is not an API event type URI. The directive describes the meeting as 45 minutes despite that slug; account owners must resolve and approve that provider configuration.

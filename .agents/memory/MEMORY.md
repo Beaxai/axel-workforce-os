@@ -23,3 +23,4 @@
 - [Secure App Storage image transforms](app-storage-image-transforms.md) — sidecar credentials cannot locally sign GCS POST policies; bounded server transforms need strict multipart input.
 - [Multi-market build scope](multi-market-build-scope.md) — stay strictly within the supplied spec; proposal request triggers Resend distribution and market-thread replies on the deal card.
 - [Website appointment boundary](website-appointment-boundary.md) — external website already exists; supply a backend connection and handoff, not a replacement form.
+- [Raw SQL timestamps](raw-sql-timestamps.md) — raw SQL returns timestamp strings here; type annotations do not convert them to Dates.

@@ -23,8 +23,9 @@ treated as complete based only on the canonical Applications API.
 - Implement a safe credential handoff and verify the existing credential
   delivery flow. The API never falls back to legacy issuance or returns setup
   secrets.
-- Apply and independently verify `20260912_producer_activity.sql`; no migration
-  was applied by this implementation task.
+- Development activity, Calendly, and notification migrations have been applied
+  and independently checked. Both rollback verification scripts passed again
+  during the current audit. Production migration readiness is not established.
 - Keep the legacy router ADMIN-only/read-only with writes failed closed; do not
   auto-migrate legacy rows or infer milestones.
 - Complete rollback-database and provider acceptance coverage for external

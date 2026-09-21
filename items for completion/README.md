@@ -4,6 +4,12 @@ This folder tracks unavailable inputs, unresolved decisions, and remaining
 integration work for the producer registration and appointment initiative.
 It is not a launch approval or a claim that the end-to-end flow is complete.
 
+## Latest audit
+
+See [Appointment audit and test matrix](appointment-audit-and-test-matrix.md)
+for current passing checks, reproducible failures, remaining implementation
+gaps, and tests that cannot yet run with their exact unblock requirements.
+
 ## Current coverage
 
 | Part | Available implementation | Remaining gate |

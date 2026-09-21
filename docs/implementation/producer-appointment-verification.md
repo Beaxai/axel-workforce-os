@@ -2,6 +2,12 @@
 
 Reviewed September 20, 2026 (America/New_York).
 
+**Historical implementation-pass results.** The subsequent audit found a
+shared-library build failure and additional regression gaps. Use
+`items for completion/appointment-audit-and-test-matrix.md` for the current
+pass/fail/blocked assessment; the earlier checks below are not a current
+all-green build certificate.
+
 ## Local checks
 
 - API, frontend, and shared-library TypeScript checks passed.

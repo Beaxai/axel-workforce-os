@@ -15,7 +15,7 @@ it does not replace the website or its form.
 - [ ] Obtain the website's exact field keys, types, required/optional rules, seven legal-question meanings, owner structure, document metadata/URL rules, and one fictional sample payload.
 - [ ] Implement and validate one explicit adapter from the existing website payload to the registration model.
 - [ ] Complete atomic registration/owner/document/job persistence, duplicate handling, warning flags, and private document ingestion.
-- [ ] Protect the legacy registration paths so they cannot bypass signed intake or lifecycle controls.
+- [x] Protect legacy backend registration paths: unsigned creation and authenticated historical writes return 410. Old public frontend screens still need cleanup; backend denial does not make those screens a usable onboarding flow.
 - [ ] Configure trusted shared/edge per-client rate limiting before launch.
 - [ ] Verify real intake acceptance: valid `201`, invalid signature `401`, replay `409`, invalid fields or missing required documents `422`, low-E&O warning, and concurrent duplicate prevention.
 - [ ] Confirm the published API origin and authorize release before enabling real applications.
