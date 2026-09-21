@@ -7,6 +7,7 @@ import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import producerRegistrationsRouter from "./routes/public-producer-registrations";
+import producerCalendlyRouter from "./routes/producer-calendly";
 
 const app: Express = express();
 
@@ -60,6 +61,7 @@ app.use("/webhooks", webhooksRouter);
 // This signed receiver must consume and authenticate the exact wire bytes
 // before the global JSON parser can decompress or parse them.
 app.use("/api/public/producer-registrations", producerRegistrationsRouter);
+app.use("/api/webhooks/calendly", producerCalendlyRouter);
 
 // Preserve the exact raw bytes for webhook signature verification (Svix HMAC
 // must be computed over the bytes as sent, not a re-serialization).

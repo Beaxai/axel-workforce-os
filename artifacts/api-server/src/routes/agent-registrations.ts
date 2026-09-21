@@ -19,9 +19,21 @@ import {
 } from "../lib/auth";
 import { createOrMatchAgency } from "../lib/agencies";
 import { upsertAgentProfile } from "../lib/agent-profiles";
-import { requireRoles } from "../middleware/require-auth";
+import { requireRoles, requireTrustedAxelAdmin } from "../middleware/require-auth";
 
 const router: IRouter = Router();
+
+// Historical rows remain available to trusted Axel administrators. New writes
+// must use the canonical appointment workflow; legacy fields cannot establish
+// verified producer signatures, countersignature, or credential eligibility.
+router.use(requireTrustedAxelAdmin);
+router.use((req, res, next) => {
+  if (req.method === "GET" || req.method === "HEAD") return next();
+  return res.status(410).json({
+    error: "legacy_registration_read_only",
+    message: "This historical registration is read-only. Use the producer appointment workflow; historical migration requires review.",
+  });
+});
 
 type ActivityWriter = Pick<typeof db, "insert" | "select">;
 

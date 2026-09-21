@@ -28,7 +28,254 @@ tags:
     description: Bind subjectivities checklist operations (P5-WC 6A)
   - name: producer-registration-connection
     description: Signed server-to-server producer registration connection
+  - name: producer-applications
+    description: Trusted staff producer application review operations
 paths:
+  /webhooks/calendly:
+    post:
+      operationId: receiveProducerCalendlyEvent
+      summary: Receive a signed Calendly producer onboarding event
+      description: |
+        Provider-to-server endpoint. HMAC verification uses the timestamp and
+        exact uncompressed request bytes before JSON parsing. Configuration
+        must name the permitted event-type URI and trusted organization.
+        This does not complete onboarding calls or activate accounts.
+      tags:
+        - ProducerRegistrations
+      security: []
+      parameters:
+        - in: header
+          name: Calendly-Webhook-Signature
+          required: true
+          schema:
+            type: string
+          description: Calendly t=<unix seconds>,v1=<HMAC-SHA256 hex> signature.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+              description: Provider-defined event; validated by the signed receiver, not a website application payload.
+      responses:
+        "202":
+          description: Event processed, duplicate acknowledged, or authenticated unsupported event ignored.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [accepted]
+                properties:
+                  accepted:
+                    type: boolean
+                  duplicate:
+                    type: boolean
+                  ignored:
+                    type: string
+        "401":
+          description: Missing, invalid, or stale signature.
+        "413":
+          description: Body exceeds 256 KB.
+        "415":
+          description: Compressed body is not supported.
+        "422":
+          description: Authenticated event is malformed or lacks required event identity.
+        "503":
+          description: Signing key, event-type URI, or trusted organization is not configured.
+  /producer-registrations:
+    get:
+      operationId: listProducerApplications
+      tags: [producer-applications]
+      summary: List organization-scoped producer applications
+      responses:
+        "200":
+          description: Safe application rows; intake payloads are never included
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProducerApplicationRow"
+        "403":
+          description: Trusted active Axel ADMIN or CSA membership required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /producer-registrations/scheduling-events:
+    get:
+      operationId: listProducerSchedulingReviewEvents
+      tags: [producer-applications]
+      summary: List safe unmatched or ambiguous scheduling events
+      responses:
+        "200":
+          description: At most 100 newest events needing staff review
+          content:
+            application/json:
+              schema:
+                type: array
+                maxItems: 100
+                items:
+                  $ref: "#/components/schemas/ProducerSchedulingReviewEvent"
+  /producer-registrations/{id}:
+    get:
+      operationId: getProducerApplication
+      tags: [producer-applications]
+      parameters:
+        - $ref: "#/components/parameters/ProducerRegistrationId"
+      responses:
+        "200":
+          description: Role-safe application detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProducerApplicationDetail"
+        "404":
+          description: Application not found in the current organization
+  /producer-registrations/{id}/call-complete:
+    post:
+      operationId: completeProducerApplicationCall
+      tags: [producer-applications]
+      description: ADMIN and CSA may record the staff-run call. This is not a decision.
+      parameters:
+        - $ref: "#/components/parameters/ProducerRegistrationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProducerCallCompletionInput"
+      responses:
+        "200":
+          description: Refreshed application detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProducerApplicationDetail"
+        "400":
+          description: Notes missing or outside the allowed length
+        "409":
+          description: Application lifecycle does not allow call completion
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConflictResponse"
+  /producer-registrations/{id}/approve:
+    post:
+      operationId: approveProducerApplication
+      tags: [producer-applications]
+      parameters:
+        - $ref: "#/components/parameters/ProducerRegistrationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProducerEmptyActionInput"
+      responses:
+        "200":
+          description: Refreshed detail when activation is configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProducerApplicationDetail"
+        "409":
+          description: Not ready or activation integration is not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConflictResponse"
+  /producer-registrations/{id}/decline:
+    post:
+      operationId: declineProducerApplication
+      tags: [producer-applications]
+      parameters:
+        - $ref: "#/components/parameters/ProducerRegistrationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProducerDeclineInput"
+      responses:
+        "200":
+          description: Refreshed declined application
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProducerApplicationDetail"
+        "409":
+          description: Not ready or provider packet voiding is not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConflictResponse"
+  /producer-registrations/{id}/send-scheduling-link:
+    post:
+      operationId: sendProducerSchedulingLink
+      tags: [producer-applications]
+      parameters:
+        - $ref: "#/components/parameters/ProducerRegistrationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProducerEmptyActionInput"
+      responses:
+        "202":
+          description: Delivery request persisted but delivery is disabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProducerBlockedDelivery"
+        "409":
+          description: Scheduling request cannot be created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConflictResponse"
+  /producer-registrations/{id}/issue-credentials:
+    post:
+      operationId: issueProducerApplicationCredentials
+      tags: [producer-applications]
+      parameters:
+        - $ref: "#/components/parameters/ProducerRegistrationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProducerEmptyActionInput"
+      responses:
+        "409":
+          description: Lifecycle gate failed or credential handoff is unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConflictResponse"
+  /producer-registrations/{id}/documents/{documentId}/access:
+    get:
+      operationId: accessProducerApplicationDocument
+      tags: [producer-applications]
+      parameters:
+        - $ref: "#/components/parameters/ProducerRegistrationId"
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "403":
+          description: Document type is restricted for this role
+        "409":
+          description: Document unavailable or private access is not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConflictResponse"
   /public/producer-registrations:
     post:
       operationId: receiveProducerRegistration
@@ -1586,6 +1833,13 @@ paths:
           description: Document not found
 components:
   parameters:
+    ProducerRegistrationId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
     AxelSignature:
       name: X-Axel-Signature
       in: header
@@ -1605,6 +1859,143 @@ components:
         type: string
         pattern: "^AXR-[0-9]{8}-[A-Z0-9]{6}$"
   schemas:
+    ProducerApplicationRow:
+      type: object
+      required: [id, reference, agencyName, principalName, displayStatus, decision, flags, submittedAt, callScheduledFor]
+      properties:
+        id: { type: string, format: uuid }
+        reference: { type: string }
+        agencyName: { type: string }
+        principalName: { type: string }
+        displayStatus: { type: string }
+        decision: { type: string, enum: [pending, approved, declined] }
+        flags:
+          type: array
+          items: { type: string }
+        submittedAt: { type: string, format: date-time }
+        callScheduledFor: { type: ["string", "null"], format: date-time }
+    ProducerApplicationOwner:
+      type: object
+      additionalProperties: false
+      required: [id, name, title, ownershipPct, email, exhibitASignedAt]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        title: { type: ["string", "null"] }
+        ownershipPct: { type: string }
+        email: { type: string, format: email }
+        exhibitASignedAt: { type: ["string", "null"], format: date-time }
+    ProducerApplicationDocument:
+      type: object
+      additionalProperties: false
+      required: [id, docType, filename, ingestionStatus, uploadedAt, canAccess]
+      properties:
+        id: { type: string, format: uuid }
+        docType: { type: string }
+        filename: { type: ["string", "null"] }
+        ingestionStatus: { type: string }
+        uploadedAt: { type: ["string", "null"], format: date-time }
+        canAccess: { type: boolean }
+    ProducerApplicationActivity:
+      type: object
+      additionalProperties: false
+      required: [id, action, createdAt, actorId]
+      properties:
+        id: { type: string, format: uuid }
+        action: { type: string }
+        createdAt: { type: string, format: date-time }
+        actorId: { type: ["string", "null"], format: uuid }
+    ProducerNotificationRequest:
+      type: object
+      additionalProperties: false
+      required: [id, event, status, failureCode, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        event: { type: string }
+        status: { type: string }
+        failureCode: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+    ProducerApplicationPermissions:
+      type: object
+      additionalProperties: false
+      required: [canDecide, canCompleteCall, canSendSchedulingLink, canIssueCredentials]
+      properties:
+        canDecide: { type: boolean }
+        canCompleteCall: { type: boolean }
+        canSendSchedulingLink: { type: boolean }
+        canIssueCredentials: { type: boolean }
+    ProducerApplicationDetail:
+      allOf:
+        - $ref: "#/components/schemas/ProducerApplicationRow"
+        - type: object
+          required: [packetSentAt, packetSignedAt, callCompletedAt, callNotes, countersignedAt, credentialsIssuedAt, meetingUrl, payload, owners, documents, activity, notificationRequests, blockingReasons, permissions]
+          properties:
+            packetSentAt: { type: ["string", "null"], format: date-time }
+            packetSignedAt: { type: ["string", "null"], format: date-time }
+            callCompletedAt: { type: ["string", "null"], format: date-time }
+            callNotes: { type: ["string", "null"] }
+            countersignedAt: { type: ["string", "null"], format: date-time }
+            credentialsIssuedAt: { type: ["string", "null"], format: date-time }
+            meetingUrl: { type: ["string", "null"], format: uri }
+            payload:
+              type: ["object", "null"]
+              additionalProperties: true
+            owners:
+              type: array
+              items: { $ref: "#/components/schemas/ProducerApplicationOwner" }
+            documents:
+              type: array
+              items: { $ref: "#/components/schemas/ProducerApplicationDocument" }
+            activity:
+              type: array
+              items: { $ref: "#/components/schemas/ProducerApplicationActivity" }
+            notificationRequests:
+              type: array
+              items: { $ref: "#/components/schemas/ProducerNotificationRequest" }
+            blockingReasons:
+              type: array
+              items: { type: string }
+            permissions:
+              $ref: "#/components/schemas/ProducerApplicationPermissions"
+    ProducerSchedulingReviewEvent:
+      type: object
+      additionalProperties: false
+      required: [id, eventType, reference, inviteeEmail, reviewReason, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        eventType: { type: string }
+        reference: { type: ["string", "null"] }
+        inviteeEmail: { type: ["string", "null"], format: email }
+        reviewReason: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+    ProducerCallCompletionInput:
+      type: object
+      additionalProperties: false
+      required: [notes]
+      properties:
+        notes: { type: string, minLength: 3, maxLength: 2000 }
+    ProducerDeclineInput:
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties:
+        reason: { type: string, minLength: 3, maxLength: 2000 }
+    ProducerEmptyActionInput:
+      type: object
+      additionalProperties: false
+    ProducerBlockedDelivery:
+      type: object
+      additionalProperties: false
+      required: [status, reason]
+      properties:
+        status: { type: string, const: blocked }
+        reason: { type: string, const: DELIVERY_NOT_ENABLED }
+    ConflictResponse:
+      type: object
+      required: [error, message]
+      properties:
+        error: { type: string }
+        message: { type: string }
     ProducerRegistrationPendingInput:
       type: object
       description: >-

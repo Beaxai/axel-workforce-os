@@ -5,6 +5,149 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export type ProducerApplicationRowDecision =
+  (typeof ProducerApplicationRowDecision)[keyof typeof ProducerApplicationRowDecision];
+
+export const ProducerApplicationRowDecision = {
+  pending: "pending",
+  approved: "approved",
+  declined: "declined",
+} as const;
+
+export interface ProducerApplicationRow {
+  id: string;
+  reference: string;
+  agencyName: string;
+  principalName: string;
+  displayStatus: string;
+  decision: ProducerApplicationRowDecision;
+  flags: string[];
+  submittedAt: string;
+  /** @nullable */
+  callScheduledFor: string | null;
+}
+
+export interface ProducerApplicationOwner {
+  id: string;
+  name: string;
+  /** @nullable */
+  title: string | null;
+  ownershipPct: string;
+  email: string;
+  /** @nullable */
+  exhibitASignedAt: string | null;
+}
+
+export interface ProducerApplicationDocument {
+  id: string;
+  docType: string;
+  /** @nullable */
+  filename: string | null;
+  ingestionStatus: string;
+  /** @nullable */
+  uploadedAt: string | null;
+  canAccess: boolean;
+}
+
+export interface ProducerApplicationActivity {
+  id: string;
+  action: string;
+  createdAt: string;
+  /** @nullable */
+  actorId: string | null;
+}
+
+export interface ProducerNotificationRequest {
+  id: string;
+  event: string;
+  status: string;
+  /** @nullable */
+  failureCode: string | null;
+  createdAt: string;
+}
+
+export interface ProducerApplicationPermissions {
+  canDecide: boolean;
+  canCompleteCall: boolean;
+  canSendSchedulingLink: boolean;
+  canIssueCredentials: boolean;
+}
+
+/**
+ * @nullable
+ */
+export type ProducerApplicationDetailPayload = {
+  [key: string]: unknown;
+} | null;
+
+export type ProducerApplicationDetail = ProducerApplicationRow & {
+  /** @nullable */
+  packetSentAt: string | null;
+  /** @nullable */
+  packetSignedAt: string | null;
+  /** @nullable */
+  callCompletedAt: string | null;
+  /** @nullable */
+  callNotes: string | null;
+  /** @nullable */
+  countersignedAt: string | null;
+  /** @nullable */
+  credentialsIssuedAt: string | null;
+  /** @nullable */
+  meetingUrl: string | null;
+  /** @nullable */
+  payload: ProducerApplicationDetailPayload;
+  owners: ProducerApplicationOwner[];
+  documents: ProducerApplicationDocument[];
+  activity: ProducerApplicationActivity[];
+  notificationRequests: ProducerNotificationRequest[];
+  blockingReasons: string[];
+  permissions: ProducerApplicationPermissions;
+};
+
+export interface ProducerSchedulingReviewEvent {
+  id: string;
+  eventType: string;
+  /** @nullable */
+  reference: string | null;
+  /** @nullable */
+  inviteeEmail: string | null;
+  /** @nullable */
+  reviewReason: string | null;
+  createdAt: string;
+}
+
+export interface ProducerCallCompletionInput {
+  /**
+   * @minLength 3
+   * @maxLength 2000
+   */
+  notes: string;
+}
+
+export interface ProducerDeclineInput {
+  /**
+   * @minLength 3
+   * @maxLength 2000
+   */
+  reason: string;
+}
+
+export interface ProducerEmptyActionInput {
+  [key: string]: unknown;
+}
+
+export const ProducerBlockedDeliveryValue = {
+  status: "blocked",
+  reason: "DELIVERY_NOT_ENABLED",
+} as const;
+export type ProducerBlockedDelivery = typeof ProducerBlockedDeliveryValue;
+
+export interface ConflictResponse {
+  error: string;
+  message: string;
+}
+
 /**
  * Deliberately unspecified pending the website field contract. This receiver never accepts or persists this object.
  */
@@ -920,6 +1063,17 @@ export type AxelSignatureParameter = string;
  * Must exactly equal the synthetic reference in the connection-test body.
  */
 export type AxelIdempotencyKeyParameter = string;
+
+/**
+ * Provider-defined event; validated by the signed receiver, not a website application payload.
+ */
+export type ReceiveProducerCalendlyEventBody = { [key: string]: unknown };
+
+export type ReceiveProducerCalendlyEvent202 = {
+  accepted: boolean;
+  duplicate?: boolean;
+  ignored?: string;
+};
 
 export type ChangeUserPassword200 = {
   success: boolean;

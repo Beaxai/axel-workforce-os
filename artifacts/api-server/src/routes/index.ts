@@ -15,6 +15,7 @@ import employeesRouter from "./employees";
 import tasksRouter from "./tasks";
 import notesRouter from "./notes";
 import agentRegistrationsRouter from "./agent-registrations";
+import producerRegistrationsRouter from "./producer-registrations";
 import rateTablesRouter from "./rate-tables";
 import journeysRouter from "./journeys";
 import workforceRouter from "./workforce";
@@ -56,11 +57,13 @@ router.use("/auth", authRouter); // login/logout/forgot/reset public; /me + /reg
 // Each route does its own signature verification.
 router.use("/webhooks", webhooksRouter);
 
-// Public agent self-registration: only POST /api/agent-registrations is open.
-// GET/PATCH fall through to the role-gated mount below.
-router.post("/agent-registrations", (req, res, next) => {
-  req.url = "/";
-  agentRegistrationsRouter(req, res, next);
+// Unsigned legacy intake is retired. The signed website receiver is mounted
+// before JSON parsing in app.ts; never bypass it through the historical router.
+router.post("/agent-registrations", (_req, res) => {
+  res.status(410).json({
+    error: "legacy_registration_intake_retired",
+    message: "Use the signed producer registration endpoint.",
+  });
 });
 
 /* ---------------------------------------------------------------------------
@@ -94,6 +97,7 @@ router.use("/employees", requireRoles("ADMIN", "CSA", "AGENT", "EMPLOYER"), empl
 router.use("/tasks", requireRoles("ADMIN", "CSA"), tasksRouter);
 router.use("/notes", requireRoles(...INTERNAL_SALES), notesRouter);
 router.use("/agent-registrations", requireRoles("ADMIN", "CSA"), agentRegistrationsRouter);
+router.use("/producer-registrations", producerRegistrationsRouter);
 router.use("/rate-tables", requireRoles("ADMIN"), rateTablesRouter);
 // Retired (P5b W1 Task 4): /implementation is superseded by /journeys.
 // GETs redirect so pre-P5b UI pages keep working; writes are gone.

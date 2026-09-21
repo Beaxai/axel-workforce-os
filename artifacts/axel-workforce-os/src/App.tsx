@@ -16,7 +16,6 @@ import ContactsPage from "@/pages/ContactsPage";
 import EmployeesPage from "@/pages/EmployeesPage";
 import TasksPage from "@/pages/TasksPage";
 import CommissionsPage from "@/pages/CommissionsPage";
-import AgentRegistrationsPage from "@/pages/AgentRegistrationsPage";
 import RateTablesPage from "@/pages/RateTablesPage";
 import ImplementationPage from "@/pages/ImplementationPage";
 import WorkforcePage from "@/pages/WorkforcePage";
@@ -327,6 +326,7 @@ function App() {
               }
             >
               <Route path="/network" element={<Network />} />
+              <Route path="/agent-registrations" element={<Navigate to="/network?tab=Applications" replace />} />
               <Route path="/network/markets/:id" element={<MarketDetail />} />
               <Route path="/network/agencies/:agencyId" element={<AgencyDetail />} />
               <Route path="/network/agents/:id" element={<AgentDetail />} />
@@ -360,7 +360,6 @@ function App() {
               <Route path="/employees" element={<EmployeesPage />} />
               <Route path="/tasks" element={<TasksPage />} />
               <Route path="/commissions" element={<CommissionsPage />} />
-              <Route path="/agent-registrations" element={<AgentRegistrationsPage />} />
               <Route path="/rate-tables" element={<RateTablesPage />} />
               <Route path="/implementation" element={<ImplementationPage />} />
               <Route path="/workforce" element={<WorkforcePage />} />

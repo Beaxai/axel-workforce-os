@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "@/lib/api";
 import { GlassCard, SectionHeader, PinkButton, GhostButton, AxelBadge } from "@/components/ui/axel-index";
 import { Plus, X, Building2, Shield, Users, Truck, Search, Edit2, Check } from "lucide-react";
@@ -11,6 +11,8 @@ import { AddAgentModal } from "@/components/ui/AddAgentModal";
 
 import { useAuthStore } from "@/lib/auth-store";
 import { format } from "date-fns";
+
+import { ApplicationsTab } from "./network/ApplicationsTab";
 
 const BASE_TABS = ["Agents", "Carriers", "PEO Partners", "Vendors"] as const;
 const TAB_TYPE: Record<string, string> = { Agents: "Agent", Carriers: "Carrier", "PEO Partners": "PEO", Vendors: "Vendor" };
@@ -27,21 +29,40 @@ export default function Network() {
   const { theme } = useThemeStore();
   const { user } = useAuthStore();
   const isDark = theme === "dark";
-  const [tab, setTab] = useState<string>("Agents");
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const TABS = (user?.role === "ADMIN" || user?.role === "CSA")
+    ? [...BASE_TABS, "Markets", "Applications"]
+    : BASE_TABS;
+
+  const requestedTab = searchParams.get("tab");
+  const defaultTab = requestedTab && (TABS as readonly string[]).includes(requestedTab)
+    ? requestedTab
+    : "Agents";
+
+  const [tab, setTab] = useState<string>(defaultTab);
   const [showAdd, setShowAdd] = useState(false);
   const [showAddMarket, setShowAddMarket] = useState(false);
   const [search, setSearch] = useState("");
-  const navigate = useNavigate();
   const qc = useQueryClient();
 
-  const TABS = (user?.role === "ADMIN" || user?.role === "CSA")
-    ? [...BASE_TABS, "Markets"]
-    : BASE_TABS;
+  const handleTabChange = (newTab: string) => {
+    setTab(newTab);
+    setSearch("");
+    if (newTab === "Agents") {
+      searchParams.delete("tab");
+    } else {
+      searchParams.set("tab", newTab);
+    }
+    setSearchParams(searchParams);
+  };
 
   const partnerType = TAB_TYPE[tab];
   const { data: partners = [] } = useQuery({
     queryKey: ["partners", partnerType],
     queryFn: () => api.get<any[]>(`/partners?type=${partnerType}`),
+    enabled: !!partnerType,
   });
 
   const { data: allPartners = [] } = useQuery({
@@ -172,7 +193,7 @@ export default function Network() {
         {TABS.map((t) => (
           <button
             key={t}
-            onClick={() => { setTab(t); setSearch(""); }}
+            onClick={() => handleTabChange(t)}
             style={{
               padding: "8px 18px", borderRadius: "8px", border: "none", cursor: "pointer", fontSize: "14px", fontWeight: 500,
               background: tab === t ? "var(--accent-primary)" : isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)",
@@ -195,68 +216,72 @@ export default function Network() {
         />
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 420px), 1fr))", gap: "16px" }}>
-        {tab === "Markets" ? (
-          <>
-            {filteredMarkets.map((m: any) => (
-              <GlassCard
-                key={m.id}
-                style={{ cursor: "pointer", transition: "border-color 0.15s" }}
-                onClick={() => navigate(`/network/markets/${m.id}`)}
-              >
-                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
-                  <div>
-                    <p style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, margin: 0 }}>{m.name}</p>
-                    <div style={{ display: "flex", gap: "6px", alignItems: "center", marginTop: "4px" }}>
-                      <span style={{ fontSize: "11px", padding: "2px 6px", borderRadius: "4px", background: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.06)", color: textPrimary, fontWeight: 500 }}>
-                        {m.marketType === "WC_CARRIER" ? "WC Carrier" : "PEO Program"}
-                      </span>
-                      <span style={{ fontSize: "11px", padding: "2px 6px", borderRadius: "4px", background: m.isAppointed ? "rgba(30,233,123,0.1)" : "rgba(233,30,30,0.1)", color: m.isAppointed ? "#1EE97B" : "#E91E1E", fontWeight: 500 }}>
-                        {m.isAppointed ? "Appointed" : "Not Appointed"}
-                      </span>
+      {tab === "Applications" ? (
+        <ApplicationsTab search={search} />
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 420px), 1fr))", gap: "16px" }}>
+          {tab === "Markets" ? (
+            <>
+              {filteredMarkets.map((m: any) => (
+                <GlassCard
+                  key={m.id}
+                  style={{ cursor: "pointer", transition: "border-color 0.15s" }}
+                  onClick={() => navigate(`/network/markets/${m.id}`)}
+                >
+                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+                    <div>
+                      <p style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, margin: 0 }}>{m.name}</p>
+                      <div style={{ display: "flex", gap: "6px", alignItems: "center", marginTop: "4px" }}>
+                        <span style={{ fontSize: "11px", padding: "2px 6px", borderRadius: "4px", background: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.06)", color: textPrimary, fontWeight: 500 }}>
+                          {m.marketType === "WC_CARRIER" ? "WC Carrier" : "PEO Program"}
+                        </span>
+                        <span style={{ fontSize: "11px", padding: "2px 6px", borderRadius: "4px", background: m.isAppointed ? "rgba(30,233,123,0.1)" : "rgba(233,30,30,0.1)", color: m.isAppointed ? "#1EE97B" : "#E91E1E", fontWeight: 500 }}>
+                          {m.isAppointed ? "Appointed" : "Not Appointed"}
+                        </span>
+                      </div>
+                      <p style={{ fontSize: "13px", color: textMuted, marginTop: "8px", marginBottom: 0 }}>
+                        Effective: {m.effectiveDate ? format(new Date(m.effectiveDate), "MMM d, yyyy") : "TBD"}
+                      </p>
                     </div>
-                    <p style={{ fontSize: "13px", color: textMuted, marginTop: "8px", marginBottom: 0 }}>
-                      Effective: {m.effectiveDate ? format(new Date(m.effectiveDate), "MMM d, yyyy") : "TBD"}
-                    </p>
+                    <AxelBadge
+                      label={m.isActive ? "Active" : "Inactive"}
+                      color={m.isActive ? "green" : "gray"}
+                    />
                   </div>
-                  <AxelBadge
-                    label={m.isActive ? "Active" : "Inactive"}
-                    color={m.isActive ? "green" : "gray"}
-                  />
-                </div>
-              </GlassCard>
-            ))}
-            {filteredMarkets.length === 0 && (
-              <GlassCard><p style={{ fontSize: "14px", color: textMuted, textAlign: "center", margin: 0 }}>No markets found</p></GlassCard>
-            )}
-          </>
-        ) : tab === "Agents" ? (
-          <>
-            {agencyGroups.map(group => (
-              <AgencyTile
-                key={group.agencyId}
-                agencyId={group.agencyId}
-                agencyName={group.agencyName}
-                agencyStatus={group.agencyStatus}
-                agency={group.agency}
-                agents={group.agents}
-              />
-            ))}
-            {agencyGroups.length === 0 && (
-              <GlassCard><p style={{ fontSize: "14px", color: textMuted, textAlign: "center", margin: 0 }}>No agencies found</p></GlassCard>
-            )}
-          </>
-        ) : (
-          <>
-            {filtered.map((p: any) => (
-              <OrgGroupCard key={p.id} org={p} type={tab} />
-            ))}
-            {filtered.length === 0 && (
-              <GlassCard><p style={{ fontSize: "14px", color: textMuted, textAlign: "center", margin: 0 }}>No {tab.toLowerCase()} found</p></GlassCard>
-            )}
-          </>
-        )}
-      </div>
+                </GlassCard>
+              ))}
+              {filteredMarkets.length === 0 && (
+                <GlassCard><p style={{ fontSize: "14px", color: textMuted, textAlign: "center", margin: 0 }}>No markets found</p></GlassCard>
+              )}
+            </>
+          ) : tab === "Agents" ? (
+            <>
+              {agencyGroups.map(group => (
+                <AgencyTile
+                  key={group.agencyId}
+                  agencyId={group.agencyId}
+                  agencyName={group.agencyName}
+                  agencyStatus={group.agencyStatus}
+                  agency={group.agency}
+                  agents={group.agents}
+                />
+              ))}
+              {agencyGroups.length === 0 && (
+                <GlassCard><p style={{ fontSize: "14px", color: textMuted, textAlign: "center", margin: 0 }}>No agencies found</p></GlassCard>
+              )}
+            </>
+          ) : (
+            <>
+              {filtered.map((p: any) => (
+                <OrgGroupCard key={p.id} org={p} type={tab} />
+              ))}
+              {filtered.length === 0 && (
+                <GlassCard><p style={{ fontSize: "14px", color: textMuted, textAlign: "center", margin: 0 }}>No {tab.toLowerCase()} found</p></GlassCard>
+              )}
+            </>
+          )}
+        </div>
+      )}
 
       {showAdd && partnerType === "Agent" ? (
         <AddAgentModal onClose={() => setShowAdd(false)} />

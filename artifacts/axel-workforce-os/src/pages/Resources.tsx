@@ -7,7 +7,7 @@ import { useThemeStore } from "@/lib/theme-store";
 import { useAuthStore } from "@/lib/auth-store";
 import { useNavigate } from "react-router-dom";
 
-const CATEGORIES = ["All", "Guides", "Templates", "Forms", "Training", "Marketing"];
+const CATEGORIES = ["All", "Guides", "Templates", "Forms", "Training", "Marketing", "Compensation"];
 const TYPE_ICONS: Record<string, any> = { doc: FileText, spreadsheet: Table, video: Video, link: LinkIcon };
 
 const inputStyle: React.CSSProperties = {
@@ -89,21 +89,44 @@ export default function Resources() {
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px" }}>
-        <GlassCard>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
-            <BookOpen style={{ width: 20, height: 20, color: "var(--accent-primary)", flexShrink: 0 }} />
-            <div>
-              <p style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, margin: 0 }}>Appetite Guide</p>
-              <AxelBadge label="Underwriting" color="light-violet" />
+        {(category === "All" || category === "Guides") && "appetite guide".includes(search.toLowerCase()) && (
+          <GlassCard>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
+              <BookOpen style={{ width: 20, height: 20, color: "var(--accent-primary)", flexShrink: 0 }} />
+              <div>
+                <p style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, margin: 0 }}>Appetite Guide</p>
+                <AxelBadge label="Underwriting" color="light-violet" />
+              </div>
             </div>
-          </div>
-          <p style={{ fontSize: "13px", color: textMuted, marginBottom: "14px", lineHeight: 1.5 }}>
-            Search class codes across all states with determination and base rate data.
-          </p>
-          <GhostButton onClick={() => navigate("/resources/appetite")} style={{ fontSize: "13px", padding: "6px 14px" }}>
-            Open Guide
-          </GhostButton>
-        </GlassCard>
+            <p style={{ fontSize: "13px", color: textMuted, marginBottom: "14px", lineHeight: 1.5 }}>
+              Search class codes across all states with determination and base rate data.
+            </p>
+            <GhostButton onClick={() => navigate("/resources/appetite")} style={{ fontSize: "13px", padding: "6px 14px" }}>
+              Open Guide
+            </GhostButton>
+          </GlassCard>
+        )}
+
+        {/* Placeholder for Compensation Schedules */}
+        {(user?.role === "ADMIN" || user?.role === "CSA" || user?.role === "AGENT") &&
+         (category === "All" || category === "Compensation") &&
+         "compensation schedules and guidelines".includes(search.trim().toLowerCase()) && (
+          <GlassCard>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
+              <FileText style={{ width: 20, height: 20, color: "var(--accent-primary)", flexShrink: 0 }} />
+              <div>
+                <p style={{ fontSize: "15px", fontWeight: 600, color: textPrimary, margin: 0 }}>Compensation Schedules and Guidelines</p>
+                <AxelBadge label="Compensation" color="light-violet" />
+              </div>
+            </div>
+            <p style={{ fontSize: "13px", color: textMuted, marginBottom: "14px", lineHeight: 1.5 }}>
+              Current commission structures and compliance guidelines.
+            </p>
+            <GhostButton disabled style={{ fontSize: "13px", padding: "6px 14px", opacity: 0.5, cursor: "not-allowed" }}>
+              Awaiting Approved Document
+            </GhostButton>
+          </GlassCard>
+        )}
 
         {filtered.map((r: any) => {
           const Icon = TYPE_ICONS[r.resourceType] || FileText;

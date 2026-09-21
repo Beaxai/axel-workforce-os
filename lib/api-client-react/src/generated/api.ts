@@ -27,6 +27,7 @@ import type {
   AuthResponse,
   ChangePasswordRequest,
   ChangeUserPassword200,
+  ConflictResponse,
   ConvertLeadRequest,
   ConvertLeadResult,
   CreateJourneyTemplatePhaseRequest,
@@ -62,11 +63,20 @@ import type {
   OkResponse,
   PreviewVariationRequest,
   PreviewVariationResponse,
+  ProducerApplicationDetail,
+  ProducerApplicationRow,
+  ProducerBlockedDelivery,
+  ProducerCallCompletionInput,
+  ProducerDeclineInput,
+  ProducerEmptyActionInput,
   ProducerRegistrationConnectionTestInput,
   ProducerRegistrationConnectionTestResult,
   ProducerRegistrationPendingInput,
+  ProducerSchedulingReviewEvent,
   QuoteVariationsResponse,
   RatingStaleClearedResponse,
+  ReceiveProducerCalendlyEvent202,
+  ReceiveProducerCalendlyEventBody,
   RecomputeDealSubjectivities200,
   RegisterRequest,
   ReorderJourneyTemplatePhasesRequest,
@@ -101,6 +111,884 @@ type AwaitedInput<T> = PromiseLike<T> | T;
 type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+/**
+ * Provider-to-server endpoint. HMAC verification uses the timestamp and
+exact uncompressed request bytes before JSON parsing. Configuration
+must name the permitted event-type URI and trusted organization.
+This does not complete onboarding calls or activate accounts.
+
+ * @summary Receive a signed Calendly producer onboarding event
+ */
+export const getReceiveProducerCalendlyEventUrl = () => {
+  return `/api/webhooks/calendly`;
+};
+
+export const receiveProducerCalendlyEvent = async (
+  receiveProducerCalendlyEventBody: ReceiveProducerCalendlyEventBody,
+  options?: RequestInit,
+): Promise<ReceiveProducerCalendlyEvent202> => {
+  return customFetch<ReceiveProducerCalendlyEvent202>(
+    getReceiveProducerCalendlyEventUrl(),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(receiveProducerCalendlyEventBody),
+    },
+  );
+};
+
+export const getReceiveProducerCalendlyEventMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof receiveProducerCalendlyEvent>>,
+    TError,
+    { data: BodyType<ReceiveProducerCalendlyEventBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof receiveProducerCalendlyEvent>>,
+  TError,
+  { data: BodyType<ReceiveProducerCalendlyEventBody> },
+  TContext
+> => {
+  const mutationKey = ["receiveProducerCalendlyEvent"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof receiveProducerCalendlyEvent>>,
+    { data: BodyType<ReceiveProducerCalendlyEventBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return receiveProducerCalendlyEvent(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ReceiveProducerCalendlyEventMutationResult = NonNullable<
+  Awaited<ReturnType<typeof receiveProducerCalendlyEvent>>
+>;
+export type ReceiveProducerCalendlyEventMutationBody =
+  BodyType<ReceiveProducerCalendlyEventBody>;
+export type ReceiveProducerCalendlyEventMutationError = ErrorType<void>;
+
+/**
+ * @summary Receive a signed Calendly producer onboarding event
+ */
+export const useReceiveProducerCalendlyEvent = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof receiveProducerCalendlyEvent>>,
+    TError,
+    { data: BodyType<ReceiveProducerCalendlyEventBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof receiveProducerCalendlyEvent>>,
+  TError,
+  { data: BodyType<ReceiveProducerCalendlyEventBody> },
+  TContext
+> => {
+  return useMutation(getReceiveProducerCalendlyEventMutationOptions(options));
+};
+
+/**
+ * @summary List organization-scoped producer applications
+ */
+export const getListProducerApplicationsUrl = () => {
+  return `/api/producer-registrations`;
+};
+
+export const listProducerApplications = async (
+  options?: RequestInit,
+): Promise<ProducerApplicationRow[]> => {
+  return customFetch<ProducerApplicationRow[]>(
+    getListProducerApplicationsUrl(),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListProducerApplicationsQueryKey = () => {
+  return [`/api/producer-registrations`] as const;
+};
+
+export const getListProducerApplicationsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listProducerApplications>>,
+  TError = ErrorType<ErrorResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listProducerApplications>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListProducerApplicationsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listProducerApplications>>
+  > = ({ signal }) => listProducerApplications({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listProducerApplications>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListProducerApplicationsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listProducerApplications>>
+>;
+export type ListProducerApplicationsQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary List organization-scoped producer applications
+ */
+
+export function useListProducerApplications<
+  TData = Awaited<ReturnType<typeof listProducerApplications>>,
+  TError = ErrorType<ErrorResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listProducerApplications>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListProducerApplicationsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List safe unmatched or ambiguous scheduling events
+ */
+export const getListProducerSchedulingReviewEventsUrl = () => {
+  return `/api/producer-registrations/scheduling-events`;
+};
+
+export const listProducerSchedulingReviewEvents = async (
+  options?: RequestInit,
+): Promise<ProducerSchedulingReviewEvent[]> => {
+  return customFetch<ProducerSchedulingReviewEvent[]>(
+    getListProducerSchedulingReviewEventsUrl(),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListProducerSchedulingReviewEventsQueryKey = () => {
+  return [`/api/producer-registrations/scheduling-events`] as const;
+};
+
+export const getListProducerSchedulingReviewEventsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listProducerSchedulingReviewEvents>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listProducerSchedulingReviewEvents>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListProducerSchedulingReviewEventsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listProducerSchedulingReviewEvents>>
+  > = ({ signal }) =>
+    listProducerSchedulingReviewEvents({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listProducerSchedulingReviewEvents>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListProducerSchedulingReviewEventsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listProducerSchedulingReviewEvents>>
+>;
+export type ListProducerSchedulingReviewEventsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List safe unmatched or ambiguous scheduling events
+ */
+
+export function useListProducerSchedulingReviewEvents<
+  TData = Awaited<ReturnType<typeof listProducerSchedulingReviewEvents>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listProducerSchedulingReviewEvents>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions =
+    getListProducerSchedulingReviewEventsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getGetProducerApplicationUrl = (id: string) => {
+  return `/api/producer-registrations/${id}`;
+};
+
+export const getProducerApplication = async (
+  id: string,
+  options?: RequestInit,
+): Promise<ProducerApplicationDetail> => {
+  return customFetch<ProducerApplicationDetail>(
+    getGetProducerApplicationUrl(id),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetProducerApplicationQueryKey = (id: string) => {
+  return [`/api/producer-registrations/${id}`] as const;
+};
+
+export const getGetProducerApplicationQueryOptions = <
+  TData = Awaited<ReturnType<typeof getProducerApplication>>,
+  TError = ErrorType<void>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getProducerApplication>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetProducerApplicationQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getProducerApplication>>
+  > = ({ signal }) => getProducerApplication(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getProducerApplication>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetProducerApplicationQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getProducerApplication>>
+>;
+export type GetProducerApplicationQueryError = ErrorType<void>;
+
+export function useGetProducerApplication<
+  TData = Awaited<ReturnType<typeof getProducerApplication>>,
+  TError = ErrorType<void>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getProducerApplication>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetProducerApplicationQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * ADMIN and CSA may record the staff-run call. This is not a decision.
+ */
+export const getCompleteProducerApplicationCallUrl = (id: string) => {
+  return `/api/producer-registrations/${id}/call-complete`;
+};
+
+export const completeProducerApplicationCall = async (
+  id: string,
+  producerCallCompletionInput: ProducerCallCompletionInput,
+  options?: RequestInit,
+): Promise<ProducerApplicationDetail> => {
+  return customFetch<ProducerApplicationDetail>(
+    getCompleteProducerApplicationCallUrl(id),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(producerCallCompletionInput),
+    },
+  );
+};
+
+export const getCompleteProducerApplicationCallMutationOptions = <
+  TError = ErrorType<void | ConflictResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof completeProducerApplicationCall>>,
+    TError,
+    { id: string; data: BodyType<ProducerCallCompletionInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof completeProducerApplicationCall>>,
+  TError,
+  { id: string; data: BodyType<ProducerCallCompletionInput> },
+  TContext
+> => {
+  const mutationKey = ["completeProducerApplicationCall"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof completeProducerApplicationCall>>,
+    { id: string; data: BodyType<ProducerCallCompletionInput> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return completeProducerApplicationCall(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CompleteProducerApplicationCallMutationResult = NonNullable<
+  Awaited<ReturnType<typeof completeProducerApplicationCall>>
+>;
+export type CompleteProducerApplicationCallMutationBody =
+  BodyType<ProducerCallCompletionInput>;
+export type CompleteProducerApplicationCallMutationError =
+  ErrorType<void | ConflictResponse>;
+
+export const useCompleteProducerApplicationCall = <
+  TError = ErrorType<void | ConflictResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof completeProducerApplicationCall>>,
+    TError,
+    { id: string; data: BodyType<ProducerCallCompletionInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof completeProducerApplicationCall>>,
+  TError,
+  { id: string; data: BodyType<ProducerCallCompletionInput> },
+  TContext
+> => {
+  return useMutation(
+    getCompleteProducerApplicationCallMutationOptions(options),
+  );
+};
+
+export const getApproveProducerApplicationUrl = (id: string) => {
+  return `/api/producer-registrations/${id}/approve`;
+};
+
+export const approveProducerApplication = async (
+  id: string,
+  producerEmptyActionInput: ProducerEmptyActionInput,
+  options?: RequestInit,
+): Promise<ProducerApplicationDetail> => {
+  return customFetch<ProducerApplicationDetail>(
+    getApproveProducerApplicationUrl(id),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(producerEmptyActionInput),
+    },
+  );
+};
+
+export const getApproveProducerApplicationMutationOptions = <
+  TError = ErrorType<ConflictResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof approveProducerApplication>>,
+    TError,
+    { id: string; data: BodyType<ProducerEmptyActionInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof approveProducerApplication>>,
+  TError,
+  { id: string; data: BodyType<ProducerEmptyActionInput> },
+  TContext
+> => {
+  const mutationKey = ["approveProducerApplication"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof approveProducerApplication>>,
+    { id: string; data: BodyType<ProducerEmptyActionInput> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return approveProducerApplication(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ApproveProducerApplicationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof approveProducerApplication>>
+>;
+export type ApproveProducerApplicationMutationBody =
+  BodyType<ProducerEmptyActionInput>;
+export type ApproveProducerApplicationMutationError =
+  ErrorType<ConflictResponse>;
+
+export const useApproveProducerApplication = <
+  TError = ErrorType<ConflictResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof approveProducerApplication>>,
+    TError,
+    { id: string; data: BodyType<ProducerEmptyActionInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof approveProducerApplication>>,
+  TError,
+  { id: string; data: BodyType<ProducerEmptyActionInput> },
+  TContext
+> => {
+  return useMutation(getApproveProducerApplicationMutationOptions(options));
+};
+
+export const getDeclineProducerApplicationUrl = (id: string) => {
+  return `/api/producer-registrations/${id}/decline`;
+};
+
+export const declineProducerApplication = async (
+  id: string,
+  producerDeclineInput: ProducerDeclineInput,
+  options?: RequestInit,
+): Promise<ProducerApplicationDetail> => {
+  return customFetch<ProducerApplicationDetail>(
+    getDeclineProducerApplicationUrl(id),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(producerDeclineInput),
+    },
+  );
+};
+
+export const getDeclineProducerApplicationMutationOptions = <
+  TError = ErrorType<ConflictResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof declineProducerApplication>>,
+    TError,
+    { id: string; data: BodyType<ProducerDeclineInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof declineProducerApplication>>,
+  TError,
+  { id: string; data: BodyType<ProducerDeclineInput> },
+  TContext
+> => {
+  const mutationKey = ["declineProducerApplication"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof declineProducerApplication>>,
+    { id: string; data: BodyType<ProducerDeclineInput> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return declineProducerApplication(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeclineProducerApplicationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof declineProducerApplication>>
+>;
+export type DeclineProducerApplicationMutationBody =
+  BodyType<ProducerDeclineInput>;
+export type DeclineProducerApplicationMutationError =
+  ErrorType<ConflictResponse>;
+
+export const useDeclineProducerApplication = <
+  TError = ErrorType<ConflictResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof declineProducerApplication>>,
+    TError,
+    { id: string; data: BodyType<ProducerDeclineInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof declineProducerApplication>>,
+  TError,
+  { id: string; data: BodyType<ProducerDeclineInput> },
+  TContext
+> => {
+  return useMutation(getDeclineProducerApplicationMutationOptions(options));
+};
+
+export const getSendProducerSchedulingLinkUrl = (id: string) => {
+  return `/api/producer-registrations/${id}/send-scheduling-link`;
+};
+
+export const sendProducerSchedulingLink = async (
+  id: string,
+  producerEmptyActionInput: ProducerEmptyActionInput,
+  options?: RequestInit,
+): Promise<ProducerBlockedDelivery> => {
+  return customFetch<ProducerBlockedDelivery>(
+    getSendProducerSchedulingLinkUrl(id),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(producerEmptyActionInput),
+    },
+  );
+};
+
+export const getSendProducerSchedulingLinkMutationOptions = <
+  TError = ErrorType<ConflictResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof sendProducerSchedulingLink>>,
+    TError,
+    { id: string; data: BodyType<ProducerEmptyActionInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof sendProducerSchedulingLink>>,
+  TError,
+  { id: string; data: BodyType<ProducerEmptyActionInput> },
+  TContext
+> => {
+  const mutationKey = ["sendProducerSchedulingLink"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof sendProducerSchedulingLink>>,
+    { id: string; data: BodyType<ProducerEmptyActionInput> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return sendProducerSchedulingLink(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SendProducerSchedulingLinkMutationResult = NonNullable<
+  Awaited<ReturnType<typeof sendProducerSchedulingLink>>
+>;
+export type SendProducerSchedulingLinkMutationBody =
+  BodyType<ProducerEmptyActionInput>;
+export type SendProducerSchedulingLinkMutationError =
+  ErrorType<ConflictResponse>;
+
+export const useSendProducerSchedulingLink = <
+  TError = ErrorType<ConflictResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof sendProducerSchedulingLink>>,
+    TError,
+    { id: string; data: BodyType<ProducerEmptyActionInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof sendProducerSchedulingLink>>,
+  TError,
+  { id: string; data: BodyType<ProducerEmptyActionInput> },
+  TContext
+> => {
+  return useMutation(getSendProducerSchedulingLinkMutationOptions(options));
+};
+
+export const getIssueProducerApplicationCredentialsUrl = (id: string) => {
+  return `/api/producer-registrations/${id}/issue-credentials`;
+};
+
+export const issueProducerApplicationCredentials = async (
+  id: string,
+  producerEmptyActionInput: ProducerEmptyActionInput,
+  options?: RequestInit,
+): Promise<unknown> => {
+  return customFetch<unknown>(getIssueProducerApplicationCredentialsUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(producerEmptyActionInput),
+  });
+};
+
+export const getIssueProducerApplicationCredentialsMutationOptions = <
+  TError = ErrorType<ConflictResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof issueProducerApplicationCredentials>>,
+    TError,
+    { id: string; data: BodyType<ProducerEmptyActionInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof issueProducerApplicationCredentials>>,
+  TError,
+  { id: string; data: BodyType<ProducerEmptyActionInput> },
+  TContext
+> => {
+  const mutationKey = ["issueProducerApplicationCredentials"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof issueProducerApplicationCredentials>>,
+    { id: string; data: BodyType<ProducerEmptyActionInput> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return issueProducerApplicationCredentials(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type IssueProducerApplicationCredentialsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof issueProducerApplicationCredentials>>
+>;
+export type IssueProducerApplicationCredentialsMutationBody =
+  BodyType<ProducerEmptyActionInput>;
+export type IssueProducerApplicationCredentialsMutationError =
+  ErrorType<ConflictResponse>;
+
+export const useIssueProducerApplicationCredentials = <
+  TError = ErrorType<ConflictResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof issueProducerApplicationCredentials>>,
+    TError,
+    { id: string; data: BodyType<ProducerEmptyActionInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof issueProducerApplicationCredentials>>,
+  TError,
+  { id: string; data: BodyType<ProducerEmptyActionInput> },
+  TContext
+> => {
+  return useMutation(
+    getIssueProducerApplicationCredentialsMutationOptions(options),
+  );
+};
+
+export const getAccessProducerApplicationDocumentUrl = (
+  id: string,
+  documentId: string,
+) => {
+  return `/api/producer-registrations/${id}/documents/${documentId}/access`;
+};
+
+export const accessProducerApplicationDocument = async (
+  id: string,
+  documentId: string,
+  options?: RequestInit,
+): Promise<unknown> => {
+  return customFetch<unknown>(
+    getAccessProducerApplicationDocumentUrl(id, documentId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getAccessProducerApplicationDocumentQueryKey = (
+  id: string,
+  documentId: string,
+) => {
+  return [
+    `/api/producer-registrations/${id}/documents/${documentId}/access`,
+  ] as const;
+};
+
+export const getAccessProducerApplicationDocumentQueryOptions = <
+  TData = Awaited<ReturnType<typeof accessProducerApplicationDocument>>,
+  TError = ErrorType<void | ConflictResponse>,
+>(
+  id: string,
+  documentId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof accessProducerApplicationDocument>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ??
+    getAccessProducerApplicationDocumentQueryKey(id, documentId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof accessProducerApplicationDocument>>
+  > = ({ signal }) =>
+    accessProducerApplicationDocument(id, documentId, {
+      signal,
+      ...requestOptions,
+    });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!(id && documentId),
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof accessProducerApplicationDocument>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type AccessProducerApplicationDocumentQueryResult = NonNullable<
+  Awaited<ReturnType<typeof accessProducerApplicationDocument>>
+>;
+export type AccessProducerApplicationDocumentQueryError =
+  ErrorType<void | ConflictResponse>;
+
+export function useAccessProducerApplicationDocument<
+  TData = Awaited<ReturnType<typeof accessProducerApplicationDocument>>,
+  TError = ErrorType<void | ConflictResponse>,
+>(
+  id: string,
+  documentId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof accessProducerApplicationDocument>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getAccessProducerApplicationDocumentQueryOptions(
+    id,
+    documentId,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * Pending contract receiver. The exact application field mapping has not been approved, so authenticated JSON objects are not stored or accepted. Sign the exact uncompressed request bytes with HMAC-SHA256 and send the lowercase hexadecimal digest in X-Axel-Signature. A sha256= prefix is also accepted. This secret belongs only in the website backend.

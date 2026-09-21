@@ -8,6 +8,393 @@
 import * as zod from "zod";
 
 /**
+ * Provider-to-server endpoint. HMAC verification uses the timestamp and
+exact uncompressed request bytes before JSON parsing. Configuration
+must name the permitted event-type URI and trusted organization.
+This does not complete onboarding calls or activate accounts.
+
+ * @summary Receive a signed Calendly producer onboarding event
+ */
+export const ReceiveProducerCalendlyEventHeader = zod.object({
+  "Calendly-Webhook-Signature": zod
+    .string()
+    .describe("Calendly t=<unix seconds>,v1=<HMAC-SHA256 hex> signature."),
+});
+
+export const ReceiveProducerCalendlyEventBody = zod
+  .record(zod.string(), zod.unknown())
+  .describe(
+    "Provider-defined event; validated by the signed receiver, not a website application payload.",
+  );
+
+/**
+ * @summary List organization-scoped producer applications
+ */
+export const ListProducerApplicationsResponseItem = zod.object({
+  id: zod.string().uuid(),
+  reference: zod.string(),
+  agencyName: zod.string(),
+  principalName: zod.string(),
+  displayStatus: zod.string(),
+  decision: zod.enum(["pending", "approved", "declined"]),
+  flags: zod.array(zod.string()),
+  submittedAt: zod.coerce.date(),
+  callScheduledFor: zod.coerce.date().nullable(),
+});
+export const ListProducerApplicationsResponse = zod.array(
+  ListProducerApplicationsResponseItem,
+);
+
+/**
+ * @summary List safe unmatched or ambiguous scheduling events
+ */
+export const ListProducerSchedulingReviewEventsResponseItem = zod.object({
+  id: zod.string().uuid(),
+  eventType: zod.string(),
+  reference: zod.string().nullable(),
+  inviteeEmail: zod.string().email().nullable(),
+  reviewReason: zod.string().nullable(),
+  createdAt: zod.coerce.date(),
+});
+export const ListProducerSchedulingReviewEventsResponse = zod
+  .array(ListProducerSchedulingReviewEventsResponseItem)
+  .max(100);
+
+export const GetProducerApplicationParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const GetProducerApplicationResponse = zod
+  .object({
+    id: zod.string().uuid(),
+    reference: zod.string(),
+    agencyName: zod.string(),
+    principalName: zod.string(),
+    displayStatus: zod.string(),
+    decision: zod.enum(["pending", "approved", "declined"]),
+    flags: zod.array(zod.string()),
+    submittedAt: zod.coerce.date(),
+    callScheduledFor: zod.coerce.date().nullable(),
+  })
+  .and(
+    zod.object({
+      packetSentAt: zod.coerce.date().nullable(),
+      packetSignedAt: zod.coerce.date().nullable(),
+      callCompletedAt: zod.coerce.date().nullable(),
+      callNotes: zod.string().nullable(),
+      countersignedAt: zod.coerce.date().nullable(),
+      credentialsIssuedAt: zod.coerce.date().nullable(),
+      meetingUrl: zod.string().url().nullable(),
+      payload: zod.record(zod.string(), zod.unknown()).nullable(),
+      owners: zod.array(
+        zod.object({
+          id: zod.string().uuid(),
+          name: zod.string(),
+          title: zod.string().nullable(),
+          ownershipPct: zod.string(),
+          email: zod.string().email(),
+          exhibitASignedAt: zod.coerce.date().nullable(),
+        }),
+      ),
+      documents: zod.array(
+        zod.object({
+          id: zod.string().uuid(),
+          docType: zod.string(),
+          filename: zod.string().nullable(),
+          ingestionStatus: zod.string(),
+          uploadedAt: zod.coerce.date().nullable(),
+          canAccess: zod.boolean(),
+        }),
+      ),
+      activity: zod.array(
+        zod.object({
+          id: zod.string().uuid(),
+          action: zod.string(),
+          createdAt: zod.coerce.date(),
+          actorId: zod.string().uuid().nullable(),
+        }),
+      ),
+      notificationRequests: zod.array(
+        zod.object({
+          id: zod.string().uuid(),
+          event: zod.string(),
+          status: zod.string(),
+          failureCode: zod.string().nullable(),
+          createdAt: zod.coerce.date(),
+        }),
+      ),
+      blockingReasons: zod.array(zod.string()),
+      permissions: zod.object({
+        canDecide: zod.boolean(),
+        canCompleteCall: zod.boolean(),
+        canSendSchedulingLink: zod.boolean(),
+        canIssueCredentials: zod.boolean(),
+      }),
+    }),
+  );
+
+/**
+ * ADMIN and CSA may record the staff-run call. This is not a decision.
+ */
+export const CompleteProducerApplicationCallParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const completeProducerApplicationCallBodyNotesMin = 3;
+export const completeProducerApplicationCallBodyNotesMax = 2000;
+
+export const CompleteProducerApplicationCallBody = zod.object({
+  notes: zod
+    .string()
+    .min(completeProducerApplicationCallBodyNotesMin)
+    .max(completeProducerApplicationCallBodyNotesMax),
+});
+
+export const CompleteProducerApplicationCallResponse = zod
+  .object({
+    id: zod.string().uuid(),
+    reference: zod.string(),
+    agencyName: zod.string(),
+    principalName: zod.string(),
+    displayStatus: zod.string(),
+    decision: zod.enum(["pending", "approved", "declined"]),
+    flags: zod.array(zod.string()),
+    submittedAt: zod.coerce.date(),
+    callScheduledFor: zod.coerce.date().nullable(),
+  })
+  .and(
+    zod.object({
+      packetSentAt: zod.coerce.date().nullable(),
+      packetSignedAt: zod.coerce.date().nullable(),
+      callCompletedAt: zod.coerce.date().nullable(),
+      callNotes: zod.string().nullable(),
+      countersignedAt: zod.coerce.date().nullable(),
+      credentialsIssuedAt: zod.coerce.date().nullable(),
+      meetingUrl: zod.string().url().nullable(),
+      payload: zod.record(zod.string(), zod.unknown()).nullable(),
+      owners: zod.array(
+        zod.object({
+          id: zod.string().uuid(),
+          name: zod.string(),
+          title: zod.string().nullable(),
+          ownershipPct: zod.string(),
+          email: zod.string().email(),
+          exhibitASignedAt: zod.coerce.date().nullable(),
+        }),
+      ),
+      documents: zod.array(
+        zod.object({
+          id: zod.string().uuid(),
+          docType: zod.string(),
+          filename: zod.string().nullable(),
+          ingestionStatus: zod.string(),
+          uploadedAt: zod.coerce.date().nullable(),
+          canAccess: zod.boolean(),
+        }),
+      ),
+      activity: zod.array(
+        zod.object({
+          id: zod.string().uuid(),
+          action: zod.string(),
+          createdAt: zod.coerce.date(),
+          actorId: zod.string().uuid().nullable(),
+        }),
+      ),
+      notificationRequests: zod.array(
+        zod.object({
+          id: zod.string().uuid(),
+          event: zod.string(),
+          status: zod.string(),
+          failureCode: zod.string().nullable(),
+          createdAt: zod.coerce.date(),
+        }),
+      ),
+      blockingReasons: zod.array(zod.string()),
+      permissions: zod.object({
+        canDecide: zod.boolean(),
+        canCompleteCall: zod.boolean(),
+        canSendSchedulingLink: zod.boolean(),
+        canIssueCredentials: zod.boolean(),
+      }),
+    }),
+  );
+
+export const ApproveProducerApplicationParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const ApproveProducerApplicationBody = zod.object({});
+
+export const ApproveProducerApplicationResponse = zod
+  .object({
+    id: zod.string().uuid(),
+    reference: zod.string(),
+    agencyName: zod.string(),
+    principalName: zod.string(),
+    displayStatus: zod.string(),
+    decision: zod.enum(["pending", "approved", "declined"]),
+    flags: zod.array(zod.string()),
+    submittedAt: zod.coerce.date(),
+    callScheduledFor: zod.coerce.date().nullable(),
+  })
+  .and(
+    zod.object({
+      packetSentAt: zod.coerce.date().nullable(),
+      packetSignedAt: zod.coerce.date().nullable(),
+      callCompletedAt: zod.coerce.date().nullable(),
+      callNotes: zod.string().nullable(),
+      countersignedAt: zod.coerce.date().nullable(),
+      credentialsIssuedAt: zod.coerce.date().nullable(),
+      meetingUrl: zod.string().url().nullable(),
+      payload: zod.record(zod.string(), zod.unknown()).nullable(),
+      owners: zod.array(
+        zod.object({
+          id: zod.string().uuid(),
+          name: zod.string(),
+          title: zod.string().nullable(),
+          ownershipPct: zod.string(),
+          email: zod.string().email(),
+          exhibitASignedAt: zod.coerce.date().nullable(),
+        }),
+      ),
+      documents: zod.array(
+        zod.object({
+          id: zod.string().uuid(),
+          docType: zod.string(),
+          filename: zod.string().nullable(),
+          ingestionStatus: zod.string(),
+          uploadedAt: zod.coerce.date().nullable(),
+          canAccess: zod.boolean(),
+        }),
+      ),
+      activity: zod.array(
+        zod.object({
+          id: zod.string().uuid(),
+          action: zod.string(),
+          createdAt: zod.coerce.date(),
+          actorId: zod.string().uuid().nullable(),
+        }),
+      ),
+      notificationRequests: zod.array(
+        zod.object({
+          id: zod.string().uuid(),
+          event: zod.string(),
+          status: zod.string(),
+          failureCode: zod.string().nullable(),
+          createdAt: zod.coerce.date(),
+        }),
+      ),
+      blockingReasons: zod.array(zod.string()),
+      permissions: zod.object({
+        canDecide: zod.boolean(),
+        canCompleteCall: zod.boolean(),
+        canSendSchedulingLink: zod.boolean(),
+        canIssueCredentials: zod.boolean(),
+      }),
+    }),
+  );
+
+export const DeclineProducerApplicationParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const declineProducerApplicationBodyReasonMin = 3;
+export const declineProducerApplicationBodyReasonMax = 2000;
+
+export const DeclineProducerApplicationBody = zod.object({
+  reason: zod
+    .string()
+    .min(declineProducerApplicationBodyReasonMin)
+    .max(declineProducerApplicationBodyReasonMax),
+});
+
+export const DeclineProducerApplicationResponse = zod
+  .object({
+    id: zod.string().uuid(),
+    reference: zod.string(),
+    agencyName: zod.string(),
+    principalName: zod.string(),
+    displayStatus: zod.string(),
+    decision: zod.enum(["pending", "approved", "declined"]),
+    flags: zod.array(zod.string()),
+    submittedAt: zod.coerce.date(),
+    callScheduledFor: zod.coerce.date().nullable(),
+  })
+  .and(
+    zod.object({
+      packetSentAt: zod.coerce.date().nullable(),
+      packetSignedAt: zod.coerce.date().nullable(),
+      callCompletedAt: zod.coerce.date().nullable(),
+      callNotes: zod.string().nullable(),
+      countersignedAt: zod.coerce.date().nullable(),
+      credentialsIssuedAt: zod.coerce.date().nullable(),
+      meetingUrl: zod.string().url().nullable(),
+      payload: zod.record(zod.string(), zod.unknown()).nullable(),
+      owners: zod.array(
+        zod.object({
+          id: zod.string().uuid(),
+          name: zod.string(),
+          title: zod.string().nullable(),
+          ownershipPct: zod.string(),
+          email: zod.string().email(),
+          exhibitASignedAt: zod.coerce.date().nullable(),
+        }),
+      ),
+      documents: zod.array(
+        zod.object({
+          id: zod.string().uuid(),
+          docType: zod.string(),
+          filename: zod.string().nullable(),
+          ingestionStatus: zod.string(),
+          uploadedAt: zod.coerce.date().nullable(),
+          canAccess: zod.boolean(),
+        }),
+      ),
+      activity: zod.array(
+        zod.object({
+          id: zod.string().uuid(),
+          action: zod.string(),
+          createdAt: zod.coerce.date(),
+          actorId: zod.string().uuid().nullable(),
+        }),
+      ),
+      notificationRequests: zod.array(
+        zod.object({
+          id: zod.string().uuid(),
+          event: zod.string(),
+          status: zod.string(),
+          failureCode: zod.string().nullable(),
+          createdAt: zod.coerce.date(),
+        }),
+      ),
+      blockingReasons: zod.array(zod.string()),
+      permissions: zod.object({
+        canDecide: zod.boolean(),
+        canCompleteCall: zod.boolean(),
+        canSendSchedulingLink: zod.boolean(),
+        canIssueCredentials: zod.boolean(),
+      }),
+    }),
+  );
+
+export const SendProducerSchedulingLinkParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const SendProducerSchedulingLinkBody = zod.object({});
+
+export const IssueProducerApplicationCredentialsParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const IssueProducerApplicationCredentialsBody = zod.object({});
+
+export const AccessProducerApplicationDocumentParams = zod.object({
+  id: zod.coerce.string().uuid(),
+  documentId: zod.coerce.string().uuid(),
+});
+
+/**
  * Pending contract receiver. The exact application field mapping has not been approved, so authenticated JSON objects are not stored or accepted. Sign the exact uncompressed request bytes with HMAC-SHA256 and send the lowercase hexadecimal digest in X-Axel-Signature. A sha256= prefix is also accepted. This secret belongs only in the website backend.
  * @summary Authenticate a website registration request without accepting it
  */
