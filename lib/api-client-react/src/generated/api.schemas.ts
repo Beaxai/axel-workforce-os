@@ -5,6 +5,32 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+/**
+ * Deliberately unspecified pending the website field contract. This receiver never accepts or persists this object.
+ */
+export interface ProducerRegistrationPendingInput {
+  [key: string]: unknown;
+}
+
+export interface ProducerRegistrationConnectionTestInput {
+  /** @pattern ^AXR-[0-9]{8}-[A-Z0-9]{6}$ */
+  reference: string;
+  test: true;
+}
+
+export interface ProducerRegistrationConnectionTestResult {
+  connected: true;
+  reference: string;
+  persisted: false;
+}
+
+export type FieldErrorResponseFields = { [key: string]: string };
+
+export interface FieldErrorResponse {
+  error: "validation_failed";
+  fields: FieldErrorResponseFields;
+}
+
 export type SubmissionFieldType =
   (typeof SubmissionFieldType)[keyof typeof SubmissionFieldType];
 
@@ -884,6 +910,16 @@ export const UpdateJourneyTaskStatusRequestStatus = {
 export interface UpdateJourneyTaskStatusRequest {
   status: UpdateJourneyTaskStatusRequestStatus;
 }
+
+/**
+ * HMAC-SHA256 of the exact uncompressed request bytes, encoded as 64 lowercase hexadecimal characters; an optional sha256= prefix is accepted.
+ */
+export type AxelSignatureParameter = string;
+
+/**
+ * Must exactly equal the synthetic reference in the connection-test body.
+ */
+export type AxelIdempotencyKeyParameter = string;
 
 export type ChangeUserPassword200 = {
   success: boolean;

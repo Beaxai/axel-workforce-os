@@ -38,6 +38,7 @@ import type {
   DeclineRequest,
   DeletedResponse,
   ErrorResponse,
+  FieldErrorResponse,
   ForgotPasswordRequest,
   GetAccountsParams,
   GetJourneyTemplatesParams,
@@ -61,6 +62,9 @@ import type {
   OkResponse,
   PreviewVariationRequest,
   PreviewVariationResponse,
+  ProducerRegistrationConnectionTestInput,
+  ProducerRegistrationConnectionTestResult,
+  ProducerRegistrationPendingInput,
   QuoteVariationsResponse,
   RatingStaleClearedResponse,
   RecomputeDealSubjectivities200,
@@ -97,6 +101,191 @@ type AwaitedInput<T> = PromiseLike<T> | T;
 type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+/**
+ * Pending contract receiver. The exact application field mapping has not been approved, so authenticated JSON objects are not stored or accepted. Sign the exact uncompressed request bytes with HMAC-SHA256 and send the lowercase hexadecimal digest in X-Axel-Signature. A sha256= prefix is also accepted. This secret belongs only in the website backend.
+ * @summary Authenticate a website registration request without accepting it
+ */
+export const getReceiveProducerRegistrationUrl = () => {
+  return `/api/public/producer-registrations`;
+};
+
+export const receiveProducerRegistration = async (
+  producerRegistrationPendingInput: ProducerRegistrationPendingInput,
+  options?: RequestInit,
+): Promise<unknown> => {
+  return customFetch<unknown>(getReceiveProducerRegistrationUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(producerRegistrationPendingInput),
+  });
+};
+
+export const getReceiveProducerRegistrationMutationOptions = <
+  TError = ErrorType<ErrorResponse | FieldErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof receiveProducerRegistration>>,
+    TError,
+    { data: BodyType<ProducerRegistrationPendingInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof receiveProducerRegistration>>,
+  TError,
+  { data: BodyType<ProducerRegistrationPendingInput> },
+  TContext
+> => {
+  const mutationKey = ["receiveProducerRegistration"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof receiveProducerRegistration>>,
+    { data: BodyType<ProducerRegistrationPendingInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return receiveProducerRegistration(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ReceiveProducerRegistrationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof receiveProducerRegistration>>
+>;
+export type ReceiveProducerRegistrationMutationBody =
+  BodyType<ProducerRegistrationPendingInput>;
+export type ReceiveProducerRegistrationMutationError = ErrorType<
+  ErrorResponse | FieldErrorResponse
+>;
+
+/**
+ * @summary Authenticate a website registration request without accepting it
+ */
+export const useReceiveProducerRegistration = <
+  TError = ErrorType<ErrorResponse | FieldErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof receiveProducerRegistration>>,
+    TError,
+    { data: BodyType<ProducerRegistrationPendingInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof receiveProducerRegistration>>,
+  TError,
+  { data: BodyType<ProducerRegistrationPendingInput> },
+  TContext
+> => {
+  return useMutation(getReceiveProducerRegistrationMutationOptions(options));
+};
+
+/**
+ * Accepts only a small synthetic reference and test marker. It performs no writes and sends no email. Do not send applicant data.
+ * @summary Test the signed backend connection without submitting an application
+ */
+export const getTestProducerRegistrationConnectionUrl = () => {
+  return `/api/public/producer-registrations/connection-test`;
+};
+
+export const testProducerRegistrationConnection = async (
+  producerRegistrationConnectionTestInput: ProducerRegistrationConnectionTestInput,
+  options?: RequestInit,
+): Promise<ProducerRegistrationConnectionTestResult> => {
+  return customFetch<ProducerRegistrationConnectionTestResult>(
+    getTestProducerRegistrationConnectionUrl(),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(producerRegistrationConnectionTestInput),
+    },
+  );
+};
+
+export const getTestProducerRegistrationConnectionMutationOptions = <
+  TError = ErrorType<ErrorResponse | FieldErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof testProducerRegistrationConnection>>,
+    TError,
+    { data: BodyType<ProducerRegistrationConnectionTestInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof testProducerRegistrationConnection>>,
+  TError,
+  { data: BodyType<ProducerRegistrationConnectionTestInput> },
+  TContext
+> => {
+  const mutationKey = ["testProducerRegistrationConnection"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof testProducerRegistrationConnection>>,
+    { data: BodyType<ProducerRegistrationConnectionTestInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return testProducerRegistrationConnection(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type TestProducerRegistrationConnectionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof testProducerRegistrationConnection>>
+>;
+export type TestProducerRegistrationConnectionMutationBody =
+  BodyType<ProducerRegistrationConnectionTestInput>;
+export type TestProducerRegistrationConnectionMutationError = ErrorType<
+  ErrorResponse | FieldErrorResponse
+>;
+
+/**
+ * @summary Test the signed backend connection without submitting an application
+ */
+export const useTestProducerRegistrationConnection = <
+  TError = ErrorType<ErrorResponse | FieldErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof testProducerRegistrationConnection>>,
+    TError,
+    { data: BodyType<ProducerRegistrationConnectionTestInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof testProducerRegistrationConnection>>,
+  TError,
+  { data: BodyType<ProducerRegistrationConnectionTestInput> },
+  TContext
+> => {
+  return useMutation(
+    getTestProducerRegistrationConnectionMutationOptions(options),
+  );
+};
 
 /**
  * @summary List users (team directory)

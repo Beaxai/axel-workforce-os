@@ -26,7 +26,125 @@ tags:
     description: Journey (implementation/onboarding tracker) operations (P5b)
   - name: subjectivities
     description: Bind subjectivities checklist operations (P5-WC 6A)
+  - name: producer-registration-connection
+    description: Signed server-to-server producer registration connection
 paths:
+  /public/producer-registrations:
+    post:
+      operationId: receiveProducerRegistration
+      tags: [producer-registration-connection]
+      summary: Authenticate a website registration request without accepting it
+      description: >-
+        Pending contract receiver. The exact application field mapping has not
+        been approved, so authenticated JSON objects are not stored or accepted.
+        Sign the exact uncompressed request bytes with HMAC-SHA256 and send the
+        lowercase hexadecimal digest in X-Axel-Signature. A sha256= prefix is
+        also accepted. This secret belongs only in the website backend.
+      parameters:
+        - $ref: "#/components/parameters/AxelSignature"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProducerRegistrationPendingInput"
+      responses:
+        "401":
+          description: Missing, malformed, or invalid signature
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "413":
+          description: Raw request exceeds 256KB
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "415":
+          description: Compressed request bodies are not accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Authenticated body is not a valid JSON object
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FieldErrorResponse"
+        "429":
+          description: Process-local client limit of 10 requests per minute exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Connection secret or application mapping is not ready; no data persisted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /public/producer-registrations/connection-test:
+    post:
+      operationId: testProducerRegistrationConnection
+      tags: [producer-registration-connection]
+      summary: Test the signed backend connection without submitting an application
+      description: >-
+        Accepts only a small synthetic reference and test marker. It performs
+        no writes and sends no email. Do not send applicant data.
+      parameters:
+        - $ref: "#/components/parameters/AxelSignature"
+        - $ref: "#/components/parameters/AxelIdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProducerRegistrationConnectionTestInput"
+      responses:
+        "200":
+          description: Signature and synthetic request validated; nothing persisted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProducerRegistrationConnectionTestResult"
+        "401":
+          description: Missing, malformed, or invalid signature
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "413":
+          description: Raw request exceeds 256KB
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "415":
+          description: Compressed request bodies are not accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Invalid JSON, test shape, or idempotency key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FieldErrorResponse"
+        "429":
+          description: Process-local client limit of 10 requests per minute exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Connection secret is not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /users:
     get:
       operationId: getUsers
@@ -1467,7 +1585,67 @@ paths:
         "404":
           description: Document not found
 components:
+  parameters:
+    AxelSignature:
+      name: X-Axel-Signature
+      in: header
+      required: true
+      description: >-
+        HMAC-SHA256 of the exact uncompressed request bytes, encoded as 64
+        lowercase hexadecimal characters; an optional sha256= prefix is accepted.
+      schema:
+        type: string
+        pattern: "^(sha256=)?[0-9a-f]{64}$"
+    AxelIdempotencyKey:
+      name: X-Axel-Idempotency-Key
+      in: header
+      required: true
+      description: Must exactly equal the synthetic reference in the connection-test body.
+      schema:
+        type: string
+        pattern: "^AXR-[0-9]{8}-[A-Z0-9]{6}$"
   schemas:
+    ProducerRegistrationPendingInput:
+      type: object
+      description: >-
+        Deliberately unspecified pending the website field contract. This
+        receiver never accepts or persists this object.
+      additionalProperties: true
+    ProducerRegistrationConnectionTestInput:
+      type: object
+      additionalProperties: false
+      properties:
+        reference:
+          type: string
+          pattern: "^AXR-[0-9]{8}-[A-Z0-9]{6}$"
+        test:
+          type: boolean
+          const: true
+      required: [reference, test]
+    ProducerRegistrationConnectionTestResult:
+      type: object
+      additionalProperties: false
+      properties:
+        connected:
+          type: boolean
+          const: true
+        reference:
+          type: string
+        persisted:
+          type: boolean
+          const: false
+      required: [connected, reference, persisted]
+    FieldErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          const: validation_failed
+        fields:
+          type: object
+          additionalProperties:
+            type: string
+      required: [error, fields]
     SubmissionField:
       type: object
       properties:

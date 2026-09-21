@@ -22,3 +22,4 @@
 - [Partner production buckets](partner-production-buckets.md) — agency/Agent production is split into WC premium, PEO premium, and combined ASO fees through one canonical calculator.
 - [Secure App Storage image transforms](app-storage-image-transforms.md) — sidecar credentials cannot locally sign GCS POST policies; bounded server transforms need strict multipart input.
 - [Multi-market build scope](multi-market-build-scope.md) — stay strictly within the supplied spec; proposal request triggers Resend distribution and market-thread replies on the deal card.
+- [Website appointment boundary](website-appointment-boundary.md) — external website already exists; supply a backend connection and handoff, not a replacement form.

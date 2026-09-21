@@ -8,6 +8,70 @@
 import * as zod from "zod";
 
 /**
+ * Pending contract receiver. The exact application field mapping has not been approved, so authenticated JSON objects are not stored or accepted. Sign the exact uncompressed request bytes with HMAC-SHA256 and send the lowercase hexadecimal digest in X-Axel-Signature. A sha256= prefix is also accepted. This secret belongs only in the website backend.
+ * @summary Authenticate a website registration request without accepting it
+ */
+export const receiveProducerRegistrationHeaderXAxelSignatureRegExp = new RegExp(
+  "^(sha256=)?[0-9a-f]{64}$",
+);
+
+export const ReceiveProducerRegistrationHeader = zod.object({
+  "X-Axel-Signature": zod
+    .string()
+    .regex(receiveProducerRegistrationHeaderXAxelSignatureRegExp)
+    .describe(
+      "HMAC-SHA256 of the exact uncompressed request bytes, encoded as 64 lowercase hexadecimal characters; an optional sha256= prefix is accepted.",
+    ),
+});
+
+export const ReceiveProducerRegistrationBody = zod
+  .record(zod.string(), zod.unknown())
+  .describe(
+    "Deliberately unspecified pending the website field contract. This receiver never accepts or persists this object.",
+  );
+
+/**
+ * Accepts only a small synthetic reference and test marker. It performs no writes and sends no email. Do not send applicant data.
+ * @summary Test the signed backend connection without submitting an application
+ */
+export const testProducerRegistrationConnectionHeaderXAxelSignatureRegExp =
+  new RegExp("^(sha256=)?[0-9a-f]{64}$");
+export const testProducerRegistrationConnectionHeaderXAxelIdempotencyKeyRegExp =
+  new RegExp("^AXR-[0-9]{8}-[A-Z0-9]{6}$");
+
+export const TestProducerRegistrationConnectionHeader = zod.object({
+  "X-Axel-Signature": zod
+    .string()
+    .regex(testProducerRegistrationConnectionHeaderXAxelSignatureRegExp)
+    .describe(
+      "HMAC-SHA256 of the exact uncompressed request bytes, encoded as 64 lowercase hexadecimal characters; an optional sha256= prefix is accepted.",
+    ),
+  "X-Axel-Idempotency-Key": zod
+    .string()
+    .regex(testProducerRegistrationConnectionHeaderXAxelIdempotencyKeyRegExp)
+    .describe(
+      "Must exactly equal the synthetic reference in the connection-test body.",
+    ),
+});
+
+export const testProducerRegistrationConnectionBodyReferenceRegExp = new RegExp(
+  "^AXR-[0-9]{8}-[A-Z0-9]{6}$",
+);
+
+export const TestProducerRegistrationConnectionBody = zod.object({
+  reference: zod
+    .string()
+    .regex(testProducerRegistrationConnectionBodyReferenceRegExp),
+  test: zod.boolean(),
+});
+
+export const TestProducerRegistrationConnectionResponse = zod.object({
+  connected: zod.boolean(),
+  reference: zod.string(),
+  persisted: zod.boolean(),
+});
+
+/**
  * @summary List users (team directory)
  */
 export const GetUsersResponseItem = zod.object({

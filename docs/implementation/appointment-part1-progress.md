@@ -3,6 +3,13 @@
 **Branch:** `appointment/01-intake` (local; not pushed)  
 **Status:** Database foundation verified; Part 1 intake endpoint is **not complete**.
 
+**Connection update:** The existing external website is not being rebuilt.
+A signed receiver and synthetic `/connection-test` endpoint are now implemented.
+See `website-connection-handoff.md` for the backend signing instructions and
+enable steps. Real submissions remain disabled pending the website mapping;
+the shared secret has not been configured and no real submission is accepted.
+The boundary notes below describe the earlier database-only milestone.
+
 ## Implemented
 
 - Additive producer registrations, owners, documents, and durable job-intent tables.
@@ -44,7 +51,7 @@ The directive identifies required concepts but not all exact legal-question keys
 
 ## Remaining Part 1 work
 
-- Implement and document the signed, rate-limited public endpoint.
+- Finalize the signed public endpoint's application adapter and trusted/shared per-client rate limiting (transport scaffold and synthetic test are implemented).
 - Implement complete payload validation and field-level errors.
 - Add warning flags and duplicate-agency detection.
 - Atomically persist registration, owners, document metadata, and processing intents.

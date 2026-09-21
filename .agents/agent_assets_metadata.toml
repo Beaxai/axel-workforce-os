@@ -119,3 +119,17 @@ mtime_ms = 1789948283033
 storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:2fa73f29-9874-4644-9eb3-acf2c6a46297/af0bcccf-789f-45ba-b368-f4c347ed5602/79fcc31f-877f-47f6-81ef-6293f5d43d1c"
 storage_version_token = "1789948288549348"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "5y7W-O4FC_2oba4I8TeDY"
+uri = "file://docs/implementation/website-connection-handoff.md"
+type = "text"
+title = "Gershom — Website Connection Instructions"
+description = "Endpoint paths, backend signing example, synthetic connection test, expected responses, and setup checklist. Real application acceptance remains disabled pending field mapping."
+logical_id = "98c5f21e-12d2-4e70-b2ca-8682a2fd1f94"
+content_hash = "sha256:1a27c865512f47a4b246ffd005833c8dab18459d6d7f21af7c0696dc16093455"
+size = 4870
+mtime_ms = 1789952315852
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:2fa73f29-9874-4644-9eb3-acf2c6a46297/98c5f21e-12d2-4e70-b2ca-8682a2fd1f94/fca66cd2-20fb-4928-9827-11b7bc971c6b"
+storage_version_token = "1789952382795183"
+content_type = "text/markdown"
