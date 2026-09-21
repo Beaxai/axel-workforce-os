@@ -12,6 +12,11 @@ demonstrating the product**. See [demo readiness](demo-readiness.md) for accepta
 substitutes, non-negotiable safeguards and a short action plan.
 This scope decision does not mean a demo mode has already been implemented.
 
+Actual email sends to test accounts, including bulk tests, are authorized.
+Email previews are optional, not required. Keep recipients test-only and use
+each environment's existing webhook; do not automatically release old blocked
+notifications or extend this permission to real contacts.
+
 ## Review scope and status meanings
 
 This register has been reconciled against the current local implementation,

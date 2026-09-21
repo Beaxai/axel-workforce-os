@@ -14,9 +14,11 @@ separate existing webhooks. Reuse each environment's own webhook and matching
 signing secret; do not repoint or reuse the Development webhook for production.
 The earlier intent to reuse email API keys was not retracted, but does not mean
 webhook signing secrets are interchangeable. Replacement domains or webhooks are
-not a prerequisite. Verify routing and delivery without changing working
-configuration or sending live mail merely to check it; this clarification is not
-a production-delivery test.
+not a prerequisite. Verify routing without changing working configuration.
+The user authorizes actual sends, including bulk email tests, to test accounts.
+Do not block tests merely because they send email; confirm test-only recipients
+and use the appropriate environment webhook. This permission is not evidence
+that delivery has been tested, nor permission to mail unrelated real contacts.
 
 ### Built in source
 

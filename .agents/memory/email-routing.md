@@ -16,8 +16,22 @@ appropriate existing infrastructure, not replace or merge the webhooks.
 
 **How to apply:** Match each environment to its existing webhook endpoint,
 signing secret and database. Preserve the production webhook during Development
-tests. Separately verify routing and appointment delivery; user confirmation is
-not live-test evidence or authorization to send messages.
+tests. Separately verify routing and appointment delivery; configuration
+confirmation alone is not live-test evidence.
+
+## Test-account email authorization
+
+Actual email sends, including bulk tests, to test accounts are authorized.
+Do not repeatedly block testing or require previews merely because email sends.
+
+**Why:** The user explicitly confirmed that testing uses test accounts and that
+actual email delivery is acceptable.
+
+**How to apply:** Confirm test-only recipient selection and use the matching
+environment webhook. This does not authorize unrelated real recipients,
+indiscriminate release of historical blocked mail, or real signing/account
+activation. Record real delivery outcomes rather than assuming permission
+means a test passed.
 
 Development reply tests need a separate Resend webhook targeting Development, with its own signing secret; keep the published endpoint and its secret unchanged.
 
