@@ -14,6 +14,7 @@
     "import:market-assignments": "tsx src/scripts/import-market-assignments.ts",
     "test:market-assignments": "tsx --test src/tests/market-assignment.test.ts",
     "test:producer-registration-connection": "tsx --test src/tests/public-producer-registrations.test.ts",
+    "test:producer-appointment-packet-plan": "tsx --test src/tests/producer-appointment-packet-plan.test.ts",
     "normalize:user-status": "tsx src/scripts/normalize-user-status.ts",
     "backfill:agencies": "tsx src/scripts/backfill-agencies.ts",
     "backfill:agent-profiles": "tsx src/scripts/backfill-agent-profiles.ts",

@@ -9,3 +9,18 @@ description: Trust model and gotchas for the real SignWell e-sign flow (bind pac
 - Signed-PDF path is only persisted when the file is actually on disk under `uploads/signed-documents/...`; download failure logs a `signed_pdf_download_failed` activity but does not block the bind.
 - Only ACORD_130 + SUPPLEMENTAL_APP subjectivities auto-satisfy on completion; everything else stays human-confirmed.
 - Gotcha: SignWell API returns 401 "verify your email" until the SignWell *account* email is verified — key can authenticate yet be unable to create documents. `test_mode` is used outside production; drafts (`draft:true`) send no emails, good for smoke tests.
+
+## Producer appointment capability boundary
+
+Do not equate per-recipient signing fields with per-file visibility, or signing
+order / suppressed emails with an externally enforced approval hold.
+
+**Why:** Review of SignWell's official API and sending-order documentation on
+2026-09-20 established the ordinary signing controls but did not establish the
+two stronger controls required by the producer appointment directive.
+
+**How to apply:** Require provider evidence and a controlled test of both access
+and completed-copy restrictions before enabling producer packet dispatch.
+Do not change to multiple envelopes or a replacement countersigning document
+without business approval. Keep packet planning explicitly separate from
+provider-enforced behavior.
