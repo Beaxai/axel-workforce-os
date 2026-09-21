@@ -7,6 +7,34 @@ database was checked.
 
 ## Status summary
 
+### Deferred setup — booking return path
+
+The user confirmed that the scheduling email opens Curtis's existing Calendly
+page and asked to defer the return-path setup in this completion register.
+Preserve that working link; do not replace it or simulate bookings.
+
+The Development inspection found `CALENDLY_SIGNING_KEY`, `CALENDLY_EVENT_URI`
+and `PRODUCER_CALENDLY_ORG_ID` absent. The receiver exists, but no live Calendly
+subscription or real booking-to-application update has been verified.
+Production configuration was not inspected.
+
+**Resume checklist:**
+
+1. Authorize access to the existing Calendly account and inspect subscriptions
+   before creating anything, preserving any production subscription.
+2. Configure the Development signing secret securely, the correct API event-type
+   URI, and the trusted Axel organization assignment.
+3. Configure or verify signed booking/cancellation notifications to
+   `/api/webhooks/calendly` in the intended environment.
+4. Make a real controlled booking from the application's emailed link; verify
+   reference matching, scheduled time, meeting link, and duplicate-event safety.
+5. Verify real cancellation/rescheduling updates without fabricating provider
+   events or marking the application complete manually.
+
+**Completion evidence:** actual provider booking and signed callback, correct
+application update, and recorded cancellation/rescheduling outcomes. A working
+Calendly page alone does not satisfy this item.
+
 ### Built in source
 
 - `POST /api/webhooks/calendly` is mounted before the global JSON parser and

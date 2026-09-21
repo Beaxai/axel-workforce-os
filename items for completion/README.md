@@ -81,6 +81,13 @@ The narrow Development manual-email result is recorded separately in
 
 ## Action-plan index and dependency order
 
+**Current handoff:** manual scheduling-email delivery has been verified in
+Development. The working link opens Curtis's page. Calendly booking return-path
+configuration and live acceptance are deferred at the user's request; see the
+resume checklist in [Calendly setup](calendly-appointment-setup.md).
+The next item in the demo sequence is approval/provisioning and activation;
+its existing signing and identity-mapping prerequisites remain in force.
+
 Each detailed record separates implemented behavior from open work and gives
 numbered actions and required completion evidence. An item is not complete merely
 because its plan exists.
