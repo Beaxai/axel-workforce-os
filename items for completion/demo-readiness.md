@@ -1,5 +1,13 @@
 # Appointment demo readiness — real workflow, test data
 
+## Current operating direction
+
+**September 21, 2026:** the appointment process is manual and staff-managed for
+now. The automated implementation sequence below is deferred future scope.
+Real tools, genuine evidence, and access/privacy safeguards still apply to
+manual work. See the
+[decision](../docs/decisions/2026-09-21-manual-appointment-workflow.md).
+
 ## Scope correction
 
 The demo must exercise the actual tools and application workflow. The earlier

@@ -11,6 +11,18 @@ extended when the work closes (what actually happened). Written by/with the
 
 ---
 
+## 2026-09-21 — Producer appointments: manual workflow for now
+
+**Decision:** staff manually manage the entire appointment process, including
+record matching, provisioning, signing coordination, approval, activation and
+credential handoff. Automation may be considered later, one step at a time.
+
+**Why:** keep the current process staff-controlled rather than completing the
+previously planned automation now. Existing safety and evidence requirements
+remain in force. This is a decision record, not a runtime change.
+
+**Details:** [Manual appointment workflow](2026-09-21-manual-appointment-workflow.md).
+
 ## 2026-08-02 — WC-3b deposit monitor: plan + Task 1 (timer starts at bind)
 
 **What we're building:** the carrier-deposit monitor. When a deal reaches Bound, a

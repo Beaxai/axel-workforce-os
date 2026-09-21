@@ -7,6 +7,11 @@
 
 ## 1. Purpose and intended outcome
 
+**Current-direction override — September 21, 2026:** the user has chosen a
+manual staff-managed appointment workflow for now. The automated target flow
+below is retained as future scope, not the current build mandate. See the
+[manual-workflow decision](decisions/2026-09-21-manual-appointment-workflow.md).
+
 Implement the complete producer registration and appointment lifecycle, connecting the public website to document signing, scheduling, internal approval, activation, and credential issuance.
 
 Required flow:

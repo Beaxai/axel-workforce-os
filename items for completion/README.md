@@ -4,6 +4,16 @@ This folder tracks unavailable inputs, unresolved decisions, and remaining
 integration work for the producer registration and appointment initiative.
 It is not a launch approval or a claim that the end-to-end flow is complete.
 
+## Current decision — manual appointment workflow
+
+**September 21, 2026:** the user chose a manual, staff-managed process for the
+entire appointment workflow. Previous automation plans below remain future
+backlog, not instructions to implement them now. Automation may be reconsidered
+for individual steps later. See the
+[dated decision](../docs/decisions/2026-09-21-manual-appointment-workflow.md).
+This documentation update does not implement manual controls or disable existing
+runtime behavior.
+
 ## Current priority: demo readiness, not production launch
 
 The current user-approved goal is a demo. The production completion records below
@@ -85,8 +95,9 @@ The narrow Development manual-email result is recorded separately in
 Development. The working link opens Curtis's page. Calendly booking return-path
 configuration and live acceptance are deferred at the user's request; see the
 resume checklist in [Calendly setup](calendly-appointment-setup.md).
-The next item in the demo sequence is approval/provisioning and activation;
-its existing signing and identity-mapping prerequisites remain in force.
+Approval/provisioning and activation are now staff-managed under the manual
+workflow decision; their automation is deferred. Existing signing, identity,
+privacy and access prerequisites remain in force.
 
 Each detailed record separates implemented behavior from open work and gives
 numbered actions and required completion evidence. An item is not complete merely

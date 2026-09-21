@@ -1,16 +1,17 @@
 ---
-name: Appointment identity reuse policy
-description: Approved policy for reusing existing records during producer appointment approval.
+name: Manual appointment workflow decision
+description: Manual appointment handling supersedes the earlier automatic identity reuse direction.
 ---
 
-Reuse unambiguous existing agency/user matches and require manual review for
-conflicting or ambiguous matches. Preserve established compliance data and
-existing access; new identities remain inactive until verified countersigning.
+The current direction is manual staff handling of the entire appointment
+workflow, including identity matching and provisioning. Earlier approval of
+automatic reuse of unambiguous matches is superseded for now.
 
-**Why:** The user explicitly selected reuse of unambiguous matches over requiring
-manual review for every existing-record match. Neither duplicate creation nor
-automatic conflict resolution matches that decision.
+**Why:** After reviewing the state-document distinction between manual approval
+and automatic provisioning, the user explicitly chose everything manual for
+now, with automation to be revisited later.
 
-**How to apply:** Use this policy when designing canonical appointment approval.
-It does not approve a particular intake field mapping, cross-organization
-linking, identity merging, or bypass of signing and activation gates.
+**How to apply:** Consult
+`docs/decisions/2026-09-21-manual-appointment-workflow.md` before resuming any
+older automation plan. Do not treat this decision as proof of implemented manual
+controls or permission to bypass signing, privacy, or activation safeguards.

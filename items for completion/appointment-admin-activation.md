@@ -7,6 +7,13 @@ was checked.
 
 ## Status summary
 
+**Current direction — September 21, 2026:** all appointment handling is manual
+for now, including identity matching, provisioning, approval, activation and
+credential handoff. The earlier automatic-reuse/provisioning design and the
+implementation steps below are deferred, not current authorization to automate.
+See the [decision](../docs/decisions/2026-09-21-manual-appointment-workflow.md).
+Manual handling does not bypass signing, permission or activation safeguards.
+
 ### Built in source
 
 - Canonical staff list/detail APIs are organization-scoped and restricted to
