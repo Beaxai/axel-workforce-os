@@ -2,6 +2,21 @@
 name: Inbound email routing
 description: How deal email reply-routing works and the webhook/raw-body pitfalls
 ---
+## Production reuse decision
+
+The user confirmed that the existing email keys and webhooks are intended for
+production reuse. Do not turn appointment-email work into credential replacement
+or webhook reconstruction.
+
+**Why:** Existing email infrastructure is deliberately shared with the intended
+production setup; the open gap is appointment integration, not obtaining new keys.
+
+**How to apply:** Reuse the existing setup, preserve endpoint/signing-secret
+pairing, and separately verify deployed routing and appointment delivery.
+This is configuration intent, not evidence of a successful production test or
+authorization to send live messages. The Development routing lesson below still
+applies when testing Development-only fixtures.
+
 Development reply tests need a separate Resend webhook targeting Development, with its own signing secret; keep the published endpoint and its secret unchanged.
 
 **Why:** Replies to Development fixtures reached the published endpoint but could not resolve its market identities. Adding a Development endpoint then produced 401s until its separate signing secret was configured.

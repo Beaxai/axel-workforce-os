@@ -31,6 +31,10 @@ appointment** outbox to delivery, retries, reminders, and lifecycle events.
 Do not rebuild the generic integration or treat its existence as appointment
 delivery acceptance.
 
+The user has confirmed that the existing email keys and webhooks are intended
+for production reuse. New keys or replacement webhook infrastructure are not
+completion prerequisites; appointment wiring and delivery verification remain.
+
 ## Latest audit
 
 See [supplied-document review](supplied-document-review.md) for the latest

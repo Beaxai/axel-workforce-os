@@ -7,6 +7,15 @@ was checked.
 
 ## Status summary
 
+### Confirmed configuration direction
+
+The user confirmed that the email keys and webhooks currently in use are intended
+to apply in production. Reuse the existing Resend setup; obtaining replacement
+keys or rebuilding webhook infrastructure is not an outstanding requirement.
+This confirmation is not a new production-delivery test. Preserve endpoint and
+signing-secret pairing, and verify deployment routing without changing working
+configuration or sending live mail merely to check it.
+
 ### Built in source
 
 - `producer_notifications` has organization-scoped deduplication, delivery-state
@@ -59,10 +68,12 @@ the deal service as-is would violate its contract.
 
 ### Configuration pending
 
-The production Resend account/key, verified sender/domain, producer sender
-identity, applicant recipient rules, trusted-staff distribution source,
-authenticated application origin, SignWell notification policy, and Calendly
-reminder policy are not established by repository code.
+Existing email keys and webhooks are designated for production reuse by the user.
+Remaining appointment-specific decisions concern sender identity within that
+setup, applicant recipient rules, trusted-staff distribution, authenticated
+application origin, SignWell notification policy and Calendly reminder policy.
+Actual delivery and correct deployed routing remain acceptance checks, not
+requests for new credentials or replacement webhooks.
 
 ### Acceptance unverified
 
@@ -92,7 +103,7 @@ payload fields.
 
 ### 2. Implement the producer-specific provider boundary
 
-**Dependencies:** item 1; approved secret-management and Resend configuration.
+**Dependencies:** item 1; reuse the existing Resend keys and webhook setup.
 
 1. Add a producer mail adapter that accepts only a persisted producer
    notification and does not depend on deal IDs or deal correspondence tables.
