@@ -7,6 +7,17 @@ It did not modify legal forms, create packets, verify provider configuration,
 or send emails. Source documents supplied is not the same as approved final
 documents or working integration.
 
+## Current hybrid direction and evidence boundary
+
+The target onboarding model is hybrid. Staff controls qualification/call notes,
+approval or decline, ambiguous identity resolution, and intentional resends.
+Software should persist intake, deliver mail, update bookings, reconcile verified
+signatures, create or link an unambiguous identity after manual approval, and
+gate activation and secure credentials on verified countersignature. None of
+those target behaviors is established by reviewing these PDFs. The four supplied
+PDFs are planning inputs only; they are not final approved assets or approved
+field mappings.
+
 ## Inputs now available
 
 | Supplied file | Verified structure | What this resolves |
@@ -40,8 +51,10 @@ acceptance remain implementation work.
   that document correction, the NPA signature label correction and provider
   wording review to Curtis/David.
 - The directive's “production email is stubbed” statement is dated September 11.
-  It does not override today's source evidence: generic deal Resend integration
-  exists, while appointment delivery remains blocked.
+  It does not override later evidence: generic deal Resend integration exists,
+  and real Development scheduling-link delivery plus an intentional resend were
+  narrowly verified. Remaining appointment lifecycle mail and production
+  delivery are still incomplete or unverified.
 
 ## Remaining inputs and ordered actions
 

@@ -7,11 +7,14 @@ database was checked.
 
 ## Status summary
 
-### Deferred setup — booking return path
+### Pending setup — booking return path
 
 The user confirmed that the scheduling email opens Curtis's existing Calendly
-page and asked to defer the return-path setup in this completion register.
-Preserve that working link; do not replace it or simulate bookings.
+page. Return-path setup was initially deferred, then identified as the closest
+next automation milestone under the agreed hybrid workflow. It is still pending,
+not configured or verified by this documentation update. Preserve the working
+link; do not replace it or simulate bookings. Applicants choose times; the system
+should record bookings/cancellations, with staff resolving unmatched cases.
 
 The Development inspection found `CALENDLY_SIGNING_KEY`, `CALENDLY_EVENT_URI`
 and `PRODUCER_CALENDLY_ORG_ID` absent. The receiver exists, but no live Calendly

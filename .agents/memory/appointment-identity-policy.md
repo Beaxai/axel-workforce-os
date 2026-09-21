@@ -1,17 +1,16 @@
 ---
-name: Manual appointment workflow decision
-description: Manual appointment handling supersedes the earlier automatic identity reuse direction.
+name: Hybrid appointment workflow direction
+description: Staff decisions with system execution supersede the temporary all-manual direction.
 ---
 
-The current direction is manual staff handling of the entire appointment
-workflow, including identity matching and provisioning. Earlier approval of
-automatic reuse of unambiguous matches is superseded for now.
+Use staff-controlled decisions and system-executed workflow. Staff qualify,
+approve/decline and resolve identity conflicts; software should perform delivery,
+recordkeeping, unambiguous provisioning and evidence-gated activation.
 
-**Why:** After reviewing the state-document distinction between manual approval
-and automatic provisioning, the user explicitly chose everything manual for
-now, with automation to be revisited later.
+**Why:** The user reconsidered the temporary all-manual decision as too broad,
+accepted the hybrid recommendation, and requested the completion folder reflect
+it. Neither the manual decision nor its reversal changed runtime behavior.
 
-**How to apply:** Consult
-`docs/decisions/2026-09-21-manual-appointment-workflow.md` before resuming any
-older automation plan. Do not treat this decision as proof of implemented manual
-controls or permission to bypass signing, privacy, or activation safeguards.
+**How to apply:** Consult `items for completion/README.md` for the current split.
+Treat the all-manual decision as historical. Do not equate planned automation
+with functioning integrations or bypass signing, privacy, or access safeguards.

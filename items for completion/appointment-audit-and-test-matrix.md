@@ -1,8 +1,8 @@
 # Producer appointment — audit, gaps, and testability
 
 **Original audit date:** September 20, 2026, America/New_York.
-**Current code reconciliation:** September 21, 2026 (including the manual
-scheduling-email Development milestone).
+**Current code reconciliation:** September 21, 2026 (including the
+staff-requested scheduling-email Development milestone).
 **Verdict:** Not ready for end-to-end acceptance or launch.
 
 ## Current status key and evidence boundary
@@ -15,9 +15,23 @@ scheduling-email Development milestone).
   authorized external, release, mobile, or production acceptance evidence does not.
 
 The latest September 21 reconciliation inspected current source and includes a
-separate controlled Development test of the new manual scheduling delivery path.
+separate controlled Development test of the new staff-requested scheduling
+delivery path.
 It did not inspect production or verify a Calendly booking. Historical results
 remain labeled below.
+
+### Current hybrid direction (target versus built)
+
+The target is hybrid onboarding, not an all-manual workflow. Staff retains
+qualification and call notes, approval/decline, ambiguous identity resolution,
+and intentional resend decisions. Software is expected to persist intake,
+deliver mail, update bookings, track verified signatures, create or link an
+unambiguous identity only after manual approval, and gate activation and secure
+credentials on verified countersignature. Current source implements only pieces
+of that target. In particular, the narrow Development scheduling-link send and
+resend are verified as described below; the broader packet, identity,
+activation, credential, website-intake, booking-acceptance, and lifecycle-mail
+work remains incomplete or unverified.
 
 ## Historical fix verification — September 21, 2026
 
@@ -49,10 +63,13 @@ findings are retained as historical evidence, not current failures.
   notification residue was **0**; the existing organization/trust row remained
   unchanged.
 
-This verification used synthetic local signed deliveries only. No production
-changes, live emails, signing packets, or credentials were issued. Real intake,
-signing, delivery, activation, and the separately documented prerequisites in
-sections 2 and 4 remain blocked; these fixes do not establish launch readiness.
+This historical verification used synthetic local signed deliveries only. No
+production changes, live emails, signing packets, or credentials were issued in
+that run. Its then-current statement that delivery was blocked is superseded only
+for the later, narrowly verified Development scheduling-link send/resend.
+Real intake, signing, remaining lifecycle delivery, activation, and the
+separately documented prerequisites in sections 2 and 4 remain incomplete; these
+fixes do not establish launch readiness.
 
 ## Historical original-audit narrative
 
@@ -138,7 +155,7 @@ and align the helper contract/tests.
   PostgreSQL UUID syntax, dedupe, booking ordering, cancellation/replacement, and
   staff-review persistence are in current source. Live provider acceptance is
   still unverified; see gap 7 below.
-- **Manual scheduling action idempotency and narrow delivery are built:**
+- **Staff-requested scheduling action idempotency and narrow delivery are built:**
   `POST /:id/send-scheduling-link` requires `{ actionId: UUID, intent: "send" | "resend" }`.
   Generate a fresh action ID for an intentional send/resend; transport retries
   must reuse both values. Identity is scoped to organization + registration +
@@ -197,10 +214,11 @@ and align the helper contract/tests.
 
 3. **Activation, duplicate reconciliation, and credentials — incomplete.**
    Follow [Admin activation, private files, and credentials](appointment-admin-activation.md):
-   (1) approve reconciliation policy; (2) implement atomic identity linking or
-   creation without overwriting compliance facts; (3) require verified
-   countersignature; (4) implement safe activation and credential handoff;
-   (5) exercise duplicate, pending-identity, rollback, and login paths.
+   (1) approve reconciliation policy; (2) require staff resolution for ambiguous
+   identity matches; (3) after manual approval, atomically create or link only
+   an unambiguous identity without overwriting compliance facts; (4) require
+   verified countersignature; (5) implement safe activation and secure credential
+   handoff; (6) exercise duplicate, pending-identity, rollback, and login paths.
    Dependencies: gap 2 and approved identity policy. Completion evidence: one
    durable approval result, expected linked identities, no duplicate/deactivated
    legitimate account, no early access, and successful disposable-user login.
@@ -223,7 +241,7 @@ and align the helper contract/tests.
    and explicit recoverable failures. Also follow the private-file steps in
    [Admin activation](appointment-admin-activation.md).
 
-6. **Producer lifecycle email and reminders — incomplete; manual scheduling
+6. **Producer lifecycle email and reminders — incomplete; staff-requested scheduling
    delivery is built and narrowly verified in Development.** Execute the remaining
    ordered requirements in [Email delivery and scheduling](appointment-email-delivery.md):
    approve broader sender/recipient policy, retain the closed gate and historical
@@ -321,7 +339,7 @@ and align the helper contract/tests.
     evidence. Completion evidence is an authorized sign-off package. No current
     statement in this document means production was inspected or passed.
 
-## Current manual scheduling-delivery verification (September 21)
+## Current staff-requested scheduling-delivery verification (September 21)
 
 This milestone is separate from, and does not rewrite, the dated historical test
 table below:
@@ -409,7 +427,7 @@ steps, dependencies, and required completion evidence.
 | Envelope-present decline with void and delivered neutral notice | Incomplete; delivery configuration pending | Gaps 4 and 6 |
 | Live Calendly timing, Zoom link, reschedule compatibility | Configuration pending; acceptance unverified | Gap 7 |
 | Exactly-once 48-hour nudge / conditional 24-hour reminder | Incomplete | Gap 6 |
-| Remaining-template Resend receipt, bounce/failure reconciliation, sender/staff routing | Incomplete; manual scheduling only verified in Development | Gap 6 |
+| Remaining-template Resend receipt, bounce/failure reconciliation, sender/staff routing | Incomplete; staff-requested scheduling only verified in Development | Gap 6 |
 | Human-readable safe activity with actor identity and changes | Incomplete | Gap 9 |
 | Legacy route handoff and direct-URL UX | Incomplete UX; backend denial built | Gap 10 |
 | Full phone navigation and Applications journey | Incomplete; acceptance unverified | Gap 11 |

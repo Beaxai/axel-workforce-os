@@ -10,6 +10,17 @@ a producer appointment implementation and must remain isolated from it. Nothing
 below claims that a provider account, staging runtime, or production runtime was
 configured or checked.
 
+## Current hybrid direction (target, not built)
+
+Staff is responsible for qualification and call notes, approval/decline, and any
+ambiguous identity decision. Software is intended to dispatch the approved
+appointment packet, reconcile authoritative provider state, track verified
+signatures, hold the countersigner until manual approval and completed-call
+gates, and allow activation/secure credentials only after verified
+countersignature. Intentional resends remain a staff decision. The current
+repository has packet planning only: it has no real appointment dispatch,
+provider reconciliation, or countersign-gated activation path.
+
 ## Current status by category
 
 ### Built in the repository
@@ -62,11 +73,12 @@ privacy or durable private appointment storage.
 
 ### Genuinely incomplete in code
 
-The supplied application, NPA, W-9 and ACH PDFs have now been reviewed for text,
-fillable fields and visual structure. NPA pages 1–10 and Exhibit A page 11 are
-available. Final legal approval, field mapping and provider suitability remain
-open. See [supplied-document review](supplied-document-review.md), including
-the W-9 mapping exception and secure voided-check handling.
+The four supplied PDFs—application, NPA, W-9 and ACH—have now been reviewed for
+text, fillable fields and visual structure. NPA pages 1–10 and Exhibit A page 11
+are available. They are source inputs, not final approved assets or approved
+field mappings. Final legal approval, field mapping and provider suitability
+remain open. See [supplied-document review](supplied-document-review.md),
+including the W-9 mapping exception and secure voided-check handling.
 
 - No approved appointment source assets or revision registry is wired into the
   application. No appointment field mapping, template IDs, page coordinates,
@@ -153,7 +165,9 @@ the implementation.
 7. Revision identifiers, private storage keys, field ownership rules, and
    approved template IDs or page coordinates for every field and signature.
 
-No matching approved packet PDFs were found in the inspected repository paths.
+The four supplied PDFs do not constitute a matching approved packet or approved
+mapping set. No matching approved packet PDFs were found in the inspected
+repository paths.
 Do not substitute ACORD, carrier, workers' compensation, or loss-history forms.
 Do not collect bank details through website intake or planner inputs.
 

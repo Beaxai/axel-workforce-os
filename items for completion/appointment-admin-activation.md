@@ -7,12 +7,11 @@ was checked.
 
 ## Status summary
 
-**Current direction — September 21, 2026:** all appointment handling is manual
-for now, including identity matching, provisioning, approval, activation and
-credential handoff. The earlier automatic-reuse/provisioning design and the
-implementation steps below are deferred, not current authorization to automate.
-See the [decision](../docs/decisions/2026-09-21-manual-appointment-workflow.md).
-Manual handling does not bypass signing, permission or activation safeguards.
+**Current direction — September 21, 2026:** staff make approval/decline decisions
+and resolve ambiguous identities; the system should execute unambiguous
+create/link operations and gated activation/account setup. This replaces the
+temporary all-manual direction. These execution paths remain incomplete, not
+newly enabled. See the [current responsibility split](README.md).
 
 ### Built in source
 
@@ -34,8 +33,9 @@ Manual handling does not bypass signing, permission or activation safeguards.
   exists.
 - The current manual scheduling-link action has transactionally coupled
   action-ID idempotency and audit semantics, and the UI distinguishes a retry
-  from an intentional resend. Availability remains blocked because producer
-  delivery is unfinished.
+  from an intentional resend. New scheduling-link requests can be delivered when
+  the explicit enable/configuration/test-recipient gate passes; recorded
+  Development delivery evidence exists. Other lifecycle notices remain blocked.
 - The historical `agent-registrations` router is ADMIN-only and read-only at its
   middleware boundary; all non-GET/HEAD requests return 410 before the old
   approval/credential handlers. Those old handlers are not evidence that the
@@ -46,15 +46,17 @@ Manual handling does not bypass signing, permission or activation safeguards.
 - Canonical approval never creates/links pending agency, principal, contact,
   owner, user, membership, or profile records; it always returns the activation
   blocker after readiness checks.
-- There is no approved duplicate-reconciliation policy or canonical mapping from
-  immutable intake payload to those records.
+- The agreed high-level policy reuses unambiguous matches and sends conflicts to
+  staff review. Exact identity matching/mapping from immutable intake payload,
+  concurrency protection and canonical provisioning are not implemented.
 - The packet planner expresses desired recipient/document policy only and always
   returns `dispatchEnabled: false`. No producer-specific SignWell dispatch,
   externally held countersign release, authoritative webhook lifecycle, executed
   document split, or persisted release action is implemented.
 - Provider packet voiding is absent.
-- Ready-for-decision addresses only the actor who completed the call, and all
-  producer notifications remain blocked.
+- Ready-for-decision addresses only the actor who completed the call and remains
+  blocked. Only the staff-triggered scheduling-link path has enabled delivery
+  under the controlled gate.
 - Document access has no approved private producer key namespace or signed URL
   issuer.
 - Credential issuance has no canonical safe handoff integration and never
@@ -65,7 +67,9 @@ Manual handling does not bypass signing, permission or activation safeguards.
 
 Approved trusted-staff distribution, private object-store namespace/signing
 configuration, credential handoff channel, SignWell producer packet controls,
-producer email delivery, and production migration state remain unestablished.
+remaining lifecycle email delivery, and production migration state remain
+unestablished. Narrow scheduling delivery is already configured/tested in
+Development; this is not production acceptance.
 
 ### Acceptance unverified
 

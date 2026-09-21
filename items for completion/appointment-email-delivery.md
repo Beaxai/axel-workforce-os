@@ -2,10 +2,23 @@
 
 **Reviewed against current source and Development verification:** September 21,
 2026.
-**Scope:** the manual `scheduling_link` path only. Production, mailbox reading,
-and the remaining appointment lifecycle notifications were not verified.
+**Evidence scope:** the staff-requested `scheduling_link` path only. Its transport
+is automated once requested; “manual” below describes the staff action, not
+manual email delivery. Production, mailbox reading, and the remaining appointment
+lifecycle notifications were not verified.
 
 ## Status summary
+
+### Current hybrid direction (target, not current completion)
+
+The approved operating model is hybrid. Staff owns qualification and call notes,
+approval/decline, ambiguous identity resolution, and deliberate resend decisions.
+Software should persist intake, deliver mail, update bookings, track verified
+signatures, create or link an unambiguous identity after manual approval, and
+withhold activation and secure credentials until verified countersignature. This
+is the target responsibility split; only the narrow Development scheduling-link
+delivery described below is built and externally verified. It does not establish
+automated delivery for the rest of the lifecycle.
 
 ### Confirmed configuration direction
 
@@ -32,19 +45,19 @@ that delivery has been tested, nor permission to mail unrelated real contacts.
   (`services/producer-appointment/notifications.ts`).
 - `enqueueProducerNotification` is persistence-only and does not call Resend.
   Every event defaults to `blocked/DELIVERY_NOT_ENABLED`; only the authenticated
-  manual `scheduling_link` route can opt a newly created row into `pending` after
-  the delivery gate passes.
+  staff-requested `scheduling_link` route can opt a newly created row into
+  `pending` after the delivery gate passes.
 - Current producers enqueue blocked requests for ready-for-decision, decline,
-  and Calendly cancellation. Manual scheduling requests are pending or blocked
-  according to the gate. The staff detail API and UI expose persisted status and
-  failure code.
-- The latest manual scheduling-link action is implemented separately from
+  and Calendly cancellation. Staff-requested scheduling rows are pending or
+  blocked according to the gate. The staff detail API and UI expose persisted
+  status and failure code.
+- The latest staff-requested scheduling-link action is implemented separately from
   delivery: a strict caller UUID plus `send`/`resend` intent, registration lock,
   atomic outbox/audit write, replay of the original result, conflict on intent
   reuse, and a fresh ID for an intentional resend. The browser retains an
   unresolved action ID in session storage.
 - A producer-specific Resend adapter and 15-second application-process worker are
-  built for `scheduling_link` only. New authenticated manual requests become
+  built for `scheduling_link` only. New authenticated staff requests become
   `pending` only when `PRODUCER_SCHEDULING_DELIVERY_ENABLED=true`, the provider
   key and sender are configured, and every normalized recipient is in
   `PRODUCER_SCHEDULING_TEST_RECIPIENTS`. Otherwise the route persists a blocked
@@ -67,9 +80,10 @@ not route producer mail through that deal contract.
 
 ### Incomplete in source
 
-- The worker is deliberately limited to manual `scheduling_link`. There is still
-  no dispatcher for the other producer events, scheduler, bounce/webhook status
-  reconciliation, monitoring, or operator retry/reconciliation control.
+- The worker is deliberately limited to staff-requested `scheduling_link`. There
+  is still no dispatcher for the other producer events, scheduler,
+  bounce/webhook status reconciliation, monitoring, or operator
+  retry/reconciliation control.
 - Most lifecycle events are templates only. No current producer calls enqueue
   `registration_received`, `packet_sent`, `exhibit_a_request`, `call_reminder`,
   `scheduling_nudge`, `approved_countersigned`, `credentials_issued`,
@@ -88,14 +102,14 @@ Email domains are shared; existing webhooks remain environment-specific.
 Remaining appointment-specific decisions concern sender identity within that
 setup, applicant recipient rules, trusted-staff distribution, authenticated
 application origin, SignWell notification policy and Calendly reminder policy.
-New manual requests additionally require the explicit enable flag, test-recipient
-allowlist, and provider sender/key configuration. Actual production delivery and
-correct deployed routing remain acceptance checks, not requests for new
-credentials or replacement webhooks.
+New staff-requested scheduling rows additionally require the explicit enable
+flag, test-recipient allowlist, and provider sender/key configuration. Actual
+production delivery and correct deployed routing remain acceptance checks, not
+requests for new credentials or replacement webhooks.
 
 ### Acceptance unverified
 
-Development now has one real manual scheduling-link delivery result. The
+Development now has one real staff-requested scheduling-link delivery result. The
 authenticated route was invoked twice with the same action identity, producing
 one notification attempt. Resend accepted it, and a later independent read-only
 Resend `GET` returned HTTP 200 with `last_event: delivered`. The first helper
@@ -136,7 +150,7 @@ payload fields.
 **Dependencies:** item 1; reuse the existing Resend setup with the correct
 environment-specific webhook and matching signing secret.
 
-1. **Built for manual scheduling only:** the adapter accepts a persisted
+1. **Built for staff-requested scheduling only:** the adapter accepts a persisted
    `scheduling_link`, is independent of deal correspondence, uses a stable
    notification-derived provider key, persists the provider ID in appointment
    activity, and distinguishes retryable, permanent, and unknown outcomes.
@@ -155,7 +169,7 @@ redacted logging; reviewed provider payload fixtures.
 **Dependencies:** item 2 and the migrated notification table in the target
 environment.
 
-1. **Built for new manual scheduling rows:** bounded atomic claims, concurrent
+1. **Built for new staff-requested scheduling rows:** bounded atomic claims, concurrent
    worker exclusion, pre-I/O attempt recording, bounded known-failure retries,
    terminal unknown handling, stale-claim fencing, and provider receipt audit.
 2. Add provider reconciliation for unknown/stale outcomes rather than
@@ -173,7 +187,7 @@ test alerts/metrics.
 
 **Dependencies:** items 1–3 and controlled staging acceptance in item 7.
 
-1. **Built for manual scheduling:** an explicit environment gate defaults closed
+1. **Built for staff-requested scheduling:** an explicit environment gate defaults closed
    and additionally requires provider configuration and a complete recipient
    allowlist match. Organization-level policy remains to be approved if needed.
 2. Inventory every pre-enable `blocked/DELIVERY_NOT_ENABLED` row by event and
@@ -229,7 +243,7 @@ none for excluded states.
 **Dependencies:** items 1–6; authorized non-production recipients and approved
 provider configuration.
 
-1. Build on the one Development manual scheduling-link provider-delivery result:
+1. Build on the one Development scheduling-link provider-delivery result:
    send every remaining applicant/staff template in controlled staging and
    verify HTML, text, links, sender identity, receipt, and no sensitive provider
    payload.
@@ -253,6 +267,7 @@ tests** with a mocked provider covering concurrency/receipt, retry/backlog, and
 stale claims; and a passing baseline API/web/shared typecheck. The generated API
 contract was updated. No schema change or migration was required.
 
-The real Development send proves only the narrow manual path and provider-reported
-delivery. Production remains unverified/test-only, and full lifecycle mail,
-reminders, bounce reconciliation, and actual Calendly booking remain open.
+The real Development send proves only the narrow staff-requested path and
+provider-reported delivery. Production remains unverified/test-only, and full
+lifecycle mail, reminders, bounce reconciliation, and actual Calendly booking
+remain open.

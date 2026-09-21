@@ -5,10 +5,22 @@ test are built, but the real application endpoint is intentionally disabled.
 **Reviewed against current code:** September 21, 2026 (America/New_York).
 **Branch inspected:** `appointment/01-intake`.
 
-The existing website remains the application system of entry. Axel must receive
-its backend-to-backend handoff; Axel must not replace the website form. Nothing
-in this review establishes that staging or production is deployed, configured,
+The external website remains the application system of entry. Axel must receive
+its backend-to-backend handoff. No replacement Axel form has been authorized,
+and the existing public Axel screens are not an approved substitute. Nothing in
+this review establishes that staging or production is deployed, configured,
 reachable, or accepting applications.
+
+## Current hybrid direction (target versus built)
+
+The target is hybrid onboarding. Staff retains qualification and call notes,
+approval/decline, ambiguous identity resolution, and intentional resend
+decisions. Software should persist the website intake, deliver mail, update
+bookings, track verified signatures, create or link an unambiguous identity
+after manual approval, and gate activation and secure credentials on verified
+countersignature. For website intake, only signed transport and the synthetic
+connection test are built; real intake persistence is still incomplete. This
+document does not authorize replacing the external website form.
 
 ## Current status by category
 
@@ -180,6 +192,9 @@ the steps in order unless the stated dependency allows parallel work.
    **Completion evidence:** database integration tests proving all rows commit
    together, failure leaves none, exact replay creates none, and concurrent
    identical requests produce one registration and one set of job intents.
+   Downstream software may execute those intents only through each separately
+   approved delivery, packet, and lifecycle gate; staff must not manually
+   re-enter a successfully persisted intake.
 
 7. **Implement the required warning and duplicate policy.**
    **Dependency:** approved thresholds and matching rules from Step 2.
@@ -243,8 +258,10 @@ the steps in order unless the stated dependency allows parallel work.
     Verify valid `201`, invalid signature `401`, exact/conflicting replay `409`
     as specified, invalid fields and missing documents `422`, low-E&O warning,
     duplicate-match flagging, atomic rows, private ingestion, and concurrent
-    duplicate prevention. Verify packet/email jobs remain blocked until their
-    separate gates are enabled.
+    duplicate prevention. Verify downstream packet/email work follows its
+    separate gates and that this intake test causes no unintended provider
+    action. The independently verified Development scheduling-link delivery is
+    not evidence that intake-triggered lifecycle mail is implemented.
     **Completion evidence:** redacted API outcomes, row counts and relationships,
     stored hashes/private keys, worker state, and proof that no external message
     or packet was sent.

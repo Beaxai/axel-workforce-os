@@ -4,15 +4,37 @@ This folder tracks unavailable inputs, unresolved decisions, and remaining
 integration work for the producer registration and appointment initiative.
 It is not a launch approval or a claim that the end-to-end flow is complete.
 
-## Current decision — manual appointment workflow
+## Current direction — staff decisions, system-executed workflow
 
-**September 21, 2026:** the user chose a manual, staff-managed process for the
-entire appointment workflow. Previous automation plans below remain future
-backlog, not instructions to implement them now. Automation may be reconsidered
-for individual steps later. See the
-[dated decision](../docs/decisions/2026-09-21-manual-appointment-workflow.md).
-This documentation update does not implement manual controls or disable existing
-runtime behavior.
+**Updated September 21, 2026:** the user reconsidered the all-manual direction
+and agreed to a hybrid workflow. This supersedes the earlier
+[all-manual decision](../docs/decisions/2026-09-21-manual-appointment-workflow.md)
+for current completion planning. Neither documentation change altered runtime
+behavior.
+
+| Step | Staff responsibility | System responsibility and current status |
+|---|---|---|
+| Intake | Review exceptions and missing information | Validate/save application and private documents; incomplete |
+| Signing | Applicant/owners/Curtis sign; staff handle exceptions | Packet delivery, signature tracking and approval-held countersign release; planner exists, appointment integration incomplete |
+| Scheduling email | Initiate send or intentional resend | Deliver, deduplicate and record status; built with recorded Development delivery evidence |
+| Booking | Applicant selects time; staff resolve unmatched bookings | Calendly booking/cancellation updates; receiver built, configuration/live acceptance pending |
+| Call | Conduct call, enter notes and mark complete | Persist notes/completion/audit; built |
+| Decision | Admin explicitly approves or declines | Enforce eligibility and save decision; checks built, full approval and envelope-present decline incomplete |
+| Identity records | Resolve conflicting/ambiguous matches | Reuse unambiguous records or create pending records after approval; canonical implementation incomplete |
+| Activation/access | Curtis countersigns; staff handle exceptions and initiate/reissue setup where needed | Verify countersignature, activate and securely deliver account setup; incomplete |
+
+Permissions, privacy, signature requirements and auditability remain required.
+Automated reminders and advanced follow-ups can wait; they are not prerequisites
+for the first complete controlled onboarding journey.
+
+### What is actually verified
+
+Applications review and call completion have existing implementation/test
+evidence. The narrow scheduling-email path has recorded Development provider
+delivery and intentional-resend evidence. The user confirmed its link opens
+Curtis's Calendly page. A live booking-to-application update, appointment signing,
+approval provisioning, activation and credential handoff are not yet accepted.
+This refresh introduces no new runtime or provider verification.
 
 ## Current priority: demo readiness, not production launch
 
@@ -91,13 +113,24 @@ The narrow Development manual-email result is recorded separately in
 
 ## Action-plan index and dependency order
 
-**Current handoff:** manual scheduling-email delivery has been verified in
-Development. The working link opens Curtis's page. Calendly booking return-path
-configuration and live acceptance are deferred at the user's request; see the
-resume checklist in [Calendly setup](calendly-appointment-setup.md).
-Approval/provisioning and activation are now staff-managed under the manual
-workflow decision; their automation is deferred. Existing signing, identity,
-privacy and access prerequisites remain in force.
+**Current handoff:** staff-triggered scheduling email has recorded Development
+delivery evidence; the working link opens Curtis's page. Booking synchronization
+is a recommended next completion item, not a completed integration.
+
+**Recommended build/verification order:**
+
+1. Configure and verify Calendly booking updates using the existing receiver.
+   Preserve the working link and production configuration.
+2. Complete actual website intake, atomic persistence and private document storage.
+3. Complete the appointment-specific SignWell packet, privacy controls,
+   verified signatures and approval-held countersigning.
+4. Finish manual Admin approval backed by transactional identity create/link,
+   verified-countersign activation and secure account setup.
+5. Run the actual controlled approval and decline journeys. Keep automated
+   reminders/advanced follow-ups as later work unless specifically required.
+
+Provider access and approved input contracts remain dependencies; this order
+does not authorize inventing them or claiming a blocked step is complete.
 
 Each detailed record separates implemented behavior from open work and gives
 numbered actions and required completion evidence. An item is not complete merely

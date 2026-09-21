@@ -2,11 +2,18 @@
 
 ## Current operating direction
 
-**September 21, 2026:** the appointment process is manual and staff-managed for
-now. The automated implementation sequence below is deferred future scope.
-Real tools, genuine evidence, and access/privacy safeguards still apply to
-manual work. See the
-[decision](../docs/decisions/2026-09-21-manual-appointment-workflow.md).
+**Updated September 21, 2026:** use staff-controlled decisions with
+system-executed workflow, replacing the temporary all-manual direction.
+Staff conduct calls, approve/decline, resolve ambiguous matches and perform
+actual signatures; the system should handle persistence, delivery, booking
+updates, verified signature tracking and gated provisioning/activation.
+See the [current split and completion order](README.md).
+This is the target operating model, not a statement that every path is built.
+
+The scheduling-email path has recorded controlled Development delivery and
+resend evidence; call completion exists. Booking return-path setup, actual intake,
+appointment signing, approval provisioning and account access remain incomplete
+or unverified. No new acceptance run was performed for this document update.
 
 ## Scope correction
 
@@ -52,19 +59,25 @@ real sensitive data.
 
 ## Step-by-step implementation and acceptance plan
 
-1. Inventory actual working paths and missing code, using the detailed completion
-   plans. Establish controlled test participants and the provider test approach.
+1. Use the recorded scheduling-email evidence and existing call-completion path
+   as the baseline. Configure and verify the Calendly receiver with an actual
+   controlled booking/cancellation/reschedule; preserve the working public link.
+   Provider access and correct environment configuration are still required.
 2. Implement real intake/atomic persistence/private ingestion. Obtain the actual
    website contract; until then, report API-only tests separately from website
    acceptance and do not invent its field names.
 3. Map the supplied PDFs and prepare clearly marked mock assets only where source
    documents are absent. Verify SignWell privacy and approval-hold capabilities,
    then implement actual dispatch, event processing, release, void and retrieval.
-4. Connect appointment emails to the existing Resend setup and test actual delivery,
-   intentional resend and retry behavior with test recipients.
-5. Configure/verify Calendly and exercise booking, cancellation and rescheduling.
-6. Complete the real approval, test-identity provisioning, countersign-triggered
-   activation, credential setup and login paths.
+4. Extend Resend delivery only for the lifecycle notices required by this journey,
+   with approved recipients and explicit gates. Staff-triggered scheduling-link
+   delivery/replay/resend already has recorded Development evidence; do not
+   repeat it as if no sender exists. Automated reminders can wait.
+5. Complete manual Admin approval/decline backed by safe system execution:
+   unambiguous identity create/link, staff review of conflicts, and a durable
+   countersign-release action. Do not automate qualification or approval decisions.
+6. Complete verified-countersign activation, secure account setup and actual
+   login. Preserve existing users' data/access and prohibit premature access.
 7. Run both approval and decline journeys. Record provider IDs, safe application
    and database outcomes, mailbox receipt, access-denial checks and test cleanup.
    Do not count synthetic callbacks alone as live provider acceptance.
