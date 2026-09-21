@@ -1,0 +1,44 @@
+
+=== PAGE 1 ===
+AXEL WORKFORCE INSURANCE SOLUTIONS
+AUTOMATIC ACH COMMISSION PAYMENT AUTHORIZATION
+COMPANY INFORMATION
+Company Name:
+DBA Business Name:
+Address:
+City:
+State:
+Zip:
+Main Accounting Contact Name:
+Phone:
+Email:
+DEPOSIT ACCOUNT INFORMATION
+Account Type:
+Checking
+Savings
+Account Ownership:
+Business
+Personal
+Name of Bank:
+Name on Account:
+Routing Number (9 digits):
+Account Number:
+Please attach a voided check for the account above. Notify the accounting department promptly if your banking information changes.
+AUTHORIZATION
+I hereby authorize Airavata Group, LLC DBA Axel Workforce Insurance Solutions ("Axel") to initiate credit entries for commission and
+other compensation payments to the account identified above at the depository institution named above, and, if necessary, to initiate
+reversing entries limited to the correction of duplicate or erroneous credit entries, in accordance with and within the timeframes
+permitted by the NACHA Operating Rules. This authorization does not permit Axel to initiate any other debit to the account.
+This authorization shall remain in full force and effect until Axel has received written notice of revocation from the undersigned
+(delivered to the accounting department at the address or email above) and has had a reasonable opportunity, not to exceed ten (10)
+business days, to act on it. Commission payments are subject to the terms of the National Producer Agreement, including Section 9(f)
+(Offsets).
+I/We acknowledge that the origination of ACH transactions to the account identified above must comply with applicable United States
+law and the NACHA Operating Rules.
+For your security, please submit this completed form and voided check via Axel’s secure producer portal or by encrypted email. Do not send bank
+account information by unencrypted email.
+Name (Please Print):
+Title:
+Authorized Signature:
+Date:
+2280 East Bidwell St, #104, Folsom, CA 95630  |  (888) 997-2935  |  axelins.com

@@ -1,9 +1,30 @@
 # Producer appointment — audit, gaps, and testability
 
-**Audit date:** September 20, 2026, America/New_York.  
+**Original audit date:** September 20, 2026, America/New_York.
+**Current code reconciliation:** September 21, 2026 (source inspection only).
 **Verdict:** Not ready for end-to-end acceptance or launch.
 
-## Fix verification — September 21, 2026
+## Current status key and evidence boundary
+
+- **Built:** present in the current repository and supported by source/tests.
+- **Incomplete:** required implementation or an approved policy is absent.
+- **Configuration pending:** implementation exists, but authorized environment or
+  provider configuration has not been established.
+- **Acceptance unverified:** implementation/configuration may exist, but the
+  authorized external, release, mobile, or production acceptance evidence does not.
+
+The September 21 reconciliation inspected current source after the scheduling
+action idempotency and configuration-availability changes merged. It did **not**
+run tests, inspect production, call providers, send messages, read secrets, or
+change an application, database, or configuration. All test and database results
+below are explicitly historical results from the September 20–21 audit.
+
+## Historical fix verification — September 21, 2026
+
+The following results were recorded by the earlier fix work and are retained
+from its merged verification report; they were not rerun during this documentation
+review. They supersede the September 20 failing results in section 3. The original
+run's exact time was not recorded here; no new timestamp or fresh pass is asserted.
 
 The five reproduced defects below are now resolved. The original September 20
 findings are retained as historical evidence, not current failures.
@@ -15,11 +36,11 @@ findings are retained as historical evidence, not current failures.
   removing the shared-library export collision without manual generated edits.
 - Declined applications no longer advertise scheduling permission; notification
   recipients are trimmed/lowercased before email validation and deduplication.
-- The six existing appointment suites plus the offline audit suite pass:
+- The earlier run of the six existing appointment suites plus the offline audit suite recorded:
   **57 tests passed, zero failed/skipped**.
-- `bash scripts/typecheck-baseline.sh` passes, including the shared-library build
+- `bash scripts/typecheck-baseline.sh` passed in that run, including the shared-library build
   and zero API/web TypeScript errors.
-- The explicitly opted-in Development persistence audit passes: current trusted
+- The explicitly opted-in Development persistence audit passed in that run: the trusted
   legacy organization booking, concurrent dedupe, cancellation clearing,
   replacement, stale cancellation, cancel-before-create, and staff-review cases.
   The cancellation notification remained blocked.
@@ -33,17 +54,17 @@ changes, live emails, signing packets, or credentials were issued. Real intake,
 signing, delivery, activation, and the separately documented prerequisites in
 sections 2 and 4 remain blocked; these fixes do not establish launch readiness.
 
-## Original audit
+## Historical original-audit narrative
 
-This is a fresh audit of the current implementation, not a repeat of the earlier
-completion summary. Application behavior was not changed during this audit.
+This was a fresh audit of the then-current implementation, not a repeat of the
+earlier completion summary. Application behavior was not changed during that audit.
 Regression/audit tests and documentation were added. No live provider calls,
 emails, signing packets, credentials, production writes, or existing-account
 changes were performed.
 
-## 1. Reproduced defects, in priority order
+## 1. Historical reproduced defects — all resolved in current source
 
-### High — persisted Calendly booking transitions fail
+### Resolved; historical high — persisted Calendly booking transitions failed
 
 The real Development database/in-process signed-router audit reproduced
 `500 calendly_event_processing_failed` for cancellation of an existing booking,
@@ -56,12 +77,12 @@ a timestamp string. The helpers in
 `.getTime()` on it. A read-only SQL probe and isolated reproduction confirmed
 `TypeError: ...getTime is not a function`.
 
-**Needed:** explicitly normalize/validate timestamps at the raw-SQL boundary,
+**Historical remediation required at the time:** explicitly normalize/validate timestamps at the raw-SQL boundary,
 then pass the persisted cancellation/replacement/stale-event audit. Confirm
 booking clearing and the blocked cancellation notification in the database.
 Initial booking success and pure helper tests do not prove these transitions.
 
-### High — Calendly rejects the existing Development organization
+### Historical high — Calendly rejected the existing Development organization
 
 The Calendly configuration UUID validator requires RFC version/variant bits,
 but the existing trusted Development organization's PostgreSQL UUID does not
@@ -69,11 +90,11 @@ have those bits. A correctly signed synthetic event returns
 `503 calendly_not_configured`. This is a code compatibility defect, not evidence
 of a missing key or subscription.
 
-**Needed:** accept the project's stored UUID syntax while retaining the trusted
+**Historical remediation required at the time:** accept the project's stored UUID syntax while retaining the trusted
 organization database check. Re-test the current trusted organization; do not
 change existing organization IDs to accommodate the validator.
 
-### High — shared-library compilation fails
+### Historical high — shared-library compilation failed
 
 `pnpm run typecheck:libs` fails with:
 
@@ -86,52 +107,38 @@ Module "./generated/api" has already exported a member named
 The baseline quality gate also fails at this step. API/frontend package
 typechecks pass individually, but do not override this shared-library failure.
 
-**Needed:** resolve the source/export or generation naming collision without
+**Historical remediation required at the time:** resolve the source/export or generation naming collision without
 hand-editing generated output, regenerate if necessary, and pass the shared
 library and baseline build checks.
 
-### Medium — declined application scheduling permission is misleading
+### Historical medium — declined application scheduling permission was misleading
 
 `services/producer-appointment/review.ts` reports `canSendSchedulingLink: true`
 for declined Admin applications; the mutation correctly rejects them.
 The new regression test fails. This is a UI/API permission mismatch, not an
 observed backend authorization bypass.
 
-**Needed:** align capability projection with the mutation's lifecycle gate.
+**Historical remediation required at the time:** align capability projection with the mutation's lifecycle gate.
 
-### Low — notification helper rejects padded email addresses before normalization
+### Historical low — notification helper rejected padded email addresses before normalization
 
 `services/producer-appointment/notifications.ts` validates `z.email()` before
 its trimming/lowercasing step. A valid address with surrounding whitespace
 fails the new regression. Current callers that pre-normalize can avoid this,
 but the helper's normalization is not reliable as an interface guarantee.
 
-**Needed:** normalize before validation or explicitly require normalized input
+**Historical remediation required at the time:** normalize before validation or explicitly require normalized input
 and align the helper contract/tests.
 
-## 2. Other gaps and decisions identified
+## 2. Current completion register
 
-- **Actual intake is not implemented:** signed real applications still return
-  `503 application_contract_pending`; no real intake 201/409/422, atomic child/job
-  persistence, warning flags, or document ingestion acceptance can pass.
-- **SignWell is a planner, not a signing integration:** dispatch, field placement,
-  authenticated authoritative event verification, producer signature tracking,
-  countersign release, voiding, and executed-file retrieval are unfinished.
-- **Approval remains a deliberate 409:** pending identity provisioning,
-  duplicate reconciliation, countersignature-driven activation, and credential
-  handoff are not implemented. Valid credentials issuance cannot be tested.
-- **Decline is only partially operational:** no-envelope decline works and is
-  idempotent; any existing provider envelope causes `packet_void_not_configured`.
-- **Private files are not delivered:** role redaction/denial is testable, but
-  ingestion, source-fetch safety, hashes, malware scanning, signed download expiry,
-  and actual file contents are not implemented end to end.
-- **Email is blocked outbox/templates:** no delivery/retry worker or automatic
-  reminder scheduler. The 48-hour/24-hour predicates pass offline tests, not
-  scheduled delivery acceptance. Ready-for-decision currently targets the acting
-  staff member, not an approved staff distribution.
-- **Unmatched booking has a staff inbox, not outbound alert delivery:** review
-  markers persist, but the defined `unmatched_booking` email is not enqueued.
-- **Manual scheduling resend semantics resolved (blocked delivery only):**
+### Built and reconciled
+
+- **Calendly persistence fixes are built.** Timestamp normalization, compatible
+  PostgreSQL UUID syntax, dedupe, booking ordering, cancellation/replacement, and
+  staff-review persistence are in current source. Live provider acceptance is
+  still unverified; see gap 7 below.
+- **Manual scheduling action idempotency is built (blocked delivery only):**
   `POST /:id/send-scheduling-link` requires `{ actionId: UUID, intent: "send" | "resend" }`.
   Generate a fresh action ID for an intentional send/resend; transport retries
   must reuse both values. Identity is scoped to organization + registration +
@@ -149,35 +156,163 @@ and align the helper contract/tests.
   produced one blocked outbox item and one audit; seven replies were replays.
   Sequential retries, changed-intent conflicts, a distinct new resend, strict body
   validation, and role/trust/tenant/lifecycle/recipient gates passed.
-- **Activity feed is incomplete:** safe before/after data is not exposed/rendered;
-  the current DTO/UI shows action, timestamp, and actor ID rather than a resolved
-  actor label and the required safe changes.
-- **Known-unavailable controls are still offered:** eligible approval/document/
-  credential actions can invite attempts that will inevitably return a
-  configuration blocker. Backend denial is correct, but availability should be
-  explicit before the click.
-- **Legacy public screens remain dangling:** the backend's 410 protection passed,
-  so this is a broken/outdated onboarding UX, not a proven intake bypass.
-- **Phone layout is incomplete:** the pre-existing expanded sidebar clips Network
-  at 390px; modal scrolling/closing was previously verified. Do not claim the
-  whole Applications screen is mobile-ready.
-- **Refresh behavior:** the browser can display stale staff attention cards after
-  fixture cleanup until refresh. This did not establish database residue.
+- **Configuration availability is now built.** The detail API returns separate
+  availability objects for approval, credential issuance, and document access.
+  The current modal displays the reasons and disables those controls when
+  unavailable. This resolves the stale “known-unavailable controls are offered”
+  finding; it does not complete the underlying activation, handoff, or file work.
 
-### Hardening/policy risks, not proven current exploits
+### Outstanding items, each with completion steps and evidence
 
-- Database decline constraints do not enforce the API's Ready-for-Decision gate.
-  Decide whether every background/direct writer must obey that gate, accounting
-  for the still-open early-decline policy.
-- Notification constraints allow blocked/failed states without a failure code;
-  complete worker transition rules are not yet defined.
-- Calendly event dedupe is global by payload hash, not organization + hash.
-  The current single-configured-organization receiver limits exposure; review
-  before supporting multiple independently configured organizations.
+1. **Real website intake — incomplete; configuration and acceptance pending.**
+   Follow the numbered implementation and acceptance sequence in
+   [Website connection and real intake](website-connection-handoff.md), especially
+   items 11–21. Dependency: approved real website contract and secure shared
+   configuration. Completion evidence: authorized responses for valid `201`,
+   bad signature `401`, replay `409`, invalid/missing fields `422`, low-E&O flag,
+   and concurrent duplicate prevention, plus atomic registration/owner/document/
+   job rows and zero unintended provider actions.
 
-## 3. Tests actually run
+2. **SignWell packet lifecycle — incomplete; provider capability/configuration
+   and acceptance pending.** Follow
+   [SignWell documents, provider controls, and controlled test](signwell-appointment-packet.md)
+   in its stated order: approve artifacts/mappings, verify account visibility and
+   external countersign hold, implement durable send/event/release/void/download,
+   then run controlled provider acceptance. Completion evidence must include the
+   5+N packet, field accuracy, principal/owner isolation, authoritative event
+   verification, replay/late-event safety, countersign release, void, and executed
+   file retrieval. Planner unit tests alone are insufficient.
 
-| Test group | Current result | What this establishes |
+3. **Activation, duplicate reconciliation, and credentials — incomplete.**
+   Follow [Admin activation, private files, and credentials](appointment-admin-activation.md):
+   (1) approve reconciliation policy; (2) implement atomic identity linking or
+   creation without overwriting compliance facts; (3) require verified
+   countersignature; (4) implement safe activation and credential handoff;
+   (5) exercise duplicate, pending-identity, rollback, and login paths.
+   Dependencies: gap 2 and approved identity policy. Completion evidence: one
+   durable approval result, expected linked identities, no duplicate/deactivated
+   legitimate account, no early access, and successful disposable-user login.
+
+4. **Decline with an existing provider envelope — incomplete.** (1) Complete
+   provider void verification from gap 2; (2) persist an idempotent void action;
+   (3) wait for authoritative void confirmation; (4) commit decline and enqueue
+   the neutral notice exactly once; (5) test provider failure, retries, replay,
+   and late signed events. Completion evidence: envelope voided at the provider,
+   one final decline/audit/notice, and unchanged decision on failed void.
+
+5. **Private document ingestion and access — incomplete; storage/scanning
+   configuration and acceptance pending.** (1) Approve source allowlists, limits,
+   and producer-only object namespace; (2) implement bounded SSRF-safe fetch,
+   type/size/hash checks, malware decision, and recoverable jobs; (3) implement
+   authenticated short-lived signing for allowlisted keys only; (4) verify expiry,
+   bytes/hash, and CSA denial/redaction including combined packets. Dependencies:
+   real intake/provider files and approved storage. Completion evidence: successful
+   approved-file retrieval before expiry, denial after expiry/cross-tenant/CSA,
+   and explicit recoverable failures. Also follow the private-file steps in
+   [Admin activation](appointment-admin-activation.md).
+
+6. **Producer email delivery and reminders — incomplete; Resend/recipient
+   configuration and acceptance pending.** Execute the ordered requirements in
+   [Email delivery and scheduling](appointment-email-delivery.md): approve sender
+   and recipients, implement atomic worker/retries/failure transitions, define
+   unblock policy, implement scheduler, and run controlled staging delivery.
+   Dependency: SignWell/Calendly reminder policy and safe document origin.
+   Completion evidence: provider receipt for every template, exactly-once
+   48-hour nudge/conditional 24-hour reminder, bounded retry/bounce handling,
+   monitoring, and no sensitive provider payload. Existing blocked rows must not
+   be replayed or reinterpreted without an explicit reviewed migration policy.
+
+7. **Calendly environment and live acceptance — configuration pending and
+   acceptance unverified.** Follow
+   [Calendly setup and live acceptance](calendly-appointment-setup.md) in order:
+   secure key/event-type/trusted-org configuration, subscription, reminder and
+   specified 45-minute Zoom configuration (`30min` is only the slug), then authorized live cases. Completion
+   evidence: booking visible within one minute, Zoom/meeting URL, duplicate,
+   cancellation, replacement, out-of-order, unmatched/ambiguous review, and
+   provider-compatible reschedule. Current synthetic/local evidence is not live.
+
+8. **Unmatched-booking outbound staff alert — incomplete.** (1) Approve a trusted
+   staff distribution source; (2) enqueue `unmatched_booking` from the durable
+   review outcome with event-level idempotency; (3) deliver it through gap 6;
+   (4) verify no applicant data beyond approved template fields. Completion
+   evidence: one review record and one delivered staff alert per unmatched event,
+   with duplicate deliveries producing neither duplicates nor cross-tenant data.
+
+9. **Activity feed — incomplete.** Current API serialization includes raw
+   `before`/`after`, but the UI renders only action, time, and raw actor ID.
+   (1) Define an action-by-action safe change allowlist; (2) project only those
+   fields server-side; (3) resolve actor display name/role within the tenant while
+   retaining a “System” label; (4) render human-readable changes; (5) test CSA
+   redaction, cross-tenant denial, deleted actors, and scheduling action metadata.
+   Completion evidence: the UI identifies who changed what without exposing
+   payload, notes, recipient addresses, storage keys, or provider secrets.
+
+10. **Legacy public screens — incomplete UX; backend protection is built.**
+    (1) Inventory every old producer-registration route/link/bookmark; (2) replace
+    the public screens with a clear handoff to the real website flow; (3) retain
+    `410` on retired unsigned/write APIs and ADMIN-only read-only history;
+    (4) test direct URLs, browser back/refresh, and unauthenticated access.
+    Dependency: confirmed website destination from gap 1. Completion evidence:
+    no dangling form or implied in-app submission path and continued failed-closed
+    backend writes.
+
+11. **Mobile Applications experience — incomplete; acceptance unverified.**
+    (1) Define supported phone breakpoints; (2) fix the expanded sidebar/Network
+    clipping; (3) verify list, attention queue, detail modal, availability reasons,
+    documents, activity, errors, and action footer at each breakpoint; (4) verify
+    keyboard, focus, scroll lock, and close behavior. Completion evidence:
+    screenshots and interaction results at the approved phone widths. Historical
+    modal scroll/close evidence at 390×844 does not establish full mobile readiness.
+
+12. **Database policy constraints — decision and hardening incomplete.**
+    (1) Review all writers against the directive's Ready-for-Decision decline
+    gate; early decline would require a separately approved policy change;
+    (2) encode the approved invariant in database
+    constraints/triggers or restrict all writes to one transactional boundary;
+    (3) require failure codes for blocked/failed notification states and define
+    legal worker transitions; (4) update rollback verification for direct writes
+    and concurrency. Completion evidence: approved policy plus passing rollback
+    SQL that rejects each invalid state and permits each intended state.
+
+13. **Calendly dedupe scope — policy risk unresolved, not a proven exploit.**
+    The unique payload hash is currently global while one configured organization
+    is supported. Before multi-organization receiving: (1) decide whether provider
+    delivery identity is global; (2) if not, migrate uniqueness to organization +
+    hash with collision/replay analysis; (3) test same hash across tenants and
+    duplicate hash within one tenant. Completion evidence: documented scope,
+    migration/rollback if needed, and tenant-isolation results.
+
+14. **Historical backfill — incomplete and deliberately blocked.** (1) Inventory
+    legacy records and stable identifiers read-only; (2) approve explicit mapping
+    for registration links and every nullable milestone; (3) define conflicts,
+    rerun/idempotency, rollback, and audit provenance; (4) dry-run and reconcile
+    counts; (5) execute only in an authorized environment. Never infer signatures,
+    calls, countersignatures, or credentials from status text. Completion evidence:
+    reviewed mapping, before/after reconciliation, idempotent rerun, rollback
+    result, and per-row provenance.
+
+15. **Refresh/cache behavior — acceptance unverified.** Historical browser
+    observation found stale attention cards after fixture cleanup until refresh;
+    it did not show database residue. (1) define expected invalidation after every
+    mutation/event; (2) add query invalidation or bounded polling/event refresh;
+    (3) verify list, attention queue, and open detail converge without a hard
+    refresh. Completion evidence: deterministic UI convergence against confirmed
+    database state.
+
+16. **Production release and end-to-end acceptance — unverified and unauthorized
+    by this audit.** Complete gaps 1–15, then: (1) approve migrations/configuration,
+    rollback, fictional recipients, and release window; (2) verify production
+    provider/account settings without recording secrets; (3) apply the approved
+    release procedure; (4) run separate approval and decline journeys; (5) capture
+    API, database, provider, UI, delivery, privacy, monitoring, and rollback
+    evidence. Completion evidence is an authorized sign-off package. No current
+    statement in this document means production was inspected or passed.
+
+## 3. Historical tests actually run (September 20–21 only)
+
+These results were not rerun during the September 21 source reconciliation.
+
+| Test group | Historical result | What this established at that time |
 |---|---|---|
 | Existing six appointment test files | **46 passed, 0 failed** | Signed transport, status priority, packet planning, pure Calendly matching/ordering, safe notification templates/outbox, review projections |
 | New offline audit suite | **5 passed, 2 failed** | Additional malformed-event/URL/signature/ambiguity/safe-projection cases; failed declined permission and padded email regressions |
@@ -187,10 +322,10 @@ and align the helper contract/tests.
 | Baseline quality gate | **Failed** | Stops at shared-library build |
 | Foundation SQL verification | **Passed; rolled back** | Registration schema and lifecycle constraints exercised by verification script |
 | Operations SQL verification | **Passed; rolled back** | Cross-org rejection, duplicate event/outbox constraints, sent timestamp invariant, blocked defaults |
-| Current authenticated review journey | **Passed tested cases** | Admin/CSA/AGENT/unauth permissions, tenant denial, call concurrency, decline idempotency, outbox dedupe, UI and Resources |
+| Authenticated review journey | **Passed tested cases** | Admin/CSA/AGENT/unauth permissions, tenant denial, call concurrency, decline idempotency, outbox dedupe, UI and Resources |
 | Signed Calendly + actual database audit | **Failed overall** | Initial creation/dedupe and review cases work; existing-booking transitions fail |
 
-### Authenticated integration details
+### Historical authenticated integration details
 
 - Three concurrent call completions plus a repeat: all 200, original completion
   note preserved, one `CALL_COMPLETED` audit event and one blocked ready notice.
@@ -208,7 +343,7 @@ and align the helper contract/tests.
 - Authorized malformed IDs: 400. Unauthorized users are denied before validation.
 - Browser rendered Applications list/detail, blocked actions, and Resources.
 
-### Actual Calendly persistence details
+### Historical Calendly persistence details
 
 Using a disposable RFC-valid organization and trust row, with no users or access
 tokens, allowed testing beyond the legacy-ID defect:
@@ -224,30 +359,38 @@ tokens, allowed testing beyond the legacy-ID defect:
 The legacy trusted-ID 503 was successfully **reproduced**, not counted as a
 working booking feature.
 
-## 4. Tests that cannot currently be completed
+## 4. Blocked acceptance matrix
 
-| Blocked test / acceptance requirement | Why blocked | Needed to unblock |
+Every row maps to a numbered current gap above; those entries contain the exact
+steps, dependencies, and required completion evidence.
+
+| Blocked test / acceptance requirement | Current classification | Completion plan |
 |---|---|---|
-| Real website payload validation, 201/409/422, concurrent intake, warning flags and atomic jobs | Adapter/persistence unimplemented; exact payload contract unavailable | Approved website field keys/sample payloads and completed adapter/transaction implementation |
-| Historical backfill equivalence without invented milestones | No reviewed migration/backfill mapping | Explicit reconciliation/backfill policy and implementation |
-| Real signed-source document ingestion, SSRF defenses, size/type/hash/scanning and recoverable expiry | Ingestion/storage workflow unfinished | Bounded fetch implementation, allowlists, private namespace, scanning decision and fixtures |
-| Authorized actual download, expiry, content/hash and combined-file privacy | Access endpoint deliberately blocked | Private-file signer/integration and approved stored test files |
-| Real SignWell 5+N files, accurate fields, principal/owner isolation, approved countersign hold | Planner only; controls/assets unverified | Approved documents/mappings, account capability confirmation, authorized test recipients and implemented provider lifecycle |
-| Declined/expired provider packet, verified countersign, replay/late event safety, PDF splits | No producer provider-event/release/void/download flow | Implement and configure authenticated authoritative provider processing and durable actions |
-| Successful approval mapping, pending identities, duplicate resolution, activation and credential handoff | Successful transition code absent | Reconciliation policy, provisioning/release/activation implementation and verified countersign source |
-| Envelope-present decline with actual void and neutral delivered notice | Void/delivery integrations absent | Durable void action, authoritative void confirmation, mail worker and authorized provider test |
-| Live Calendly booking within one minute, actual Zoom link and reschedule payload compatibility | No authorized live provider acceptance setup; code defects also found | Fix reproduced defects, configure key/API event type/trusted org/subscription, resolve 45-minute-vs-30min slug policy |
-| Automatic 48-hour nudge / conditional 24-hour reminder exactly once | Only due predicates exist; no scheduler/worker | Implement scheduler/idempotent delivery and confirm Calendly reminder policy |
-| Real Resend receipt, retry/backoff, bounce/failure and safe sender/staff routing | Always-blocked outbox; no producer delivery worker | Verified sender/domain, approved recipients, worker/retry/event wiring and authorized delivery tests |
-| Credential setup email success without early access, real login after countersign | Handoff intentionally blocked | Completed secure issuance/activation/delivery flow plus authorized disposable acceptance identity |
-| Full website → signing → call → approval → countersign → activation → credentials | Multiple implementation and external gates above | Complete prerequisites and run both approval and decline journeys |
-| Production schema/provider/deployment readiness | Audit authorized Development only | Explicit release authorization and production readiness procedure; no production writes were attempted |
+| Real website payload validation, 201/409/422, concurrency, warnings, atomic jobs | Incomplete; configuration/acceptance pending | Gap 1 |
+| Historical backfill equivalence without invented milestones | Incomplete; policy pending | Gap 14 |
+| Signed-source ingestion, SSRF, limits, hash/scanning, recovery | Incomplete; configuration/acceptance pending | Gap 5 |
+| Actual download, expiry, bytes/hash, combined-file privacy | Incomplete; configuration/acceptance pending | Gap 5 |
+| SignWell 5+N files, fields, recipient isolation, countersign hold | Incomplete; provider configuration/acceptance pending | Gap 2 |
+| Expiry/decline, countersign, replay/late events, PDF retrieval/splits | Incomplete | Gaps 2 and 4 |
+| Approval mapping, duplicates, activation, credential handoff/login | Incomplete | Gap 3 |
+| Envelope-present decline with void and delivered neutral notice | Incomplete; delivery configuration pending | Gaps 4 and 6 |
+| Live Calendly timing, Zoom link, reschedule compatibility | Configuration pending; acceptance unverified | Gap 7 |
+| Exactly-once 48-hour nudge / conditional 24-hour reminder | Incomplete | Gap 6 |
+| Resend receipt, retry/backoff, bounce/failure, sender/staff routing | Incomplete; configuration/acceptance pending | Gap 6 |
+| Human-readable safe activity with actor identity and changes | Incomplete | Gap 9 |
+| Legacy route handoff and direct-URL UX | Incomplete UX; backend denial built | Gap 10 |
+| Full phone navigation and Applications journey | Incomplete; acceptance unverified | Gap 11 |
+| Direct-writer constraints and notification state invariants | Policy/hardening incomplete | Gap 12 |
+| Multi-organization Calendly dedupe | Policy risk unresolved | Gap 13 |
+| UI convergence without manual refresh | Acceptance unverified | Gap 15 |
+| Full website → signing → booking → approval/decline → activation | Multiple dependencies incomplete | Gap 16 after gaps 1–15 |
+| Production schema/provider/deployment readiness | Acceptance unverified; not inspected | Gap 16 |
 
 Pure mocks and synthetic fixtures cannot prove legal document visibility, actual
 delivery, live subscriptions, production readiness, or successful unfinished
 endpoints. These are **blocked**, not passed or merely skipped for convenience.
 
-## 5. Reproduction commands
+## 5. Historical reproduction commands
 
 ```sh
 pnpm --filter @workspace/api-server exec tsx --test \
@@ -280,7 +423,7 @@ ROLLBACK:
 - `lib/db/migrations/verify_producer_registration_foundation.sql`
 - `lib/db/migrations/verify_producer_appointment_operations.sql`
 
-## 6. Cleanup and evidence boundaries
+## 6. Historical cleanup and evidence boundaries
 
 Authenticated review fixtures: 4 registrations, 3 documents, 4 notifications,
 7 activities; final fixture residue 0 for registrations/documents/notifications/
@@ -291,7 +434,8 @@ all were removed along with the one temporary trust row and organization.
 Earlier legacy-ID probing also cleaned its five registrations. Existing
 organization/trust/account data was not modified.
 
-Stale migration/router/legacy-protection checklist entries were corrected.
-Failures above remain intentionally visible in regression tests; passing old
-unit tests must not be used to hide them. No production application fixes were
-made as part of this review-and-test request.
+Stale migration/router/legacy-protection checklist entries were corrected during
+the historical audit. The five reproduced code defects are now resolved; the
+outstanding completion gaps are listed in section 2 and must not be hidden by
+historical passing unit tests. No production inspection or production acceptance
+was performed.

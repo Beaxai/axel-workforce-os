@@ -1,16 +1,225 @@
-# Calendly appointment setup — items for completion
+# Calendly appointment setup — current completion review
 
-- Configure `CALENDLY_SIGNING_KEY` through the approved secret-management process; do not record the value here.
-- Configure `CALENDLY_EVENT_URI` with the Calendly API **event type URI**, not the human scheduling URL.
-- Configure `PRODUCER_CALENDLY_ORG_ID` with a UUID present in `trusted_axel_organizations`.
-- Create and verify the Calendly webhook subscription for only the configured event type.
-- Confirm whether Calendly reminders are disabled before implementing Axel's 24-hour reminder.
-- Implement and approve the 48-hour scheduling-nudge policy and worker.
-- Completed: raw-body router mounted before the global JSON parser; schema tables exported.
-- Wire the durable producer-notification outbox helper and resolve approved staff/applicant recipients. Until then, `staff_needs_review` is the persistent alert for unmatched or ambiguous events.
-- Completed in Development: migration applied and independently verified. This is not production migration evidence.
-- Complete live acceptance: booking visibility within one minute, duplicate delivery, cancellation, reschedule, out-of-order delivery, unmatched/ambiguous review, and meeting-link visibility.
+**Reviewed against current source:** September 21, 2026.
+**Scope:** repository evidence only. No Calendly account, subscription, secret,
+live booking, deployment configuration, or production database was checked.
 
-`https://calendly.com/axelworkforcesolutions/30min` is a human scheduling link. It is not an API event type URI. The directive describes the meeting as 45 minutes despite that slug; account owners must resolve and approve that provider configuration.
+## Status summary
 
-The receiver intentionally rejects authenticated booking payloads that omit `payload.scheduled_event.event_type`. Fetching the event type from Calendly would require a provider API call, which is outside this implementation authorization; it does not guess from the public scheduling URL.
+### Built in source
+
+- `POST /api/webhooks/calendly` is mounted before the global JSON parser and
+  authenticates exact raw bytes. It rejects compression, oversized bodies,
+  malformed signatures/payloads, missing configuration, and the wrong configured
+  event type.
+- Current parsing accepts only `invitee.created` and `invitee.canceled`, requires
+  `payload.scheduled_event.event_type`, sanitizes optional meeting URLs, and
+  never guesses the API event type from the public scheduling link.
+- Persistence verifies the configured organization against
+  `trusted_axel_organizations`, deduplicates the raw payload hash, scopes
+  registrations by organization, matches reference before email, leaves
+  unmatched/ambiguous events for staff review, and protects newer bookings from
+  stale creates/cancellations.
+- Matching bookings update the canonical registration and booking row. Current
+  cancellations clear only the current booking and enqueue a blocked applicant
+  rescheduling request when a validated address exists.
+- Staff can see sanitized unresolved scheduling events, active meeting details,
+  and blocked notification requests.
+- The latest Admin scheduling-link action has strict `actionId` plus
+  `send`/`resend` intent, atomic audit/outbox persistence, replay-safe retries,
+  conflict detection, and UI retention of an unresolved action ID. It remains
+  unavailable as delivery: responses explicitly say
+  `blocked/DELIVERY_NOT_ENABLED`.
+
+### Incomplete in source
+
+- There is no Calendly subscription provisioning or reconciliation code.
+- Unmatched/ambiguous events set `staff_needs_review`; they do not enqueue or
+  deliver the declared `unmatched_booking` staff notification.
+- Cancellation enqueues only the applicant `booking_canceled` request; the
+  required staff notification is not implemented.
+- The 48-hour scheduling-nudge and conditional 24-hour reminder exist only as a
+  pure due predicate. No scheduler/worker invokes it.
+- Producer notification delivery itself is unfinished, so manual scheduling
+  actions and cancellation notices are persisted but not sent.
+- Live account evidence that the selected event is a 45-minute Zoom meeting
+  has not been recorded; the required duration itself is explicitly specified.
+
+### Configuration pending
+
+- `CALENDLY_SIGNING_KEY` through approved secret management.
+- `CALENDLY_EVENT_URI` set to the Calendly API **event type URI**, not the human
+  scheduling URL.
+- `PRODUCER_CALENDLY_ORG_ID` set to an approved UUID already present in
+  `trusted_axel_organizations`.
+- A webhook subscription restricted to the approved organization/event type and
+  the deployed HTTPS callback.
+- Approved reminder ownership and verified 45-minute Zoom event configuration.
+
+`https://calendly.com/axelworkforcesolutions/30min` is a human scheduling URL,
+not an API event type URI. The directive explicitly specifies a 45-minute Zoom
+meeting and states that `30min` is only the slug. Verify the account matches;
+do not reopen this as an undecided product requirement.
+
+### Acceptance unverified
+
+Live booking visibility within one minute, actual signature verification from
+Calendly, duplicate delivery, cancellation, reschedule, out-of-order delivery,
+meeting-link visibility, unmatched/ambiguous operations, reminder behavior, and
+production operation were not verified here.
+
+## Completion plan for every remaining gap
+
+### 1. Approve the Calendly event type and meeting policy
+
+**Dependency:** Calendly account owner and product/operations owner.
+
+1. Inspect the intended Calendly event type in the authorized account.
+2. Verify the event is configured for the specified 45-minute duration and Zoom
+   location; confirm timezone behavior and the specified public URL.
+3. Record the immutable Calendly API event type URI for that approved event.
+4. Decide whether Calendly or Axel owns reminders; if Axel owns the 24-hour
+   reminder, explicitly disable the overlapping Calendly reminder.
+
+**Completion evidence:** dated owner approval containing the event type name,
+duration, location, API URI, public URL, and reminder setting, without secrets.
+
+### 2. Configure the receiver trust anchors
+
+**Dependencies:** item 1; approved secret-management process; trusted Axel
+organization selection.
+
+1. Confirm the target organization is the intended tenant and is explicitly
+   present in `trusted_axel_organizations`.
+2. Store `CALENDLY_SIGNING_KEY` only in the approved secret manager.
+3. Set `CALENDLY_EVENT_URI` to the approved API URI and
+   `PRODUCER_CALENDLY_ORG_ID` to the trusted organization UUID.
+4. Verify configuration separately in each target environment; do not copy
+   Development evidence into a production claim.
+
+**Completion evidence:** redacted configuration checklist, trust-anchor query
+result, and a health/negative check showing missing or untrusted configuration
+fails closed. No secret value belongs in the evidence.
+
+### 3. Create and reconcile the webhook subscription
+
+**Dependencies:** items 1–2 and an approved deployed HTTPS callback.
+
+1. Create the subscription in the authorized Calendly account for only
+   `invitee.created` and `invitee.canceled` within the approved scope.
+2. Point it to `/api/webhooks/calendly`; confirm no proxy/parser changes the wire
+   bytes.
+3. Record subscription ID, scope, event list, callback, and owning account in the
+   operational inventory.
+4. Add a reconciliation procedure that detects missing, duplicate, broadened, or
+   wrong-callback subscriptions.
+
+**Completion evidence:** redacted provider subscription record and a signed
+provider test event accepted by the intended environment; wrong signature and
+wrong event-type tests must be rejected/ignored as designed.
+
+### 4. Complete staff handling for unmatched, ambiguous, and canceled events
+
+**Dependencies:** approved trusted-staff recipient source and producer email
+delivery implementation.
+
+1. Resolve staff recipients from the approved source; never guess a distribution
+   address from the webhook payload.
+2. Transactionally enqueue `unmatched_booking` for unmatched/ambiguous events and
+   a staff cancellation event for an applied cancellation.
+3. Add an audited resolution action for the staff review queue so operators can
+   associate or dismiss an event without mutating sanitized source evidence.
+4. Define escalation age and alerting for unresolved rows and missing applicant
+   addresses.
+
+**Completion evidence:** integration tests for unmatched, ambiguous,
+cancellation, missing-recipient, resolution, dedupe, and tenant isolation;
+staging evidence that both the queue and authorized staff notice reflect one
+event.
+
+### 5. Finish producer scheduling-link delivery
+
+**Dependency:** the worker and provider boundary in
+`appointment-email-delivery.md`.
+
+1. Preserve the current action-ID semantics: reuse the same ID/intent only for a
+   transport retry and generate a new ID for an intentional resend.
+2. Dispatch the persisted notification through the producer outbox rather than
+   calling a provider from the HTTP route.
+3. Keep declined, untrusted, cross-tenant, and missing-recipient requests
+   unavailable; surface configuration availability separately from role and
+   lifecycle permission.
+4. Reconcile old `DELIVERY_NOT_ENABLED` rows under an approved historical-row
+   policy; never send them automatically when the worker is enabled.
+
+**Completion evidence:** concurrent retry/resend tests, provider idempotency
+tests, UI/API acceptance showing delivered versus blocked/failed state, and no
+unexpected release of older blocked requests.
+
+### 6. Implement the 48-hour nudge and conditional 24-hour reminder
+
+**Dependencies:** items 1 and 5; reliable worker clock; authoritative booking
+rows.
+
+1. Approve the packet-sent clock, timezone/display rules, and exclusions.
+2. Build a resumable scheduler that selects due rows and rechecks booking,
+   decision, completion, cancellation, and scheduled time under lock.
+3. Enqueue the 48-hour nudge only when no active booking exists.
+4. Enqueue the 24-hour reminder only when the approved record says Calendly
+   reminders are disabled.
+5. Use stable time-window dedupe keys and suppress stale reminders after a
+   cancellation or reschedule.
+
+**Completion evidence:** tests at exact time boundaries and for booking-before-
+nudge, cancellation, reschedule, declined/completed records, concurrency, and
+replay; controlled staging rows with exactly one eligible reminder.
+
+### 7. Complete live non-production acceptance
+
+**Dependencies:** items 1–6; authorized Calendly and email test recipients.
+
+1. Book with reference tracking and verify canonical application visibility,
+   active booking, scheduled time, and meeting link within one minute.
+2. Replay the exact webhook and verify no duplicate event, booking regression,
+   audit, or notification.
+3. Reschedule and deliver old/new events out of order; verify the newest booking
+   remains active.
+4. Cancel the current booking and verify only it is cleared, staff review/notice
+   occurs, and the applicant rescheduling request follows its delivery state.
+5. Exercise unknown reference, duplicate email candidates, malformed event type,
+   bad signature, missing recipient, and delayed delivery.
+6. Verify the approved reminder owner produces one reminder, not duplicates from
+   both systems.
+
+**Completion evidence:** dated acceptance matrix with sanitized event IDs,
+timestamps, database outcomes, UI observations, and authorized mailbox receipts.
+Label it by environment; it is not production proof.
+
+### 8. Establish production operations
+
+**Dependencies:** successful item 7 and release approval.
+
+1. Assign owners for subscription health, unresolved-event review, reminders,
+   email failures, and incident response.
+2. Add alerts for receiver 5xx/401 spikes, stale unresolved events, booking
+   processing latency, scheduler failures, and delivery backlog.
+3. Document key rotation, subscription recreation, replay/reconciliation, and
+   rollback procedures.
+4. Verify production configuration/subscription/database state through the
+   approved release process before recording go-live.
+
+**Completion evidence:** runbook, alert routing, recovery rehearsal, and dated
+production release/acceptance record. Repository source alone is insufficient.
+
+## Historical evidence (not current or production proof)
+
+`docs/implementation/producer-appointment-verification.md` records that the
+activity, Calendly, and notification migrations and a rollback verification were
+checked in Development on September 20. Current source also contains offline
+Calendly tests and an opt-in Development persistence audit. This review did not
+rerun them. They are historical Development evidence only and do not prove a
+live subscription or production configuration.
+
+No provider call, subscription change, secret inspection, configuration change,
+migration application, database write, or email send was performed for this
+review.
