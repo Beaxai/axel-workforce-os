@@ -7,4 +7,8 @@ The shared dev database can hold columns created by unmerged feature branches (e
 
 **Why:** `pnpm --filter db push` (drizzle-kit) shows an interactive data-loss prompt when the code schema lacks columns that exist in the DB. With stdin closed (post-merge script), the prompt gets EOF, selects "No, abort" — and still exits 0, so the script reports success while the push was never applied. Any real schema change then silently fails to land.
 
-**How to apply:** If `db push` output mentions a data-loss prompt, do NOT force the drop — the data may belong to an in-flight branch. Reconcile by declaring the drifted columns in `lib/db/src/schema/deals.ts` (or the relevant schema file) so push becomes a no-op, then re-run. Verify post-merge with `runPostMergeSetup()` and check the stdout log tail for "Changes applied", not just `success: true`.
+**How to apply:** Do not run blanket `db push` in automatic post-merge setup and never force a truncation/drop prompt. Setup installs dependencies and builds shared libraries; it does not certify database migration completion. Apply required reviewed migrations explicitly to Development and independently verify their effects. Reconcile schema declarations when appropriate rather than dropping other branches' data. A successful setup result alone is not migration evidence.
+
+Automatic introspection can also wait on a unique-constraint truncation prompt
+and exhaust the runner timeout. Increasing the timeout or passing `--force`
+does not resolve this safety problem.
