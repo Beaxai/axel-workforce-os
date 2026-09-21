@@ -123,6 +123,20 @@ describe("producer appointment notification templates", () => {
 });
 
 describe("producer appointment notification outbox", () => {
+  it("normalizes before validation and deduplication, but rejects invalid recipients", async () => {
+    const { tx, rows } = mockTransaction();
+    await enqueueProducerNotification(tx, input({
+      recipientEmails: ["  Producer@Example.com  ", "producer@example.com"],
+    }));
+    assert.deepEqual(rows[0]?.recipientEmails, ["producer@example.com"]);
+    for (const recipient of ["   ", "not-an-email", "a@b.com\nBcc: other@example.com"]) {
+      await assert.rejects(() =>
+        enqueueProducerNotification(tx, input({ recipientEmails: [recipient] })),
+      );
+    }
+    assert.equal(rows.length, 1);
+  });
+
   it("persists a blocked operator request without calling a provider", async () => {
     const { tx, rows } = mockTransaction();
     await enqueueProducerNotification(tx, input());

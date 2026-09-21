@@ -25,6 +25,18 @@ export type MatchResult =
   | { kind: "unmatched"; reason: "unknown_reference" | "no_match" }
   | { kind: "ambiguous" };
 
+export function normalizePersistedTimestamp(value: unknown, field: string): Date {
+  const timestamp = value instanceof Date
+    ? new Date(value.getTime())
+    : typeof value === "string"
+      ? new Date(value)
+      : null;
+  if (timestamp === null || !Number.isFinite(timestamp.getTime())) {
+    throw new Error(`invalid_persisted_${field}`);
+  }
+  return timestamp;
+}
+
 export function shouldApplyBookingCreate(input: {
   incomingSourceEventAt: Date;
   currentSourceEventAt: Date | null;

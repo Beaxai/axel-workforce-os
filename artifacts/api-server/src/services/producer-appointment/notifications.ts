@@ -104,7 +104,7 @@ const enqueueInputSchema = z
     registrationId: z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i).nullable().optional(),
     event: eventSchema,
     dedupeKey: z.string().trim().min(1).max(200),
-    recipientEmails: z.array(z.email()).min(1).max(25),
+    recipientEmails: z.array(z.string().trim().toLowerCase().pipe(z.email())).min(1).max(25),
     data: notificationDataSchema,
   })
   .strict();
@@ -307,7 +307,7 @@ export async function enqueueProducerNotification(
 ): Promise<void> {
   const parsed = enqueueInputSchema.parse(input);
   const recipientEmails = [
-    ...new Set(parsed.recipientEmails.map((email) => email.trim().toLowerCase())),
+    ...new Set(parsed.recipientEmails),
   ];
   const rendered = renderProducerNotification(parsed.event, parsed.data);
 

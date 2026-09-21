@@ -141,7 +141,8 @@ export function permissions(
       Boolean(registration.packetSignedAt && registration.callCompletedAt),
     canCompleteCall:
       registration.decision !== "declined" && !registration.callCompletedAt,
-    canSendSchedulingLink: role === "ADMIN",
+    canSendSchedulingLink:
+      role === "ADMIN" && registration.decision !== "declined",
     canIssueCredentials:
       role === "ADMIN" &&
       registration.decision === "approved" &&

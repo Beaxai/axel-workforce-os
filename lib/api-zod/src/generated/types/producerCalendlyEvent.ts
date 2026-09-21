@@ -9,4 +9,6 @@
 /**
  * Provider-defined event; validated by the signed receiver, not a website application payload.
  */
-export type ReceiveProducerCalendlyEventBody = { [key: string]: unknown };
+export interface ProducerCalendlyEvent {
+  [key: string]: unknown;
+}

@@ -66,6 +66,7 @@ import type {
   ProducerApplicationDetail,
   ProducerApplicationRow,
   ProducerBlockedDelivery,
+  ProducerCalendlyEvent,
   ProducerCallCompletionInput,
   ProducerDeclineInput,
   ProducerEmptyActionInput,
@@ -76,7 +77,6 @@ import type {
   QuoteVariationsResponse,
   RatingStaleClearedResponse,
   ReceiveProducerCalendlyEvent202,
-  ReceiveProducerCalendlyEventBody,
   RecomputeDealSubjectivities200,
   RegisterRequest,
   ReorderJourneyTemplatePhasesRequest,
@@ -125,7 +125,7 @@ export const getReceiveProducerCalendlyEventUrl = () => {
 };
 
 export const receiveProducerCalendlyEvent = async (
-  receiveProducerCalendlyEventBody: ReceiveProducerCalendlyEventBody,
+  producerCalendlyEvent: ProducerCalendlyEvent,
   options?: RequestInit,
 ): Promise<ReceiveProducerCalendlyEvent202> => {
   return customFetch<ReceiveProducerCalendlyEvent202>(
@@ -134,7 +134,7 @@ export const receiveProducerCalendlyEvent = async (
       ...options,
       method: "POST",
       headers: { "Content-Type": "application/json", ...options?.headers },
-      body: JSON.stringify(receiveProducerCalendlyEventBody),
+      body: JSON.stringify(producerCalendlyEvent),
     },
   );
 };
@@ -146,14 +146,14 @@ export const getReceiveProducerCalendlyEventMutationOptions = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof receiveProducerCalendlyEvent>>,
     TError,
-    { data: BodyType<ReceiveProducerCalendlyEventBody> },
+    { data: BodyType<ProducerCalendlyEvent> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
   Awaited<ReturnType<typeof receiveProducerCalendlyEvent>>,
   TError,
-  { data: BodyType<ReceiveProducerCalendlyEventBody> },
+  { data: BodyType<ProducerCalendlyEvent> },
   TContext
 > => {
   const mutationKey = ["receiveProducerCalendlyEvent"];
@@ -167,7 +167,7 @@ export const getReceiveProducerCalendlyEventMutationOptions = <
 
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof receiveProducerCalendlyEvent>>,
-    { data: BodyType<ReceiveProducerCalendlyEventBody> }
+    { data: BodyType<ProducerCalendlyEvent> }
   > = (props) => {
     const { data } = props ?? {};
 
@@ -181,7 +181,7 @@ export type ReceiveProducerCalendlyEventMutationResult = NonNullable<
   Awaited<ReturnType<typeof receiveProducerCalendlyEvent>>
 >;
 export type ReceiveProducerCalendlyEventMutationBody =
-  BodyType<ReceiveProducerCalendlyEventBody>;
+  BodyType<ProducerCalendlyEvent>;
 export type ReceiveProducerCalendlyEventMutationError = ErrorType<void>;
 
 /**
@@ -194,14 +194,14 @@ export const useReceiveProducerCalendlyEvent = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof receiveProducerCalendlyEvent>>,
     TError,
-    { data: BodyType<ReceiveProducerCalendlyEventBody> },
+    { data: BodyType<ProducerCalendlyEvent> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
   Awaited<ReturnType<typeof receiveProducerCalendlyEvent>>,
   TError,
-  { data: BodyType<ReceiveProducerCalendlyEventBody> },
+  { data: BodyType<ProducerCalendlyEvent> },
   TContext
 > => {
   return useMutation(getReceiveProducerCalendlyEventMutationOptions(options));

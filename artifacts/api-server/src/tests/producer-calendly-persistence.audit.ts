@@ -187,9 +187,19 @@ test(
       assert.doesNotMatch(
         legacyOrgId,
         /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
-        "expected the existing legacy trusted-org UUID to reproduce router rejection",
+        "expected the existing trusted-org fixture to exercise legacy UUID compatibility",
       );
 
+      orgId = legacyOrgId;
+      const legacyReference = reference();
+      const legacyEmail = `calendly-legacy-compatibility-${runId}@example.test`;
+      const legacyRegistrationId = await insertRegistration({
+        reference: legacyReference,
+        email: legacyEmail,
+      });
+      const legacyEventUri = uri("event");
+      const legacyInviteeUri = uri("invitee");
+      eventUris.push(legacyEventUri);
       const legacyApp = express();
       legacyApp.use("/audit/calendly", createProducerCalendlyRouter({
         getSigningKey: () => secret,
@@ -205,35 +215,29 @@ test(
       const evidenceInput: EventInput = {
         event: "invitee.created",
         createdAt: "2030-01-01T09:00:00.000Z",
-        inviteeUri: uri("invitee"),
-        scheduledEventUri: uri("event"),
-        reference: reference(),
-        email: `calendly-legacy-evidence-${runId}@example.test`,
+        inviteeUri: legacyInviteeUri,
+        scheduledEventUri: legacyEventUri,
+        reference: legacyReference,
+        email: legacyEmail,
       };
-      const evidenceBody = rawPayload(evidenceInput);
-      const evidenceDigest = createHmac("sha256", secret)
-        .update(signingTimestamp)
-        .update(".")
-        .update(evidenceBody)
-        .digest("hex");
-      const evidenceResponse = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "calendly-webhook-signature":
-            `t=${signingTimestamp},v1=${evidenceDigest}`,
-        },
-        body: evidenceBody,
-      });
-      assert.equal(
-        evidenceResponse.status,
-        503,
-        "existing legacy trusted-org UUID no longer reproduces router rejection",
+      await post(evidenceInput);
+      const legacyBooking = await pool.query<{
+        org_id: string;
+        invitee_uri: string;
+        active: boolean;
+      }>(
+        `SELECT org_id, invitee_uri, active
+         FROM producer_calendly_bookings
+         WHERE registration_id = $1`,
+        [legacyRegistrationId],
       );
-      assert.deepEqual(await evidenceResponse.json(), {
-        error: "calendly_not_configured",
-      });
-      results.legacyTrustedOrg = "existing trusted-org UUID reproducibly rejected with 503";
+      assert.deepEqual(legacyBooking.rows, [{
+        org_id: legacyOrgId,
+        invitee_uri: legacyInviteeUri,
+        active: true,
+      }]);
+      results.legacyTrustedOrg =
+        "existing trusted-org UUID accepted and booking persisted";
       await closeServer(server);
       server = undefined;
 
@@ -635,6 +639,8 @@ test(
               WHERE scheduled_event_uri = ANY($2::text[]))
            + (SELECT count(*) FROM producer_notifications
               WHERE registration_id = ANY($1::uuid[]))
+            + (SELECT count(*) FROM producer_calendly_bookings
+               WHERE registration_id = ANY($1::uuid[]))
            + (SELECT count(*) FROM trusted_axel_organizations
               WHERE org_id = $3)
            + (SELECT count(*) FROM organizations WHERE id = $3)

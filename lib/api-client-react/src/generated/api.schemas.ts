@@ -5,6 +5,13 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+/**
+ * Provider-defined event; validated by the signed receiver, not a website application payload.
+ */
+export interface ProducerCalendlyEvent {
+  [key: string]: unknown;
+}
+
 export type ProducerApplicationRowDecision =
   (typeof ProducerApplicationRowDecision)[keyof typeof ProducerApplicationRowDecision];
 
@@ -1063,11 +1070,6 @@ export type AxelSignatureParameter = string;
  * Must exactly equal the synthetic reference in the connection-test body.
  */
 export type AxelIdempotencyKeyParameter = string;
-
-/**
- * Provider-defined event; validated by the signed receiver, not a website application payload.
- */
-export type ReceiveProducerCalendlyEventBody = { [key: string]: unknown };
 
 export type ReceiveProducerCalendlyEvent202 = {
   accepted: boolean;

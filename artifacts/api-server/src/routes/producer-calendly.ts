@@ -10,6 +10,7 @@ import { safeApplicantRecipientEmails } from "../services/producer-appointment/r
 import {
   matchRegistration,
   normalizeEmail,
+  normalizePersistedTimestamp,
   normalizeReference,
   parseCalendlyWebhook,
   shouldApplyBookingCancellation,
@@ -21,7 +22,7 @@ import {
 
 const MAX_BODY_BYTES = 256 * 1024;
 const UUID_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 type QueryResult<T> = { rows: T[] };
 type Transaction = {
@@ -167,9 +168,9 @@ async function persistCalendlyEvent(
       WHERE id = ${inserted.id}
     `);
 
-    const current = (await tx.execute<{
+    const currentRow = (await tx.execute<{
       inviteeUri: string;
-      sourceEventAt: Date;
+      sourceEventAt: unknown;
       active: boolean;
     }>(sql`
       SELECT invitee_uri AS "inviteeUri", source_event_at AS "sourceEventAt", active
@@ -177,6 +178,15 @@ async function persistCalendlyEvent(
       WHERE registration_id = ${registration.id}
       FOR UPDATE
     `)).rows[0];
+    const current = currentRow
+      ? {
+          ...currentRow,
+          sourceEventAt: normalizePersistedTimestamp(
+            currentRow.sourceEventAt,
+            "booking_source_event_at",
+          ),
+        }
+      : undefined;
 
     if (event.event === "invitee.created") {
       const laterCancellation = (await tx.execute<{ found: boolean }>(sql`

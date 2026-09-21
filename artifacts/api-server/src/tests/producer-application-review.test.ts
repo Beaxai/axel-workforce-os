@@ -78,6 +78,14 @@ function document(
 }
 
 describe("producer application review projections", () => {
+  it("advertises scheduling only for Admin and non-declined applications", () => {
+    for (const decision of ["pending", "approved", "declined"] as const) {
+      const row = registration({ decision });
+      assert.equal(permissions(row, "ADMIN").canSendSchedulingLink, decision !== "declined");
+      assert.equal(permissions(row, "CSA").canSendSchedulingLink, false);
+    }
+  });
+
   it("projects list allowlist without payload, notes, or storage data", () => {
     const row = toListRow(registration({ callNotes: "private notes" }));
     assert.deepEqual(safeRegistrationNames(registration().payload), {

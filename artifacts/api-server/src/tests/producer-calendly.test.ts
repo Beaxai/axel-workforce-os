@@ -5,6 +5,7 @@ import { afterEach, describe, it } from "node:test";
 import express from "express";
 import {
   matchRegistration,
+  normalizePersistedTimestamp,
   parseCalendlyWebhook,
   shouldApplyBookingCancellation,
   shouldApplyBookingCreate,
@@ -195,6 +196,24 @@ describe("Calendly pure service", () => {
       current,
     }), true);
   });
+
+  it("normalizes raw-SQL timestamp strings before booking ordering comparisons", () => {
+    const normalized = normalizePersistedTimestamp(
+      "2023-11-14 22:10:00+00",
+      "booking_source_event_at",
+    );
+    assert.ok(normalized instanceof Date);
+    assert.equal(normalized.toISOString(), "2023-11-14T22:10:00.000Z");
+    assert.equal(shouldApplyBookingCreate({
+      incomingSourceEventAt: new Date("2023-11-14T22:20:00Z"),
+      currentSourceEventAt: normalized,
+      canceledAtOrAfterIncoming: false,
+    }), true);
+    assert.throws(
+      () => normalizePersistedTimestamp("not-a-timestamp", "booking_source_event_at"),
+      /invalid_persisted_booking_source_event_at/,
+    );
+  });
 });
 
 describe("Calendly raw webhook route", () => {
@@ -209,6 +228,21 @@ describe("Calendly raw webhook route", () => {
     const url = await start({ getSigningKey: () => undefined });
     const body = JSON.stringify(payload());
     assert.equal((await post(url, body)).status, 503);
+  });
+
+  it("accepts a PostgreSQL UUID without RFC version bits for trusted-org lookup", async () => {
+    const legacyOrgId = "11111111-1111-0111-0111-111111111111";
+    let processedOrgId: string | undefined;
+    const url = await start({
+      getOrgId: () => legacyOrgId,
+      processEvent: async (_event, context) => {
+        processedOrgId = context.orgId;
+        return { outcome: "booking_updated" };
+      },
+    });
+    const body = JSON.stringify(payload());
+    assert.equal((await post(url, body)).status, 202);
+    assert.equal(processedOrgId, legacyOrgId);
   });
 
   it("acknowledges unsupported events and configured event-type mismatches", async () => {

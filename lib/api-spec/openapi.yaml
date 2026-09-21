@@ -55,9 +55,7 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              additionalProperties: true
-              description: Provider-defined event; validated by the signed receiver, not a website application payload.
+              $ref: "#/components/schemas/ProducerCalendlyEvent"
       responses:
         "202":
           description: Event processed, duplicate acknowledged, or authenticated unsupported event ignored.
@@ -1859,6 +1857,10 @@ components:
         type: string
         pattern: "^AXR-[0-9]{8}-[A-Z0-9]{6}$"
   schemas:
+    ProducerCalendlyEvent:
+      type: object
+      additionalProperties: true
+      description: Provider-defined event; validated by the signed receiver, not a website application payload.
     ProducerApplicationRow:
       type: object
       required: [id, reference, agencyName, principalName, displayStatus, decision, flags, submittedAt, callScheduledFor]

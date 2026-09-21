@@ -3,6 +3,38 @@
 **Audit date:** September 20, 2026, America/New_York.  
 **Verdict:** Not ready for end-to-end acceptance or launch.
 
+## Fix verification — September 21, 2026
+
+The five reproduced defects below are now resolved. The original September 20
+findings are retained as historical evidence, not current failures.
+
+- Persisted Calendly timestamps are normalized and validated before ordering
+  comparisons. Canonical PostgreSQL UUID syntax is accepted without weakening
+  the trusted-organization database check or changing existing IDs.
+- The Calendly request model is named in the OpenAPI source and regenerated,
+  removing the shared-library export collision without manual generated edits.
+- Declined applications no longer advertise scheduling permission; notification
+  recipients are trimmed/lowercased before email validation and deduplication.
+- The six existing appointment suites plus the offline audit suite pass:
+  **57 tests passed, zero failed/skipped**.
+- `bash scripts/typecheck-baseline.sh` passes, including the shared-library build
+  and zero API/web TypeScript errors.
+- The explicitly opted-in Development persistence audit passes: current trusted
+  legacy organization booking, concurrent dedupe, cancellation clearing,
+  replacement, stale cancellation, cancel-before-create, and staff-review cases.
+  The cancellation notification remained blocked.
+- Exact fixture cleanup removed 6 registrations, 10 events, 1 blocked notice,
+  and the disposable organization/trust pair. Registration, booking, event, and
+  notification residue was **0**; the existing organization/trust row remained
+  unchanged.
+
+This verification used synthetic local signed deliveries only. No production
+changes, live emails, signing packets, or credentials were issued. Real intake,
+signing, delivery, activation, and the separately documented prerequisites in
+sections 2 and 4 remain blocked; these fixes do not establish launch readiness.
+
+## Original audit
+
 This is a fresh audit of the current implementation, not a repeat of the earlier
 completion summary. Application behavior was not changed during this audit.
 Regression/audit tests and documentation were added. No live provider calls,
