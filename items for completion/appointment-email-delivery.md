@@ -9,12 +9,14 @@ was checked.
 
 ### Confirmed configuration direction
 
-The user confirmed that the email keys and webhooks currently in use are intended
-to apply in production. Reuse the existing Resend setup; obtaining replacement
-keys or rebuilding webhook infrastructure is not an outstanding requirement.
-This confirmation is not a new production-delivery test. Preserve endpoint and
-signing-secret pairing, and verify deployment routing without changing working
-configuration or sending live mail merely to check it.
+The user clarified that Development and production share email domains but have
+separate existing webhooks. Reuse each environment's own webhook and matching
+signing secret; do not repoint or reuse the Development webhook for production.
+The earlier intent to reuse email API keys was not retracted, but does not mean
+webhook signing secrets are interchangeable. Replacement domains or webhooks are
+not a prerequisite. Verify routing and delivery without changing working
+configuration or sending live mail merely to check it; this clarification is not
+a production-delivery test.
 
 ### Built in source
 
@@ -68,7 +70,7 @@ the deal service as-is would violate its contract.
 
 ### Configuration pending
 
-Existing email keys and webhooks are designated for production reuse by the user.
+Email domains are shared; existing webhooks remain environment-specific.
 Remaining appointment-specific decisions concern sender identity within that
 setup, applicant recipient rules, trusted-staff distribution, authenticated
 application origin, SignWell notification policy and Calendly reminder policy.
@@ -103,7 +105,8 @@ payload fields.
 
 ### 2. Implement the producer-specific provider boundary
 
-**Dependencies:** item 1; reuse the existing Resend keys and webhook setup.
+**Dependencies:** item 1; reuse the existing Resend setup with the correct
+environment-specific webhook and matching signing secret.
 
 1. Add a producer mail adapter that accepts only a persisted producer
    notification and does not depend on deal IDs or deal correspondence tables.

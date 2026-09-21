@@ -31,9 +31,11 @@ appointment** outbox to delivery, retries, reminders, and lifecycle events.
 Do not rebuild the generic integration or treat its existence as appointment
 delivery acceptance.
 
-The user has confirmed that the existing email keys and webhooks are intended
-for production reuse. New keys or replacement webhook infrastructure are not
-completion prerequisites; appointment wiring and delivery verification remain.
+The user clarified that email domains are shared, but Development and production
+have separate existing webhooks. Reuse the correct webhook for each environment,
+with its matching signing secret; do not move the Development webhook into
+production. Existing email API-key reuse remains the stated intent, not a claim
+that webhook secrets are shared. Appointment wiring and verification remain.
 
 ## Latest audit
 
