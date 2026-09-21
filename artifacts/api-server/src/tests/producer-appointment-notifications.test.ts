@@ -44,11 +44,12 @@ function mockTransaction() {
           return {
             onConflictDoNothing() {
               const key = `${value.orgId}:${value.dedupeKey}`;
+              const inserted = !dedupe.has(key);
               if (!dedupe.has(key)) {
                 dedupe.add(key);
                 rows.push(value);
               }
-              return Promise.resolve();
+              return { returning: async () => inserted ? [{ id: `notification-${rows.length}` }] : [] };
             },
           };
         },

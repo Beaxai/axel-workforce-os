@@ -131,11 +131,24 @@ and align the helper contract/tests.
   staff member, not an approved staff distribution.
 - **Unmatched booking has a staff inbox, not outbound alert delivery:** review
   markers persist, but the defined `unmatched_booking` email is not enqueued.
-- **Manual scheduling resend semantics are unresolved:** every request uses the
-  same registration dedupe key. Four concurrent/repeated requests produced one
-  blocked notification and four audit entries. Retry safety is working; an
-  intentional future resend after successful delivery would also be suppressed
-  unless the design distinguishes retry from a new send.
+- **Manual scheduling resend semantics resolved (blocked delivery only):**
+  `POST /:id/send-scheduling-link` requires `{ actionId: UUID, intent: "send" | "resend" }`.
+  Generate a fresh action ID for an intentional send/resend; transport retries
+  must reuse both values. Identity is scoped to organization + registration +
+  action ID (intent cannot be changed for an existing identity; that returns 409).
+  Registration row locking and one transaction persist exactly one blocked
+  notification and one matching `SCHEDULING_LINK_DELIVERY_BLOCKED` audit per action.
+  Audit `after` records action ID, intent, notification ID and blocked status.
+  Replays return the original notification ID with `replayed: true` and add no audit.
+  A new resend ID creates a distinct blocked item; historical registration-wide
+  items remain untouched. The staff UI retains unresolved IDs in session storage
+  through transport errors/reloads, clearing them only on a successful response.
+  Role/trusted-staff, organization, declined-registration and validated-recipient
+  gates remain enforced. No worker, provider call or live delivery was enabled.
+  Development route regression evidence: eight concurrent requests for one resend
+  produced one blocked outbox item and one audit; seven replies were replays.
+  Sequential retries, changed-intent conflicts, a distinct new resend, strict body
+  validation, and role/trust/tenant/lifecycle/recipient gates passed.
 - **Activity feed is incomplete:** safe before/after data is not exposed/rendered;
   the current DTO/UI shows action, timestamp, and actor ID rather than a resolved
   actor label and the required safe changes.
@@ -181,7 +194,9 @@ and align the helper contract/tests.
 
 - Three concurrent call completions plus a repeat: all 200, original completion
   note preserved, one `CALL_COMPLETED` audit event and one blocked ready notice.
-- Four scheduling requests: all 202 explicitly blocked; one notification row.
+- Historical audit: four scheduling requests were all 202 explicitly blocked;
+  one notification row (the old registration-wide identity; superseded by the
+  per-action contract above).
 - Ready no-envelope decline and retry: both 200, one decision/audit/blocked notice,
   no new identities.
 - Envelope-present decline: 409 and unchanged pending decision.
@@ -253,6 +268,8 @@ bash scripts/typecheck-baseline.sh
 
 # Explicit opt-in: Development-only, temporary fixtures, cleanup in finally.
 cd artifacts/api-server
+RUN_PRODUCER_SCHEDULING_AUDIT=1 NODE_ENV=development \
+  pnpm exec tsx --test src/tests/producer-scheduling-actions.test.ts
 RUN_PRODUCER_CALENDLY_PERSISTENCE_AUDIT=1 NODE_ENV=development \
   pnpm exec tsx --test src/tests/producer-calendly-persistence.audit.ts
 ```

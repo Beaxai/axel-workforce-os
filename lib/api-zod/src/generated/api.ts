@@ -465,11 +465,22 @@ export const DeclineProducerApplicationResponse = zod
     }),
   );
 
+/**
+ * ADMIN-only blocked scheduling request. Generate a new actionId for each intentional send or resend; reuse the same actionId and intent for transport retries. Identity is scoped to organization and registration. Replays return the original notification without adding an audit or outbox item.
+ */
 export const SendProducerSchedulingLinkParams = zod.object({
   id: zod.coerce.string().uuid(),
 });
 
-export const SendProducerSchedulingLinkBody = zod.object({});
+export const SendProducerSchedulingLinkBody = zod.object({
+  actionId: zod
+    .string()
+    .uuid()
+    .describe(
+      "Caller-generated UUID, stable across transport retries and new for intentional resends.",
+    ),
+  intent: zod.enum(["send", "resend"]),
+});
 
 export const IssueProducerApplicationCredentialsParams = zod.object({
   id: zod.coerce.string().uuid(),

@@ -95,7 +95,7 @@ async function persistCalendlyEvent(
   enqueueProducerNotification?: (
     tx: ProducerNotificationTransaction,
     input: ProducerNotificationInput,
-  ) => Promise<void>,
+  ) => Promise<unknown>,
 ): Promise<CalendlyProcessResult> {
   return db.transaction(async (databaseTx) => {
     const tx = databaseTx as unknown as Transaction;

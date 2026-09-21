@@ -65,7 +65,6 @@ import type {
   PreviewVariationResponse,
   ProducerApplicationDetail,
   ProducerApplicationRow,
-  ProducerBlockedDelivery,
   ProducerCalendlyEvent,
   ProducerCallCompletionInput,
   ProducerDeclineInput,
@@ -73,6 +72,9 @@ import type {
   ProducerRegistrationConnectionTestInput,
   ProducerRegistrationConnectionTestResult,
   ProducerRegistrationPendingInput,
+  ProducerSchedulingActionError,
+  ProducerSchedulingActionInput,
+  ProducerSchedulingActionResult,
   ProducerSchedulingReviewEvent,
   QuoteVariationsResponse,
   RatingStaleClearedResponse,
@@ -714,41 +716,44 @@ export const useDeclineProducerApplication = <
   return useMutation(getDeclineProducerApplicationMutationOptions(options));
 };
 
+/**
+ * ADMIN-only blocked scheduling request. Generate a new actionId for each intentional send or resend; reuse the same actionId and intent for transport retries. Identity is scoped to organization and registration. Replays return the original notification without adding an audit or outbox item.
+ */
 export const getSendProducerSchedulingLinkUrl = (id: string) => {
   return `/api/producer-registrations/${id}/send-scheduling-link`;
 };
 
 export const sendProducerSchedulingLink = async (
   id: string,
-  producerEmptyActionInput: ProducerEmptyActionInput,
+  producerSchedulingActionInput: ProducerSchedulingActionInput,
   options?: RequestInit,
-): Promise<ProducerBlockedDelivery> => {
-  return customFetch<ProducerBlockedDelivery>(
+): Promise<ProducerSchedulingActionResult> => {
+  return customFetch<ProducerSchedulingActionResult>(
     getSendProducerSchedulingLinkUrl(id),
     {
       ...options,
       method: "POST",
       headers: { "Content-Type": "application/json", ...options?.headers },
-      body: JSON.stringify(producerEmptyActionInput),
+      body: JSON.stringify(producerSchedulingActionInput),
     },
   );
 };
 
 export const getSendProducerSchedulingLinkMutationOptions = <
-  TError = ErrorType<ConflictResponse>,
+  TError = ErrorType<ProducerSchedulingActionError | ConflictResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof sendProducerSchedulingLink>>,
     TError,
-    { id: string; data: BodyType<ProducerEmptyActionInput> },
+    { id: string; data: BodyType<ProducerSchedulingActionInput> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
   Awaited<ReturnType<typeof sendProducerSchedulingLink>>,
   TError,
-  { id: string; data: BodyType<ProducerEmptyActionInput> },
+  { id: string; data: BodyType<ProducerSchedulingActionInput> },
   TContext
 > => {
   const mutationKey = ["sendProducerSchedulingLink"];
@@ -762,7 +767,7 @@ export const getSendProducerSchedulingLinkMutationOptions = <
 
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof sendProducerSchedulingLink>>,
-    { id: string; data: BodyType<ProducerEmptyActionInput> }
+    { id: string; data: BodyType<ProducerSchedulingActionInput> }
   > = (props) => {
     const { id, data } = props ?? {};
 
@@ -776,25 +781,26 @@ export type SendProducerSchedulingLinkMutationResult = NonNullable<
   Awaited<ReturnType<typeof sendProducerSchedulingLink>>
 >;
 export type SendProducerSchedulingLinkMutationBody =
-  BodyType<ProducerEmptyActionInput>;
-export type SendProducerSchedulingLinkMutationError =
-  ErrorType<ConflictResponse>;
+  BodyType<ProducerSchedulingActionInput>;
+export type SendProducerSchedulingLinkMutationError = ErrorType<
+  ProducerSchedulingActionError | ConflictResponse
+>;
 
 export const useSendProducerSchedulingLink = <
-  TError = ErrorType<ConflictResponse>,
+  TError = ErrorType<ProducerSchedulingActionError | ConflictResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof sendProducerSchedulingLink>>,
     TError,
-    { id: string; data: BodyType<ProducerEmptyActionInput> },
+    { id: string; data: BodyType<ProducerSchedulingActionInput> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
   Awaited<ReturnType<typeof sendProducerSchedulingLink>>,
   TError,
-  { id: string; data: BodyType<ProducerEmptyActionInput> },
+  { id: string; data: BodyType<ProducerSchedulingActionInput> },
   TContext
 > => {
   return useMutation(getSendProducerSchedulingLinkMutationOptions(options));

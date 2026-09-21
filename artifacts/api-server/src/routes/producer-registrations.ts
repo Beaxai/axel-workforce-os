@@ -1,4 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
+import { SendProducerSchedulingLinkBody } from "@workspace/api-zod";
 import {
   db,
   producerRegistrationActivityTable,
@@ -484,6 +485,12 @@ router.post(
   "/:id/send-scheduling-link",
   requireTrustedAxelAdmin,
   async (req: Request<{ id: string }>, res: Response) => {
+    const parsed = SendProducerSchedulingLinkBody.strict().safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: "invalid_scheduling_action" });
+    }
+    const { intent } = parsed.data;
+    const actionId = parsed.data.actionId.toLowerCase();
     const result = await db.transaction(async (tx) => {
       const [registration] = await tx
         .select()
@@ -498,31 +505,48 @@ router.post(
       if (!registration) return "not_found" as const;
       if (registration.decision === "declined") return "declined" as const;
 
+      // The registration lock serializes retries and keeps outbox + audit atomic.
+      // Replays use the original action rather than current recipient data.
+      const [previous] = await tx.select()
+        .from(producerRegistrationActivityTable)
+        .where(and(
+          eq(producerRegistrationActivityTable.orgId, req.user!.orgId!),
+          eq(producerRegistrationActivityTable.registrationId, registration.id),
+          eq(producerRegistrationActivityTable.action, "SCHEDULING_LINK_DELIVERY_BLOCKED"),
+          sql`${producerRegistrationActivityTable.after}->>'actionId' = ${actionId}`,
+        ));
+      if (previous) {
+        const after = previous.after as { intent: string; notificationId: string };
+        if (after.intent !== intent) return "idempotency_conflict" as const;
+        return { notificationId: after.notificationId, replayed: true };
+      }
+
       const recipientEmails = safeApplicantRecipientEmails(
         registration.payload,
       );
       if (recipientEmails.length === 0) return "recipient_missing" as const;
 
-      await enqueueProducerNotification(tx, {
+      const notification = await enqueueProducerNotification(tx, {
         orgId: req.user!.orgId!,
         registrationId: registration.id,
         event: "scheduling_link",
-        dedupeKey: `scheduling-link:${registration.id}`,
+        dedupeKey: `scheduling-link:${registration.id}:${actionId}`,
         recipientEmails,
         data: {
           reference: registration.reference,
           schedulingUrl: `https://calendly.com/axelworkforcesolutions/30min?utm_content=${encodeURIComponent(registration.reference)}`,
         },
       });
+      if (!notification) throw new Error("Scheduling action outbox exists without its audit");
       await tx.insert(producerRegistrationActivityTable).values({
         orgId: req.user!.orgId!,
         registrationId: registration.id,
         actorId: req.user!.id,
         action: "SCHEDULING_LINK_DELIVERY_BLOCKED",
         before: null,
-        after: null,
+        after: { actionId, intent, notificationId: notification.id, status: "blocked" },
       });
-      return "blocked" as const;
+      return { notificationId: notification.id, replayed: false };
     });
 
     if (result === "not_found") {
@@ -542,9 +566,12 @@ router.post(
         "No validated applicant email is available for the scheduling link.",
       );
     }
+    if (result === "idempotency_conflict") {
+      return conflict(res, "idempotency_conflict", "An action ID cannot be reused with a different intent.");
+    }
     return res
       .status(202)
-      .json({ status: "blocked", reason: "DELIVERY_NOT_ENABLED" });
+      .json({ status: "blocked", reason: "DELIVERY_NOT_ENABLED", actionId, intent, ...result });
   },
 );
 

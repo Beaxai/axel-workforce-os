@@ -158,6 +158,41 @@ export interface ProducerEmptyActionInput {
   [key: string]: unknown;
 }
 
+export type ProducerSchedulingActionInputIntent =
+  (typeof ProducerSchedulingActionInputIntent)[keyof typeof ProducerSchedulingActionInputIntent];
+
+export const ProducerSchedulingActionInputIntent = {
+  send: "send",
+  resend: "resend",
+} as const;
+
+export interface ProducerSchedulingActionInput {
+  /** Caller-generated UUID, stable across transport retries and new for intentional resends. */
+  actionId: string;
+  intent: ProducerSchedulingActionInputIntent;
+}
+
+export type ProducerSchedulingActionResultIntent =
+  (typeof ProducerSchedulingActionResultIntent)[keyof typeof ProducerSchedulingActionResultIntent];
+
+export const ProducerSchedulingActionResultIntent = {
+  send: "send",
+  resend: "resend",
+} as const;
+
+export interface ProducerSchedulingActionResult {
+  status: "blocked";
+  reason: "DELIVERY_NOT_ENABLED";
+  actionId: string;
+  intent: ProducerSchedulingActionResultIntent;
+  notificationId: string;
+  replayed: boolean;
+}
+
+export interface ProducerSchedulingActionError {
+  error: string;
+}
+
 export const ProducerBlockedDeliveryValue = {
   status: "blocked",
   reason: "DELIVERY_NOT_ENABLED",

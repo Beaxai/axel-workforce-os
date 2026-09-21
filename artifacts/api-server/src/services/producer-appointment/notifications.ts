@@ -304,14 +304,14 @@ export function renderProducerNotification(
 export async function enqueueProducerNotification(
   tx: ProducerNotificationTransaction,
   input: EnqueueProducerNotificationInput,
-): Promise<void> {
+): Promise<{ id: string } | null> {
   const parsed = enqueueInputSchema.parse(input);
   const recipientEmails = [
     ...new Set(parsed.recipientEmails),
   ];
   const rendered = renderProducerNotification(parsed.event, parsed.data);
 
-  await tx
+  const [inserted] = await tx
     .insert(producerNotificationsTable)
     .values({
       orgId: parsed.orgId,
@@ -332,7 +332,9 @@ export async function enqueueProducerNotification(
         producerNotificationsTable.orgId,
         producerNotificationsTable.dedupeKey,
       ],
-    });
+    })
+    .returning({ id: producerNotificationsTable.id });
+  return inserted ?? null;
 }
 
 export type SchedulingNotificationDueInput =

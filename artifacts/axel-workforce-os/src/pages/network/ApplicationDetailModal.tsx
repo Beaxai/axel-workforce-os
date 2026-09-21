@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import type { ProducerSchedulingActionInput, ProducerSchedulingActionResult } from "@workspace/api-client-react";
 import { api, ApiError } from "@/lib/api";
 import { useThemeStore } from "@/lib/theme-store";
 import { useAuthStore } from "@/lib/auth-store";
@@ -60,16 +61,36 @@ export function ApplicationDetailModal({ applicationId, onClose }: ApplicationDe
   });
 
   const sendLinkMut = useMutation({
-    mutationFn: () => api.post(`/producer-registrations/${applicationId}/send-scheduling-link`, {}),
-    onSuccess: (res: any) => {
+    mutationFn: (action: ProducerSchedulingActionInput) =>
+      api.post<ProducerSchedulingActionResult>(`/producer-registrations/${applicationId}/send-scheduling-link`, action),
+    onSuccess: (res) => {
+      sessionStorage.removeItem(`scheduling-action:${user?.id}:${applicationId}`);
+      onSuccessMutate();
       if (res?.status === "blocked") {
         setServerError(`Blocked: ${res.reason}`);
-      } else {
-        onSuccessMutate();
       }
     },
     onError: onErrorMutate,
   });
+
+  const hasSchedulingRequest = app?.activity?.some(
+    (entry: any) => entry.action === "SCHEDULING_LINK_DELIVERY_BLOCKED",
+  );
+  const requestSchedulingLink = () => {
+    // Keep unresolved actions across transport retries and modal reloads.
+    const storageKey = `scheduling-action:${user?.id}:${applicationId}`;
+    try {
+      const pending = sessionStorage.getItem(storageKey);
+      const action = pending ? JSON.parse(pending) : {
+        actionId: crypto.randomUUID(),
+        intent: hasSchedulingRequest ? "resend" : "send",
+      };
+      sessionStorage.setItem(storageKey, JSON.stringify(action));
+      sendLinkMut.mutate(action);
+    } catch {
+      setServerError("Unable to preserve the scheduling request for safe retries. Please check browser storage access.");
+    }
+  };
 
   const issueCredsMut = useMutation({
     mutationFn: () => api.post(`/producer-registrations/${applicationId}/issue-credentials`, {}),
@@ -206,8 +227,8 @@ export function ApplicationDetailModal({ applicationId, onClose }: ApplicationDe
                     <p style={{ fontSize: "13px", color: textMuted, margin: 0 }}>Not scheduled yet.</p>
                   )}
                   {app.permissions?.canSendSchedulingLink && (
-                    <PinkButton onClick={() => sendLinkMut.mutate()} style={{ width: "100%", marginTop: "16px", padding: "8px" }} disabled={sendLinkMut.isPending}>
-                      {sendLinkMut.isPending ? "Sending..." : "Send Scheduling Link"}
+                    <PinkButton onClick={requestSchedulingLink} style={{ width: "100%", marginTop: "16px", padding: "8px" }} disabled={sendLinkMut.isPending}>
+                      {sendLinkMut.isPending ? "Recording..." : sendLinkMut.isError ? "Retry Scheduling Request" : hasSchedulingRequest ? "Resend Scheduling Link" : "Send Scheduling Link"}
                     </PinkButton>
                   )}
                 </div>

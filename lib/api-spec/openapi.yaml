@@ -213,6 +213,11 @@ paths:
     post:
       operationId: sendProducerSchedulingLink
       tags: [producer-applications]
+      description: >-
+        ADMIN-only blocked scheduling request. Generate a new actionId for each
+        intentional send or resend; reuse the same actionId and intent for transport
+        retries. Identity is scoped to organization and registration. Replays
+        return the original notification without adding an audit or outbox item.
       parameters:
         - $ref: "#/components/parameters/ProducerRegistrationId"
       requestBody:
@@ -220,16 +225,34 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ProducerEmptyActionInput"
+              $ref: "#/components/schemas/ProducerSchedulingActionInput"
       responses:
         "202":
           description: Delivery request persisted but delivery is disabled
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ProducerBlockedDelivery"
+                $ref: "#/components/schemas/ProducerSchedulingActionResult"
+        "400":
+          description: Invalid action ID, missing intent, or unknown request fields
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProducerSchedulingActionError"
+        "403":
+          description: Requires trusted Axel ADMIN access
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProducerSchedulingActionError"
+        "404":
+          description: Registration not found in the caller's organization
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProducerSchedulingActionError"
         "409":
-          description: Scheduling request cannot be created
+          description: Declined registration, missing validated recipient, or action ID reused with a different intent
           content:
             application/json:
               schema:
@@ -2006,6 +2029,34 @@ components:
     ProducerEmptyActionInput:
       type: object
       additionalProperties: false
+    ProducerSchedulingActionInput:
+      type: object
+      additionalProperties: false
+      required: [actionId, intent]
+      properties:
+        actionId:
+          type: string
+          format: uuid
+          description: Caller-generated UUID, stable across transport retries and new for intentional resends.
+        intent:
+          type: string
+          enum: [send, resend]
+    ProducerSchedulingActionResult:
+      type: object
+      additionalProperties: false
+      required: [status, reason, actionId, intent, notificationId, replayed]
+      properties:
+        status: { type: string, const: blocked }
+        reason: { type: string, const: DELIVERY_NOT_ENABLED }
+        actionId: { type: string, format: uuid }
+        intent: { type: string, enum: [send, resend] }
+        notificationId: { type: string, format: uuid }
+        replayed: { type: boolean }
+    ProducerSchedulingActionError:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
     ProducerBlockedDelivery:
       type: object
       additionalProperties: false

@@ -104,7 +104,7 @@ function captureTransaction() {
           rows.push(value);
           return {
             onConflictDoNothing() {
-              return Promise.resolve();
+              return { returning: async () => [{ id: "audit-notification" }] };
             },
           };
         },

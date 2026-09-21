@@ -96,8 +96,21 @@ is visible rather than assumed sent.
 - `POST /:id/decline { reason }` — ADMIN; requires Ready for Decision. If a
   provider envelope exists it returns `409 packet_void_not_configured`; without
   an envelope it records the decline and a blocked notification request.
-- `POST /:id/send-scheduling-link {}` — ADMIN; records a blocked durable outbox
-  request and returns `202 {status:"blocked",reason:"DELIVERY_NOT_ENABLED"}`.
+- `POST /:id/send-scheduling-link { actionId: UUID, intent: "send" | "resend" }`
+  — trusted Axel ADMIN only. Use a new caller-generated action ID for each
+  intentional send/resend; reuse both fields for transport retries. Extra fields
+  and missing/invalid fields return `400 invalid_scheduling_action`. Each identity
+  is scoped to organization + registration + action ID. One transaction creates
+  one blocked outbox item and one audit recording the action ID, intent,
+  notification ID, and blocked status. Retries return the original item without
+  an additional audit. Changing intent for an existing ID returns
+  `409 idempotency_conflict`. Declined registrations and missing validated
+  recipients return 409; tenant-scoped missing registrations return 404.
+  The 202 response is
+  `{status:"blocked",reason:"DELIVERY_NOT_ENABLED",actionId,intent,notificationId,replayed}`.
+  This response confirms persistence only, never delivery. The UI preserves
+  unresolved identities in session storage across failures/reloads; after a
+  successful response the next intentional request receives a fresh ID.
 - `POST /:id/issue-credentials {}` — ADMIN; validates approved + call complete +
   countersigned, then returns `409 credential_handoff_not_configured`.
 - `GET /:id/documents/:documentId/access` — authorized and tenant-scoped. Until
