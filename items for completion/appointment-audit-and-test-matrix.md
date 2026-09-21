@@ -1,7 +1,8 @@
 # Producer appointment — audit, gaps, and testability
 
 **Original audit date:** September 20, 2026, America/New_York.
-**Current code reconciliation:** September 21, 2026 (source inspection only).
+**Current code reconciliation:** September 21, 2026 (including the manual
+scheduling-email Development milestone).
 **Verdict:** Not ready for end-to-end acceptance or launch.
 
 ## Current status key and evidence boundary
@@ -13,11 +14,10 @@
 - **Acceptance unverified:** implementation/configuration may exist, but the
   authorized external, release, mobile, or production acceptance evidence does not.
 
-The September 21 reconciliation inspected current source after the scheduling
-action idempotency and configuration-availability changes merged. It did **not**
-run tests, inspect production, call providers, send messages, read secrets, or
-change an application, database, or configuration. All test and database results
-below are explicitly historical results from the September 20–21 audit.
+The latest September 21 reconciliation inspected current source and includes a
+separate controlled Development test of the new manual scheduling delivery path.
+It did not inspect production or verify a Calendly booking. Historical results
+remain labeled below.
 
 ## Historical fix verification — September 21, 2026
 
@@ -138,24 +138,36 @@ and align the helper contract/tests.
   PostgreSQL UUID syntax, dedupe, booking ordering, cancellation/replacement, and
   staff-review persistence are in current source. Live provider acceptance is
   still unverified; see gap 7 below.
-- **Manual scheduling action idempotency is built (blocked delivery only):**
+- **Manual scheduling action idempotency and narrow delivery are built:**
   `POST /:id/send-scheduling-link` requires `{ actionId: UUID, intent: "send" | "resend" }`.
   Generate a fresh action ID for an intentional send/resend; transport retries
   must reuse both values. Identity is scoped to organization + registration +
   action ID (intent cannot be changed for an existing identity; that returns 409).
-  Registration row locking and one transaction persist exactly one blocked
-  notification and one matching `SCHEDULING_LINK_DELIVERY_BLOCKED` audit per action.
-  Audit `after` records action ID, intent, notification ID and blocked status.
+   Registration row locking and one transaction persist exactly one notification
+   and matching requested/blocked audit per action. Audit `after` records action
+   ID, intent, notification ID and initial status.
   Replays return the original notification ID with `replayed: true` and add no audit.
-  A new resend ID creates a distinct blocked item; historical registration-wide
+   A new resend ID creates a distinct item; historical registration-wide
   items remain untouched. The staff UI retains unresolved IDs in session storage
   through transport errors/reloads, clearing them only on a successful response.
   Role/trusted-staff, organization, declined-registration and validated-recipient
-  gates remain enforced. No worker, provider call or live delivery was enabled.
+   gates remain enforced. A closed-by-default worker/Resend adapter now handles
+   new `scheduling_link` rows only when enablement, provider configuration, and
+   the complete recipient allowlist pass. It atomically claims, retries known
+   transient failures with a stable idempotency key, records provider acceptance,
+   and treats unknown/stale outcomes conservatively. Historical blocked rows and
+   every other event remain blocked.
   Development route regression evidence: eight concurrent requests for one resend
   produced one blocked outbox item and one audit; seven replies were replays.
   Sequential retries, changed-intent conflicts, a distinct new resend, strict body
   validation, and role/trust/tenant/lifecycle/recipient gates passed.
+   A later real Development test invoked the authenticated route twice with the
+   same action, then the worker: one notification attempt was made, Resend
+   accepted it, and an independent read-only provider lookup returned HTTP 200
+   with `last_event: delivered`. This is provider-reported delivery, not proof of
+   human reading. Browser verification confirmed an actual resend and persistent
+   accepted statuses; a stale queued callout was fixed afterward and covered by
+   three passing regression tests, without another browser send.
 - **Configuration availability is now built.** The detail API returns separate
   availability objects for approval, credential issuance, and document access.
   The current modal displays the reasons and disables those controls when
@@ -211,13 +223,14 @@ and align the helper contract/tests.
    and explicit recoverable failures. Also follow the private-file steps in
    [Admin activation](appointment-admin-activation.md).
 
-6. **Producer email delivery and reminders — incomplete; Resend/recipient
-   configuration and acceptance pending.** Execute the ordered requirements in
-   [Email delivery and scheduling](appointment-email-delivery.md): approve sender
-   and recipients, implement atomic worker/retries/failure transitions, define
-   unblock policy, implement scheduler, and run controlled staging delivery.
+6. **Producer lifecycle email and reminders — incomplete; manual scheduling
+   delivery is built and narrowly verified in Development.** Execute the remaining
+   ordered requirements in [Email delivery and scheduling](appointment-email-delivery.md):
+   approve broader sender/recipient policy, retain the closed gate and historical
+   backlog policy, add reconciliation/operations, implement lifecycle producers
+   and scheduler, and run controlled staging acceptance for every template.
    Dependency: SignWell/Calendly reminder policy and safe document origin.
-   Completion evidence: provider receipt for every template, exactly-once
+   Completion evidence still required: provider evidence for every remaining template, exactly-once
    48-hour nudge/conditional 24-hour reminder, bounded retry/bounce handling,
    monitoring, and no sensitive provider payload. Existing blocked rows must not
    be replayed or reinterpreted without an explicit reviewed migration policy.
@@ -308,6 +321,26 @@ and align the helper contract/tests.
     evidence. Completion evidence is an authorized sign-off package. No current
     statement in this document means production was inspected or passed.
 
+## Current manual scheduling-delivery verification (September 21)
+
+This milestone is separate from, and does not rewrite, the dated historical test
+table below:
+
+| Test group | Result | What it establishes |
+|---|---|---|
+| Delivery adapter/templates/audit unit suites | **23 passed** | Gate, provider classifications/idempotency, safe templates, and audit behavior |
+| Real Development DB with mocked provider | **3 passed** | Concurrency/receipt, retry while blocked backlog stays untouched, and stale-claim handling |
+| Baseline API/web/shared typecheck | **Passed** | Current source and regenerated contract typecheck |
+| Real authenticated route replay + worker | **Passed for one retained fixture** | Two same-action route calls produced one notification attempt; provider accepted it |
+| Independent Resend read-only lookup | **HTTP 200; `last_event: delivered`** | Provider reported delivery; not human-open/read evidence |
+| UI browser acceptance | **Real resend/persistence verified; callout fix unit-tested afterward** | Two accepted rows; no duplicate third row; no full clean browser rerun claimed |
+
+The first helper provider lookup timed out; the later independent read-only
+lookup supplied the provider-delivery evidence. No schema change or migration was
+part of this milestone. Exact sanitized fixture identifiers and the retention
+reason are in
+`docs/implementation/producer-scheduling-delivery-verification.md`.
+
 ## 3. Historical tests actually run (September 20–21 only)
 
 These results were not rerun during the September 21 source reconciliation.
@@ -376,7 +409,7 @@ steps, dependencies, and required completion evidence.
 | Envelope-present decline with void and delivered neutral notice | Incomplete; delivery configuration pending | Gaps 4 and 6 |
 | Live Calendly timing, Zoom link, reschedule compatibility | Configuration pending; acceptance unverified | Gap 7 |
 | Exactly-once 48-hour nudge / conditional 24-hour reminder | Incomplete | Gap 6 |
-| Resend receipt, retry/backoff, bounce/failure, sender/staff routing | Incomplete; configuration/acceptance pending | Gap 6 |
+| Remaining-template Resend receipt, bounce/failure reconciliation, sender/staff routing | Incomplete; manual scheduling only verified in Development | Gap 6 |
 | Human-readable safe activity with actor identity and changes | Incomplete | Gap 9 |
 | Legacy route handoff and direct-URL UX | Incomplete UX; backend denial built | Gap 10 |
 | Full phone navigation and Applications journey | Incomplete; acceptance unverified | Gap 11 |

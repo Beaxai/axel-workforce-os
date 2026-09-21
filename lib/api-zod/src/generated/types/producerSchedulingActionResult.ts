@@ -6,10 +6,16 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { ProducerSchedulingActionResultIntent } from "./producerSchedulingActionResultIntent";
+import type { ProducerSchedulingActionResultStatus } from "./producerSchedulingActionResultStatus";
 
 export interface ProducerSchedulingActionResult {
-  status: "blocked";
-  reason: "DELIVERY_NOT_ENABLED";
+  /** Persisted notification state. Sent means accepted by the email provider, not confirmed inbox delivery. */
+  status: ProducerSchedulingActionResultStatus;
+  /**
+   * Safe blocking or failure code; null when none.
+   * @nullable
+   */
+  reason: string | null;
   actionId: string;
   intent: ProducerSchedulingActionResultIntent;
   notificationId: string;

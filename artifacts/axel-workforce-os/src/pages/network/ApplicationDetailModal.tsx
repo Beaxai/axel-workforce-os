@@ -1,16 +1,69 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { ProducerSchedulingActionInput, ProducerSchedulingActionResult } from "@workspace/api-client-react";
+import type { ProducerSchedulingActionInput } from "@workspace/api-client-react";
 import { api, ApiError } from "@/lib/api";
 import { useThemeStore } from "@/lib/theme-store";
 import { useAuthStore } from "@/lib/auth-store";
 import { X, Loader2, AlertCircle, Calendar, CheckCircle2, XCircle, FileText, Download, Activity, Link as LinkIcon } from "lucide-react";
 import { format } from "date-fns";
 import { PinkButton, GhostButton, AxelBadge } from "@/components/ui/axel-index";
+import { resolveSchedulingResult } from "./scheduling-status";
 
 interface ApplicationDetailModalProps {
   applicationId: string;
   onClose: () => void;
+}
+
+type SchedulingDeliveryStatus = "blocked" | "pending" | "sending" | "sent" | "failed";
+
+interface SchedulingActionResult {
+  status: SchedulingDeliveryStatus;
+  reason?: string | null;
+  actionId: string;
+  intent: "send" | "resend";
+  notificationId: string;
+  replayed: boolean;
+}
+
+interface NotificationRequest {
+  id: string;
+  event: string;
+  status: string;
+  failureCode?: string | null;
+  createdAt: string;
+}
+
+const ACTIVE_DELIVERY_STATUSES = new Set(["pending", "sending"]);
+const DELIVERY_STATUS_COPY: Record<SchedulingDeliveryStatus, string> = {
+  pending: "Queued",
+  sending: "Sending",
+  sent: "Accepted by email provider",
+  failed: "Failed",
+  blocked: "Blocked",
+};
+
+function isSchedulingActionResult(value: unknown): value is SchedulingActionResult {
+  if (!value || typeof value !== "object") return false;
+  const result = value as Partial<SchedulingActionResult>;
+  return (
+    typeof result.actionId === "string" &&
+    typeof result.notificationId === "string" &&
+    (result.intent === "send" || result.intent === "resend") &&
+    typeof result.replayed === "boolean" &&
+    typeof result.status === "string" &&
+    Object.hasOwn(DELIVERY_STATUS_COPY, result.status)
+  );
+}
+
+function deliveryFailureMessage(code?: string | null) {
+  if (!code) return "Delivery did not complete. Review the request details and activity before deciding whether to resend.";
+  if (code === "DELIVERY_NOT_ENABLED") {
+    return "Email delivery is not enabled. Ask an administrator to configure delivery before creating a new resend.";
+  }
+  if (code === "RECIPIENT_MISSING" || code === "INVALID_RECIPIENT" || code === "NOTIFICATION_RECIPIENT_MISSING") {
+    return "No valid recipient email is available. Correct the applicant email before creating a new resend.";
+  }
+  return `Delivery did not complete (${code}). Review the email configuration, recipient, and activity before deciding whether to resend.`;
 }
 
 export function ApplicationDetailModal({ applicationId, onClose }: ApplicationDetailModalProps) {
@@ -19,27 +72,45 @@ export function ApplicationDetailModal({ applicationId, onClose }: ApplicationDe
   const { user } = useAuthStore();
   const isAdmin = user?.role === "ADMIN";
   const qc = useQueryClient();
+  const isMounted = useRef(true);
 
   const [notes, setNotes] = useState("");
   const [declineReason, setDeclineReason] = useState("");
   const [showDeclineForm, setShowDeclineForm] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
+  const [schedulingResult, setSchedulingResult] = useState<SchedulingActionResult | null>(null);
+  const [hasUnknownSchedulingResult, setHasUnknownSchedulingResult] = useState(false);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
   const { data: app, isLoading, isError } = useQuery<any>({
     queryKey: ["producer-registrations", applicationId],
     queryFn: () => api.get(`/producer-registrations/${applicationId}`),
+    refetchInterval: (query) => {
+      const detail = query.state.data as { notificationRequests?: NotificationRequest[] } | undefined;
+      return detail?.notificationRequests?.some(
+        (notification) => ACTIVE_DELIVERY_STATUSES.has(notification.status),
+      )
+        ? 2_000
+        : false;
+    },
   });
 
   const onSuccessMutate = () => {
     qc.invalidateQueries({ queryKey: ["producer-registrations"] });
     qc.invalidateQueries({ queryKey: ["producer-registrations", applicationId] });
-    setServerError(null);
+    if (isMounted.current) setServerError(null);
   };
 
   const onErrorMutate = (error: any) => {
     let msg = "An error occurred";
     if (error instanceof ApiError) msg = error.message;
-    setServerError(msg);
+    if (isMounted.current) setServerError(msg);
   };
 
   const completeCallMut = useMutation({
@@ -62,19 +133,48 @@ export function ApplicationDetailModal({ applicationId, onClose }: ApplicationDe
 
   const sendLinkMut = useMutation({
     mutationFn: (action: ProducerSchedulingActionInput) =>
-      api.post<ProducerSchedulingActionResult>(`/producer-registrations/${applicationId}/send-scheduling-link`, action),
+      api.post<unknown>(`/producer-registrations/${applicationId}/send-scheduling-link`, action),
     onSuccess: (res) => {
-      sessionStorage.removeItem(`scheduling-action:${user?.id}:${applicationId}`);
-      onSuccessMutate();
-      if (res?.status === "blocked") {
-        setServerError(`Blocked: ${res.reason}`);
+      qc.invalidateQueries({ queryKey: ["producer-registrations"] });
+      qc.invalidateQueries({ queryKey: ["producer-registrations", applicationId] });
+      if (!isSchedulingActionResult(res)) {
+        if (!isMounted.current) return;
+        setServerError(null);
+        setHasUnknownSchedulingResult(true);
+        setSchedulingResult(null);
+        setServerError("The scheduling request returned an unknown result. Review Delivery Status and activity before taking another action; do not create a duplicate resend.");
+        return;
       }
+      let storageCleanupFailed = false;
+      try {
+        sessionStorage.removeItem(`scheduling-action:${user?.id}:${applicationId}`);
+      } catch {
+        storageCleanupFailed = true;
+      }
+      if (!isMounted.current) return;
+      setServerError(storageCleanupFailed
+        ? "The email status is known, but this browser could not clear its saved retry. Check browser storage access before creating another resend."
+        : null);
+      setHasUnknownSchedulingResult(false);
+      setSchedulingResult(res);
     },
-    onError: onErrorMutate,
+    onError: (error: any) => {
+      if (!isMounted.current) return;
+      setSchedulingResult(null);
+      let detail = "The request result could not be confirmed. Review Delivery Status before retrying. A retry from this button reuses the same request ID.";
+      if (error instanceof ApiError && error.status >= 400 && error.status < 500) {
+        detail = error.body?.message || error.message;
+      }
+      setServerError(detail);
+    },
   });
 
-  const hasSchedulingRequest = app?.activity?.some(
-    (entry: any) => entry.action === "SCHEDULING_LINK_DELIVERY_BLOCKED",
+  const schedulingNotifications = (app?.notificationRequests || []).filter(
+    (notification: NotificationRequest) => notification.event === "scheduling_link",
+  );
+  const liveSchedulingResult = resolveSchedulingResult(schedulingResult, schedulingNotifications);
+  const hasSchedulingRequest = schedulingResult !== null || schedulingNotifications.length > 0 || app?.activity?.some(
+    (entry: any) => entry.action?.startsWith("SCHEDULING_LINK_"),
   );
   const requestSchedulingLink = () => {
     // Keep unresolved actions across transport retries and modal reloads.
@@ -85,7 +185,15 @@ export function ApplicationDetailModal({ applicationId, onClose }: ApplicationDe
         actionId: crypto.randomUUID(),
         intent: hasSchedulingRequest ? "resend" : "send",
       };
+      if (
+        typeof action?.actionId !== "string" ||
+        (action?.intent !== "send" && action?.intent !== "resend")
+      ) {
+        throw new Error("Invalid saved scheduling action");
+      }
       sessionStorage.setItem(storageKey, JSON.stringify(action));
+      setHasUnknownSchedulingResult(false);
+      setSchedulingResult(null);
       sendLinkMut.mutate(action);
     } catch {
       setServerError("Unable to preserve the scheduling request for safe retries. Please check browser storage access.");
@@ -165,6 +273,34 @@ export function ApplicationDetailModal({ applicationId, onClose }: ApplicationDe
                 </div>
               )}
 
+              {liveSchedulingResult && (
+                <div
+                  role="status"
+                  style={{
+                    padding: "12px 16px",
+                    background: liveSchedulingResult.status === "failed" || liveSchedulingResult.status === "blocked"
+                      ? "rgba(233,30,30,0.1)"
+                      : "rgba(30,233,123,0.05)",
+                    borderRadius: "8px",
+                    border: liveSchedulingResult.status === "failed" || liveSchedulingResult.status === "blocked"
+                      ? "1px solid rgba(233,30,30,0.2)"
+                      : "1px solid rgba(30,233,123,0.2)",
+                    color: liveSchedulingResult.status === "failed" || liveSchedulingResult.status === "blocked" ? "#E91E1E" : textPrimary,
+                  }}
+                >
+                  <p style={{ fontSize: "14px", fontWeight: 600, margin: 0 }}>
+                    Scheduling email: {DELIVERY_STATUS_COPY[liveSchedulingResult.status]}
+                  </p>
+                  <p style={{ fontSize: "12px", margin: "4px 0 0" }}>
+                    {liveSchedulingResult.status === "pending" && "The email is queued for delivery."}
+                    {liveSchedulingResult.status === "sending" && "The email is being submitted to the provider."}
+                    {liveSchedulingResult.status === "sent" && "The provider accepted the email. This does not confirm inbox delivery."}
+                    {(liveSchedulingResult.status === "failed" || liveSchedulingResult.status === "blocked") &&
+                      deliveryFailureMessage(liveSchedulingResult.reason)}
+                  </p>
+                </div>
+              )}
+
               {/* Header Info */}
               <div>
                 <h3 style={{ fontSize: "24px", fontWeight: 600, color: textPrimary, margin: "0 0 4px 0" }}>{app.agencyName}</h3>
@@ -227,8 +363,8 @@ export function ApplicationDetailModal({ applicationId, onClose }: ApplicationDe
                     <p style={{ fontSize: "13px", color: textMuted, margin: 0 }}>Not scheduled yet.</p>
                   )}
                   {app.permissions?.canSendSchedulingLink && (
-                    <PinkButton onClick={requestSchedulingLink} style={{ width: "100%", marginTop: "16px", padding: "8px" }} disabled={sendLinkMut.isPending}>
-                      {sendLinkMut.isPending ? "Recording..." : sendLinkMut.isError ? "Retry Scheduling Request" : hasSchedulingRequest ? "Resend Scheduling Link" : "Send Scheduling Link"}
+                    <PinkButton onClick={requestSchedulingLink} style={{ width: "100%", marginTop: "16px", padding: "8px" }} disabled={sendLinkMut.isPending || hasUnknownSchedulingResult}>
+                      {sendLinkMut.isPending ? "Submitting Request..." : sendLinkMut.isError ? "Retry Scheduling Request" : hasUnknownSchedulingResult ? "Review Status Before Resending" : hasSchedulingRequest ? "Resend Scheduling Link" : "Send Scheduling Link"}
                     </PinkButton>
                   )}
                 </div>
@@ -336,20 +472,34 @@ export function ApplicationDetailModal({ applicationId, onClose }: ApplicationDe
                 <div>
                   <p style={{ fontSize: "14px", fontWeight: 600, color: textPrimary, margin: "0 0 12px 0" }}>Delivery Status</p>
                   <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                    {app.notificationRequests.map((notif: any) => (
+                    {app.notificationRequests.map((notif: NotificationRequest) => {
+                      const knownStatus = notif.status as SchedulingDeliveryStatus;
+                      const label = Object.hasOwn(DELIVERY_STATUS_COPY, knownStatus)
+                        ? DELIVERY_STATUS_COPY[knownStatus]
+                        : "Unknown — review required";
+                      const isFailure = knownStatus === "blocked" || knownStatus === "failed" || Boolean(notif.failureCode);
+                      return (
                       <div key={notif.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px", background: bgPanel, border: borderPanel, borderRadius: "8px" }}>
                         <div>
                           <p style={{ fontSize: "13px", fontWeight: 500, color: textPrimary, margin: 0 }}>{notif.event}</p>
                           <p style={{ fontSize: "12px", color: textMuted, margin: "2px 0 0 0" }}>{format(new Date(notif.createdAt), "MMM d, yyyy h:mm a")}</p>
-                        </div>
-                        <div style={{ textAlign: "right" }}>
-                          <AxelBadge label={notif.status} color={notif.status === "blocked" || notif.failureCode ? "red" : "gray"} />
-                          {notif.failureCode && (
-                            <p style={{ fontSize: "11px", color: "#E91E1E", margin: "4px 0 0 0" }}>{notif.failureCode}</p>
+                          {knownStatus === "sent" && (
+                            <p style={{ fontSize: "11px", color: textMuted, margin: "4px 0 0" }}>Provider acceptance does not confirm inbox delivery.</p>
+                          )}
+                          {(isFailure || !Object.hasOwn(DELIVERY_STATUS_COPY, knownStatus)) && (
+                            <p style={{ fontSize: "11px", color: "#E91E1E", margin: "4px 0 0 0", maxWidth: "360px" }}>
+                              {Object.hasOwn(DELIVERY_STATUS_COPY, knownStatus)
+                                ? deliveryFailureMessage(notif.failureCode)
+                                : "Status is not recognized. Review the request and activity manually; do not create a duplicate resend."}
+                            </p>
                           )}
                         </div>
+                        <div style={{ textAlign: "right" }}>
+                          <AxelBadge label={label} color={isFailure ? "red" : knownStatus === "sent" ? "green" : knownStatus === "pending" || knownStatus === "sending" ? "yellow" : "gray"} />
+                        </div>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}

@@ -78,6 +78,19 @@ export interface ProducerNotificationRequest {
   /** @nullable */
   failureCode: string | null;
   createdAt: string;
+  /** @minimum 0 */
+  attemptCount?: number;
+  availableAt?: string;
+  /** @nullable */
+  nextRetryAt?: string | null;
+  /** @nullable */
+  sendingStartedAt?: string | null;
+  /**
+   * Provider acceptance time, not mailbox delivery confirmation.
+   * @nullable
+   */
+  sentAt?: string | null;
+  updatedAt?: string;
 }
 
 export interface ProducerApplicationPermissions {
@@ -172,6 +185,20 @@ export interface ProducerSchedulingActionInput {
   intent: ProducerSchedulingActionInputIntent;
 }
 
+/**
+ * Persisted notification state. Sent means accepted by the email provider, not confirmed inbox delivery.
+ */
+export type ProducerSchedulingActionResultStatus =
+  (typeof ProducerSchedulingActionResultStatus)[keyof typeof ProducerSchedulingActionResultStatus];
+
+export const ProducerSchedulingActionResultStatus = {
+  blocked: "blocked",
+  pending: "pending",
+  sending: "sending",
+  sent: "sent",
+  failed: "failed",
+} as const;
+
 export type ProducerSchedulingActionResultIntent =
   (typeof ProducerSchedulingActionResultIntent)[keyof typeof ProducerSchedulingActionResultIntent];
 
@@ -181,8 +208,13 @@ export const ProducerSchedulingActionResultIntent = {
 } as const;
 
 export interface ProducerSchedulingActionResult {
-  status: "blocked";
-  reason: "DELIVERY_NOT_ENABLED";
+  /** Persisted notification state. Sent means accepted by the email provider, not confirmed inbox delivery. */
+  status: ProducerSchedulingActionResultStatus;
+  /**
+   * Safe blocking or failure code; null when none.
+   * @nullable
+   */
+  reason: string | null;
   actionId: string;
   intent: ProducerSchedulingActionResultIntent;
   notificationId: string;

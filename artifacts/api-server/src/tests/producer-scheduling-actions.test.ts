@@ -40,6 +40,8 @@ let registrationId = "";
 let foreignRegistrationId = "";
 let declinedRegistrationId = "";
 let recipientMissingRegistrationId = "";
+const originalDeliveryEnabled =
+  process.env.PRODUCER_SCHEDULING_DELIVERY_ENABLED;
 
 async function createUser(emailPrefix: string, role: string, orgId: string) {
   const [user] = await db
@@ -116,6 +118,9 @@ describe("producer scheduling action idempotency", {
     : false,
 }, () => {
   before(async () => {
+    // This suite verifies the blocked contract and must remain provider-free
+    // even when a developer shell has live delivery explicitly enabled.
+    process.env.PRODUCER_SCHEDULING_DELIVERY_ENABLED = "false";
     assert.ok(
       process.env.NODE_ENV === "development" &&
       !process.env.REPLIT_DEPLOYMENT &&
@@ -214,6 +219,12 @@ describe("producer scheduling action idempotency", {
   });
 
   after(async () => {
+    if (originalDeliveryEnabled === undefined) {
+      delete process.env.PRODUCER_SCHEDULING_DELIVERY_ENABLED;
+    } else {
+      process.env.PRODUCER_SCHEDULING_DELIVERY_ENABLED =
+        originalDeliveryEnabled;
+    }
     if (closeServer) await closeServer();
 
     const registrationIds = [

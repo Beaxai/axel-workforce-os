@@ -1,8 +1,9 @@
 # Calendly appointment setup — current completion review
 
 **Reviewed against current source:** September 21, 2026.
-**Scope:** repository evidence only. No Calendly account, subscription, secret,
-live booking, deployment configuration, or production database was checked.
+**Scope:** current source plus the separately recorded Development manual-email
+milestone. No Calendly account, subscription, live booking, or production
+database was checked.
 
 ## Status summary
 
@@ -27,9 +28,14 @@ live booking, deployment configuration, or production database was checked.
   and blocked notification requests.
 - The latest Admin scheduling-link action has strict `actionId` plus
   `send`/`resend` intent, atomic audit/outbox persistence, replay-safe retries,
-  conflict detection, and UI retention of an unresolved action ID. It remains
-  unavailable as delivery: responses explicitly say
-  `blocked/DELIVERY_NOT_ENABLED`.
+  conflict detection, and UI retention of an unresolved action ID. New requests
+  become pending only when the closed-by-default scheduling-delivery gate,
+  provider configuration, and complete test-recipient allowlist pass.
+- A worker and Resend adapter are built for those new manual `scheduling_link`
+  requests only. They use atomic bounded claims, stable provider idempotency,
+  bounded known-failure retries, conservative unknown/stale handling, declined
+  registration checks, and provider-receipt audit. Historical blocked requests
+  are not selected.
 
 ### Incomplete in source
 
@@ -40,8 +46,9 @@ live booking, deployment configuration, or production database was checked.
   required staff notification is not implemented.
 - The 48-hour scheduling-nudge and conditional 24-hour reminder exist only as a
   pure due predicate. No scheduler/worker invokes it.
-- Producer notification delivery itself is unfinished, so manual scheduling
-  actions and cancellation notices are persisted but not sent.
+- Delivery for cancellation notices and every other appointment lifecycle event
+  remains unfinished and blocked. The manual scheduling worker does not select
+  those events.
 - Live account evidence that the selected event is a 45-minute Zoom meeting
   has not been recorded; the required duration itself is explicitly specified.
 
@@ -67,6 +74,11 @@ Live booking visibility within one minute, actual signature verification from
 Calendly, duplicate delivery, cancellation, reschedule, out-of-order delivery,
 meeting-link visibility, unmatched/ambiguous operations, reminder behavior, and
 production operation were not verified here.
+
+Development configuration inspection found `CALENDLY_SIGNING_KEY`,
+`CALENDLY_EVENT_URI`, and `PRODUCER_CALENDLY_ORG_ID` absent. A Calendly
+integration is available but not connected. No fake booking should be used to
+claim acceptance; actual booking remains open.
 
 ## Completion plan for every remaining gap
 
@@ -137,24 +149,31 @@ cancellation, missing-recipient, resolution, dedupe, and tenant isolation;
 staging evidence that both the queue and authorized staff notice reflect one
 event.
 
-### 5. Finish producer scheduling-link delivery
+### 5. Complete producer scheduling-link delivery acceptance and operations
 
 **Dependency:** the worker and provider boundary in
 `appointment-email-delivery.md`.
 
 1. Preserve the current action-ID semantics: reuse the same ID/intent only for a
    transport retry and generate a new ID for an intentional resend.
-2. Dispatch the persisted notification through the producer outbox rather than
-   calling a provider from the HTTP route.
+2. **Built:** dispatch the persisted notification through the producer outbox
+   rather than calling a provider from the HTTP route.
 3. Keep declined, untrusted, cross-tenant, and missing-recipient requests
    unavailable; surface configuration availability separately from role and
    lifecycle permission.
 4. Reconcile old `DELIVERY_NOT_ENABLED` rows under an approved historical-row
-   policy; never send them automatically when the worker is enabled.
+   policy; the current worker correctly leaves them untouched.
 
 **Completion evidence:** concurrent retry/resend tests, provider idempotency
 tests, UI/API acceptance showing delivered versus blocked/failed state, and no
 unexpected release of older blocked requests.
+
+The current Development milestone provides route replay, worker, and one real
+provider-reported `delivered` result for a retained manual fixture. It is not a
+human-read receipt, a full clean UI browser pass (a stale callout was fixed and
+unit-tested after the real resend check), an actual
+Calendly booking, or production proof. See
+`docs/implementation/producer-scheduling-delivery-verification.md`.
 
 ### 6. Implement the 48-hour nudge and conditional 24-hour reminder
 
@@ -220,6 +239,7 @@ Calendly tests and an opt-in Development persistence audit. This review did not
 rerun them. They are historical Development evidence only and do not prove a
 live subscription or production configuration.
 
-No provider call, subscription change, secret inspection, configuration change,
-migration application, database write, or email send was performed for this
-review.
+The later manual scheduling milestone did perform one controlled Development
+provider send and retained its fixture for a future real booking test. It made no
+schema/migration or Calendly subscription change and does not alter the
+historical Calendly results above.

@@ -13,4 +13,17 @@ export interface ProducerNotificationRequest {
   /** @nullable */
   failureCode: string | null;
   createdAt: Date;
+  /** @minimum 0 */
+  attemptCount?: number;
+  availableAt?: Date;
+  /** @nullable */
+  nextRetryAt?: Date | null;
+  /** @nullable */
+  sendingStartedAt?: Date | null;
+  /**
+   * Provider acceptance time, not mailbox delivery confirmation.
+   * @nullable
+   */
+  sentAt?: Date | null;
+  updatedAt?: Date;
 }

@@ -67,3 +67,7 @@ packages = ["freetype", "gumbo", "harfbuzz", "jbig2dec", "libjpeg_turbo", "mupdf
 [userenv.shared]
 LISTENER_EMAIL_DOMAIN = "submissions.axelins.com"
 OUTBOUND_EMAIL_FROM = "submissions@axelins.com"
+
+[userenv.development]
+PRODUCER_SCHEDULING_DELIVERY_ENABLED = "true"
+PRODUCER_SCHEDULING_TEST_RECIPIENTS = "bskrocki88@gmail.com"

@@ -64,6 +64,8 @@ export const GetProducerApplicationParams = zod.object({
   id: zod.coerce.string().uuid(),
 });
 
+export const getProducerApplicationResponseTwoNotificationRequestsItemAttemptCountMin = 0;
+
 export const GetProducerApplicationResponse = zod
   .object({
     id: zod.string().uuid(),
@@ -126,6 +128,22 @@ export const GetProducerApplicationResponse = zod
           status: zod.string(),
           failureCode: zod.string().nullable(),
           createdAt: zod.coerce.date(),
+          attemptCount: zod
+            .number()
+            .min(
+              getProducerApplicationResponseTwoNotificationRequestsItemAttemptCountMin,
+            )
+            .optional(),
+          availableAt: zod.coerce.date().optional(),
+          nextRetryAt: zod.coerce.date().nullish(),
+          sendingStartedAt: zod.coerce.date().nullish(),
+          sentAt: zod.coerce
+            .date()
+            .nullish()
+            .describe(
+              "Provider acceptance time, not mailbox delivery confirmation.",
+            ),
+          updatedAt: zod.coerce.date().optional(),
         }),
       ),
       blockingReasons: zod.array(zod.string()),
@@ -171,6 +189,8 @@ export const CompleteProducerApplicationCallBody = zod.object({
     .min(completeProducerApplicationCallBodyNotesMin)
     .max(completeProducerApplicationCallBodyNotesMax),
 });
+
+export const completeProducerApplicationCallResponseTwoNotificationRequestsItemAttemptCountMin = 0;
 
 export const CompleteProducerApplicationCallResponse = zod
   .object({
@@ -234,6 +254,22 @@ export const CompleteProducerApplicationCallResponse = zod
           status: zod.string(),
           failureCode: zod.string().nullable(),
           createdAt: zod.coerce.date(),
+          attemptCount: zod
+            .number()
+            .min(
+              completeProducerApplicationCallResponseTwoNotificationRequestsItemAttemptCountMin,
+            )
+            .optional(),
+          availableAt: zod.coerce.date().optional(),
+          nextRetryAt: zod.coerce.date().nullish(),
+          sendingStartedAt: zod.coerce.date().nullish(),
+          sentAt: zod.coerce
+            .date()
+            .nullish()
+            .describe(
+              "Provider acceptance time, not mailbox delivery confirmation.",
+            ),
+          updatedAt: zod.coerce.date().optional(),
         }),
       ),
       blockingReasons: zod.array(zod.string()),
@@ -268,6 +304,8 @@ export const ApproveProducerApplicationParams = zod.object({
 });
 
 export const ApproveProducerApplicationBody = zod.object({});
+
+export const approveProducerApplicationResponseTwoNotificationRequestsItemAttemptCountMin = 0;
 
 export const ApproveProducerApplicationResponse = zod
   .object({
@@ -331,6 +369,22 @@ export const ApproveProducerApplicationResponse = zod
           status: zod.string(),
           failureCode: zod.string().nullable(),
           createdAt: zod.coerce.date(),
+          attemptCount: zod
+            .number()
+            .min(
+              approveProducerApplicationResponseTwoNotificationRequestsItemAttemptCountMin,
+            )
+            .optional(),
+          availableAt: zod.coerce.date().optional(),
+          nextRetryAt: zod.coerce.date().nullish(),
+          sendingStartedAt: zod.coerce.date().nullish(),
+          sentAt: zod.coerce
+            .date()
+            .nullish()
+            .describe(
+              "Provider acceptance time, not mailbox delivery confirmation.",
+            ),
+          updatedAt: zod.coerce.date().optional(),
         }),
       ),
       blockingReasons: zod.array(zod.string()),
@@ -373,6 +427,8 @@ export const DeclineProducerApplicationBody = zod.object({
     .min(declineProducerApplicationBodyReasonMin)
     .max(declineProducerApplicationBodyReasonMax),
 });
+
+export const declineProducerApplicationResponseTwoNotificationRequestsItemAttemptCountMin = 0;
 
 export const DeclineProducerApplicationResponse = zod
   .object({
@@ -436,6 +492,22 @@ export const DeclineProducerApplicationResponse = zod
           status: zod.string(),
           failureCode: zod.string().nullable(),
           createdAt: zod.coerce.date(),
+          attemptCount: zod
+            .number()
+            .min(
+              declineProducerApplicationResponseTwoNotificationRequestsItemAttemptCountMin,
+            )
+            .optional(),
+          availableAt: zod.coerce.date().optional(),
+          nextRetryAt: zod.coerce.date().nullish(),
+          sendingStartedAt: zod.coerce.date().nullish(),
+          sentAt: zod.coerce
+            .date()
+            .nullish()
+            .describe(
+              "Provider acceptance time, not mailbox delivery confirmation.",
+            ),
+          updatedAt: zod.coerce.date().optional(),
         }),
       ),
       blockingReasons: zod.array(zod.string()),

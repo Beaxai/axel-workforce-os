@@ -105,6 +105,7 @@ export * from "./producerSchedulingActionInput";
 export * from "./producerSchedulingActionInputIntent";
 export * from "./producerSchedulingActionResult";
 export * from "./producerSchedulingActionResultIntent";
+export * from "./producerSchedulingActionResultStatus";
 export * from "./producerSchedulingReviewEvent";
 export * from "./profileActiveDeal";
 export * from "./profileOpenTask";

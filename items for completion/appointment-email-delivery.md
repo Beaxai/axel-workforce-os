@@ -1,9 +1,9 @@
 # Producer appointment email delivery — current completion review
 
-**Reviewed against current source:** September 21, 2026.
-**Scope:** repository evidence only. No production environment, Resend account,
-sender domain, secret, recipient mailbox, deployed worker, or provider delivery
-was checked.
+**Reviewed against current source and Development verification:** September 21,
+2026.
+**Scope:** the manual `scheduling_link` path only. Production, mailbox reading,
+and the remaining appointment lifecycle notifications were not verified.
 
 ## Status summary
 
@@ -30,34 +30,46 @@ that delivery has been tested, nor permission to mail unrelated real contacts.
   is strict, recipients are normalized and deduplicated, sensitive extra fields
   are rejected, and links are allowlisted
   (`services/producer-appointment/notifications.ts`).
-- `enqueueProducerNotification` is intentionally persistence-only: every new row
-  is written as `blocked` with `DELIVERY_NOT_ENABLED` and zero attempts. It does
-  not call Resend.
+- `enqueueProducerNotification` is persistence-only and does not call Resend.
+  Every event defaults to `blocked/DELIVERY_NOT_ENABLED`; only the authenticated
+  manual `scheduling_link` route can opt a newly created row into `pending` after
+  the delivery gate passes.
 - Current producers enqueue blocked requests for ready-for-decision, decline,
-  manual scheduling-link actions, and Calendly cancellation. The staff detail
-  API and UI expose blocked status and failure code.
+  and Calendly cancellation. Manual scheduling requests are pending or blocked
+  according to the gate. The staff detail API and UI expose persisted status and
+  failure code.
 - The latest manual scheduling-link action is implemented separately from
   delivery: a strict caller UUID plus `send`/`resend` intent, registration lock,
   atomic outbox/audit write, replay of the original result, conflict on intent
   reuse, and a fresh ID for an intentional resend. The browser retains an
-  unresolved action ID in session storage. This proves action persistence and
-  idempotency, not email delivery.
+  unresolved action ID in session storage.
+- A producer-specific Resend adapter and 15-second application-process worker are
+  built for `scheduling_link` only. New authenticated manual requests become
+  `pending` only when `PRODUCER_SCHEDULING_DELIVERY_ENABLED=true`, the provider
+  key and sender are configured, and every normalized recipient is in
+  `PRODUCER_SCHEDULING_TEST_RECIPIENTS`. Otherwise the route persists a blocked
+  request with an explicit gate failure.
+- The worker atomically claims bounded batches with `FOR UPDATE SKIP LOCKED`,
+  uses a notification-derived Resend idempotency key, records attempts and
+  provider acceptance, retries known 429/5xx responses with bounded backoff,
+  stops retrying ambiguous transport outcomes, rejects declined registrations,
+  fences concurrent/stale claims, and refuses late retries beyond the provider
+  idempotency window. It selects only `pending scheduling_link` rows, so
+  historical blocked rows and every other event remain blocked.
 
 ### Existing infrastructure that is **not** producer delivery
 
-`services/emailService.ts` contains real Resend transport for deal MARKET,
+`services/emailService.ts` also contains real Resend transport for deal MARKET,
 BROKER, and a narrow system-notice channel. It is coupled to deals,
 correspondence threads, deal recipient policy, reply routing, and
-`deal_outbound_emails`. Its presence does not make the separate
-`producer_notifications` outbox deliverable, and producer code does not call it.
-Reusing provider-boundary ideas is possible, but routing producer mail through
-the deal service as-is would violate its contract.
+`deal_outbound_emails`. The new producer scheduling adapter is separate and does
+not route producer mail through that deal contract.
 
 ### Incomplete in source
 
-- There is no producer notification dispatcher/worker, atomic claim operation,
-  Resend adapter, retry loop, stale-claim recovery, provider-result persistence,
-  monitoring, or operator retry/reconciliation control.
+- The worker is deliberately limited to manual `scheduling_link`. There is still
+  no dispatcher for the other producer events, scheduler, bounce/webhook status
+  reconciliation, monitoring, or operator retry/reconciliation control.
 - Most lifecycle events are templates only. No current producer calls enqueue
   `registration_received`, `packet_sent`, `exhibit_a_request`, `call_reminder`,
   `scheduling_nudge`, `approved_countersigned`, `credentials_issued`,
@@ -68,7 +80,7 @@ the deal service as-is would violate its contract.
 - Ready-for-decision currently addresses only the staff actor who completed the
   call. No approved staff distribution resolver exists.
 - Existing blocked rows have no approved disposition policy. They must not be
-  silently reclassified or released when delivery is later enabled.
+  silently reclassified or released; the worker currently leaves them untouched.
 
 ### Configuration pending
 
@@ -76,14 +88,28 @@ Email domains are shared; existing webhooks remain environment-specific.
 Remaining appointment-specific decisions concern sender identity within that
 setup, applicant recipient rules, trusted-staff distribution, authenticated
 application origin, SignWell notification policy and Calendly reminder policy.
-Actual delivery and correct deployed routing remain acceptance checks, not
-requests for new credentials or replacement webhooks.
+New manual requests additionally require the explicit enable flag, test-recipient
+allowlist, and provider sender/key configuration. Actual production delivery and
+correct deployed routing remain acceptance checks, not requests for new
+credentials or replacement webhooks.
 
 ### Acceptance unverified
 
-No controlled producer-template receipt, provider idempotency, transient/permanent
-failure, delivery-unknown recovery, stale claim, alert, mailbox, or production
-acceptance evidence exists in this review. Production readiness is not claimed.
+Development now has one real manual scheduling-link delivery result. The
+authenticated route was invoked twice with the same action identity, producing
+one notification attempt. Resend accepted it, and a later independent read-only
+Resend `GET` returned HTTP 200 with `last_event: delivered`. The first helper
+lookup timed out; the subsequent lookup supplied the delivery evidence. This is
+provider-reported delivery, not proof that a human opened or read the message.
+The retained fixture and exact identifiers are recorded in
+`docs/implementation/producer-scheduling-delivery-verification.md`.
+
+The browser check confirmed a real intentional resend, two accepted notifications
+and persisted Delivery Status after reopening. It exposed a stale queued callout,
+now fixed and covered by three passing focused tests; no full clean browser rerun
+is claimed. No controlled
+acceptance exists for the other templates, bounce handling, alerts, mailbox
+reading, or production.
 
 ## Completion plan for every remaining gap
 
@@ -105,38 +131,38 @@ staff distribution, and sensitive-data policy.
 security review, and tests that reject unapproved recipients and sensitive
 payload fields.
 
-### 2. Implement the producer-specific provider boundary
+### 2. Complete the producer-specific provider boundary
 
 **Dependencies:** item 1; reuse the existing Resend setup with the correct
 environment-specific webhook and matching signing secret.
 
-1. Add a producer mail adapter that accepts only a persisted producer
-   notification and does not depend on deal IDs or deal correspondence tables.
-2. Use a stable provider idempotency key derived from the notification attempt;
-   persist the provider message ID and a safe response classification.
-3. Distinguish permanent failure, retryable failure, and delivery-unknown. Never
-   automatically duplicate a send whose provider outcome is uncertain.
+1. **Built for manual scheduling only:** the adapter accepts a persisted
+   `scheduling_link`, is independent of deal correspondence, uses a stable
+   notification-derived provider key, persists the provider ID in appointment
+   activity, and distinguishes retryable, permanent, and unknown outcomes.
+2. Extend the reviewed boundary only when each additional lifecycle event has an
+   approved recipient policy and trigger.
+3. Add provider delivery/bounce webhook reconciliation and the associated safe
+   status model; do not equate provider acceptance with inbox delivery.
 4. Keep secrets out of rows, logs, API responses, and documentation.
 
 **Completion evidence:** boundary tests with a fake provider for success,
 permanent error, transient error, timeout-after-acceptance, duplicate key, and
 redacted logging; reviewed provider payload fixtures.
 
-### 3. Implement safe outbox dispatch and recovery
+### 3. Complete safe outbox dispatch and recovery
 
 **Dependencies:** item 2 and the migrated notification table in the target
 environment.
 
-1. Claim eligible rows atomically with bounded batches and concurrent-worker
-   exclusion; record `sending_started_at` and increment attempts before provider
-   I/O.
-2. Persist terminal status and provider metadata, schedule bounded backoff for
-   retryable failures, and quarantine exhausted/unknown outcomes.
-3. Add stale-claim recovery that requires provider reconciliation when delivery
-   may have occurred.
-4. Add operator views/actions for inspect, retry-as-new-attempt, suppress, and
+1. **Built for new manual scheduling rows:** bounded atomic claims, concurrent
+   worker exclusion, pre-I/O attempt recording, bounded known-failure retries,
+   terminal unknown handling, stale-claim fencing, and provider receipt audit.
+2. Add provider reconciliation for unknown/stale outcomes rather than
+   automatically resending them.
+3. Add operator views/actions for inspect, retry-as-new-attempt, suppress, and
    reconcile, all audited.
-5. Add metrics and alerts for blocked backlog, claim age, failure rate,
+4. Add metrics and alerts for blocked backlog, claim age, failure rate,
    exhausted retries, and delivery-unknown rows.
 
 **Completion evidence:** concurrency tests proving one claim/send per attempt,
@@ -147,7 +173,9 @@ test alerts/metrics.
 
 **Dependencies:** items 1–3 and controlled staging acceptance in item 7.
 
-1. Add an explicit environment/organization delivery gate that defaults closed.
+1. **Built for manual scheduling:** an explicit environment gate defaults closed
+   and additionally requires provider configuration and a complete recipient
+   allowlist match. Organization-level policy remains to be approved if needed.
 2. Inventory every pre-enable `blocked/DELIVERY_NOT_ENABLED` row by event and
    age without changing it.
 3. Approve a disposition for each class: suppress, regenerate from current
@@ -201,8 +229,10 @@ none for excluded states.
 **Dependencies:** items 1–6; authorized non-production recipients and approved
 provider configuration.
 
-1. Send every applicant/staff template in controlled staging and verify HTML,
-   text, links, sender identity, receipt, and no sensitive provider payload.
+1. Build on the one Development manual scheduling-link provider-delivery result:
+   send every remaining applicant/staff template in controlled staging and
+   verify HTML, text, links, sender identity, receipt, and no sensitive provider
+   payload.
 2. Exercise duplicate delivery, 4xx, 429, 5xx, timeout, stale claim, suppression,
    operator retry, and rollback.
 3. Record support owner, dashboards, alert routes, retention, incident response,
@@ -215,14 +245,14 @@ mailbox receipts for authorized tests, failure/recovery results, operational
 sign-off, and a production release record. Staging evidence must not be labeled
 as production evidence.
 
-## Historical evidence (not current or production proof)
+## Verification evidence (not production proof)
 
-`docs/implementation/producer-appointment-verification.md` records a September
-20 Development-only migration and UI/API verification. Current source also
-contains offline notification tests and an opt-in Development scheduling-action
-audit. This review did not rerun them. Those records establish historical
-development checks only; they do not establish delivered producer email or
-production readiness.
+The current milestone recorded **23 passing unit tests** across the delivery
+adapter, templates, and audit behavior; **3 passing real-Development-database
+tests** with a mocked provider covering concurrency/receipt, retry/backlog, and
+stale claims; and a passing baseline API/web/shared typecheck. The generated API
+contract was updated. No schema change or migration was required.
 
-No provider call, send, secret inspection, configuration change, migration
-application, database write, or worker startup was performed for this review.
+The real Development send proves only the narrow manual path and provider-reported
+delivery. Production remains unverified/test-only, and full lifecycle mail,
+reminders, bounce reconciliation, and actual Calendly booking remain open.

@@ -3,10 +3,12 @@ import { purgeExpiredClassifyCache } from "./lib/aiClassifyCache";
 import { sweepDepositDay21Tasks } from "./lib/deposit-monitor";
 import { processQueuedMarketDispatches } from "./lib/market-dispatch";
 import { logger } from "./lib/logger";
+import { runProducerSchedulingDeliverySweep } from "./services/producer-appointment/scheduling-delivery";
 
 const CLASSIFY_CACHE_SWEEP_INTERVAL_MS = 60 * 60 * 1000;
 const DEPOSIT_SWEEP_INTERVAL_MS = 60 * 60 * 1000;
 const MARKET_DISPATCH_SWEEP_INTERVAL_MS = 30 * 1000;
+const PRODUCER_SCHEDULING_SWEEP_INTERVAL_MS = 15 * 1000;
 
 /** §6E day-21 CSA task sweeper (WC-3b Task 2) — hourly + on boot; idempotent. */
 function startDepositSweeper(): void {
@@ -60,6 +62,21 @@ function startClassifyCacheSweeper(): void {
   timer.unref();
 }
 
+function startProducerSchedulingDeliverySweeper(): void {
+  const sweep = async (): Promise<void> => {
+    try {
+      await runProducerSchedulingDeliverySweep();
+    } catch (err) {
+      logger.error({ err }, "Producer scheduling delivery sweep failed");
+    }
+  };
+  void sweep();
+  const timer = setInterval(() => {
+    void sweep();
+  }, PRODUCER_SCHEDULING_SWEEP_INTERVAL_MS);
+  timer.unref();
+}
+
 const rawPort = process.env["PORT"];
 
 if (!rawPort) {
@@ -84,4 +101,5 @@ app.listen(port, (err) => {
   startClassifyCacheSweeper();
   startDepositSweeper();
   startMarketDispatchSweeper();
+  startProducerSchedulingDeliverySweeper();
 });

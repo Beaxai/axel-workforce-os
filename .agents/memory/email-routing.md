@@ -33,6 +33,22 @@ indiscriminate release of historical blocked mail, or real signing/account
 activation. Record real delivery outcomes rather than assuming permission
 means a test passed.
 
+## Appointment send identity and receipts
+
+Keep one provider idempotency identity per notification across transport retries;
+an intentional staff resend creates a new notification. Preserve provider
+acceptance receipts even when a stale-claim recovery has already fenced off the
+notification-state update.
+
+**Why:** An uncertain HTTP/database result is not proof that no email was sent.
+Changing the key on each attempt risks duplicate delivery, and losing the
+provider receipt prevents reconciliation. Database raw-SQL timestamps also
+require runtime normalization before retry-window arithmetic.
+
+**How to apply:** Distinguish queued, provider-accepted, provider-reported delivery
+and unknown outcomes. Stop automated retries outside the provider's idempotency
+retention window; do not release historical blocked rows when enabling a sender.
+
 Development reply tests need a separate Resend webhook targeting Development, with its own signing secret; keep the published endpoint and its secret unchanged.
 
 **Why:** Replies to Development fixtures reached the published endpoint but could not resolve its market identities. Adding a Development endpoint then produced 401s until its separate signing secret was configured.

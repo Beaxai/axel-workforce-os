@@ -90,6 +90,14 @@ export type EnqueueProducerNotificationInput = {
   dedupeKey: string;
   recipientEmails: string[];
   data: ProducerNotificationData;
+  /**
+   * Deliberately narrow opt-in used only by the authenticated manual scheduling
+   * route. Every other producer notification remains blocked.
+   */
+  manualSchedulingDelivery?: {
+    status: "pending" | "blocked";
+    failureCode: string | null;
+  };
 };
 
 /** The insert capability shared by the Drizzle database and its transactions. */
@@ -106,6 +114,13 @@ const enqueueInputSchema = z
     dedupeKey: z.string().trim().min(1).max(200),
     recipientEmails: z.array(z.string().trim().toLowerCase().pipe(z.email())).min(1).max(25),
     data: notificationDataSchema,
+    manualSchedulingDelivery: z
+      .object({
+        status: z.enum(["pending", "blocked"]),
+        failureCode: z.string().regex(/^[A-Z0-9_]{1,80}$/).nullable(),
+      })
+      .strict()
+      .optional(),
   })
   .strict();
 
@@ -310,6 +325,15 @@ export async function enqueueProducerNotification(
     ...new Set(parsed.recipientEmails),
   ];
   const rendered = renderProducerNotification(parsed.event, parsed.data);
+  const requestedDelivery =
+    parsed.event === "scheduling_link"
+      ? parsed.manualSchedulingDelivery
+      : undefined;
+  const status = requestedDelivery?.status ?? "blocked";
+  const failureCode =
+    status === "pending"
+      ? null
+      : requestedDelivery?.failureCode ?? "DELIVERY_NOT_ENABLED";
 
   const [inserted] = await tx
     .insert(producerNotificationsTable)
@@ -323,8 +347,8 @@ export async function enqueueProducerNotification(
       subject: rendered.subject,
       html: rendered.html,
       text: rendered.text,
-      status: "blocked",
-      failureCode: "DELIVERY_NOT_ENABLED",
+      status,
+      failureCode,
       attemptCount: 0,
     })
     .onConflictDoNothing({

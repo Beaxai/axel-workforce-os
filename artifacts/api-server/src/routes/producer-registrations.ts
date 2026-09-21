@@ -27,6 +27,7 @@ import {
   toListRow,
 } from "../services/producer-appointment/review";
 import { enqueueProducerNotification } from "../services/producer-appointment/notifications";
+import { schedulingDeliveryGate } from "../services/producer-appointment/scheduling-delivery";
 
 const router: IRouter = Router();
 const NOTE_MIN_LENGTH = 3;
@@ -167,7 +168,13 @@ async function detailResponse(id: string, orgId: string, role: "ADMIN" | "CSA") 
         event: producerNotificationsTable.event,
         status: producerNotificationsTable.status,
         failureCode: producerNotificationsTable.failureCode,
+        attemptCount: producerNotificationsTable.attemptCount,
+        availableAt: producerNotificationsTable.availableAt,
+        nextRetryAt: producerNotificationsTable.nextRetryAt,
+        sendingStartedAt: producerNotificationsTable.sendingStartedAt,
+        sentAt: producerNotificationsTable.sentAt,
         createdAt: producerNotificationsTable.createdAt,
+        updatedAt: producerNotificationsTable.updatedAt,
       })
       .from(producerNotificationsTable)
       .innerJoin(
@@ -209,6 +216,11 @@ async function detailResponse(id: string, orgId: string, role: "ADMIN" | "CSA") 
     notificationRequests: notificationRequests.map((entry) => ({
       ...entry,
       createdAt: entry.createdAt.toISOString(),
+      availableAt: entry.availableAt.toISOString(),
+      nextRetryAt: iso(entry.nextRetryAt),
+      sendingStartedAt: iso(entry.sendingStartedAt),
+      sentAt: iso(entry.sentAt),
+      updatedAt: entry.updatedAt.toISOString(),
     })),
     blockingReasons: blockingReasons(registration),
     permissions: permissions(registration, role),
@@ -512,19 +524,46 @@ router.post(
         .where(and(
           eq(producerRegistrationActivityTable.orgId, req.user!.orgId!),
           eq(producerRegistrationActivityTable.registrationId, registration.id),
-          eq(producerRegistrationActivityTable.action, "SCHEDULING_LINK_DELIVERY_BLOCKED"),
+          sql`${producerRegistrationActivityTable.action} IN (${"SCHEDULING_LINK_DELIVERY_BLOCKED"}, ${"SCHEDULING_LINK_DELIVERY_REQUESTED"})`,
           sql`${producerRegistrationActivityTable.after}->>'actionId' = ${actionId}`,
         ));
       if (previous) {
         const after = previous.after as { intent: string; notificationId: string };
         if (after.intent !== intent) return "idempotency_conflict" as const;
-        return { notificationId: after.notificationId, replayed: true };
+        const [notification] = await tx
+          .select({
+            id: producerNotificationsTable.id,
+            status: producerNotificationsTable.status,
+            failureCode: producerNotificationsTable.failureCode,
+          })
+          .from(producerNotificationsTable)
+          .where(
+            and(
+              eq(producerNotificationsTable.id, after.notificationId),
+              eq(producerNotificationsTable.orgId, req.user!.orgId!),
+            ),
+          )
+          .limit(1);
+        if (!notification) throw new Error("Scheduling action audit has no outbox row");
+        return {
+          notificationId: notification.id,
+          status: notification.status,
+          reason: notification.failureCode,
+          replayed: true,
+        };
       }
 
       const recipientEmails = safeApplicantRecipientEmails(
         registration.payload,
       );
       if (recipientEmails.length === 0) return "recipient_missing" as const;
+      const deliveryGate = schedulingDeliveryGate(recipientEmails);
+      const initialDelivery = deliveryGate.enabled
+        ? { status: "pending" as const, failureCode: null }
+        : {
+            status: "blocked" as const,
+            failureCode: deliveryGate.failureCode,
+          };
 
       const notification = await enqueueProducerNotification(tx, {
         orgId: req.user!.orgId!,
@@ -536,17 +575,30 @@ router.post(
           reference: registration.reference,
           schedulingUrl: `https://calendly.com/axelworkforcesolutions/30min?utm_content=${encodeURIComponent(registration.reference)}`,
         },
+        manualSchedulingDelivery: initialDelivery,
       });
       if (!notification) throw new Error("Scheduling action outbox exists without its audit");
       await tx.insert(producerRegistrationActivityTable).values({
         orgId: req.user!.orgId!,
         registrationId: registration.id,
         actorId: req.user!.id,
-        action: "SCHEDULING_LINK_DELIVERY_BLOCKED",
+        action: deliveryGate.enabled
+          ? "SCHEDULING_LINK_DELIVERY_REQUESTED"
+          : "SCHEDULING_LINK_DELIVERY_BLOCKED",
         before: null,
-        after: { actionId, intent, notificationId: notification.id, status: "blocked" },
+        after: {
+          actionId,
+          intent,
+          notificationId: notification.id,
+          status: initialDelivery.status,
+        },
       });
-      return { notificationId: notification.id, replayed: false };
+      return {
+        notificationId: notification.id,
+        status: initialDelivery.status,
+        reason: initialDelivery.failureCode,
+        replayed: false,
+      };
     });
 
     if (result === "not_found") {
@@ -569,9 +621,7 @@ router.post(
     if (result === "idempotency_conflict") {
       return conflict(res, "idempotency_conflict", "An action ID cannot be reused with a different intent.");
     }
-    return res
-      .status(202)
-      .json({ status: "blocked", reason: "DELIVERY_NOT_ENABLED", actionId, intent, ...result });
+    return res.status(202).json({ actionId, intent, ...result });
   },
 );
 

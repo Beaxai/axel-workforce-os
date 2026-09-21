@@ -1942,6 +1942,15 @@ components:
         status: { type: string }
         failureCode: { type: ["string", "null"] }
         createdAt: { type: string, format: date-time }
+        attemptCount: { type: integer, minimum: 0 }
+        availableAt: { type: string, format: date-time }
+        nextRetryAt: { type: ["string", "null"], format: date-time }
+        sendingStartedAt: { type: ["string", "null"], format: date-time }
+        sentAt:
+          type: ["string", "null"]
+          format: date-time
+          description: Provider acceptance time, not mailbox delivery confirmation.
+        updatedAt: { type: string, format: date-time }
     ProducerApplicationPermissions:
       type: object
       additionalProperties: false
@@ -2046,8 +2055,13 @@ components:
       additionalProperties: false
       required: [status, reason, actionId, intent, notificationId, replayed]
       properties:
-        status: { type: string, const: blocked }
-        reason: { type: string, const: DELIVERY_NOT_ENABLED }
+        status:
+          type: string
+          enum: [blocked, pending, sending, sent, failed]
+          description: Persisted notification state. Sent means accepted by the email provider, not confirmed inbox delivery.
+        reason:
+          type: ["string", "null"]
+          description: Safe blocking or failure code; null when none.
         actionId: { type: string, format: uuid }
         intent: { type: string, enum: [send, resend] }
         notificationId: { type: string, format: uuid }
