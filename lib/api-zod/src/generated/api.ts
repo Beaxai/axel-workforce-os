@@ -104,6 +104,11 @@ export const GetProducerApplicationResponse = zod
           ingestionStatus: zod.string(),
           uploadedAt: zod.coerce.date().nullable(),
           canAccess: zod.boolean(),
+          accessAvailability: zod.object({
+            available: zod.boolean(),
+            code: zod.string(),
+            reason: zod.string(),
+          }),
         }),
       ),
       activity: zod.array(
@@ -129,6 +134,23 @@ export const GetProducerApplicationResponse = zod
         canCompleteCall: zod.boolean(),
         canSendSchedulingLink: zod.boolean(),
         canIssueCredentials: zod.boolean(),
+      }),
+      availability: zod.object({
+        approve: zod.object({
+          available: zod.boolean(),
+          code: zod.string(),
+          reason: zod.string(),
+        }),
+        issueCredentials: zod.object({
+          available: zod.boolean(),
+          code: zod.string(),
+          reason: zod.string(),
+        }),
+        documentAccess: zod.object({
+          available: zod.boolean(),
+          code: zod.string(),
+          reason: zod.string(),
+        }),
       }),
     }),
   );
@@ -190,6 +212,11 @@ export const CompleteProducerApplicationCallResponse = zod
           ingestionStatus: zod.string(),
           uploadedAt: zod.coerce.date().nullable(),
           canAccess: zod.boolean(),
+          accessAvailability: zod.object({
+            available: zod.boolean(),
+            code: zod.string(),
+            reason: zod.string(),
+          }),
         }),
       ),
       activity: zod.array(
@@ -215,6 +242,23 @@ export const CompleteProducerApplicationCallResponse = zod
         canCompleteCall: zod.boolean(),
         canSendSchedulingLink: zod.boolean(),
         canIssueCredentials: zod.boolean(),
+      }),
+      availability: zod.object({
+        approve: zod.object({
+          available: zod.boolean(),
+          code: zod.string(),
+          reason: zod.string(),
+        }),
+        issueCredentials: zod.object({
+          available: zod.boolean(),
+          code: zod.string(),
+          reason: zod.string(),
+        }),
+        documentAccess: zod.object({
+          available: zod.boolean(),
+          code: zod.string(),
+          reason: zod.string(),
+        }),
       }),
     }),
   );
@@ -265,6 +309,11 @@ export const ApproveProducerApplicationResponse = zod
           ingestionStatus: zod.string(),
           uploadedAt: zod.coerce.date().nullable(),
           canAccess: zod.boolean(),
+          accessAvailability: zod.object({
+            available: zod.boolean(),
+            code: zod.string(),
+            reason: zod.string(),
+          }),
         }),
       ),
       activity: zod.array(
@@ -290,6 +339,23 @@ export const ApproveProducerApplicationResponse = zod
         canCompleteCall: zod.boolean(),
         canSendSchedulingLink: zod.boolean(),
         canIssueCredentials: zod.boolean(),
+      }),
+      availability: zod.object({
+        approve: zod.object({
+          available: zod.boolean(),
+          code: zod.string(),
+          reason: zod.string(),
+        }),
+        issueCredentials: zod.object({
+          available: zod.boolean(),
+          code: zod.string(),
+          reason: zod.string(),
+        }),
+        documentAccess: zod.object({
+          available: zod.boolean(),
+          code: zod.string(),
+          reason: zod.string(),
+        }),
       }),
     }),
   );
@@ -348,6 +414,11 @@ export const DeclineProducerApplicationResponse = zod
           ingestionStatus: zod.string(),
           uploadedAt: zod.coerce.date().nullable(),
           canAccess: zod.boolean(),
+          accessAvailability: zod.object({
+            available: zod.boolean(),
+            code: zod.string(),
+            reason: zod.string(),
+          }),
         }),
       ),
       activity: zod.array(
@@ -373,6 +444,23 @@ export const DeclineProducerApplicationResponse = zod
         canCompleteCall: zod.boolean(),
         canSendSchedulingLink: zod.boolean(),
         canIssueCredentials: zod.boolean(),
+      }),
+      availability: zod.object({
+        approve: zod.object({
+          available: zod.boolean(),
+          code: zod.string(),
+          reason: zod.string(),
+        }),
+        issueCredentials: zod.object({
+          available: zod.boolean(),
+          code: zod.string(),
+          reason: zod.string(),
+        }),
+        documentAccess: zod.object({
+          available: zod.boolean(),
+          code: zod.string(),
+          reason: zod.string(),
+        }),
       }),
     }),
   );

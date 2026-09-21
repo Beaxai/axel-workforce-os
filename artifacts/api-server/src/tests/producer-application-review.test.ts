@@ -5,6 +5,7 @@ import type {
   ProducerRegistrationDocument,
 } from "@workspace/db";
 import {
+  appointmentAvailability,
   blockingReasons,
   documentProjection,
   permissions,
@@ -78,6 +79,57 @@ function document(
 }
 
 describe("producer application review projections", () => {
+  it("separates configuration availability from Admin/CSA lifecycle permissions", () => {
+    const ready = registration({
+      packetSignedAt: new Date(),
+      callCompletedAt: new Date(),
+    });
+    const approved = registration({
+      decision: "approved",
+      callCompletedAt: new Date(),
+      countersignedAt: new Date(),
+    });
+    for (const role of ["ADMIN", "CSA"] as const) {
+      assert.equal(permissions(ready, role).canDecide, role === "ADMIN");
+      assert.equal(permissions(approved, role).canIssueCredentials, role === "ADMIN");
+      assert.equal(appointmentAvailability.approve.available, false);
+      assert.equal(appointmentAvailability.approve.code, "appointment_activation_not_configured");
+      assert.match(appointmentAvailability.approve.reason, /duplicate reconciliation.*countersigner/);
+      assert.equal(appointmentAvailability.issueCredentials.available, false);
+      assert.equal(appointmentAvailability.issueCredentials.code, "credential_handoff_not_configured");
+      assert.match(appointmentAvailability.issueCredentials.reason, /safe credential handoff/);
+      assert.equal(permissions(registration(), role).canDecide, false);
+      assert.equal(permissions(registration(), role).canIssueCredentials, false);
+      assert.equal(permissions(registration({ decision: "declined" }), role).canDecide, false);
+      assert.equal(permissions({ ...approved, credentialsIssuedAt: new Date() }, role).canIssueCredentials, false);
+    }
+  });
+
+  it("reports document configuration and ingestion blockers without exposing private keys", () => {
+    for (const role of ["ADMIN", "CSA"] as const) {
+      const complete = documentProjection(document("agency_license"), role)!;
+      assert.equal(complete.canAccess, true); // role/lifecycle eligibility only
+      assert.deepEqual(complete.accessAvailability, appointmentAvailability.documentAccess);
+      assert.equal(complete.accessAvailability.available, false);
+      assert.equal("storageKey" in complete, false);
+      for (const row of [
+        { ...document("agency_license"), storageKey: null },
+        { ...document("agency_license"), ingestionStatus: "pending" as const },
+        { ...document("agency_license"), ingestionStatus: "failed" as const },
+      ]) {
+        const projected = documentProjection(row, role)!;
+        assert.equal(projected.canAccess, false);
+        assert.equal(projected.accessAvailability.available, false);
+        assert.equal(projected.accessAvailability.code, "document_not_available");
+        assert.match(projected.accessAvailability.reason, /not completed ingestion/);
+      }
+    }
+    for (const type of ["w9", "ach_authorization", "executed_packet"] as const) {
+      assert.equal(documentProjection(document(type), "CSA"), null);
+      assert.deepEqual(documentProjection(document(type), "ADMIN")?.accessAvailability, appointmentAvailability.documentAccess);
+    }
+  });
+
   it("advertises scheduling only for Admin and non-declined applications", () => {
     for (const decision of ["pending", "approved", "declined"] as const) {
       const row = registration({ decision });

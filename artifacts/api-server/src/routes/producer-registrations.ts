@@ -16,6 +16,7 @@ import {
   requireTrustedAxelCorrespondenceStaff,
 } from "../middleware/require-auth";
 import {
+  appointmentAvailability,
   blockingReasons,
   documentProjection,
   iso,
@@ -210,6 +211,7 @@ async function detailResponse(id: string, orgId: string, role: "ADMIN" | "CSA") 
     })),
     blockingReasons: blockingReasons(registration),
     permissions: permissions(registration, role),
+    availability: appointmentAvailability,
   };
 }
 
@@ -374,8 +376,8 @@ router.post(
     }
     return conflict(
       res,
-      "appointment_activation_not_configured",
-      "Approval is blocked until duplicate reconciliation and SignWell countersigner release are verified.",
+      appointmentAvailability.approve.code,
+      appointmentAvailability.approve.reason,
     );
   },
 );
@@ -568,8 +570,8 @@ router.post(
     }
     return conflict(
       res,
-      "credential_handoff_not_configured",
-      "Credential issuance is blocked until the safe credential handoff is integrated.",
+      appointmentAvailability.issueCredentials.code,
+      appointmentAvailability.issueCredentials.reason,
     );
   },
 );
@@ -617,8 +619,8 @@ router.get("/:id/documents/:documentId/access", async (
   }
   return conflict(
     res,
-    "document_access_not_configured",
-    "Private document access is blocked until an allowed producer-document key namespace and signed URL issuer are configured.",
+    appointmentAvailability.documentAccess.code,
+    appointmentAvailability.documentAccess.reason,
   );
 });
 

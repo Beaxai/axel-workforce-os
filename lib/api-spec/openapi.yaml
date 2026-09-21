@@ -1890,7 +1890,7 @@ components:
     ProducerApplicationDocument:
       type: object
       additionalProperties: false
-      required: [id, docType, filename, ingestionStatus, uploadedAt, canAccess]
+      required: [id, docType, filename, ingestionStatus, uploadedAt, canAccess, accessAvailability]
       properties:
         id: { type: string, format: uuid }
         docType: { type: string }
@@ -1898,6 +1898,8 @@ components:
         ingestionStatus: { type: string }
         uploadedAt: { type: ["string", "null"], format: date-time }
         canAccess: { type: boolean }
+        accessAvailability:
+          $ref: "#/components/schemas/ProducerActionAvailability"
     ProducerApplicationActivity:
       type: object
       additionalProperties: false
@@ -1926,11 +1928,28 @@ components:
         canCompleteCall: { type: boolean }
         canSendSchedulingLink: { type: boolean }
         canIssueCredentials: { type: boolean }
+    ProducerActionAvailability:
+      type: object
+      required: [available, code, reason]
+      properties:
+        available: { type: boolean }
+        code: { type: string }
+        reason: { type: string }
+    ProducerApplicationAvailability:
+      type: object
+      required: [approve, issueCredentials, documentAccess]
+      properties:
+        approve:
+          $ref: "#/components/schemas/ProducerActionAvailability"
+        issueCredentials:
+          $ref: "#/components/schemas/ProducerActionAvailability"
+        documentAccess:
+          $ref: "#/components/schemas/ProducerActionAvailability"
     ProducerApplicationDetail:
       allOf:
         - $ref: "#/components/schemas/ProducerApplicationRow"
         - type: object
-          required: [packetSentAt, packetSignedAt, callCompletedAt, callNotes, countersignedAt, credentialsIssuedAt, meetingUrl, payload, owners, documents, activity, notificationRequests, blockingReasons, permissions]
+          required: [packetSentAt, packetSignedAt, callCompletedAt, callNotes, countersignedAt, credentialsIssuedAt, meetingUrl, payload, owners, documents, activity, notificationRequests, blockingReasons, permissions, availability]
           properties:
             packetSentAt: { type: ["string", "null"], format: date-time }
             packetSignedAt: { type: ["string", "null"], format: date-time }
@@ -1959,6 +1978,8 @@ components:
               items: { type: string }
             permissions:
               $ref: "#/components/schemas/ProducerApplicationPermissions"
+            availability:
+              $ref: "#/components/schemas/ProducerApplicationAvailability"
     ProducerSchedulingReviewEvent:
       type: object
       additionalProperties: false

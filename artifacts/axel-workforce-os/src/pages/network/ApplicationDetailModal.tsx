@@ -229,6 +229,18 @@ export function ApplicationDetailModal({ applicationId, onClose }: ApplicationDe
                 </div>
               )}
 
+              <div style={{ background: bgPanel, border: borderPanel, borderRadius: "12px", padding: "16px" }}>
+                <p style={{ fontSize: "14px", fontWeight: 600, color: textPrimary, margin: "0 0 8px" }}>Configuration availability</p>
+                <p style={{ fontSize: "12px", color: textMuted }}>Separate from staff permissions and application milestones.</p>
+                {(["approve", "issueCredentials"] as const).map(action => (
+                  !app.availability?.[action]?.available && (
+                    <p key={action} style={{ fontSize: "13px", color: textMuted }}>
+                      {app.availability?.[action]?.reason ?? "Availability could not be confirmed. This action is unavailable."}
+                    </p>
+                  )
+                ))}
+              </div>
+
               {/* Documents */}
               {app.documents && app.documents.length > 0 && (
                 <div>
@@ -241,10 +253,15 @@ export function ApplicationDetailModal({ applicationId, onClose }: ApplicationDe
                           <div>
                             <p style={{ fontSize: "13px", fontWeight: 500, color: textPrimary, margin: 0 }}>{doc.docType}</p>
                             <p style={{ fontSize: "12px", color: textMuted, margin: 0 }}>{doc.filename} • {doc.ingestionStatus}</p>
+                            {!doc.accessAvailability?.available && (
+                              <p style={{ fontSize: "12px", color: textMuted, margin: "4px 0 0" }}>
+                                {doc.accessAvailability?.reason ?? "Document access availability could not be confirmed."}
+                              </p>
+                            )}
                           </div>
                         </div>
                         {doc.canAccess && (
-                          <button onClick={() => handleDownloadDoc(doc.id)} style={{ background: "none", border: "none", color: "var(--accent-primary)", cursor: "pointer", display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", fontWeight: 500 }}>
+                          <button disabled={!doc.accessAvailability?.available} onClick={() => handleDownloadDoc(doc.id)} style={{ background: "none", border: "none", color: "var(--accent-primary)", cursor: doc.accessAvailability?.available ? "pointer" : "not-allowed", opacity: doc.accessAvailability?.available ? 1 : 0.5, display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", fontWeight: 500 }}>
                             <Download style={{ width: 14, height: 14 }} /> Download
                           </button>
                         )}
@@ -344,7 +361,7 @@ export function ApplicationDetailModal({ applicationId, onClose }: ApplicationDe
         {app && (app.permissions?.canDecide || app.permissions?.canIssueCredentials) && (
           <div style={{ padding: "24px 32px", borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.05)"}`, background: bgPanel, flexShrink: 0 }}>
             {app.permissions?.canIssueCredentials && !app.credentialsIssuedAt && (
-              <PinkButton onClick={() => issueCredsMut.mutate()} disabled={issueCredsMut.isPending} style={{ width: "100%", marginBottom: "12px" }}>
+              <PinkButton onClick={() => issueCredsMut.mutate()} disabled={!app.availability?.issueCredentials?.available || issueCredsMut.isPending} style={{ width: "100%", marginBottom: "12px" }}>
                 {issueCredsMut.isPending ? "Issuing..." : "Issue Credentials"}
               </PinkButton>
             )}
@@ -368,7 +385,7 @@ export function ApplicationDetailModal({ applicationId, onClose }: ApplicationDe
                   </div>
                 ) : (
                   <div style={{ display: "flex", gap: "12px" }}>
-                    <PinkButton onClick={() => approveMut.mutate()} disabled={approveMut.isPending} style={{ flex: 1, background: "#1EE97B", color: "#000" }}>
+                    <PinkButton onClick={() => approveMut.mutate()} disabled={!app.availability?.approve?.available || approveMut.isPending} style={{ flex: 1, background: "#1EE97B", color: "#000" }}>
                       {approveMut.isPending ? "Approving..." : "Approve Appointment"}
                     </PinkButton>
                     <GhostButton onClick={() => setShowDeclineForm(true)} style={{ flex: 1, color: "#E91E1E", borderColor: "rgba(233,30,30,0.3)" }}>

@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { ProducerApplicationActivity } from "./producerApplicationActivity";
+import type { ProducerApplicationAvailability } from "./producerApplicationAvailability";
 import type { ProducerApplicationDetailPayload } from "./producerApplicationDetailPayload";
 import type { ProducerApplicationDocument } from "./producerApplicationDocument";
 import type { ProducerApplicationOwner } from "./producerApplicationOwner";
@@ -36,4 +37,5 @@ export type ProducerApplicationDetail = ProducerApplicationRow & {
   notificationRequests: ProducerNotificationRequest[];
   blockingReasons: string[];
   permissions: ProducerApplicationPermissions;
+  availability: ProducerApplicationAvailability;
 };

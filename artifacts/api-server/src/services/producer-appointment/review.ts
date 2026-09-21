@@ -99,6 +99,26 @@ const CSA_RESTRICTED_DOCUMENTS = new Set([
   "executed_packet",
 ]);
 
+// Configuration readiness is independent of role/lifecycle permission. These
+// deliberate blockers must not be inferred from the presence of provider keys.
+export const appointmentAvailability = {
+  approve: {
+    available: false,
+    code: "appointment_activation_not_configured",
+    reason: "Approval is blocked until duplicate reconciliation and SignWell countersigner release are verified.",
+  },
+  issueCredentials: {
+    available: false,
+    code: "credential_handoff_not_configured",
+    reason: "Credential issuance is blocked until the safe credential handoff is integrated.",
+  },
+  documentAccess: {
+    available: false,
+    code: "document_access_not_configured",
+    reason: "Private document access is blocked until an allowed producer-document key namespace and signed URL issuer are configured.",
+  },
+} as const;
+
 export function documentProjection(
   document: ProducerRegistrationDocument,
   role: "ADMIN" | "CSA",
@@ -118,6 +138,14 @@ export function documentProjection(
       roleAllowsAccess &&
       document.ingestionStatus === "completed" &&
       Boolean(document.storageKey),
+    accessAvailability:
+      document.ingestionStatus === "completed" && Boolean(document.storageKey)
+        ? appointmentAvailability.documentAccess
+        : {
+            available: false,
+            code: "document_not_available",
+            reason: "The private document has not completed ingestion.",
+          },
   };
 }
 

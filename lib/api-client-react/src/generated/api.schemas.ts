@@ -45,6 +45,12 @@ export interface ProducerApplicationOwner {
   exhibitASignedAt: string | null;
 }
 
+export interface ProducerActionAvailability {
+  available: boolean;
+  code: string;
+  reason: string;
+}
+
 export interface ProducerApplicationDocument {
   id: string;
   docType: string;
@@ -54,6 +60,7 @@ export interface ProducerApplicationDocument {
   /** @nullable */
   uploadedAt: string | null;
   canAccess: boolean;
+  accessAvailability: ProducerActionAvailability;
 }
 
 export interface ProducerApplicationActivity {
@@ -78,6 +85,12 @@ export interface ProducerApplicationPermissions {
   canCompleteCall: boolean;
   canSendSchedulingLink: boolean;
   canIssueCredentials: boolean;
+}
+
+export interface ProducerApplicationAvailability {
+  approve: ProducerActionAvailability;
+  issueCredentials: ProducerActionAvailability;
+  documentAccess: ProducerActionAvailability;
 }
 
 /**
@@ -110,6 +123,7 @@ export type ProducerApplicationDetail = ProducerApplicationRow & {
   notificationRequests: ProducerNotificationRequest[];
   blockingReasons: string[];
   permissions: ProducerApplicationPermissions;
+  availability: ProducerApplicationAvailability;
 };
 
 export interface ProducerSchedulingReviewEvent {
