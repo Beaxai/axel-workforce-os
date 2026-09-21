@@ -101,7 +101,8 @@ Calculate server-side in this priority order:
 
 1. Declined.
 2. Active — credentials issued.
-3. Approved – Countersign Pending.
+3. Approved – Credentials Pending when countersigned but credentials have not
+   yet issued; otherwise Approved – Countersign Pending.
 4. Ready for Decision — producer packet signed and call completed.
 5. Call Complete – Packet Pending.
 6. Packet Signed – Call Pending.
@@ -109,7 +110,11 @@ Calculate server-side in this priority order:
 8. Packet Sent.
 9. Submitted.
 
-Do not infer missing milestones from a legacy status string. The directive does not name a separate status for countersigned-but-not-yet-credentialed; confirm its display treatment before implementation while preserving the underlying timestamps.
+Do not infer missing milestones from a legacy status string. Foundation
+implementation decision: use **Approved – Credentials Pending** after verified
+countersignature and before credential issuance, rather than falsely showing
+the application as countersign pending. This preserves the underlying
+timestamps and keeps the directive's remaining priority unchanged.
 
 #### Acceptance
 
