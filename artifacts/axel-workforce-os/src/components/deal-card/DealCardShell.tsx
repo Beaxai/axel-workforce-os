@@ -419,6 +419,22 @@ export default function DealCardShell({ dealId, isOpen, onClose, onDealUpdated }
     fetchRoutingSummary();
   }, [isOpen, dealId, fetchSubmission, fetchActivity, fetchRfis, fetchRoutingSummary]);
 
+  // A released held message can now appear in the current deal's activity feed.
+  useEffect(() => {
+    if (!isOpen) return;
+    const onReleased = (event: Event | MessageEvent) => {
+      const detail = event instanceof MessageEvent ? event.data : (event as CustomEvent).detail;
+      if (detail?.dealId === dealId) void fetchActivity();
+    };
+    window.addEventListener("held_message_released", onReleased);
+    const channel = new BroadcastChannel("held_message_released");
+    channel.onmessage = onReleased;
+    return () => {
+      window.removeEventListener("held_message_released", onReleased);
+      channel.close();
+    };
+  }, [isOpen, dealId, fetchActivity]);
+
   const sections = payload?.sections ?? [];
   const deal = payload?.deal;
 

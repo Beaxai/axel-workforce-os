@@ -10,8 +10,8 @@
  * a STATIC placeholder deferred to P6 iteration 2.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Sparkles, AlertTriangle, ArrowUp, Plus, Check, CircleSlash, X, ArrowRight, SlidersHorizontal, FileUp, RefreshCw, Zap, Link2, FilePlus2, MessageSquare, AlertCircle } from "lucide-react";
-import type { ActivityRow, RfiRow, QuoteVariation, VariationLevers, PreviewVariationResponse, DealDirectoryEntry, MarketRoutingSummary, CorrespondenceCapabilities } from "./types";
+import { Sparkles, AlertTriangle, ArrowUp, Plus, Check, CircleSlash, X, ArrowRight, SlidersHorizontal, FileUp, RefreshCw, Zap, Link2, FilePlus2, MessageSquare } from "lucide-react";
+import { canShowDealEmailApproval, type ActivityRow, type RfiRow, type QuoteVariation, type VariationLevers, type PreviewVariationResponse, type DealDirectoryEntry, type MarketRoutingSummary, type CorrespondenceCapabilities } from "./types";
 import { STATUS_COLORS } from "./icons";
 import { useThemeColors } from "@/lib/use-theme-colors";
 import UserMiniProfile from "@/components/user-profile/UserMiniProfile";
@@ -21,7 +21,7 @@ import MarketRoutingPanel from "./MarketRoutingPanel";
 import { displayName } from "@/lib/agent-display-name";
 import MarketCorrespondenceView from "./MarketCorrespondenceView";
 import BrokerCorrespondenceDialog from "./BrokerCorrespondenceDialog";
-import HeldCorrespondenceDialog from "./HeldCorrespondenceDialog";
+import HeldReviewContent from "./HeldReviewContent";
 import { api } from "@/lib/api";
 
 /**
@@ -381,62 +381,23 @@ export default function OverviewTab({
   const [compare, setCompare] = useState<QuoteVariation | null>(null);
   const [generated, setGenerated] = useState(false);
   const [brokerDialogOpen, setBrokerDialogOpen] = useState(false);
-  const [heldDialogOpen, setHeldDialogOpen] = useState(false);
-  const [capabilities, setCapabilities] = useState<CorrespondenceCapabilities | null>(null);
-  const [heldCount, setHeldCount] = useState<number | null>(null);
-
-  const countAbortRef = useRef<AbortController | null>(null);
-  
-  const fetchHeldCount = useCallback(() => {
-    if (capabilities?.market.canReviewHeld) {
-      if (countAbortRef.current) countAbortRef.current.abort();
-      const ac = new AbortController();
-      countAbortRef.current = ac;
-
-      api.get<{total: number}>(`/deal-card/${dealId}/correspondence/held?limit=1`, { signal: ac.signal })
-        .then(res => { if (!ac.signal.aborted) setHeldCount(res.total); })
-        .catch(() => { if (!ac.signal.aborted) setHeldCount(null); });
-    } else {
-      setHeldCount(null);
-    }
-  }, [capabilities?.market.canReviewHeld, dealId]);
-
-  useEffect(() => {
-    fetchHeldCount();
-    const onFocus = () => fetchHeldCount();
-    window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
-  }, [fetchHeldCount]);
-
-  useEffect(() => {
-    const handleReleased = (e: any) => {
-      const dealIdDetail = e.detail?.dealId || e.data?.dealId;
-      if (!dealIdDetail || dealIdDetail === dealId) {
-        fetchHeldCount();
-      }
-    };
-    window.addEventListener("held_message_released", handleReleased);
-    const bc = new BroadcastChannel("held_message_released");
-    bc.onmessage = (e) => handleReleased(e);
-    return () => {
-      window.removeEventListener("held_message_released", handleReleased);
-      bc.close();
-    };
-  }, [dealId, fetchHeldCount]);
+  const scope = `${dealId}:${authUser?.id}:${authUser?.role}`;
+  const [capabilityResult, setCapabilityResult] = useState<{ scope: string; value: CorrespondenceCapabilities } | null>(null);
+  const capabilities = capabilityResult?.scope === scope ? capabilityResult.value : null;
 
 
   useEffect(() => {
     let active = true;
-    setCapabilities(null);
+    setCapabilityResult(null);
     api.get<CorrespondenceCapabilities>(`/deal-card/${dealId}/correspondence`)
       .then(res => {
-        if (active) setCapabilities(res);
+        if (active) setCapabilityResult({ scope, value: res });
       })
       .catch(() => {
-        if (active) setCapabilities(null);
+        if (active) setCapabilityResult(null);
       });
     return () => { active = false; };
-  }, [dealId, authUser?.id]);
+  }, [dealId, authUser?.id, authUser?.role, scope]);
 
   const runGenerate = () => {
     setGenerated(true);
@@ -583,22 +544,8 @@ export default function OverviewTab({
       />
 
       
-      {capabilities?.market.canReviewHeld && (
-        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: -6 }}>
-          <button
-            type="button"
-            onClick={() => setHeldDialogOpen(true)}
-            style={{
-              display: "flex", alignItems: "center", gap: 6,
-              background: c.bg, border: `1px solid ${c.borderColor}`, borderRadius: 6,
-              padding: "6px 12px", fontSize: 11, fontWeight: 600, color: c.textSecondary,
-              cursor: "pointer"
-            }}
-          >
-            <AlertCircle style={{ width: 14, height: 14 }} />
-            Held Mail for This Deal {heldCount !== null && `(${heldCount})`}
-          </button>
-        </div>
+      {canShowDealEmailApproval(authUser?.role, capabilityResult?.scope, scope, capabilities) && (
+        <HeldReviewContent key={scope} dealId={dealId} enabled collapsible />
       )}
 
       {selectedMarketId ? (
@@ -1139,14 +1086,6 @@ export default function OverviewTab({
         key={`broker-${dealId}-${authUser?.id}`}
         isOpen={brokerDialogOpen}
         onClose={() => setBrokerDialogOpen(false)}
-        dealId={dealId}
-        capabilities={capabilities}
-      />
-
-      <HeldCorrespondenceDialog
-        key={`held-${dealId}-${authUser?.id}`}
-        isOpen={heldDialogOpen}
-        onClose={() => setHeldDialogOpen(false)}
         dealId={dealId}
         capabilities={capabilities}
       />

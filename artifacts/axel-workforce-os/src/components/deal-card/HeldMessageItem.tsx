@@ -6,11 +6,13 @@ export function HeldMessageItem({
   message,
   onRetry,
   onRelease,
+  busy = false,
   c,
 }: {
   message: CorrespondenceMessage;
   onRetry: (id: string) => void;
   onRelease: (id: string, channel: string) => void;
+  busy?: boolean;
   c: any;
 }) {
   const [senderConfirmed, setSenderConfirmed] = useState(false);
@@ -86,6 +88,7 @@ export function HeldMessageItem({
             </div>
             <button
               onClick={() => onRetry(message.id)}
+              disabled={busy}
               style={{
                 alignSelf: "flex-start",
                 background: "#ef4444",
@@ -122,6 +125,7 @@ export function HeldMessageItem({
             <input
               type="checkbox"
               checked={senderConfirmed}
+              disabled={busy}
               onChange={(e) => setSenderConfirmed(e.target.checked)}
               style={{ margin: 0, accentColor: "var(--accent-primary)" }}
             />
@@ -130,7 +134,7 @@ export function HeldMessageItem({
 
           <button
             onClick={() => onRelease(message.id, message.candidate!.channel)}
-            disabled={!senderConfirmed}
+            disabled={!senderConfirmed || busy}
             style={{
               alignSelf: "flex-start",
               background: senderConfirmed ? "var(--gradient-cta)" : c.hoverBg,

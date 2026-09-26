@@ -225,6 +225,16 @@ export interface CorrespondenceCapabilities {
   };
 }
 
+/** The inline deal review is intentionally narrower than the global queue policy. */
+export function canShowDealEmailApproval(
+  role: string | undefined,
+  capabilityScope: string | undefined,
+  currentScope: string,
+  capabilities: CorrespondenceCapabilities | null,
+): boolean {
+  return role === "ADMIN" && capabilityScope === currentScope && capabilities?.market.canReviewHeld === true;
+}
+
 // -------------------------
 // Market Routing Types
 // -------------------------

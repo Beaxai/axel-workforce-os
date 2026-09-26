@@ -11,7 +11,6 @@ import {
   Settings,
   Lock,
   Search,
-  AlertCircle,
 } from "lucide-react";
 import { useAuthStore, ROLE_LABELS, ROLE_PATHS, type PartyRole } from "@/lib/auth-store";
 import { useThemeStore } from "@/lib/theme-store";
@@ -33,7 +32,6 @@ export default function AppShell() {
   const [roleSwitcherOpen, setRoleSwitcherOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [canReviewHeld, setCanReviewHeld] = useState(false);
 
   const isDark = theme === "dark";
 
@@ -47,27 +45,9 @@ export default function AppShell() {
     }
   }, [isDark]);
 
-  useEffect(() => {
-    let active = true;
-    if (user) {
-      setCanReviewHeld(false);
-      import('@/lib/api').then(({ api }) => {
-        api.get<{canReviewHeld: boolean}>("/deal-card/correspondence/capabilities")
-          .then(res => { if (active) setCanReviewHeld(res.canReviewHeld); })
-          .catch(() => { if (active) setCanReviewHeld(false); });
-      });
-    } else {
-      setCanReviewHeld(false);
-    }
-    return () => { active = false; };
-  }, [user]);
-
   if (!user) return null;
 
   const navItems = ROLE_NAV[user.role] ? [...ROLE_NAV[user.role]] : [];
-  if (canReviewHeld) {
-    navItems.push({ label: "Held Mail", path: "/held-mail", icon: AlertCircle });
-  }
 
   const handleLogout = () => {
     logout();

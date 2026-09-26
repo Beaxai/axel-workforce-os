@@ -2,6 +2,18 @@
 name: Inbound email routing
 description: How deal email reply-routing works and the webhook/raw-body pitfalls
 ---
+## Deal-scoped email approval location
+
+Expose email approval in each deal's Overview for admins, not a standalone
+Held Mail navigation section.
+
+**Why:** The user explicitly selected each deal's Overview rather than the main
+admin dashboard as the approval location.
+
+**How to apply:** Preserve sender verification and server-derived destination
+checks. Unmatched messages cannot be inserted into an arbitrary deal to make
+them visible there; keep their evidence-based association path separate.
+
 ## Shared domains, separate environment webhooks
 
 The user clarified that Development and production use the same email domains
